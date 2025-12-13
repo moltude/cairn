@@ -1,0 +1,66 @@
+{
+  "_comment": "Cairn Icon Mapping Configuration",
+  "_instructions": "Add or modify mappings below. Symbol mappings take priority over keyword mappings.",
+  "use_icon_name_prefix": false,
+  "_use_icon_name_prefix_info": "If true, adds icon type to waypoint names (e.g., 'Parking - Trailhead'). If false, uses clean names.",
+  "symbol_mappings": {
+    "skull": "Caution",
+    "tent": "Campsite",
+    "water": "Water Source",
+    "car": "Parking",
+    "ski": "Skiing",
+    "summit": "Summit",
+    "camera": "Photo",
+    "cabin": "Cabin",
+    "point": "Location"
+  },
+  "keyword_mappings": {
+    "Campsite": [
+      "tent",
+      "camp",
+      "sleep",
+      "overnight"
+    ],
+    "Water Source": [
+      "water",
+      "spring",
+      "refill",
+      "creek"
+    ],
+    "Parking": [
+      "car",
+      "parking",
+      "trailhead",
+      "lot"
+    ],
+    "Skiing": [
+      "ski",
+      "skin",
+      "tour",
+      "uptrack"
+    ],
+    "Summit": [
+      "summit",
+      "peak",
+      "top",
+      "mt"
+    ],
+    "Caution": [
+      "danger",
+      "avy",
+      "avalanche",
+      "slide"
+    ],
+    "Photo": [
+      "camera",
+      "photo",
+      "view"
+    ],
+    "Cabin": [
+      "cabin",
+      "hut",
+      "yurt"
+    ]
+  },
+  "enable_unmapped_detection": true
+}
