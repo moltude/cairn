@@ -37,7 +37,7 @@ def show():
 @app.command("export")
 def export():
     """Export configuration template."""
-    output_path = Path("cairn_config.json")
+    output_path = Path("cairn_config.yaml")
     cfg = load_config()
     cfg.export_template(output_path)
     console.print(f"[bold green]✔[/] Configuration template exported to [underline]{output_path}[/]")

@@ -13,9 +13,9 @@ import uuid
 
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon, map_color
-from cairn.utils.utils import strip_html
+from cairn.utils.utils import strip_html, natural_sort_key
 from cairn.core.config import get_icon_color, get_use_icon_name_prefix
-from cairn.core.color_mapper import ColorMapper
+from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_to_weight
 
 # Register the onX namespace (note: 4 'w's is required)
 ET.register_namespace('onx', 'https://wwww.onxmaps.com/')
@@ -59,7 +59,7 @@ def prettify_xml(elem: ET.Element) -> str:
 
 
 def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
-                        folder_name: str) -> int:
+                        folder_name: str, sort: bool = True) -> int:
     """
     Write waypoints to a GPX file with onX namespace extensions.
 
@@ -67,10 +67,15 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
         features: List of waypoint features to write
         output_path: Path to write the GPX file
         folder_name: Name for the GPX metadata
+        sort: If True (default), sort features using natural sort order
 
     Returns:
         File size in bytes
     """
+    # Sort features by title using natural sort (default behavior)
+    if sort:
+        features = sorted(features, key=lambda f: natural_sort_key(f.title))
+
     # Build GPX manually to ensure proper namespace handling
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -126,24 +131,29 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
 
 
 def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
-                     folder_name: str) -> int:
+                     folder_name: str, sort: bool = True) -> int:
     """
-    Write tracks to a GPX file.
+    Write tracks to a GPX file with onX namespace extensions for color, style, and weight.
 
     Args:
         features: List of track features to write
         output_path: Path to write the GPX file
         folder_name: Name for the GPX metadata
+        sort: If True (default), sort features using natural sort order
 
     Returns:
         File size in bytes
     """
     from xml.sax.saxutils import escape
 
-    # Build GPX manually
+    # Sort features by title using natural sort (default behavior)
+    if sort:
+        features = sorted(features, key=lambda f: natural_sort_key(f.title))
+
+    # Build GPX manually with onX namespace
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn - CalTopo to onX Migration Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to onX Migration Tool">',
         f'  <metadata>',
         f'    <name>{escape(folder_name)}</name>',
         f'  </metadata>',
@@ -161,6 +171,23 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
         if feature.description:
             desc_text = escape(strip_html(feature.description))
             lines.append(f'    <desc>{desc_text}</desc>')
+
+        # Add onX extensions for color, style, and weight
+        lines.append(f'    <extensions>')
+
+        # Map CalTopo stroke color to closest onX color
+        onx_color = ColorMapper.transform_color(feature.stroke) if feature.stroke else ColorMapper.DEFAULT_COLOR
+        lines.append(f'      <onx:color>{onx_color}</onx:color>')
+
+        # Map CalTopo pattern to onX style
+        onx_style = pattern_to_style(feature.pattern)
+        lines.append(f'      <onx:style>{onx_style}</onx:style>')
+
+        # Map CalTopo stroke-width to onX weight
+        onx_weight = stroke_width_to_weight(feature.stroke_width)
+        lines.append(f'      <onx:weight>{onx_weight}</onx:weight>')
+
+        lines.append(f'    </extensions>')
 
         lines.append(f'    <trkseg>')
 

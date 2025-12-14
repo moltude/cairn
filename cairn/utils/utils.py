@@ -1,13 +1,56 @@
 """
-Utility functions for Cairn: chunking, HTML stripping, and file helpers.
+Utility functions for Cairn: chunking, HTML stripping, sorting, and file helpers.
 
 This module provides helper functions for handling onX import limits,
-cleaning data, and managing file operations.
+cleaning data, natural sorting, and managing file operations.
 """
 
-from typing import List, Iterator, Any
+from typing import List, Iterator, Any, Union
 import re
 from pathlib import Path
+
+
+def natural_sort_key(text: str) -> List[Union[str, int]]:
+    """
+    Generate a sort key for natural/human sorting.
+
+    Natural sorting handles mixed alphanumeric strings correctly,
+    sorting "Item 2" before "Item 10" (unlike lexicographic sorting).
+
+    Handles:
+    - Zero-padded numbers: 01, 02, ... 10, 11
+    - Non-padded numbers: 1, 2, 3, ... 10, 11
+    - Alphabetical: A, B, C, ... Z
+    - Mixed: "Section 2", "Section 10"
+
+    Args:
+        text: The string to generate a sort key for
+
+    Returns:
+        A list of string and integer parts for comparison
+
+    Examples:
+        >>> natural_sort_key("Item 2")
+        ['item ', 2, '']
+        >>> natural_sort_key("Item 10")
+        ['item ', 10, '']
+        >>> sorted(["Item 10", "Item 2", "Item 1"], key=natural_sort_key)
+        ['Item 1', 'Item 2', 'Item 10']
+        >>> sorted(["02 - B", "01 - A", "10 - C"], key=natural_sort_key)
+        ['01 - A', '02 - B', '10 - C']
+    """
+    if not text:
+        return ['']
+
+    def convert(part: str) -> Union[str, int]:
+        """Convert numeric strings to int, lowercase text otherwise."""
+        return int(part) if part.isdigit() else part.lower()
+
+    # Split on digit boundaries, keeping the digits
+    # e.g., "Item 10" -> ['Item ', '10', '']
+    parts = re.split(r'(\d+)', text)
+
+    return [convert(part) for part in parts]
 
 
 def chunk_data(items: List[Any], limit: int = 2500) -> Iterator[List[Any]]:

@@ -5,9 +5,9 @@ This module handles loading and managing user-customizable icon mappings,
 allowing users to override defaults and extend mappings as needed.
 """
 
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Optional
 from pathlib import Path
-import json
+import yaml
 from collections import defaultdict
 
 
@@ -293,7 +293,7 @@ class IconMappingConfig:
         Initialize configuration.
 
         Args:
-            config_file: Optional path to user config JSON file
+            config_file: Optional path to user config YAML file
         """
         self.symbol_map = DEFAULT_SYMBOL_MAP.copy()
         self.keyword_map = DEFAULT_KEYWORD_MAP.copy()
@@ -306,21 +306,25 @@ class IconMappingConfig:
 
     def load_user_config(self, config_file: Path):
         """
-        Load user configuration from JSON file.
+        Load user configuration from YAML file.
 
         User config overrides defaults. Format:
-        {
-          "symbol_mappings": {"skull": "Danger", ...},
-          "keyword_mappings": {"Campsite": ["tent", ...], ...},
-          "enable_unmapped_detection": true
-        }
+        symbol_mappings:
+          skull: Hazard
+        keyword_mappings:
+          Campsite: [tent, camp, sleep]
+        enable_unmapped_detection: true
 
         Args:
-            config_file: Path to JSON config file
+            config_file: Path to YAML config file (.yaml or .yml)
         """
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
-                user_config = json.load(f)
+                user_config = yaml.safe_load(f)
+
+            # Handle empty config file
+            if user_config is None:
+                user_config = {}
 
             # Override symbol mappings
             if "symbol_mappings" in user_config:
@@ -334,8 +338,8 @@ class IconMappingConfig:
             if "enable_unmapped_detection" in user_config:
                 self.enable_unmapped_detection = user_config["enable_unmapped_detection"]
 
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in config file: {e}")
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML in config file: {e}")
         except Exception as e:
             raise ValueError(f"Error loading config file: {e}")
 
@@ -377,39 +381,219 @@ class IconMappingConfig:
         """
         Export a configuration template file for user customization.
 
-        Args:
-            output_path: Path to write the template JSON file
-        """
-        template = {
-            "_comment": "Cairn Icon Mapping Configuration",
-            "_instructions": "Add or modify mappings below. Symbol mappings take priority over keyword mappings.",
-            "use_icon_name_prefix": False,
-            "_use_icon_name_prefix_info": "If true, adds icon type to waypoint names (e.g., 'Parking - Trailhead'). If false, uses clean names.",
-            "symbol_mappings": {
-                "skull": "Caution",
-                "tent": "Campsite",
-                "water": "Water Source",
-                "car": "Parking",
-                "ski": "Skiing",
-                "summit": "Summit",
-                "camera": "Photo",
-                "cabin": "Cabin"
-            },
-            "keyword_mappings": {
-                "Campsite": ["tent", "camp", "sleep", "overnight"],
-                "Water Source": ["water", "spring", "refill", "creek"],
-                "Parking": ["car", "parking", "trailhead", "lot"],
-                "Skiing": ["ski", "skin", "tour", "uptrack"],
-                "Summit": ["summit", "peak", "top", "mt"],
-                "Caution": ["danger", "avy", "avalanche", "slide"],
-                "Photo": ["camera", "photo", "view"],
-                "Cabin": ["cabin", "hut", "yurt"]
-            },
-            "enable_unmapped_detection": True
-        }
+        YAML format with helpful inline comments.
 
+        Args:
+            output_path: Path to write the template file (.yaml)
+        """
+        yaml_content = '''# =============================================================================
+# Cairn Icon Mapping Configuration
+# =============================================================================
+# This file maps CalTopo symbols to onX Backcountry icons.
+# YAML format allows inline comments for easier understanding.
+#
+# Priority order:
+#   1. symbol_mappings (highest) - matches CalTopo marker-symbol
+#   2. keyword_mappings - searches title/description for keywords
+#   3. Default: "Location" icon
+# =============================================================================
+
+# If true, adds icon type prefix to names (e.g., "Hazard - Avalanche Zone")
+use_icon_name_prefix: false
+
+# Track symbols that don't have mappings (shows report after conversion)
+enable_unmapped_detection: true
+
+# =============================================================================
+# SYMBOL MAPPINGS
+# =============================================================================
+# Format: caltopo_symbol: onX Icon Name
+# These match the "marker-symbol" field in CalTopo exports.
+#
+symbol_mappings:
+
+  # ---------------------------------------------------------------------------
+  # HAZARDS & WARNINGS -> Hazard (red icon)
+  # ---------------------------------------------------------------------------
+  skull: Hazard
+  danger: Hazard
+  warning: Hazard
+  caution: Hazard
+  hazard: Hazard
+  alert: Hazard
+
+  # ---------------------------------------------------------------------------
+  # CAMPING -> Campsite/Camp (orange icon)
+  # ---------------------------------------------------------------------------
+  tent: Campsite
+  campsite: Campsite
+  camp: Camp
+  camping: Campsite
+  bivy: Camp Backcountry
+  campground: Campground
+
+  # ---------------------------------------------------------------------------
+  # WATER -> Water Source (cyan icon)
+  # ---------------------------------------------------------------------------
+  water: Water Source
+  droplet: Water Source
+  spring: Water Source
+  creek: Water Source
+  lake: Water Source
+  river: Water Source
+  waterfall: Waterfall
+  hot-spring: Hot Spring
+
+  # ---------------------------------------------------------------------------
+  # PARKING & VEHICLES -> Parking (gray icon)
+  # ---------------------------------------------------------------------------
+  car: Parking
+  parking: Parking
+  vehicle: Parking
+  lot: Parking
+  4x4: 4x4
+  atv: ATV
+
+  # ---------------------------------------------------------------------------
+  # WINTER SPORTS -> XC Skiing/Ski Touring (white icon)
+  # ---------------------------------------------------------------------------
+  ski: Ski
+  skiing: XC Skiing
+  xc-skiing: XC Skiing
+  backcountry: Ski Touring
+  skin: Skin Track
+  tour: Ski Touring
+  ski-touring: Ski Touring
+  snowboard: Snowboarder
+  snowmobile: Snowmobile
+
+  # ---------------------------------------------------------------------------
+  # HIKING & TRAILS -> Trailhead/Hike (green icon)
+  # ---------------------------------------------------------------------------
+  trailhead: Trailhead
+  trail: Trailhead
+  hike: Hike
+  hiking: Hike
+  backpack: Backpacker
+  backpacker: Backpacker
+
+  # ---------------------------------------------------------------------------
+  # SUMMITS & TERRAIN -> Summit (red icon)
+  # ---------------------------------------------------------------------------
+  summit: Summit
+  peak: Summit
+  triangle-u: Summit
+  mountain: Summit
+  top: Summit
+
+  # ---------------------------------------------------------------------------
+  # VIEWS & PHOTOS -> Photo/View (yellow icon)
+  # ---------------------------------------------------------------------------
+  camera: Photo
+  photo: Photo
+  binoculars: View
+  viewpoint: View
+  vista: View
+  overlook: View
+  lookout: Lookout
+
+  # ---------------------------------------------------------------------------
+  # FACILITIES -> Cabin (brown icon)
+  # ---------------------------------------------------------------------------
+  cabin: Cabin
+  hut: Cabin
+  yurt: Cabin
+  shelter: Shelter
+  house: House
+
+  # ---------------------------------------------------------------------------
+  # MISC - add your custom mappings here
+  # ---------------------------------------------------------------------------
+  # my-custom-symbol: Location
+
+# =============================================================================
+# KEYWORD MAPPINGS
+# =============================================================================
+# Format: "onX Icon Name": [list, of, keywords]
+# Searches waypoint title and description for these keywords.
+# Only used if no symbol_mapping matches.
+#
+keyword_mappings:
+
+  # Camping keywords
+  Campsite:
+    - tent
+    - camp
+    - sleep
+    - overnight
+    - camping
+
+  # Water keywords
+  Water Source:
+    - water
+    - spring
+    - refill
+    - creek
+    - stream
+
+  # Parking keywords
+  Parking:
+    - car
+    - parking
+    - lot
+    - vehicle
+
+  # Trailhead keywords
+  Trailhead:
+    - trailhead
+    - trail head
+    - th
+
+  # Winter sports keywords
+  XC Skiing:
+    - ski
+    - skin
+    - tour
+    - uptrack
+    - skiing
+    - xc
+
+  # Summit keywords
+  Summit:
+    - summit
+    - peak
+    - top
+    - mt
+
+  # Hazard keywords
+  Hazard:
+    - danger
+    - avy
+    - avalanche
+    - slide
+    - caution
+    - warning
+
+  # Photo/View keywords
+  Photo:
+    - camera
+    - photo
+
+  View:
+    - view
+    - viewpoint
+    - vista
+    - overlook
+    - scenic
+
+  # Cabin keywords
+  Cabin:
+    - cabin
+    - hut
+    - yurt
+'''
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(template, f, indent=2)
+            f.write(yaml_content)
 
     def get_config_summary(self) -> Dict:
         """
@@ -434,14 +618,20 @@ def get_use_icon_name_prefix() -> bool:
         Boolean indicating if icon prefixes should be added (default: False)
     """
     # Check for user config file
-    config_file = Path("cairn_config.json")
-    if config_file.exists():
-        try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                user_config = json.load(f)
-                return user_config.get("use_icon_name_prefix", False)
-        except:
-            pass
+    config_files = [
+        Path("cairn_config.yaml"),
+        Path("cairn_config.yml"),
+    ]
+
+    for config_file in config_files:
+        if config_file.exists():
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    user_config = yaml.safe_load(f)
+                    if user_config:
+                        return user_config.get("use_icon_name_prefix", False)
+            except:
+                pass
     return False
 
 
@@ -450,17 +640,21 @@ def load_config(config_file: Optional[Path] = None) -> IconMappingConfig:
     Load icon mapping configuration.
 
     Args:
-        config_file: Optional path to user config file.
-                    If None, looks for 'cairn_config.json' in current directory.
+        config_file: Optional path to user config file (.yaml or .yml).
+                    If None, looks for 'cairn_config.yaml' in current directory.
 
     Returns:
         IconMappingConfig instance
     """
     # Check for default config file if none specified
     if config_file is None:
-        default_config = Path("cairn_config.json")
-        if default_config.exists():
-            config_file = default_config
+        yaml_config = Path("cairn_config.yaml")
+        yml_config = Path("cairn_config.yml")
+
+        if yaml_config.exists():
+            config_file = yaml_config
+        elif yml_config.exists():
+            config_file = yml_config
 
     return IconMappingConfig(config_file)
 
@@ -479,23 +673,24 @@ def get_all_onx_icons() -> List[str]:
     return sorted(list(icons))
 
 
-def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_config.json")):
+def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_config.yaml")):
     """
     Save user's manual mapping to config file.
 
     Args:
         symbol: CalTopo symbol to map
         icon: onX icon name to map to
-        config_path: Path to config file
+        config_path: Path to YAML config file
     """
     if config_path.exists():
         with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
+            config = yaml.safe_load(f) or {}
     else:
         config = {
-            "_comment": "Cairn Icon Mapping Configuration",
             "use_icon_name_prefix": False,
-            "enable_unmapped_detection": True
+            "enable_unmapped_detection": True,
+            "symbol_mappings": {},
+            "keyword_mappings": {},
         }
 
     if "symbol_mappings" not in config:
@@ -504,4 +699,4 @@ def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_co
     config["symbol_mappings"][symbol] = icon
 
     with open(config_path, 'w', encoding='utf-8') as f:
-        json.dump(config, f, indent=2)
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)

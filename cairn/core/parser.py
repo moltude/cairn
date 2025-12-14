@@ -27,6 +27,11 @@ class ParsedFeature:
         self.color = self.properties.get("marker-color") or self.properties.get("stroke", "")
         self.symbol = self.properties.get("marker-symbol", "")
 
+        # Extract line/track properties for onX fidelity
+        self.stroke = self.properties.get("stroke", "")  # Line color (hex)
+        self.stroke_width = self.properties.get("stroke-width", 4)  # Line width
+        self.pattern = self.properties.get("pattern", "solid")  # Line pattern (solid, dash, etc.)
+
     @property
     def geometry_type(self) -> Optional[str]:
         """Get the geometry type (Point, LineString, Polygon, etc.)."""

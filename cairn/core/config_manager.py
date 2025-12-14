@@ -7,7 +7,7 @@ default icon/color settings, validation, and persistence.
 
 from pathlib import Path
 from typing import Optional, Dict, Any
-import json
+import yaml
 
 from cairn.core.config import get_all_onx_icons, ICON_COLOR_MAP
 from cairn.core.color_mapper import ColorMapper
@@ -17,7 +17,7 @@ def get_config_path() -> Path:
     """Get config file path in user home directory."""
     config_dir = Path.home() / ".cairn"
     config_dir.mkdir(exist_ok=True)
-    return config_dir / "config.json"
+    return config_dir / "config.yaml"
 
 
 class ConfigManager:
@@ -28,7 +28,7 @@ class ConfigManager:
         Initialize configuration manager.
 
         Args:
-            config_path: Path to configuration file (defaults to ~/.cairn/config.json)
+            config_path: Path to configuration file (defaults to ~/.cairn/config.yaml)
         """
         self.config_path = config_path or get_config_path()
         self.config = self.load()
@@ -43,8 +43,9 @@ class ConfigManager:
         if self.config_path.exists():
             try:
                 with open(self.config_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
+                    config = yaml.safe_load(f)
+                    return config if config else self._default_config()
+            except (yaml.YAMLError, IOError) as e:
                 print(f"Warning: Could not load config: {e}")
                 return self._default_config()
         return self._default_config()
@@ -52,7 +53,7 @@ class ConfigManager:
     def save(self):
         """Save configuration to file."""
         with open(self.config_path, 'w', encoding='utf-8') as f:
-            json.dump(self.config, f, indent=2, ensure_ascii=False)
+            yaml.dump(self.config, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
     def _default_config(self) -> Dict[str, Any]:
         """
@@ -62,8 +63,6 @@ class ConfigManager:
             Default configuration dictionary
         """
         return {
-            "_comment": "Cairn Icon Mapping Configuration",
-            "_instructions": "Customize icon mappings, default icon/color, and other settings",
             "default_icon": "Location",
             "default_color": "rgba(8,122,255,1)",
             "use_icon_name_prefix": False,

@@ -1,403 +1,394 @@
-# Cairn 🏔️
+# Cairn
 
 **The CalTopo to onX Backcountry Migration Tool**
 
-Cairn is a Python CLI tool that converts CalTopo GeoJSON exports into onX Backcountry-compatible GPX and KML files. It intelligently maps icons, handles large datasets with auto-splitting, and provides a beautiful terminal UI.
+Cairn converts CalTopo GeoJSON exports into onX Backcountry-compatible GPX/KML files with intelligent icon mapping, natural sorting, and a beautiful terminal UI.
 
-**Mixed Format Strategy:** Cairn uses GPX with onX's custom namespace extensions (`xmlns:onx="https://wwww.onxmaps.com/"`) for waypoints and tracks, ensuring proper icon and color preservation. Shapes (polygons) use KML format as GPX doesn't support polygons well.
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+  - [Basic Conversion](#basic-conversion)
+  - [Preview Mode](#preview-mode)
+  - [Review Mode](#review-mode)
+  - [CLI Options](#cli-options)
+- [Icon Mapping](#icon-mapping)
+  - [How It Works](#how-it-works)
+  - [Icon Reference Table](#icon-reference-table)
+  - [Available onX Icons](#available-onx-icons)
+- [Configuration](#configuration)
+  - [Config File Location](#config-file-location)
+  - [Config Structure](#config-structure)
+  - [Symbol Mappings](#symbol-mappings)
+  - [Keyword Mappings](#keyword-mappings)
+  - [Adding Custom Mappings](#adding-custom-mappings)
+  - [Config Commands](#config-commands)
+- [Output Files](#output-files)
+- [onX GPX Extensions](#onx-gpx-extensions)
+- [Sorting and Preview](#sorting-and-preview)
+- [Importing to onX](#importing-to-onx)
+- [Limitations](#limitations)
+- [Development](#development)
+
+---
 
 ## Features
 
-✨ **Intelligent Icon Mapping** - Two-tier system: CalTopo symbols → onX icons, then keyword matching
+- **Intelligent Icon Mapping** - Two-tier system: CalTopo symbols → onX icons, then keyword matching
+- **Natural Sorting** - Items sorted in human-friendly order (01, 02... 10, 11)
+- **Visual Preview** - See sorted order with color squares and icon emojis before export
+- **Color & Style Preservation** - Track colors, line styles (solid/dash/dot), and weights
+- **YAML Configuration** - User-editable config with inline comments
+- **Unmapped Symbol Detection** - Reports CalTopo symbols needing mapping
+- **Auto-Splitting** - Handles large datasets by splitting at onX's 3,000 item limit
+- **Folder Support** - Preserves CalTopo folder structure
+- **Interactive Review** - Review and adjust icon mappings before conversion
 
-⚙️ **Customizable Configuration** - User-editable JSON config for custom icon mappings and name prefix options
-
-🔍 **Unmapped Symbol Detection** - Reports CalTopo symbols that need mapping configuration
-
-📦 **Auto-Splitting** - Handles large datasets by automatically splitting files that exceed onX's 3,000 item limit
-
-📁 **Folder Support** - Preserves CalTopo folder structure and organizes output files accordingly
-
-🗺️ **onX Namespace Extensions** - Uses GPX with onX's custom `<onx:icon>` and `<onx:color>` extensions for proper icon preservation
-
-📝 **Optional Icon Prefixes** - Configurable option to add icon type prefixes to waypoint names (e.g., "Parking - Trailhead")
-
-👁️ **Dry-Run Preview** - Preview conversion results without creating files (`--dry-run`)
-
-🔧 **Interactive Review** - Review and adjust icon mappings before conversion (`--review`)
-
-🎯 **Default Icon/Color Management** - Set custom defaults for unmapped symbols via config command
-
-## Demo
-
-See Cairn in action ([made with VHS](https://github.com/charmbracelet/vhs)):
-
-![Made with VHS](https://vhs.charm.sh/vhs-44gEeUfxctwPwDRbC4mT6Z.gif)
-
-
-
+---
 
 ## Installation
-
-Clone the repository and install using [uv](https://docs.astral.sh/uv/):
 
 ```bash
 git clone https://github.com/yourusername/cairn.git
 cd cairn
 uv sync
 ```
-### Requirements
 
-- Python 3.9 or higher
-- Dependencies: `typer`, `rich` (automatically installed)
+**Requirements:** Python 3.9+
+
+---
+
+## Quick Start
+
+```bash
+# Convert a CalTopo export
+uv run cairn convert my_map.json
+
+# Preview without creating files
+uv run cairn convert my_map.json --dry-run
+
+# Export a config template
+uv run cairn config export
+```
+
+---
 
 ## Usage
 
-All commands use `uv run` to execute within the project environment:
-
-### Convert Command
-
-Convert a CalTopo GeoJSON export to onX format:
+### Basic Conversion
 
 ```bash
 uv run cairn convert INPUT_FILE.json
 ```
 
-### Preview Before Converting (Dry-Run)
+### Preview Mode
+
+See what will be created without making files:
 
 ```bash
 uv run cairn convert INPUT_FILE.json --dry-run
 ```
 
-Shows what files will be created, icon distribution, and unmapped symbols without creating any files.
+Shows: icon distribution, unmapped symbols, files to be created.
 
-### Interactive Review Mode
+### Review Mode
+
+Interactively review and adjust icon mappings:
 
 ```bash
 uv run cairn convert INPUT_FILE.json --review
 ```
 
-Review and adjust icon mappings interactively before conversion.
+### CLI Options
 
-### Specify Output Directory
-
-```bash
-uv run cairn convert INPUT_FILE.json --output ./my_onx_files
-```
-
-### Use Custom Configuration
-
-```bash
-uv run cairn convert INPUT_FILE.json --config my_config.json
-```
-
-### Configuration Management
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Preview without creating files |
+| `--review` | Interactive icon mapping review |
+| `--yes` | Skip confirmation prompts |
+| `--no-sort` | Preserve original CalTopo order |
+| `--output DIR` | Specify output directory |
+| `--config FILE` | Use custom config file |
 
 ```bash
-# Show current configuration
-uv run cairn config show
-
-# Export configuration template
-uv run cairn config export
-
-# Set default icon for unmapped symbols
-uv run cairn config set-default-icon "Campsite"
-
-# Set default color
-uv run cairn config set-default-color "rgba(255,0,0,1)"
-
-# Validate a config file
-uv run cairn config validate my_config.json
+# Examples
+uv run cairn convert map.json --output ./onx_ready
+uv run cairn convert map.json --config my_config.yaml
+uv run cairn convert map.json --yes --no-sort  # Fully automated
 ```
 
-### Icon Management
-
-```bash
-# List all available onX icons
-uv run cairn icon list
-
-# Map a CalTopo symbol to an onX icon
-uv run cairn icon map "marker-campsite" "Campsite"
-
-# Show current mapping for a symbol
-uv run cairn icon show "marker-campsite"
-
-# Remove a symbol mapping
-uv run cairn icon unmap "marker-campsite"
-```
-
-### Example
-
-```bash
-uv run cairn convert Olympic_Mtn_100k.json --output ./onx_ready
-```
-
-## How It Works
-
-1. **Parse** - Reads your CalTopo GeoJSON export and organizes features by folder and type
-2. **Map** - Intelligently maps CalTopo icons to onX Backcountry icon IDs using symbol and keyword matching
-3. **Split** - Automatically chunks large datasets to respect onX's limits
-4. **Export** - Generates GPX files with onX namespace extensions for waypoints/tracks, and KML files for shapes
+---
 
 ## Icon Mapping
 
-Cairn uses a two-tier system to map CalTopo markers to onX Backcountry icons:
+### How It Works
 
-### 1. Symbol Mapping (Priority)
-Cairn first checks the CalTopo `marker-symbol` field (e.g., skull → Hazard ⚠️)
-
-### 2. Keyword Mapping (Fallback)
-If no symbol match, searches keywords in titles and descriptions:
-
-| Keywords | onX Icon |
-|----------|----------|
-| tent, camp, sleep, overnight | Campsite ⛺ |
-| water, spring, refill, creek | Water Source 💧 |
-| car, parking, trailhead, lot | Parking 🅿️ |
-| ski, skin, tour, uptrack | Skiing ⛷️ |
-| summit, peak, top, mt | Summit 🏔️ |
-| danger, avy, avalanche, slide | Caution ⚠️ |
-| camera, photo, view | Photo 📷 |
-| cabin, hut, yurt | Cabin 🏠 |
-
-If no match found, defaults to "Waypoint" 📍
-
-### Customization
-
-Cairn stores configuration in `~/.cairn/config.json`. Create and customize your icon mappings:
-
-```bash
-uv run cairn config export  # Create template in current directory
-# Edit cairn_config.json with your custom mappings
-# Then copy to ~/.cairn/config.json or use --config flag
-uv run cairn convert INPUT.json --config cairn_config.json
+```
+CalTopo Waypoint
+       │
+       ▼
+┌──────────────────┐
+│ 1. Symbol Match  │ ← Checks "marker-symbol" field (e.g., "skull" → Hazard)
+└────────┬─────────┘
+         │ No match?
+         ▼
+┌──────────────────┐
+│ 2. Keyword Match │ ← Searches title/description (e.g., "avalanche" → Hazard)
+└────────┬─────────┘
+         │ No match?
+         ▼
+┌──────────────────┐
+│ 3. Default Icon  │ ← Falls back to "Location" (blue pin)
+└──────────────────┘
 ```
 
-You can also manage mappings directly via CLI:
+### Icon Reference Table
 
-```bash
-uv run cairn icon map "marker-campsite" "Campsite"
-uv run cairn config set-default-icon "Location"
-```
+| CalTopo Symbol | onX Icon | Visual | Color |
+|----------------|----------|--------|-------|
+| `skull`, `danger`, `warning` | Hazard | ⚠️ | Red |
+| `tent`, `camp`, `campsite` | Campsite | ⛺ | Orange |
+| `water`, `spring`, `creek` | Water Source | 💧 | Cyan |
+| `car`, `parking`, `lot` | Parking | 🅿️ | Gray |
+| `trailhead`, `trail` | Trailhead | 🥾 | Green |
+| `ski`, `skiing`, `xc-skiing` | XC Skiing | ⛷️ | White |
+| `summit`, `peak`, `mountain` | Summit | 🏔️ | Red |
+| `camera`, `photo` | Photo | 📷 | Yellow |
+| `viewpoint`, `vista` | View | 👁️ | Yellow |
+| `cabin`, `hut`, `yurt` | Cabin | 🏠 | Brown |
+| *(default)* | Location | 📍 | Blue |
 
-See [CONFIGURATION.md](CONFIGURATION.md) for detailed configuration guide.
+### Available onX Icons
 
-## onX Namespace Extensions
+Run `uv run cairn icon list` to see all 100+ icons organized by category:
 
-Cairn uses GPX format with onX's custom namespace extensions to properly preserve icon and color data:
+**Camping:** Campsite, Camp, Camp Backcountry, Campground
+**Water:** Water Source, Waterfall, Hot Spring, Potable Water
+**Winter:** XC Skiing, Ski Touring, Ski, Skin Track, Snowboarder
+**Transportation:** Parking, Trailhead, 4x4, ATV
+**Terrain:** Summit, Cave, Couloir, Cornice
+**Hazards:** Hazard, Barrier
+**Observation:** Photo, View, Lookout
+**Facilities:** Cabin, Shelter, Food Source
 
-```xml
-<gpx xmlns="http://www.topografix.com/GPX/1/1"
-     xmlns:onx="https://wwww.onxmaps.com/">
-  <wpt lat="45.123" lon="-114.456">
-    <name>Trailhead parking</name>
-    <desc>Main access point</desc>
-    <extensions>
-      <onx:icon>Parking</onx:icon>
-      <onx:color>rgba(128, 128, 128, 1)</onx:color>
-    </extensions>
-  </wpt>
-</gpx>
-```
-
-**Note:** The onX namespace URL has 4 'w's (`wwww`) - this is required by onX's import parser.
-
-## Optional Icon Name Prefixes
-
-By default, Cairn generates clean waypoint names. However, you can optionally enable icon type prefixes in waypoint names for easier manual icon setting in onX.
-
-### Configuration
-
-Set `use_icon_name_prefix` to `true` in `cairn_config.json`:
-
-```json
-{
-  "use_icon_name_prefix": true
-}
-```
-
-### With Prefixes Enabled
-
-| Original Name | Mapped Icon | Final Name |
-|--------------|-------------|------------|
-| Parking for trailhead | Parking | `Parking - Parking for trailhead` |
-| Avy hazard area | Caution | `Caution - Avy hazard area` |
-| Base camp | Campsite | `Campsite - Base camp` |
-| Cool summit | Waypoint | `Cool summit` (no prefix for default) |
-
-### Summary Files
-
-When icon prefixes are enabled, Cairn generates a `_SUMMARY.txt` file for each waypoint GPX file, organizing waypoints by icon type:
-
-**Example: `Trapper_area_Waypoints_SUMMARY.txt`**
-```
-======================================================================
-WAYPOINT ICON REFERENCE: Trapper area
-======================================================================
-
-Total Waypoints: 68
-Icon Types: 8
-
-CAMPSITE (5 waypoints)
-----------------------------------------------------------------------
-  • Campsite - Camp spot
-  • Campsite - Decent camp site
-  ...
-
-CAUTION (3 waypoints)
-----------------------------------------------------------------------
-  • Caution - Avy hazard area
-  • Caution - Avy debris
-  ...
-
-WAYPOINT (32 waypoints)
-----------------------------------------------------------------------
-  • Cool ridge line traverse
-  • Main Wall- Lost horse canyon
-  ...
-```
-
-This is useful if onX's GPX import doesn't properly recognize the custom namespace extensions.
-
-## Output Files
-
-Cairn generates separate files for different feature types:
-
-- **`FolderName_Waypoints.gpx`** - Point markers with onX namespace extensions
-- **`FolderName_Waypoints_SUMMARY.txt`** - Icon reference guide (only if `use_icon_name_prefix` is true)
-- **`FolderName_Tracks.gpx`** - Line/route features
-- **`FolderName_Shapes.kml`** - Polygon/area features (KML used as GPX doesn't support polygons well)
-
-For large datasets exceeding 3,000 items, files are automatically split:
-- `FolderName_Waypoints_Part1.gpx` (+ optional `_SUMMARY.txt`)
-- `FolderName_Waypoints_Part2.gpx` (+ optional `_SUMMARY.txt`)
-- etc.
+---
 
 ## Configuration
 
-Cairn supports customizable icon mappings through a JSON configuration file.
+### Config File Location
 
-### Quick Start
+Cairn looks for `cairn_config.yaml` in the current directory, or specify one:
 
-1. **Export template:**
+```bash
+uv run cairn convert input.json --config my_config.yaml
+```
+
+### Config Structure
+
+```yaml
+# cairn_config.yaml
+
+# Add icon type prefix to names (e.g., "Hazard - Avalanche Zone")
+use_icon_name_prefix: false
+
+# Report unmapped symbols after conversion
+enable_unmapped_detection: true
+
+# CalTopo symbol → onX icon mappings
+symbol_mappings:
+  skull: Hazard
+  tent: Campsite
+  water: Water Source
+  car: Parking
+
+# Keyword fallback mappings (searched in title/description)
+keyword_mappings:
+  Hazard: [danger, avy, avalanche, caution]
+  Campsite: [tent, camp, sleep, overnight]
+  Water Source: [water, spring, creek, refill]
+```
+
+### Symbol Mappings
+
+Symbol mappings have **highest priority**. They match the CalTopo `marker-symbol` field:
+
+```yaml
+symbol_mappings:
+  skull: Hazard        # CalTopo skull icon → onX Hazard
+  my-custom: Summit    # Your custom symbol → onX Summit
+```
+
+### Keyword Mappings
+
+Keyword mappings are the **fallback** when no symbol matches. They search waypoint titles and descriptions:
+
+```yaml
+keyword_mappings:
+  Hazard: [danger, avalanche, avy, slide]
+  Campsite: [tent, camp, sleep, bivy]
+  Water Source: [water, spring, creek, stream]
+```
+
+### Adding Custom Mappings
+
+1. **Run conversion** to find unmapped symbols:
    ```bash
-   uv run cairn config export
+   uv run cairn convert my_map.json
    ```
 
-2. **Edit `cairn_config.json`:**
-   ```json
-   {
-     "symbol_mappings": {
-       "skull": "Danger",
-       "tent": "Campsite"
-     }
-   }
+2. **Check the report** for unmapped symbols:
+   ```
+   ⚠️  Found 2 unmapped CalTopo symbol(s):
+   │ Symbol     │ Count │ Example Waypoint    │
+   │ my-marker  │    12 │ Start/Finish Line   │
+   │ circle-x   │     8 │ Aid Station 1       │
+
+   💡 Add these to cairn_config.yaml
    ```
 
-3. **Use your config:**
-   ```bash
-   uv run cairn convert INPUT.json
+3. **Add to config**:
+   ```yaml
+   symbol_mappings:
+     my-marker: Location
+     circle-x: Food Source
    ```
 
-### Unmapped Symbol Detection
+4. **Re-run conversion**.
 
-Cairn automatically detects CalTopo symbols that don't have mappings:
-
-```
-⚠️  Found 2 unmapped CalTopo symbol(s):
-┌──────────┬───────┬─────────────────────────┐
-│ Symbol   │ Count │ Example Waypoint        │
-├──────────┼───────┼─────────────────────────┤
-│ circle-s │    12 │ Start/Finish Line       │
-│ skull    │     3 │ Avy hazard area         │
-└──────────┴───────┴─────────────────────────┘
-
-💡 Add these to cairn_config.json to map them to onX icons
-```
-
-Add unmapped symbols to your config for better icon mapping on future conversions.
-
-**For detailed configuration options, see [CONFIGURATION.md](CONFIGURATION.md)**
-
-## Preview and Review Features
-
-### Dry-Run Mode
-
-Preview conversion results without creating any files:
+### Config Commands
 
 ```bash
-uv run cairn convert INPUT.json --dry-run
-```
+# Export a config template
+uv run cairn config export
 
-**Shows:**
-- Summary statistics (waypoint/track/shape counts)
-- Icon distribution breakdown with percentages
-- Unmapped symbols with examples
-- List of files that would be created
+# Show current configuration
+uv run cairn config show
 
-**Benefits:**
-- Verify icon mappings before conversion
-- Identify unmapped symbols early
-- No file system changes
-
-### Interactive Review Mode
-
-Review and adjust icon mappings interactively:
-
-```bash
-uv run cairn convert INPUT.json --review
-```
-
-**Features:**
-- Groups waypoints by assigned icon
-- Shows sample waypoints for each icon
-- Interactively change icon mappings
-- Saves changes to configuration
-- Automatic re-parsing with new mappings
-
-### Enhanced Config Management
-
-```bash
-# List all 100+ onX icons organized by category
-uv run cairn icon list
+# Validate a config file
+uv run cairn config validate my_config.yaml
 
 # Set default icon for unmapped symbols
 uv run cairn config set-default-icon "Campsite"
 
 # Set default color
 uv run cairn config set-default-color "rgba(255,0,0,1)"
+
+# List all available onX icons
+uv run cairn icon list
+
+# Map a symbol via CLI
+uv run cairn icon map "my-symbol" "Summit"
 ```
 
-**For complete details, see [PREVIEW_AND_CONFIG_FEATURES.md](PREVIEW_AND_CONFIG_FEATURES.md)**
+---
 
-## Importing to onX Backcountry
+## Output Files
 
-1. Run Cairn to convert your CalTopo export: `uv run cairn convert myfile.json`
+Cairn generates separate files for each feature type:
+
+| File Pattern | Content |
+|--------------|---------|
+| `FolderName_Waypoints.gpx` | Point markers |
+| `FolderName_Tracks.gpx` | Lines/routes |
+| `FolderName_Shapes.kml` | Polygons (KML, since GPX doesn't support polygons) |
+
+For large datasets (3,000+ items), files are automatically split:
+- `FolderName_Waypoints_Part1.gpx`
+- `FolderName_Waypoints_Part2.gpx`
+
+---
+
+## onX GPX Extensions
+
+Cairn uses GPX with onX's custom namespace to preserve icons, colors, and styles:
+
+```xml
+<wpt lat="45.123" lon="-114.456">
+  <name>Trailhead parking</name>
+  <extensions>
+    <onx:icon>Parking</onx:icon>
+    <onx:color>rgba(128,128,128,1)</onx:color>
+  </extensions>
+</wpt>
+
+<trk>
+  <name>Trail Section 01</name>
+  <extensions>
+    <onx:color>rgba(255,0,0,1)</onx:color>
+    <onx:style>dash</onx:style>
+    <onx:weight>4.0</onx:weight>
+  </extensions>
+</trk>
+```
+
+| Element | Extension | Values |
+|---------|-----------|--------|
+| Waypoint | `onx:icon` | Location, Campsite, Hazard, etc. |
+| Waypoint/Track | `onx:color` | `rgba(r,g,b,1)` |
+| Track | `onx:style` | `solid`, `dash`, `dot` |
+| Track | `onx:weight` | `4.0` (standard), `6.0` (thick) |
+
+---
+
+## Sorting and Preview
+
+### Natural Sorting
+
+Cairn sorts items in human-friendly order:
+
+| Original | Sorted |
+|----------|--------|
+| 01, 07, 04, 02, 10 | 01, 02, 04, 07, 10 |
+| Item 2, Item 10, Item 1 | Item 1, Item 2, Item 10 |
+
+**Why this matters:** onX doesn't allow reordering after import.
+
+### Visual Preview
+
+Before exporting, Cairn shows a preview:
+
+```
+Sorted Tracks (11)
+────────────────────────────────────────
+  1. ■ 01 - Start to Juniper Ridge
+  2. ■ 02 - Juniper Ridge to Sunrise Peak
+  3. ■ 03 - Sunrise Peak to Dark Creek
+
+Sorted Waypoints (9)
+────────────────────────────────────────
+  1. 📍 01 - Start/Finish
+  2. 💧 02 - Water Source
+  3. 🥾 03 - Trailhead
+```
+
+Use `--no-sort` to preserve original CalTopo order.
+
+---
+
+## Importing to onX
+
+1. Run Cairn: `uv run cairn convert myfile.json`
 2. Go to [onX Backcountry Web Map](https://www.onxmaps.com/backcountry/app)
-3. Click **Import** in the menu
+3. Click **Import**
 4. Drag and drop the generated GPX/KML files
-5. Your waypoints will appear with the correct icons! 🎉
+5. Your waypoints appear with correct icons!
 
-## File Structure
+---
 
-```
-cairn/
-├── cli.py              # CLI entry point
-├── __init__.py         # Package initialization
-├── commands/
-│   ├── convert_cmd.py  # Convert command
-│   ├── config_cmd.py   # Config management
-│   └── icon_cmd.py     # Icon management
-├── core/
-│   ├── parser.py       # GeoJSON parsing
-│   ├── mapper.py       # Icon mapping rules
-│   ├── matcher.py      # Symbol/keyword matching
-│   ├── writers.py      # GPX/KML file generation
-│   ├── config.py       # Configuration handling
-│   └── preview.py      # Dry-run preview
-└── utils/
-    └── utils.py        # Helper functions
-```
+## Limitations
+
+- **No reordering in onX** - Items appear in import order (Cairn sorts automatically)
+- **3,000 item limit** - onX limit per file (Cairn auto-splits)
+- **4MB file limit** - onX Web Map limit (Cairn splits conservatively)
+- **Plain text only** - HTML descriptions converted to plain text
+- **9 colors** - Track colors mapped to closest onX palette color
+- **3 line styles** - `solid`, `dash`, `dot` only
+
+---
 
 ## Development
 
@@ -407,63 +398,29 @@ cairn/
 uv run pytest -v
 ```
 
-### Requirements
-
-- Python 3.9+
-- typer
-- rich
-
-## Limitations
-
-- onX Backcountry has a 3,000 item limit per file (Cairn handles this automatically)
-- onX Web Map can crash with files > 4MB (Cairn splits files conservatively at 2,500 items)
-- CalTopo HTML descriptions are converted to plain text for onX compatibility
-
-## Example Output
+### Project Structure
 
 ```
-╭────────────────────────────────╮
-│    CAIRN v1.0.0                │
-│    The CalTopo → onX Bridge    │
-╰────────────────────────────────╯
-
-📂 Input file: Olympic_Mtn_100k.json
-   Size: 234.9 KB
-
-⠋ Parsing GeoJSON...  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100%
-⠋ Mapping Icons...    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100%
-
-Found 1 Folder(s):
-📂 CalTopo Export
-└── 📂 Olympic Mtn 100k (📍 77 Waypoints)
-    ├── 📍 Start/Finish Line → 'Waypoint'
-    ├── 🍎 Aid Station 9-Full Aid → 'Food'
-    └── ... and 75 more waypoints
-
-                     Export Manifest
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━┓
-┃ Filename                      ┃ Format         ┃ Items┃  Size ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━┩
-│ Olympic_Mtn_100k_Waypoints.kml│ KML (Waypoints)│   77 │11.2 KB│
-└───────────────────────────────┴────────────────┴──────┴───────┘
-
-✔ SUCCESS 1 file(s) written to ./onx_ready
-Next: Drag these files into onX Web Map → Import
+cairn/
+├── cli.py              # CLI entry point
+├── commands/
+│   ├── convert_cmd.py  # Convert command
+│   ├── config_cmd.py   # Config management
+│   └── icon_cmd.py     # Icon management
+├── core/
+│   ├── parser.py       # GeoJSON parsing
+│   ├── mapper.py       # Icon mapping
+│   ├── config.py       # Configuration
+│   └── writers.py      # GPX/KML generation
+└── utils/
+    └── utils.py        # Helpers
 ```
+
+---
 
 ## License
 
-This project is provided as-is for personal use.
-
-## Contributing
-
-Found a bug or have a feature request? Feel free to open an issue or submit a pull request!
-
-## Acknowledgments
-
-- Built with [Typer](https://typer.tiangolo.com/) for CLI
-- UI powered by [Rich](https://rich.readthedocs.io/)
-- Inspired by the need to migrate years of CalTopo data to onX Backcountry
+MIT License - see [LICENSE](LICENSE)
 
 ---
 

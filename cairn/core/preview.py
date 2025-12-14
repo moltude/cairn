@@ -315,3 +315,132 @@ def show_mapping_preview(parsed_data: ParsedData, config: IconMappingConfig):
             console.print(f"  [dim]... and {len(folder_data['waypoints']) - 10} more[/]")
 
         console.print()
+
+
+def get_color_square(feature: ParsedFeature) -> str:
+    """
+    Get a colored square indicator for a track based on its stroke color.
+
+    Uses Rich markup to display a colored square character.
+
+    Args:
+        feature: The track feature with stroke color
+
+    Returns:
+        Rich-formatted string with colored square, e.g., "[red]■[/]"
+    """
+    from cairn.core.color_mapper import ColorMapper
+
+    # Get the stroke color (hex format like "#FF0000")
+    stroke = getattr(feature, 'stroke', '') or ''
+
+    if not stroke:
+        # Default to blue if no color
+        return "[rgb(8,122,255)]■[/]"
+
+    # Parse the color to RGB
+    r, g, b = ColorMapper.parse_color(stroke)
+
+    # Use Rich's RGB color syntax
+    return f"[rgb({r},{g},{b})]■[/]"
+
+
+def get_waypoint_icon_preview(feature: ParsedFeature) -> str:
+    """
+    Get an icon/emoji preview for a waypoint.
+
+    Args:
+        feature: The waypoint feature
+
+    Returns:
+        Emoji string representing the mapped icon
+    """
+    from cairn.core.mapper import map_icon, get_icon_emoji
+
+    # Map the waypoint to an onX icon
+    mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol)
+
+    # Get the emoji for this icon type
+    emoji = get_icon_emoji(mapped_icon)
+
+    return emoji
+
+
+def preview_sorted_order(
+    features: List[ParsedFeature],
+    feature_type: str,
+    folder_name: str = "",
+    skip_confirmation: bool = False
+) -> bool:
+    """
+    Display sorted order preview and get user confirmation.
+
+    Shows the order items will appear in OnX after import (since OnX
+    doesn't allow reordering). Asks user to confirm before proceeding.
+
+    For tracks: Shows colored squares matching the line color
+    For waypoints: Shows icon/emoji matching the mapped icon type
+
+    Args:
+        features: List of features (already sorted)
+        feature_type: "waypoints", "tracks", or "shapes"
+        folder_name: Name of the folder being processed
+        skip_confirmation: If True, show preview but don't ask for confirmation
+
+    Returns:
+        True if user confirms (or skip_confirmation is True), False to abort
+    """
+    if not features:
+        return True
+
+    # Build the header
+    type_label = feature_type.capitalize()
+    count = len(features)
+
+    if folder_name:
+        header = f"[bold cyan]{folder_name}[/] - Sorted {type_label} ({count})"
+    else:
+        header = f"[bold]Sorted {type_label} Order ({count} items)[/]"
+
+    console.print(f"\n{header}")
+    console.print("─" * 60)
+
+    # Show all items (or truncate for very long lists)
+    max_display = 20
+    for i, feature in enumerate(features[:max_display], 1):
+        # Truncate long titles
+        title = feature.title
+        if len(title) > 50:
+            title = title[:47] + "..."
+
+        # Get visual indicator based on feature type
+        if feature_type == "tracks":
+            indicator = get_color_square(feature)
+            console.print(f"  [dim]{i:3}.[/] {indicator} {title}")
+        elif feature_type == "waypoints":
+            indicator = get_waypoint_icon_preview(feature)
+            console.print(f"  [dim]{i:3}.[/] {indicator} {title}")
+        else:
+            # Shapes or other types - no special indicator
+            console.print(f"  [dim]{i:3}.[/] {title}")
+
+    if count > max_display:
+        remaining = count - max_display
+        console.print(f"  [dim]... and {remaining} more items[/]")
+
+    console.print("─" * 60)
+
+    # If skip_confirmation is True, just return True without prompting
+    if skip_confirmation:
+        console.print("[dim]Order confirmed (--yes flag)[/]")
+        return True
+
+    # Ask for confirmation
+    console.print("\n[yellow]OnX does not allow reordering after import.[/]")
+
+    try:
+        proceed = Confirm.ask("Proceed with this order?", default=True)
+        return proceed
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]Cancelled[/]")
+        return False

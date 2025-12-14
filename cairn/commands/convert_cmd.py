@@ -15,13 +15,13 @@ from cairn.core.parser import parse_geojson, get_file_summary, ParsedData
 from cairn.core.writers import write_gpx_waypoints, write_gpx_tracks, write_kml_shapes, generate_summary_file
 from cairn.utils.utils import (
     chunk_data, sanitize_filename, format_file_size,
-    ensure_output_dir, should_split
+    ensure_output_dir, should_split, natural_sort_key
 )
 from cairn.core.mapper import get_icon_emoji, map_icon
 from cairn.core.config import load_config, IconMappingConfig, get_use_icon_name_prefix, get_all_onx_icons, save_user_mapping
 from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.color_mapper import ColorMapper
-from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review
+from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review, preview_sorted_order
 
 app = typer.Typer()
 console = Console()
@@ -195,8 +195,24 @@ def handle_unmapped_symbols(config: IconMappingConfig, interactive: bool = True)
     return mappings_added
 
 
-def process_and_write_files(parsed_data: ParsedData, output_dir: Path) -> list:
-    """Process folders and write output files."""
+def process_and_write_files(
+    parsed_data: ParsedData,
+    output_dir: Path,
+    sort: bool = True,
+    skip_confirmation: bool = False
+) -> list:
+    """
+    Process folders and write output files.
+
+    Args:
+        parsed_data: Parsed GeoJSON data
+        output_dir: Output directory path
+        sort: If True, sort items using natural sort order
+        skip_confirmation: If True, skip the order confirmation prompt
+
+    Returns:
+        List of (filename, format, count, size) tuples for the manifest
+    """
     output_files = []
 
     for folder_id, folder_data in parsed_data.folders.items():
@@ -211,16 +227,28 @@ def process_and_write_files(parsed_data: ParsedData, output_dir: Path) -> list:
         if waypoints:
             total_waypoints = len(waypoints)
 
+            # Sort waypoints for preview if sorting is enabled
+            if sort:
+                sorted_waypoints = sorted(waypoints, key=lambda f: natural_sort_key(f.title))
+            else:
+                sorted_waypoints = waypoints
+
+            # Show preview and get confirmation
+            if not preview_sorted_order(sorted_waypoints, "waypoints", folder_name, skip_confirmation):
+                console.print("[yellow]Export cancelled by user.[/]")
+                return output_files
+
             if total_waypoints > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_waypoints} waypoints)...")
                 console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
-                chunks = list(chunk_data(waypoints, limit=2500))
+                chunks = list(chunk_data(sorted_waypoints, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
                     part_name = f"{safe_name}_Waypoints_Part{i}"
                     output_path = output_dir / f"{part_name}.gpx"
-                    file_size = write_gpx_waypoints(chunk, output_path, f"{folder_name} - Part {i}")
+                    # Pass sort=False since we already sorted
+                    file_size = write_gpx_waypoints(chunk, output_path, f"{folder_name} - Part {i}", sort=False)
                     output_files.append((f"{part_name}.gpx", "GPX (Waypoints)", len(chunk), file_size))
                     console.print(f"       ├── 📄 [green]{part_name}.gpx[/] ({len(chunk)} items)")
 
@@ -231,45 +259,70 @@ def process_and_write_files(parsed_data: ParsedData, output_dir: Path) -> list:
                         console.print(f"       └── 📋 [blue]{summary_path.name}[/] (Icon reference)")
             else:
                 output_path = output_dir / f"{safe_name}_Waypoints.gpx"
-                file_size = write_gpx_waypoints(waypoints, output_path, folder_name)
-                output_files.append((f"{safe_name}_Waypoints.gpx", "GPX (Waypoints)", len(waypoints), file_size))
+                # Pass sort=False since we already sorted
+                file_size = write_gpx_waypoints(sorted_waypoints, output_path, folder_name, sort=False)
+                output_files.append((f"{safe_name}_Waypoints.gpx", "GPX (Waypoints)", len(sorted_waypoints), file_size))
 
                 if get_use_icon_name_prefix():
-                    summary_path = generate_summary_file(waypoints, output_path, folder_name)
+                    summary_path = generate_summary_file(sorted_waypoints, output_path, folder_name)
                     summary_size = summary_path.stat().st_size
-                    output_files.append((summary_path.name, "Summary (Text)", len(waypoints), summary_size))
+                    output_files.append((summary_path.name, "Summary (Text)", len(sorted_waypoints), summary_size))
 
         # Handle tracks
         if tracks:
             total_tracks = len(tracks)
+
+            # Sort tracks for preview if sorting is enabled
+            if sort:
+                sorted_tracks = sorted(tracks, key=lambda f: natural_sort_key(f.title))
+            else:
+                sorted_tracks = tracks
+
+            # Show preview and get confirmation
+            if not preview_sorted_order(sorted_tracks, "tracks", folder_name, skip_confirmation):
+                console.print("[yellow]Export cancelled by user.[/]")
+                return output_files
 
             if total_tracks > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_tracks} tracks)...")
                 console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
-                chunks = list(chunk_data(tracks, limit=2500))
+                chunks = list(chunk_data(sorted_tracks, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
                     part_name = f"{safe_name}_Tracks_Part{i}"
                     output_path = output_dir / f"{part_name}.gpx"
-                    file_size = write_gpx_tracks(chunk, output_path, f"{folder_name} - Part {i}")
+                    # Pass sort=False since we already sorted
+                    file_size = write_gpx_tracks(chunk, output_path, f"{folder_name} - Part {i}", sort=False)
                     output_files.append((f"{part_name}.gpx", "GPX (Tracks)", len(chunk), file_size))
                     console.print(f"       ├── 📄 [green]{part_name}.gpx[/] ({len(chunk)} items)")
             else:
                 output_path = output_dir / f"{safe_name}_Tracks.gpx"
-                file_size = write_gpx_tracks(tracks, output_path, folder_name)
-                output_files.append((f"{safe_name}_Tracks.gpx", "GPX (Tracks)", len(tracks), file_size))
+                # Pass sort=False since we already sorted
+                file_size = write_gpx_tracks(sorted_tracks, output_path, folder_name, sort=False)
+                output_files.append((f"{safe_name}_Tracks.gpx", "GPX (Tracks)", len(sorted_tracks), file_size))
 
         # Handle shapes (KML)
         if shapes:
             total_shapes = len(shapes)
+
+            # Sort shapes if sorting is enabled
+            if sort:
+                sorted_shapes = sorted(shapes, key=lambda f: natural_sort_key(f.title))
+            else:
+                sorted_shapes = shapes
+
+            # Show preview and get confirmation for shapes
+            if not preview_sorted_order(sorted_shapes, "shapes", folder_name, skip_confirmation):
+                console.print("[yellow]Export cancelled by user.[/]")
+                return output_files
 
             if total_shapes > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_shapes} shapes)...")
                 console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
-                chunks = list(chunk_data(shapes, limit=2500))
+                chunks = list(chunk_data(sorted_shapes, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
                     part_name = f"{safe_name}_Shapes_Part{i}"
                     output_path = output_dir / f"{part_name}.kml"
@@ -278,8 +331,8 @@ def process_and_write_files(parsed_data: ParsedData, output_dir: Path) -> list:
                     console.print(f"       ├── 📄 [green]{part_name}.kml[/] ({len(chunk)} items)")
             else:
                 output_path = output_dir / f"{safe_name}_Shapes.kml"
-                file_size = write_kml_shapes(shapes, output_path, folder_name)
-                output_files.append((f"{safe_name}_Shapes.kml", "KML (Shapes)", len(shapes), file_size))
+                file_size = write_kml_shapes(sorted_shapes, output_path, folder_name)
+                output_files.append((f"{safe_name}_Shapes.kml", "KML (Shapes)", len(sorted_shapes), file_size))
 
     return output_files
 
@@ -326,7 +379,7 @@ def display_unmapped_symbols(config: IconMappingConfig):
         )
 
     console.print(table)
-    console.print("\n[dim]💡 Add these to cairn_config.json to map them to onX icons[/]")
+    console.print("\n[dim]💡 Add these to cairn_config.yaml to map them to onX icons[/]")
     console.print("[dim]   Run 'cairn config --export' to create a template[/]")
 
 
@@ -351,18 +404,50 @@ def convert(
         False,
         "--review",
         help="Interactive review of icon mappings before conversion"
+    ),
+    no_sort: bool = typer.Option(
+        False,
+        "--no-sort",
+        help="Preserve original order instead of sorting items"
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes", "-y",
+        help="Skip confirmation prompts (auto-confirm sorted order)"
     )
 ):
     """
     Convert a CalTopo GeoJSON export to onX Backcountry format.
 
     This tool will:
+
     - Parse your CalTopo GeoJSON export
+
+    - Sort items in natural order (01, 02... 10, 11) for logical display in OnX
+
+    - Show a preview of the sorted order with colors (tracks) and icons (waypoints)
+
     - Map CalTopo symbols and keywords to onX Backcountry icons
+
+    - Preserve track colors and line styles from CalTopo
+
     - Split large datasets to respect onX's 3,000 item limit
-    - Generate GPX files for waypoints and tracks
+
+    - Generate GPX files with onX extensions for waypoints and tracks
+
     - Generate KML files for shapes/polygons
-    - Report unmapped symbols for future configuration
+
+    IMPORTANT: OnX does not allow reordering items after import! The preview
+    shows exactly how items will appear in OnX. If you need a different order,
+    you must rename items in CalTopo (or edit the GeoJSON) before converting.
+
+    To change icons or colors before export, use:
+
+      cairn icon map "symbol-name" "OnX-Icon"
+
+      cairn config set-default-color "rgba(255,0,0,1)"
+
+    Or edit the source GeoJSON file directly.
     """
     # Load configuration
     config = load_config(config_file)
@@ -425,9 +510,15 @@ def convert(
     # Ensure output directory exists
     output_dir = ensure_output_dir(output)
 
-    # Process and write files
+    # Process and write files with sorting and confirmation
+    sort_enabled = not no_sort
     console.print(f"[bold white]Writing files to[/] [underline]{output_dir}[/]...\n")
-    output_files = process_and_write_files(parsed_data, output_dir)
+    output_files = process_and_write_files(
+        parsed_data,
+        output_dir,
+        sort=sort_enabled,
+        skip_confirmation=yes
+    )
 
     # Display manifest
     console.print()

@@ -1,13 +1,64 @@
 """
-Color transformation system for mapping arbitrary colors to onX-supported colors.
+Color and style transformation system for mapping CalTopo values to onX-supported values.
 
 This module transforms colors from various formats (hex, rgba) to the closest
-onX Backcountry-supported color using Euclidean distance in RGB color space.
+onX Backcountry-supported color using Euclidean distance in RGB color space,
+and maps line patterns to onX styles.
 """
 
 from typing import Tuple
 import math
 import re
+
+
+def pattern_to_style(caltopo_pattern: str) -> str:
+    """
+    Map CalTopo line pattern to OnX style.
+
+    Args:
+        caltopo_pattern: CalTopo pattern value (e.g., "solid", "dash", "dot", "dotted")
+
+    Returns:
+        OnX style value: "solid", "dash", or "dot"
+    """
+    if not caltopo_pattern:
+        return "solid"
+
+    pattern_lower = caltopo_pattern.lower().strip()
+
+    # Direct mappings
+    if pattern_lower in ("solid", ""):
+        return "solid"
+    elif pattern_lower in ("dash", "dashed"):
+        return "dash"
+    elif pattern_lower in ("dot", "dotted"):
+        return "dot"
+    else:
+        # Default to solid for unknown patterns
+        return "solid"
+
+
+def stroke_width_to_weight(stroke_width) -> str:
+    """
+    Map CalTopo stroke-width to OnX weight.
+
+    OnX typically uses 4.0 (standard) or 6.0 (thick).
+
+    Args:
+        stroke_width: CalTopo stroke-width value (usually 1-10)
+
+    Returns:
+        OnX weight as string: "4.0" or "6.0"
+    """
+    try:
+        width = float(stroke_width)
+        # CalTopo widths > 4 map to thick (6.0), otherwise standard (4.0)
+        if width > 4:
+            return "6.0"
+        else:
+            return "4.0"
+    except (ValueError, TypeError):
+        return "4.0"
 
 
 class ColorMapper:
@@ -19,14 +70,16 @@ class ColorMapper:
         "blue": (8, 122, 255),           # Default blue (confirmed from GPX)
         "red": (255, 0, 0),              # Red
         "orange": (255, 51, 0),          # Orange/Red-orange (confirmed from GPX)
-        "cyan": (0, 255, 255),           # Cyan
         "yellow": (255, 255, 0),         # Yellow
-        "black": (0, 0, 0),              # Black
-        "white": (255, 255, 255),        # White
-        "purple": (128, 0, 128),         # Purple
-        "brown": (139, 69, 19),          # Brown
-        "green": (132, 212, 0),          # Light green (confirmed from GPX)
+        "green": (132, 212, 0),          # Light green/lime (confirmed from GPX)
+        "purple": (128, 0, 128),         # Purple (confirmed from GPX)
+        "magenta": (255, 0, 255),        # Magenta/Pink (confirmed from GPX)
+        "black": (0, 0, 0),              # Black (confirmed from GPX)
+        "white": (255, 255, 255),        # White (confirmed from GPX)
     }
+
+    # Default color when no match or indeterminate
+    DEFAULT_COLOR = "rgba(8,122,255,1)"  # Blue
 
     @classmethod
     def find_closest_color(cls, r: int, g: int, b: int) -> str:
