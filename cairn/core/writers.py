@@ -5,42 +5,132 @@ This module generates valid GPX 1.1 files with onX custom namespace extensions
 for waypoints and tracks, and KML 2.2 files for shapes (polygons).
 """
 
-from typing import List
+from typing import List, Optional
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from pathlib import Path
 import uuid
+import logging
+from datetime import datetime
 
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon, map_color
-from cairn.utils.utils import strip_html, natural_sort_key
+from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_onx
 from cairn.core.config import get_icon_color, get_use_icon_name_prefix
 from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_to_weight
 
 # Register the onX namespace (note: 4 'w's is required)
 ET.register_namespace('onx', 'https://wwww.onxmaps.com/')
 
+# Set up logger for debug output
+logger = logging.getLogger(__name__)
+
+# Global change tracker for name sanitization
+# Format: {feature_type: [(original_name, sanitized_name), ...]}
+_name_changes: dict[str, list[tuple[str, str]]] = {
+    'waypoints': [],
+    'tracks': []
+}
+
+
+def get_name_changes() -> dict[str, list[tuple[str, str]]]:
+    """Get all tracked name changes."""
+    return _name_changes.copy()
+
+
+def clear_name_changes():
+    """Clear tracked name changes (call before processing new folder)."""
+    _name_changes['waypoints'] = []
+    _name_changes['tracks'] = []
+
+
+def track_name_change(feature_type: str, original: str, sanitized: str):
+    """Track a name change for reporting."""
+    if original != sanitized:
+        _name_changes[feature_type].append((original, sanitized))
+
+
+def verify_gpx_waypoint_order(gpx_path: Path, max_items: int = 20) -> List[str]:
+    """
+    Read back waypoint order from a GPX file to verify it matches expected order.
+
+    Args:
+        gpx_path: Path to the GPX file to read
+        max_items: Maximum number of waypoint names to return (for logging)
+
+    Returns:
+        List of waypoint names in the order they appear in the GPX file
+    """
+    try:
+        tree = ET.parse(gpx_path)
+        root = tree.getroot()
+
+        # Handle namespace
+        ns = {'gpx': 'http://www.topografix.com/GPX/1/1'}
+
+        waypoint_names = []
+        for wpt in root.findall('.//gpx:wpt', ns):
+            name_elem = wpt.find('gpx:name', ns)
+            if name_elem is not None and name_elem.text:
+                waypoint_names.append(name_elem.text)
+
+        return waypoint_names[:max_items] if max_items else waypoint_names
+    except Exception as e:
+        logger.warning(f"Could not verify GPX order: {e}")
+        return []
+
+
+def log_waypoint_order(features: List[ParsedFeature], label: str = "Waypoint order", max_items: int = 20) -> None:
+    """
+    Log the order of waypoints for debugging purposes.
+
+    Args:
+        features: List of waypoint features
+        label: Label for the log message
+        max_items: Maximum number of items to log
+    """
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
+
+    waypoint_names = [f.title for f in features[:max_items]]
+
+    logger.debug(f"[DEBUG] {label}:")
+    for i, name in enumerate(waypoint_names, 1):
+        logger.debug(f"  {i}. {name}")
+
+    if len(features) > max_items:
+        logger.debug(f"  ... and {len(features) - max_items} more waypoints")
+
 
 def format_waypoint_name(original_name: str, icon_type: str) -> str:
     """
-    Format waypoint name with optional icon prefix based on config.
+    Format waypoint name with optional icon prefix based on config,
+    and sanitize for OnX sorting compatibility.
 
     Args:
         original_name: Original name from CalTopo
         icon_type: Mapped icon type (e.g., "Parking", "Caution", "Waypoint")
 
     Returns:
-        Formatted name (with or without icon prefix based on config)
+        Formatted and sanitized name
     """
     # Check if we should add icon prefixes
     use_prefix = get_use_icon_name_prefix()
 
     if use_prefix and icon_type != "Waypoint":
         # Add icon type prefix for non-default icons
-        return f"{icon_type} - {original_name}"
+        name_with_prefix = f"{icon_type} - {original_name}"
+    else:
+        name_with_prefix = original_name
 
-    # Return clean name (no prefix)
-    return original_name
+    # Sanitize name for OnX sorting compatibility
+    sanitized_name, was_changed = sanitize_name_for_onx(name_with_prefix)
+
+    # Track changes for reporting
+    if was_changed:
+        track_name_change('waypoints', name_with_prefix, sanitized_name)
+
+    return sanitized_name
 
 
 def prettify_xml(elem: ET.Element) -> str:
@@ -58,8 +148,39 @@ def prettify_xml(elem: ET.Element) -> str:
     return reparsed.toprettyxml(indent="  ")
 
 
+def verify_sanitization_preserves_sort_order(original_names: List[str], sanitized_names: List[str]) -> bool:
+    """
+    Verify that sanitization preserves natural sort order.
+
+    Checks that if we sort both lists, items at the same index correspond to each other.
+
+    Args:
+        original_names: List of original names (in any order)
+        sanitized_names: List of sanitized names (corresponding to original_names)
+
+    Returns:
+        True if sort order is preserved, False otherwise
+    """
+    if len(original_names) != len(sanitized_names):
+        return False
+
+    # Create pairs and sort both lists
+    pairs = list(zip(original_names, sanitized_names))
+    pairs_sorted_by_original = sorted(pairs, key=lambda p: natural_sort_key(p[0]))
+    pairs_sorted_by_sanitized = sorted(pairs, key=lambda p: natural_sort_key(p[1]))
+
+    # Check if the pairs are in the same order when sorted by original vs sanitized
+    for i, (orig_pair, sanit_pair) in enumerate(zip(pairs_sorted_by_original, pairs_sorted_by_sanitized)):
+        if orig_pair[0] != sanit_pair[0] or orig_pair[1] != sanit_pair[1]:
+            logger.warning(f"Sort order mismatch at position {i}: original order differs from sanitized order")
+            return False
+
+    return True
+
+
 def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
-                        folder_name: str, sort: bool = True) -> int:
+                        folder_name: str, sort: bool = True,
+                        add_timestamps: bool = False) -> int:
     """
     Write waypoints to a GPX file with onX namespace extensions.
 
@@ -68,13 +189,24 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
         output_path: Path to write the GPX file
         folder_name: Name for the GPX metadata
         sort: If True (default), sort features using natural sort order
+        add_timestamps: If True, add <time> elements to waypoints (for testing OnX sorting)
 
     Returns:
         File size in bytes
+
+    Note:
+        onX may re-sort items after import based on name, icon type, or other criteria.
+        GPX element order is respected during import but may change post-import.
+        Adding timestamps is experimental and may help preserve order if OnX respects them.
     """
-    # Sort features by title using natural sort (default behavior)
+    # Sort features by title using natural sort
     if sort:
         features = sorted(features, key=lambda f: natural_sort_key(f.title))
+        log_waypoint_order(features, "Waypoint order before write")
+
+    # Collect original and sanitized names for verification
+    original_titles = []
+    sanitized_titles = []
 
     # Build GPX manually to ensure proper namespace handling
     lines = [
@@ -95,8 +227,12 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
         # Map the icon
         mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol)
 
-        # Format the name
+        # Track original title for verification
+        original_titles.append(feature.title)
+
+        # Format the name (includes sanitization)
         formatted_name = format_waypoint_name(feature.title, mapped_icon)
+        sanitized_titles.append(formatted_name)
 
         # Escape XML special characters
         from xml.sax.saxutils import escape
@@ -104,6 +240,15 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
 
         lines.append(f'  <wpt lat="{lat}" lon="{lon}">')
         lines.append(f'    <name>{formatted_name}</name>')
+
+        # Add timestamp if requested (for testing OnX sorting behavior)
+        # Note: GPX 1.1 spec allows <time> element in waypoints
+        # OnX may use this for sorting, but testing is needed
+        if add_timestamps:
+            # Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
+            # Sequential timestamps to preserve order
+            timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            lines.append(f'    <time>{timestamp}</time>')
 
         # Add description (clean, user notes only)
         if feature.description:
@@ -127,6 +272,23 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
     # Write to file
     output_path.write_text('\n'.join(lines), encoding='utf-8')
 
+    # Verify that sanitization preserved sort order
+    if sort and len(original_titles) == len(sanitized_titles):
+        order_preserved = verify_sanitization_preserves_sort_order(
+            [f.title for f in sorted(features, key=lambda f: natural_sort_key(f.title))],
+            sanitized_titles
+        )
+        if not order_preserved:
+            logger.warning("Sanitization may have affected sort order - this should not happen")
+
+    # Verify order after write (debug only)
+    if logger.isEnabledFor(logging.DEBUG):
+        gpx_order = verify_gpx_waypoint_order(output_path)
+        if gpx_order:
+            logger.debug("[DEBUG] Waypoint order in GPX file:")
+            for i, name in enumerate(gpx_order, 1):
+                logger.debug(f"  {i}. {name}")
+
     return output_path.stat().st_size
 
 
@@ -139,14 +301,17 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
         features: List of track features to write
         output_path: Path to write the GPX file
         folder_name: Name for the GPX metadata
-        sort: If True (default), sort features using natural sort order
+        sort: If True (default), sort and reverse features for onX display order
 
     Returns:
         File size in bytes
+
+    Note:
+        onX displays items in the same order as the GPX file.
     """
     from xml.sax.saxutils import escape
 
-    # Sort features by title using natural sort (default behavior)
+    # Sort features by title using natural sort
     if sort:
         features = sorted(features, key=lambda f: natural_sort_key(f.title))
 
@@ -164,8 +329,13 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
         if not feature.coordinates:
             continue
 
+        # Sanitize track name for OnX sorting compatibility
+        sanitized_track_name, was_changed = sanitize_name_for_onx(feature.title)
+        if was_changed:
+            track_name_change('tracks', feature.title, sanitized_track_name)
+
         lines.append(f'  <trk>')
-        lines.append(f'    <name>{escape(feature.title)}</name>')
+        lines.append(f'    <name>{escape(sanitized_track_name)}</name>')
 
         # Add description if present
         if feature.description:

@@ -10,19 +10,19 @@ import re
 from cairn.core.config import IconMappingConfig
 
 
-# Legacy keyword mapping (kept for backward compatibility)
-# Updated to match onX Backcountry actual icon names from GPX analysis
-# Use config.py for the authoritative mappings
+# Fallback keyword mapping (when no config provided)
+# Kept in sync with DEFAULT_KEYWORD_MAP in config.py
 ICON_MAP = {
-    "Campsite": ["tent", "camp", "sleep", "overnight"],
-    "Water Source": ["water", "spring", "refill", "creek"],
-    "Parking": ["car", "parking", "lot"],
-    "XC Skiing": ["ski", "skin", "tour", "uptrack", "skiing"],
-    "Summit": ["summit", "peak", "top", "mt"],
-    "Hazard": ["danger", "avy", "avalanche", "slide", "caution"],
-    "Photo": ["camera", "photo", "view"],
-    "Cabin": ["cabin", "hut", "yurt"],
+    "Campsite": ["tent", "camp", "sleep", "overnight", "camping"],
+    "Water Source": ["water", "spring", "refill", "creek", "stream"],
+    "Parking": ["car", "parking", "lot", "vehicle"],
     "Trailhead": ["trailhead", "trail head", "th"],
+    "XC Skiing": ["ski", "skin", "tour", "uptrack", "skiing", "xc"],
+    "Summit": ["summit", "peak", "top", "mt"],
+    "Hazard": ["danger", "avy", "avalanche", "slide", "caution", "warning", "deadfall", "dead fall"],
+    "Photo": ["camera", "photo"],
+    "View": ["view", "viewpoint", "vista", "overlook", "scenic"],
+    "Cabin": ["cabin", "hut", "yurt"],
 }
 
 
@@ -125,15 +125,48 @@ def get_icon_emoji(icon_id: str) -> str:
         An emoji string representing the icon
     """
     emoji_map = {
+        # Camping
         "Campsite": "⛺",
+        "Camp": "⛺",
+        "Camp Backcountry": "⛺",
+        "Camp Area": "⛺",
+        "Campground": "⛺",
+        # Water
         "Water Source": "💧",
+        "Waterfall": "💧",
+        "Hot Spring": "♨️",
+        "Potable Water": "💧",
+        # Transportation
         "Parking": "🅿️",
-        "XC Skiing": "⛷️",
-        "Summit": "🏔️",
-        "Hazard": "⚠️",
-        "Photo": "📷",
-        "Cabin": "🏠",
         "Trailhead": "🥾",
+        "4x4": "🚙",
+        "ATV": "🏍️",
+        # Winter
+        "XC Skiing": "⛷️",
+        "Ski": "⛷️",
+        "Ski Touring": "⛷️",
+        "Skin Track": "⛷️",
+        "Snowboarder": "🏂",
+        "Snowmobile": "🛷",
+        # Terrain
+        "Summit": "🏔️",
+        "Cave": "🕳️",
+        # Hazards
+        "Hazard": "⚠️",
+        "Barrier": "🚧",
+        # Hiking
+        "Hike": "🥾",
+        "Backpacker": "🎒",
+        # Observation
+        "Photo": "📷",
+        "View": "👁️",
+        "Lookout": "🔭",
+        # Facilities
+        "Cabin": "🏠",
+        "Shelter": "🏚️",
+        "House": "🏠",
+        "Food Source": "🍎",
+        # Default
         "Location": "📍",
     }
     return emoji_map.get(icon_id, "📍")

@@ -2,36 +2,95 @@
 # Cairn Icon Mapping Configuration
 # =============================================================================
 # This file maps CalTopo symbols to onX Backcountry icons.
-# YAML format allows inline comments for easier understanding.
 #
-# HOW IT WORKS:
-#   1. symbol_mappings (highest priority) - matches CalTopo marker-symbol
+# HOW IT WORKS (in priority order):
+#   1. symbol_mappings - matches CalTopo marker-symbol field
 #   2. keyword_mappings - searches title/description for keywords
 #   3. Default: "Location" icon (blue pin)
 #
-# ICON REFERENCE:
-#   Each onX icon is shown with its emoji for quick visual reference.
-#   Colors are automatically applied by Cairn based on icon type.
+# TIPS:
+#   - Generic symbols (point, marker, pin) are automatically ignored
+#     so keyword matching can work for those waypoints.
+#   - Keywords are case-insensitive and match anywhere in the text.
 # =============================================================================
 
-# If true, adds icon type prefix to names (e.g., "Hazard - Avalanche Zone")
+# Add icon type prefix to names (e.g., "Hazard - Avalanche Zone")
 use_icon_name_prefix: false
 
-# Track symbols that don't have mappings (shows report after conversion)
+# Track symbols without mappings (shows report after conversion)
 enable_unmapped_detection: true
+
+# =============================================================================
+# ICON EMOJIS (for terminal preview)
+# =============================================================================
+# Format: "onX Icon Name": "emoji"
+# Used in the preview to visualize icon assignments.
+#
+icon_emojis:
+  # Camping
+  Campsite: "⛺"
+  Camp: "⛺"
+  Camp Backcountry: "⛺"
+  Camp Area: "⛺"
+  Campground: "⛺"
+
+  # Water
+  Water Source: "💧"
+  Waterfall: "💧"
+  Hot Spring: "♨️"
+  Potable Water: "💧"
+
+  # Transportation
+  Parking: "🅿️"
+  Trailhead: "🥾"
+  4x4: "🚙"
+  ATV: "🏍️"
+
+  # Winter Sports
+  XC Skiing: "⛷️"
+  Ski: "⛷️"
+  Ski Touring: "⛷️"
+  Skin Track: "⛷️"
+  Snowboarder: "🏂"
+  Snowmobile: "🛷"
+
+  # Terrain
+  Summit: "🏔️"
+  Cave: "🕳️"
+
+  # Hazards
+  Hazard: "⚠️"
+  Barrier: "🚧"
+
+  # Hiking
+  Hike: "🥾"
+  Backpacker: "🎒"
+
+  # Observation
+  Photo: "📷"
+  View: "👁️"
+  Lookout: "🔭"
+
+  # Facilities
+  Cabin: "🏠"
+  Shelter: "🏚️"
+  House: "🏠"
+  Food Source: "🍎"
+
+  # Default
+  Location: "📍"
 
 # =============================================================================
 # SYMBOL MAPPINGS
 # =============================================================================
 # Format: caltopo_symbol: onX Icon Name
-# These match the "marker-symbol" field in CalTopo exports.
+# Maps the "marker-symbol" field from CalTopo GeoJSON exports.
+#
+# NOTE: Don't add generic symbols like "point" or "marker" here!
+# They are automatically skipped so keyword matching can work.
 #
 symbol_mappings:
-
-  # ---------------------------------------------------------------------------
-  # HAZARDS & WARNINGS
-  # onX Icon: "Hazard" -> Red warning triangle
-  # ---------------------------------------------------------------------------
+  # Hazards & Warnings -> Hazard (red warning triangle)
   skull: Hazard
   danger: Hazard
   warning: Hazard
@@ -39,10 +98,7 @@ symbol_mappings:
   hazard: Hazard
   alert: Hazard
 
-  # ---------------------------------------------------------------------------
-  # CAMPING
-  # onX Icons: "Campsite" / "Camp" / "Camp Backcountry" -> Orange tent
-  # ---------------------------------------------------------------------------
+  # Camping -> Campsite/Camp (orange tent)
   tent: Campsite
   campsite: Campsite
   camp: Camp
@@ -50,10 +106,7 @@ symbol_mappings:
   bivy: Camp Backcountry
   campground: Campground
 
-  # ---------------------------------------------------------------------------
-  # WATER SOURCES
-  # onX Icon: "Water Source" -> Cyan water droplet
-  # ---------------------------------------------------------------------------
+  # Water Sources -> Water Source (cyan droplet)
   water: Water Source
   droplet: Water Source
   spring: Water Source
@@ -63,10 +116,7 @@ symbol_mappings:
   waterfall: Waterfall
   hot-spring: Hot Spring
 
-  # ---------------------------------------------------------------------------
-  # PARKING & VEHICLES
-  # onX Icon: "Parking" -> Gray P symbol
-  # ---------------------------------------------------------------------------
+  # Parking & Vehicles -> Parking (gray P)
   car: Parking
   parking: Parking
   vehicle: Parking
@@ -74,10 +124,7 @@ symbol_mappings:
   4x4: 4x4
   atv: ATV
 
-  # ---------------------------------------------------------------------------
-  # WINTER SPORTS
-  # onX Icons: "XC Skiing" / "Ski Touring" / "Ski" -> White skier
-  # ---------------------------------------------------------------------------
+  # Winter Sports -> XC Skiing/Ski (white skier)
   ski: Ski
   skiing: XC Skiing
   xc-skiing: XC Skiing
@@ -88,10 +135,7 @@ symbol_mappings:
   snowboard: Snowboarder
   snowmobile: Snowmobile
 
-  # ---------------------------------------------------------------------------
-  # HIKING & TRAILS
-  # onX Icon: "Trailhead" -> Green hiking boot
-  # ---------------------------------------------------------------------------
+  # Hiking & Trails -> Trailhead (green boot)
   trailhead: Trailhead
   trail: Trailhead
   hike: Hike
@@ -99,20 +143,14 @@ symbol_mappings:
   backpack: Backpacker
   backpacker: Backpacker
 
-  # ---------------------------------------------------------------------------
-  # SUMMITS & PEAKS
-  # onX Icon: "Summit" -> Red mountain peak
-  # ---------------------------------------------------------------------------
+  # Summits & Peaks -> Summit (red peak)
   summit: Summit
   peak: Summit
   triangle-u: Summit
   mountain: Summit
   top: Summit
 
-  # ---------------------------------------------------------------------------
-  # VIEWS & PHOTOS
-  # onX Icons: "Photo" / "View" -> Yellow camera/binoculars
-  # ---------------------------------------------------------------------------
+  # Views & Photos -> Photo/View (yellow)
   camera: Photo
   photo: Photo
   binoculars: View
@@ -121,41 +159,23 @@ symbol_mappings:
   overlook: View
   lookout: Lookout
 
-  # ---------------------------------------------------------------------------
-  # FACILITIES & SHELTER
-  # onX Icon: "Cabin" -> Brown cabin
-  # ---------------------------------------------------------------------------
+  # Facilities -> Cabin (brown)
   cabin: Cabin
   hut: Cabin
   yurt: Cabin
   shelter: Shelter
   house: House
 
-  # ---------------------------------------------------------------------------
-  # DEFAULT / GENERIC
-  # onX Icon: "Location" -> Blue pin (default fallback)
-  # ---------------------------------------------------------------------------
-  point: Location
-  marker: Location
-  # icon-3DS52KG5-16-0.5-0.5-ff: Misc  # Example custom CalTopo icon ID
-
-  # ---------------------------------------------------------------------------
-  # ADD YOUR CUSTOM MAPPINGS HERE
-  # ---------------------------------------------------------------------------
-  # my-custom-symbol: Location
-  # race-marker: Hazard
-
-
 # =============================================================================
 # KEYWORD MAPPINGS
 # =============================================================================
 # Format: "onX Icon Name": [list, of, keywords]
 # Searches waypoint title and description for these keywords.
-# Only used if no symbol_mapping matches.
+# Only used when no symbol_mapping matches.
+# Case-insensitive, matches substrings.
 #
 keyword_mappings:
-
-  # Camping keywords -> Campsite (orange tent)
+  # Camping keywords -> Campsite
   Campsite:
     - tent
     - camp
@@ -163,7 +183,7 @@ keyword_mappings:
     - overnight
     - camping
 
-  # Water keywords -> Water Source (cyan droplet)
+  # Water keywords -> Water Source
   Water Source:
     - water
     - spring
@@ -171,20 +191,19 @@ keyword_mappings:
     - creek
     - stream
 
-  # Parking keywords -> Parking (gray P)
+  # Parking keywords -> Parking
   Parking:
     - car
     - parking
     - lot
     - vehicle
 
-  # Trailhead keywords -> Trailhead (green boot)
+  # Trailhead keywords -> Trailhead
   Trailhead:
     - trailhead
     - trail head
-    - th
 
-  # Winter sports keywords -> XC Skiing (white skier)
+  # Winter sports keywords -> XC Skiing
   XC Skiing:
     - ski
     - skin
@@ -193,14 +212,13 @@ keyword_mappings:
     - skiing
     - xc
 
-  # Summit keywords -> Summit (red peak)
+  # Summit keywords -> Summit
   Summit:
     - summit
     - peak
-    - top
     - mt
 
-  # Hazard keywords -> Hazard (red warning)
+  # Hazard keywords -> Hazard
   Hazard:
     - danger
     - avy
@@ -208,13 +226,15 @@ keyword_mappings:
     - slide
     - caution
     - warning
+    - deadfall
+    - dead fall
 
-  # Photo keywords -> Photo (yellow camera)
+  # Photo keywords -> Photo
   Photo:
     - camera
     - photo
 
-  # View keywords -> View (yellow binoculars)
+  # View keywords -> View
   View:
     - view
     - viewpoint
@@ -222,7 +242,7 @@ keyword_mappings:
     - overlook
     - scenic
 
-  # Cabin keywords -> Cabin (brown cabin)
+  # Cabin keywords -> Cabin
   Cabin:
     - cabin
     - hut

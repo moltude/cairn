@@ -347,6 +347,8 @@ Cairn sorts items in human-friendly order:
 
 **Why this matters:** onX doesn't allow reordering after import.
 
+**Technical note:** onX displays items in reverse order from how they appear in GPX files (last item = top of list). Cairn automatically writes items in reverse sorted order so they display correctly in onX.
+
 ### Visual Preview
 
 Before exporting, Cairn shows a preview:
@@ -381,7 +383,7 @@ Use `--no-sort` to preserve original CalTopo order.
 
 ## Limitations
 
-- **No reordering in onX** - Items appear in import order (Cairn sorts automatically)
+- **OnX re-sorts after import** - Waypoints appear in **correct order during pre-import preview and import**, but the order **reverts to unpredictable/random ordering when viewing in folders**. Waypoints can also be moved to any position when removed from a folder and re-added. See [OnX Sorting Behavior](docs/onx-sorting-behavior.md) for details.
 - **3,000 item limit** - onX limit per file (Cairn auto-splits)
 - **4MB file limit** - onX Web Map limit (Cairn splits conservatively)
 - **Plain text only** - HTML descriptions converted to plain text

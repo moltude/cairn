@@ -5,7 +5,7 @@ This module provides helper functions for handling onX import limits,
 cleaning data, natural sorting, and managing file operations.
 """
 
-from typing import List, Iterator, Any, Union
+from typing import List, Iterator, Any, Union, Tuple
 import re
 from pathlib import Path
 
@@ -122,6 +122,56 @@ def strip_html(text: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
 
     return text
+
+
+def sanitize_name_for_onx(name: str) -> Tuple[str, bool]:
+    """
+    Sanitize waypoint/track names by removing problematic non-alphanumeric characters
+    that can cause OnX sorting issues, while preserving natural sort order.
+
+    Removes characters: ! @ # $ % ^ * &
+    Preserves: spaces, hyphens, underscores, colons, alphanumeric characters
+
+    Args:
+        name: Original waypoint/track name
+
+    Returns:
+        Tuple of (sanitized_name, was_changed)
+        - sanitized_name: Name with problematic characters removed
+        - was_changed: True if any characters were removed, False otherwise
+
+    Examples:
+        >>> sanitize_name_for_onx("#01 Porcupine Mile 6.1")
+        ('01 Porcupine Mile 6.1', True)
+        >>> sanitize_name_for_onx("#03 & #05 Cow Camp")
+        ('03  05 Cow Camp', True)
+        >>> sanitize_name_for_onx("Deadfall")
+        ('Deadfall', False)
+        >>> sanitize_name_for_onx("CONICAL PASS CUTOFF 12:45 AM")
+        ('CONICAL PASS CUTOFF 12:45 AM', False)
+    """
+    if not name:
+        return name, False
+
+    original = name
+    # Characters to remove: ! @ # $ % ^ * &
+    # Also remove other problematic symbols but keep spaces, hyphens, underscores
+    # Pattern: remove everything that's not alphanumeric, space, hyphen, underscore, colon
+    # Note: We keep colon for time formats like "12:45 AM"
+
+    # Remove specific problematic characters that cause sorting issues
+    problematic_chars = r'[!@#$%^*&]'
+    sanitized = re.sub(problematic_chars, '', name)
+
+    # Clean up multiple spaces that might result from removals
+    sanitized = re.sub(r'\s+', ' ', sanitized).strip()
+
+    # If name became empty, return original
+    if not sanitized:
+        return original, False
+
+    was_changed = (sanitized != original)
+    return sanitized, was_changed
 
 
 def sanitize_filename(name: str) -> str:

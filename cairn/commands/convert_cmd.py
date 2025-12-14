@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Optional, List, Tuple
 import typer
+import logging
 from rich.console import Console
 from rich.panel import Panel
 from rich.tree import Tree
@@ -12,7 +13,7 @@ from rich.table import Table
 import time
 
 from cairn.core.parser import parse_geojson, get_file_summary, ParsedData
-from cairn.core.writers import write_gpx_waypoints, write_gpx_tracks, write_kml_shapes, generate_summary_file
+from cairn.core.writers import write_gpx_waypoints, write_gpx_tracks, write_kml_shapes, generate_summary_file, verify_gpx_waypoint_order, get_name_changes, clear_name_changes
 from cairn.utils.utils import (
     chunk_data, sanitize_filename, format_file_size,
     ensure_output_dir, should_split, natural_sort_key
@@ -25,6 +26,9 @@ from cairn.core.preview import generate_dry_run_report, display_dry_run_report, 
 
 app = typer.Typer()
 console = Console()
+
+# Set up logger for debug output
+logger = logging.getLogger(__name__)
 
 VERSION = "1.0.0"
 
@@ -103,7 +107,7 @@ def display_folder_tree(parsed_data: ParsedData, config: IconMappingConfig):
             sample_count = min(3, len(folder_data["waypoints"]))
             for waypoint in folder_data["waypoints"][:sample_count]:
                 mapped = map_icon(waypoint.title, waypoint.description, waypoint.symbol, config)
-                emoji = get_icon_emoji(mapped)
+                emoji = config.get_icon_emoji(mapped)
                 folder_node.add(f"{emoji} [blue]{waypoint.title}[/] → [green]'{mapped}'[/]")
 
             if len(folder_data["waypoints"]) > sample_count:
@@ -199,7 +203,8 @@ def process_and_write_files(
     parsed_data: ParsedData,
     output_dir: Path,
     sort: bool = True,
-    skip_confirmation: bool = False
+    skip_confirmation: bool = False,
+    config: IconMappingConfig = None
 ) -> list:
     """
     Process folders and write output files.
@@ -209,11 +214,15 @@ def process_and_write_files(
         output_dir: Output directory path
         sort: If True, sort items using natural sort order
         skip_confirmation: If True, skip the order confirmation prompt
+        config: Icon mapping config for waypoint previews
 
     Returns:
         List of (filename, format, count, size) tuples for the manifest
     """
     output_files = []
+
+    # Clear name changes tracker before processing
+    clear_name_changes()
 
     for folder_id, folder_data in parsed_data.folders.items():
         folder_name = folder_data["name"]
@@ -234,20 +243,31 @@ def process_and_write_files(
                 sorted_waypoints = waypoints
 
             # Show preview and get confirmation
-            if not preview_sorted_order(sorted_waypoints, "waypoints", folder_name, skip_confirmation):
+            if not preview_sorted_order(sorted_waypoints, "waypoints", folder_name, skip_confirmation, config):
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
+
+            # Write in sorted order - onX displays items in the same order as the GPX file
+            write_order_waypoints = sorted_waypoints
+
+            # Debug: Log order before write
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"[DEBUG] Waypoint order before write ({folder_name}):")
+                for i, wp in enumerate(write_order_waypoints[:20], 1):
+                    logger.debug(f"  {i}. {wp.title}")
+                if len(write_order_waypoints) > 20:
+                    logger.debug(f"  ... and {len(write_order_waypoints) - 20} more waypoints")
 
             if total_waypoints > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_waypoints} waypoints)...")
                 console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
-                chunks = list(chunk_data(sorted_waypoints, limit=2500))
+                chunks = list(chunk_data(write_order_waypoints, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
                     part_name = f"{safe_name}_Waypoints_Part{i}"
                     output_path = output_dir / f"{part_name}.gpx"
-                    # Pass sort=False since we already sorted
+                    # Pass sort=False since we already sorted and reversed
                     file_size = write_gpx_waypoints(chunk, output_path, f"{folder_name} - Part {i}", sort=False)
                     output_files.append((f"{part_name}.gpx", "GPX (Waypoints)", len(chunk), file_size))
                     console.print(f"       ├── 📄 [green]{part_name}.gpx[/] ({len(chunk)} items)")
@@ -259,9 +279,25 @@ def process_and_write_files(
                         console.print(f"       └── 📋 [blue]{summary_path.name}[/] (Icon reference)")
             else:
                 output_path = output_dir / f"{safe_name}_Waypoints.gpx"
-                # Pass sort=False since we already sorted
-                file_size = write_gpx_waypoints(sorted_waypoints, output_path, folder_name, sort=False)
-                output_files.append((f"{safe_name}_Waypoints.gpx", "GPX (Waypoints)", len(sorted_waypoints), file_size))
+                # Pass sort=False since we already sorted and reversed
+                file_size = write_gpx_waypoints(write_order_waypoints, output_path, folder_name, sort=False)
+
+                # Debug: Verify order after write
+                if logger.isEnabledFor(logging.DEBUG):
+                    gpx_order = verify_gpx_waypoint_order(output_path)
+                    if gpx_order:
+                        logger.debug(f"[DEBUG] Waypoint order in GPX file ({output_path.name}):")
+                        for i, name in enumerate(gpx_order, 1):
+                            logger.debug(f"  {i}. {name}")
+                        # Compare with expected order
+                        expected_names = [wp.title for wp in write_order_waypoints[:len(gpx_order)]]
+                        if expected_names != gpx_order:
+                            logger.warning("[DEBUG] WARNING: GPX order differs from expected order!")
+                            logger.debug("Expected order:")
+                            for i, name in enumerate(expected_names, 1):
+                                logger.debug(f"  {i}. {name}")
+
+                output_files.append((f"{safe_name}_Waypoints.gpx", "GPX (Waypoints)", len(write_order_waypoints), file_size))
 
                 if get_use_icon_name_prefix():
                     summary_path = generate_summary_file(sorted_waypoints, output_path, folder_name)
@@ -283,24 +319,27 @@ def process_and_write_files(
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
+            # Write in sorted order - onX displays items in the same order as the GPX file
+            write_order_tracks = sorted_tracks
+
             if total_tracks > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_tracks} tracks)...")
                 console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
-                chunks = list(chunk_data(sorted_tracks, limit=2500))
+                chunks = list(chunk_data(write_order_tracks, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
                     part_name = f"{safe_name}_Tracks_Part{i}"
                     output_path = output_dir / f"{part_name}.gpx"
-                    # Pass sort=False since we already sorted
+                    # Pass sort=False since we already sorted and reversed
                     file_size = write_gpx_tracks(chunk, output_path, f"{folder_name} - Part {i}", sort=False)
                     output_files.append((f"{part_name}.gpx", "GPX (Tracks)", len(chunk), file_size))
                     console.print(f"       ├── 📄 [green]{part_name}.gpx[/] ({len(chunk)} items)")
             else:
                 output_path = output_dir / f"{safe_name}_Tracks.gpx"
-                # Pass sort=False since we already sorted
-                file_size = write_gpx_tracks(sorted_tracks, output_path, folder_name, sort=False)
-                output_files.append((f"{safe_name}_Tracks.gpx", "GPX (Tracks)", len(sorted_tracks), file_size))
+                # Pass sort=False since we already sorted and reversed
+                file_size = write_gpx_tracks(write_order_tracks, output_path, folder_name, sort=False)
+                output_files.append((f"{safe_name}_Tracks.gpx", "GPX (Tracks)", len(write_order_tracks), file_size))
 
         # Handle shapes (KML)
         if shapes:
@@ -317,12 +356,15 @@ def process_and_write_files(
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
+            # Write in sorted order - onX displays items in the same order as the file
+            write_order_shapes = sorted_shapes
+
             if total_shapes > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_shapes} shapes)...")
                 console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
-                chunks = list(chunk_data(sorted_shapes, limit=2500))
+                chunks = list(chunk_data(write_order_shapes, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
                     part_name = f"{safe_name}_Shapes_Part{i}"
                     output_path = output_dir / f"{part_name}.kml"
@@ -331,8 +373,8 @@ def process_and_write_files(
                     console.print(f"       ├── 📄 [green]{part_name}.kml[/] ({len(chunk)} items)")
             else:
                 output_path = output_dir / f"{safe_name}_Shapes.kml"
-                file_size = write_kml_shapes(sorted_shapes, output_path, folder_name)
-                output_files.append((f"{safe_name}_Shapes.kml", "KML (Shapes)", len(sorted_shapes), file_size))
+                file_size = write_kml_shapes(write_order_shapes, output_path, folder_name)
+                output_files.append((f"{safe_name}_Shapes.kml", "KML (Shapes)", len(write_order_shapes), file_size))
 
     return output_files
 
@@ -381,6 +423,57 @@ def display_unmapped_symbols(config: IconMappingConfig):
     console.print(table)
     console.print("\n[dim]💡 Add these to cairn_config.yaml to map them to onX icons[/]")
     console.print("[dim]   Run 'cairn config --export' to create a template[/]")
+
+
+def display_name_sanitization_warnings():
+    """Display warnings about name sanitization for OnX sorting compatibility."""
+    name_changes = get_name_changes()
+
+    total_changes = len(name_changes.get('waypoints', [])) + len(name_changes.get('tracks', []))
+
+    if total_changes == 0:
+        return
+
+    console.print(f"\n[yellow]⚠️  Name Sanitization Applied[/]")
+    console.print("─" * 70)
+    console.print("To improve OnX sorting compatibility, the following characters")
+    console.print("were removed from names: [cyan]! @ # $ % ^ * &[/]")
+    console.print()
+
+    waypoint_changes = name_changes.get('waypoints', [])
+    track_changes = name_changes.get('tracks', [])
+
+    if waypoint_changes:
+        console.print(f"[bold]Waypoints Modified:[/] [cyan]{len(waypoint_changes)}[/]")
+    if track_changes:
+        console.print(f"[bold]Tracks Modified:[/] [cyan]{len(track_changes)}[/]")
+
+    console.print()
+    console.print("[bold]Sample Changes:[/]")
+
+    # Show up to 10 examples from each type
+    max_examples = 10
+    examples_shown = 0
+
+    if waypoint_changes:
+        console.print("\n[cyan]Waypoints:[/]")
+        for original, sanitized in waypoint_changes[:max_examples]:
+            console.print(f"  [dim]{original[:35]:<35}[/] → [green]{sanitized[:35]}[/]")
+            examples_shown += 1
+        if len(waypoint_changes) > max_examples:
+            console.print(f"  [dim]... and {len(waypoint_changes) - max_examples} more waypoint changes[/]")
+
+    if track_changes:
+        console.print("\n[cyan]Tracks:[/]")
+        for original, sanitized in track_changes[:max_examples]:
+            console.print(f"  [dim]{original[:35]:<35}[/] → [green]{sanitized[:35]}[/]")
+            examples_shown += 1
+        if len(track_changes) > max_examples:
+            console.print(f"  [dim]... and {len(track_changes) - max_examples} more track changes[/]")
+
+    console.print()
+    console.print("[dim]Note: Natural sort order is preserved. This is a test feature.[/]")
+    console.print("─" * 70)
 
 
 def convert(
@@ -517,7 +610,8 @@ def convert(
         parsed_data,
         output_dir,
         sort=sort_enabled,
-        skip_confirmation=yes
+        skip_confirmation=yes,
+        config=config
     )
 
     # Display manifest
@@ -526,6 +620,9 @@ def convert(
 
     # Display any remaining unmapped symbols report
     display_unmapped_symbols(config)
+
+    # Display name sanitization warnings
+    display_name_sanitization_warnings()
 
     # Success footer
     console.print(f"\n[bold green]✔ SUCCESS[/] {len(output_files)} file(s) written to [underline]{output_dir}[/]")

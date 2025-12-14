@@ -11,6 +11,18 @@ import yaml
 from collections import defaultdict
 
 
+# Generic CalTopo symbols that should NOT be mapped to specific icons.
+# These are default markers that don't convey semantic meaning.
+# Mapping them would bypass keyword matching for all waypoints using them.
+GENERIC_SYMBOLS = frozenset([
+    "point",
+    "marker",
+    "pin",
+    "dot",
+    "circle",
+])
+
+
 # onX Backcountry icon color mappings (RGBA format)
 # Based on actual onX GPX analysis and color palette
 ICON_COLOR_MAP = {
@@ -288,6 +300,20 @@ DEFAULT_KEYWORD_MAP = {
 class IconMappingConfig:
     """Manages icon mapping configuration with user overrides."""
 
+    # Default emoji map for preview display
+    DEFAULT_ICON_EMOJIS = {
+        "Campsite": "⛺", "Camp": "⛺", "Camp Backcountry": "⛺", "Camp Area": "⛺", "Campground": "⛺",
+        "Water Source": "💧", "Waterfall": "💧", "Hot Spring": "♨️", "Potable Water": "💧",
+        "Parking": "🅿️", "Trailhead": "🥾", "4x4": "🚙", "ATV": "🏍️",
+        "XC Skiing": "⛷️", "Ski": "⛷️", "Ski Touring": "⛷️", "Skin Track": "⛷️", "Snowboarder": "🏂", "Snowmobile": "🛷",
+        "Summit": "🏔️", "Cave": "🕳️",
+        "Hazard": "⚠️", "Barrier": "🚧",
+        "Hike": "🥾", "Backpacker": "🎒",
+        "Photo": "📷", "View": "👁️", "Lookout": "🔭",
+        "Cabin": "🏠", "Shelter": "🏚️", "House": "🏠", "Food Source": "🍎",
+        "Location": "📍",
+    }
+
     def __init__(self, config_file: Optional[Path] = None):
         """
         Initialize configuration.
@@ -297,6 +323,7 @@ class IconMappingConfig:
         """
         self.symbol_map = DEFAULT_SYMBOL_MAP.copy()
         self.keyword_map = DEFAULT_KEYWORD_MAP.copy()
+        self.icon_emojis = self.DEFAULT_ICON_EMOJIS.copy()
         self.unmapped_symbols: Dict[str, List[str]] = defaultdict(list)
         self.enable_unmapped_detection = True
 
@@ -334,6 +361,10 @@ class IconMappingConfig:
             if "keyword_mappings" in user_config:
                 self.keyword_map.update(user_config["keyword_mappings"])
 
+            # Override icon emojis for preview
+            if "icon_emojis" in user_config:
+                self.icon_emojis.update(user_config["icon_emojis"])
+
             # Set detection flag
             if "enable_unmapped_detection" in user_config:
                 self.enable_unmapped_detection = user_config["enable_unmapped_detection"]
@@ -347,6 +378,9 @@ class IconMappingConfig:
         """
         Track a CalTopo symbol that has no mapping.
 
+        Generic symbols (point, marker, etc.) are intentionally skipped
+        because mapping them would bypass keyword matching for all waypoints.
+
         Args:
             symbol: The CalTopo marker-symbol value
             waypoint_title: Optional waypoint title for context
@@ -354,8 +388,24 @@ class IconMappingConfig:
         if not self.enable_unmapped_detection:
             return
 
+        # Skip generic symbols - they should use keyword matching
+        if symbol and symbol.lower() in GENERIC_SYMBOLS:
+            return
+
         if symbol and symbol not in self.symbol_map:
             self.unmapped_symbols[symbol].append(waypoint_title)
+
+    def get_icon_emoji(self, icon_id: str) -> str:
+        """
+        Get emoji representation for an icon (for preview display).
+
+        Args:
+            icon_id: The onX icon ID
+
+        Returns:
+            Emoji string (defaults to 📍 if not found)
+        """
+        return self.icon_emojis.get(icon_id, "📍")
 
     def get_unmapped_report(self) -> Dict[str, Dict]:
         """

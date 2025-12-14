@@ -345,23 +345,27 @@ def get_color_square(feature: ParsedFeature) -> str:
     return f"[rgb({r},{g},{b})]■[/]"
 
 
-def get_waypoint_icon_preview(feature: ParsedFeature) -> str:
+def get_waypoint_icon_preview(feature: ParsedFeature, config: Optional[IconMappingConfig] = None) -> str:
     """
     Get an icon/emoji preview for a waypoint.
 
     Args:
         feature: The waypoint feature
+        config: Optional config for keyword/symbol mappings
 
     Returns:
         Emoji string representing the mapped icon
     """
     from cairn.core.mapper import map_icon, get_icon_emoji
 
-    # Map the waypoint to an onX icon
-    mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol)
+    # Map the waypoint to an onX icon (use config if provided)
+    mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol, config)
 
-    # Get the emoji for this icon type
-    emoji = get_icon_emoji(mapped_icon)
+    # Get the emoji - use config if available, otherwise fallback to mapper
+    if config:
+        emoji = config.get_icon_emoji(mapped_icon)
+    else:
+        emoji = get_icon_emoji(mapped_icon)
 
     return emoji
 
@@ -370,7 +374,8 @@ def preview_sorted_order(
     features: List[ParsedFeature],
     feature_type: str,
     folder_name: str = "",
-    skip_confirmation: bool = False
+    skip_confirmation: bool = False,
+    config: Optional[IconMappingConfig] = None
 ) -> bool:
     """
     Display sorted order preview and get user confirmation.
@@ -386,6 +391,7 @@ def preview_sorted_order(
         feature_type: "waypoints", "tracks", or "shapes"
         folder_name: Name of the folder being processed
         skip_confirmation: If True, show preview but don't ask for confirmation
+        config: Optional icon mapping config for waypoint icon lookups
 
     Returns:
         True if user confirms (or skip_confirmation is True), False to abort
@@ -418,7 +424,7 @@ def preview_sorted_order(
             indicator = get_color_square(feature)
             console.print(f"  [dim]{i:3}.[/] {indicator} {title}")
         elif feature_type == "waypoints":
-            indicator = get_waypoint_icon_preview(feature)
+            indicator = get_waypoint_icon_preview(feature, config)
             console.print(f"  [dim]{i:3}.[/] {indicator} {title}")
         else:
             # Shapes or other types - no special indicator
