@@ -39,8 +39,7 @@ You want both files from the same export session so they represent the same cont
 uv run cairn migrate onx-to-caltopo --gpx onx-export.gpx \
   --kml onx-export.kml \
   --output-dir ./caltopo_ready \
-  --name most_usable \
-  --trace ./caltopo_ready/trace.jsonl
+  --name most_usable
 ```
 
 If you run `uv run cairn migrate onx-to-caltopo` with no arguments, Cairn will prompt you for the file paths and output settings.

@@ -79,10 +79,15 @@ def onx_to_caltopo(
         "--dedupe-shapes/--no-dedupe-shapes",
         help="Deduplicate shapes (polygons/lines) by fuzzy geometry match (default: enabled)",
     ),
-    trace: Optional[Path] = typer.Option(
+    trace: bool = typer.Option(
+        True,
+        "--trace/--no-trace",
+        help="Write JSONL trace log into the output directory (default: enabled)",
+    ),
+    trace_path: Optional[Path] = typer.Option(
         None,
-        "--trace",
-        help="Write JSONL trace log for debugging/replay",
+        "--trace-path",
+        help="Optional explicit path for the trace log (overrides default output-dir location)",
     ),
 ):
     """
@@ -92,7 +97,7 @@ def onx_to_caltopo(
     - <name>.json (primary, deduped by default)
     - <name>_dropped_shapes.json (secondary, dropped duplicates)
     - <name>_SUMMARY.md (human-readable explanation of dedup choices)
-    - optional trace JSONL
+    - <name>_trace.jsonl (trace log; default enabled)
     """
     if gpx_arg is not None and gpx_file is not None and gpx_arg != gpx_file:
         raise typer.BadParameter("Provide GPX via positional argument OR --gpx (not both).")
@@ -129,18 +134,22 @@ def onx_to_caltopo(
     elif name is None:
         name = default_name
 
-    if trace is None and interactive:
-        if typer.confirm("Write a trace log (JSONL) for debugging?", default=False):
-            default_trace = out_dir / f"{name}_trace.jsonl"
-            trace = Path(typer.prompt("Trace file path", default=str(default_trace))).expanduser()
-
     base = (name or gpx.stem).strip() or gpx.stem
 
     primary_path = out_dir / f"{base}.json"
     dropped_shapes_path = out_dir / f"{base}_dropped_shapes.json"
     summary_path = out_dir / f"{base}_SUMMARY.md"
 
-    trace_ctx = TraceWriter(trace) if trace else None
+    resolved_trace_path: Optional[Path]
+    if not trace:
+        resolved_trace_path = None
+    elif trace_path is not None:
+        resolved_trace_path = trace_path.expanduser()
+        resolved_trace_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        resolved_trace_path = out_dir / f"{base}_trace.jsonl"
+
+    trace_ctx = TraceWriter(resolved_trace_path) if resolved_trace_path else None
     try:
         if trace_ctx:
             trace_ctx.emit({"event": "run.start", "command": "migrate.onx-to-caltopo"})
@@ -217,8 +226,8 @@ def onx_to_caltopo(
         console.print(f"- [cyan]{primary_path}[/]\n  Primary CalTopo-importable GeoJSON (deduped by default).")
         console.print(f"- [cyan]{dropped_shapes_path}[/]\n  Dropped duplicate shapes preserved as GeoJSON.")
         console.print(f"- [cyan]{summary_path}[/]\n  Human-readable explanation of dedup decisions.")
-        if trace is not None:
-            console.print(f"- [cyan]{Path(trace)}[/]\n  Machine-parseable trace log (JSON Lines) for debugging/replay.")
+        if resolved_trace_path is not None:
+            console.print(f"- [cyan]{resolved_trace_path}[/]\n  Machine-parseable trace log (JSON Lines) for debugging/replay.")
     finally:
         if trace_ctx:
             trace_ctx.emit({"event": "run.end"})
