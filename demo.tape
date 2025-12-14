@@ -36,7 +36,7 @@ Ctrl+L
 Type "# Convert onX exports (GPX + KML) into CalTopo-ready GeoJSON"
 Enter
 Sleep 600ms
-Type "mkdir -p demo/onx-to-caltopo/caltopo-ready"
+Type "rm -rf demo/onx-to-caltopo/caltopo-ready && mkdir -p demo/onx-to-caltopo/caltopo-ready"
 Enter
 Sleep 500ms
 Type "uv run cairn migrate onx-to-caltopo demo/onx-to-caltopo/onx-export/onx-export.gpx --kml demo/onx-to-caltopo/onx-export/onx-export.kml --output-dir demo/onx-to-caltopo/caltopo-ready --name most_usable --trace demo/onx-to-caltopo/caltopo-ready/trace.jsonl"
