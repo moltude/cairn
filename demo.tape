@@ -43,20 +43,29 @@ Type "rm -rf demo/onx-to-caltopo/caltopo-ready/tape-run && mkdir -p demo/onx-to-
 Enter
 Sleep 400ms
 
-# Multiline command typed like a human (VHS doesn't support embedded newlines inside one Type)
-Type 'uv run cairn migrate onx-to-caltopo \'
+# Run the interactive CLI (prompts for inputs)
+Type "uv run cairn migrate onx-to-caltopo"
 Enter
-Type '  --gpx demo/onx-to-caltopo/onx-export/onx-export.gpx \'
+
+# Prompt: GPX path
+Type "demo/onx-to-caltopo/onx-export/onx-export.gpx"
 Enter
-Type '  --kml demo/onx-to-caltopo/onx-export/onx-export.kml \'
+
+# Prompt: confirm KML (default yes)
 Enter
-Type '  --output-dir demo/onx-to-caltopo/caltopo-ready/tape-run \'
+
+# Prompt: KML path
+Type "demo/onx-to-caltopo/onx-export/onx-export.kml"
 Enter
-Type '  --name caltopo-map \'
+
+# Prompt: output directory
+Type "demo/onx-to-caltopo/caltopo-ready/tape-run"
 Enter
-Type '  --trace demo/onx-to-caltopo/caltopo-ready/tape-run/trace.jsonl'
+
+# Prompt: base filename
+Type "caltopo-map"
 Enter
-Sleep 4s
+Sleep 5s
 
 # Show summary excerpt
 Type "sed -n '1,25p' demo/onx-to-caltopo/caltopo-ready/tape-run/caltopo-map_SUMMARY.md"
