@@ -36,12 +36,14 @@ You want both files from the same export session so they represent the same cont
 ### 2) Convert with Cairn
 
 ```bash
-uv run cairn migrate onx-to-caltopo onx-export.gpx \
+uv run cairn migrate onx-to-caltopo --gpx onx-export.gpx \
   --kml onx-export.kml \
   --output-dir ./caltopo_ready \
   --name most_usable \
   --trace ./caltopo_ready/trace.jsonl
 ```
+
+If you run `uv run cairn migrate onx-to-caltopo` with no arguments, Cairn will prompt you for the file paths and output settings.
 
 ### 3) Import into CalTopo
 

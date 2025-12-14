@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from rich.console import Console
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.diagnostics import dedup_inventory, document_inventory
@@ -28,11 +30,29 @@ from cairn.utils.utils import ensure_output_dir
 
 
 app = typer.Typer(no_args_is_help=True)
+console = Console()
+
+
+def _prompt_existing_path(label: str, *, default: Optional[Path] = None) -> Path:
+    while True:
+        entered = typer.prompt(label, default=str(default) if default is not None else None)
+        p = Path(str(entered)).expanduser()
+        if p.exists():
+            return p
+        console.print(f"[bold red]File not found:[/] {p}")
 
 
 @app.command("onx-to-caltopo")
 def onx_to_caltopo(
-    gpx: Path = typer.Argument(..., help="onX GPX export (.gpx)"),
+    gpx_arg: Optional[Path] = typer.Argument(
+        None,
+        help="onX GPX export (.gpx) (deprecated: pass as --gpx)",
+    ),
+    gpx_file: Optional[Path] = typer.Option(
+        None,
+        "--gpx",
+        help="onX GPX export (.gpx)",
+    ),
     kml: Optional[Path] = typer.Option(
         None,
         "--kml",
@@ -74,15 +94,47 @@ def onx_to_caltopo(
     - <name>_SUMMARY.md (human-readable explanation of dedup choices)
     - optional trace JSONL
     """
-    if not gpx.exists():
-        raise typer.BadParameter(f"GPX file not found: {gpx}")
-    if kml is not None and not kml.exists():
-        raise typer.BadParameter(f"KML file not found: {kml}")
+    if gpx_arg is not None and gpx_file is not None and gpx_arg != gpx_file:
+        raise typer.BadParameter("Provide GPX via positional argument OR --gpx (not both).")
 
+    interactive = (gpx_file is None and gpx_arg is None)
+
+    # Interactive prompts when not provided.
+    gpx = gpx_file or gpx_arg
+    if gpx is None:
+        gpx = _prompt_existing_path("Path to onX GPX export (.gpx)")
+    else:
+        gpx = gpx.expanduser()
+        if not gpx.exists():
+            raise typer.BadParameter(f"GPX file not found: {gpx}")
+
+    if kml is None:
+        if typer.confirm("Do you have an onX KML export too? (recommended for polygons/areas)", default=True):
+            kml = _prompt_existing_path("Path to onX KML export (.kml)")
+    else:
+        kml = kml.expanduser()
+        if not kml.exists():
+            raise typer.BadParameter(f"KML file not found: {kml}")
+
+    # Prompt for outputs (with sensible defaults) when running interactively.
+    if interactive:
+        output_dir = Path(typer.prompt("Output directory", default=str(output_dir))).expanduser()
+
+    output_dir = output_dir.expanduser()
     out_dir = ensure_output_dir(output_dir)
-    base = (name or gpx.stem).strip()
-    if not base:
-        base = gpx.stem
+
+    default_name = gpx.stem
+    if name is None and interactive:
+        name = typer.prompt("Output base filename (no extension)", default=default_name).strip() or default_name
+    elif name is None:
+        name = default_name
+
+    if trace is None and interactive:
+        if typer.confirm("Write a trace log (JSONL) for debugging?", default=False):
+            default_trace = out_dir / f"{name}_trace.jsonl"
+            trace = Path(typer.prompt("Trace file path", default=str(default_trace))).expanduser()
+
+    base = (name or gpx.stem).strip() or gpx.stem
 
     primary_path = out_dir / f"{base}.json"
     dropped_shapes_path = out_dir / f"{base}_dropped_shapes.json"
@@ -92,45 +144,81 @@ def onx_to_caltopo(
     try:
         if trace_ctx:
             trace_ctx.emit({"event": "run.start", "command": "migrate.onx-to-caltopo"})
+        steps_total = 7 if kml is not None else 5
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total}"),
+            TimeElapsedColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Migrating onX → CalTopo", total=steps_total)
 
-        doc = read_onx_gpx(gpx, trace=trace_ctx)
-        if kml is not None:
-            kml_doc = read_onx_kml(kml, trace=trace_ctx)
-            doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+            progress.update(task, description="Reading GPX")
+            doc = read_onx_gpx(gpx, trace=trace_ctx)
+            progress.advance(task)
 
-        if trace_ctx:
-            trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})
+            if kml is not None:
+                progress.update(task, description="Reading KML")
+                kml_doc = read_onx_kml(kml, trace=trace_ctx)
+                progress.advance(task)
 
-        wp_report = None
-        if dedupe_waypoints:
-            wp_report = apply_waypoint_dedup(doc, trace=trace_ctx)
-            if trace_ctx and wp_report is not None:
-                trace_ctx.emit({"event": "dedup.report", **dedup_inventory(wp_report)})
+                progress.update(task, description="Merging GPX + KML (prefer polygons)")
+                doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+                progress.advance(task)
 
-        shape_report = None
-        dropped_items = []
-        if dedupe_shapes:
-            shape_report, dropped_items = apply_shape_dedup(doc, trace=trace_ctx)
+            if trace_ctx:
+                trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})
 
-        write_caltopo_geojson(doc, primary_path, trace=trace_ctx)
+            wp_report = None
+            if dedupe_waypoints:
+                progress.update(task, description="Deduplicating waypoints")
+                wp_report = apply_waypoint_dedup(doc, trace=trace_ctx)
+                if trace_ctx and wp_report is not None:
+                    trace_ctx.emit({"event": "dedup.report", **dedup_inventory(wp_report)})
+                progress.advance(task)
+            else:
+                progress.update(task, description="Skipping waypoint dedup")
+                progress.advance(task)
 
-        # Preserve dropped shapes in a separate file even if empty for predictability.
-        dropped_doc = MapDocument(
-            folders=list(doc.folders),
-            items=list(dropped_items),
-            metadata={"source": "cairn_shape_dedup_dropped", "primary": str(primary_path)},
-        )
-        write_caltopo_geojson(dropped_doc, dropped_shapes_path, trace=trace_ctx)
+            shape_report = None
+            dropped_items = []
+            progress.update(task, description="Deduplicating shapes")
+            if dedupe_shapes:
+                shape_report, dropped_items = apply_shape_dedup(doc, trace=trace_ctx)
+            progress.advance(task)
 
-        write_shape_dedup_summary(
-            summary_path,
-            report=(shape_report or type("Empty", (), {"groups": [], "dropped_count": 0})()),
-            primary_geojson_path=primary_path,
-            dropped_geojson_path=dropped_shapes_path,
-            gpx_path=gpx,
-            kml_path=(kml or ""),
-            waypoint_dedup_dropped=(wp_report.dropped_count if wp_report is not None else 0),
-        )
+            progress.update(task, description="Writing CalTopo GeoJSON")
+            write_caltopo_geojson(doc, primary_path, trace=trace_ctx)
+            progress.advance(task)
+
+            progress.update(task, description="Writing dropped-duplicates GeoJSON + summary")
+            dropped_doc = MapDocument(
+                folders=list(doc.folders),
+                items=list(dropped_items),
+                metadata={"source": "cairn_shape_dedup_dropped", "primary": str(primary_path)},
+            )
+            write_caltopo_geojson(dropped_doc, dropped_shapes_path, trace=trace_ctx)
+
+            write_shape_dedup_summary(
+                summary_path,
+                report=(shape_report or type("Empty", (), {"groups": [], "dropped_count": 0})()),
+                primary_geojson_path=primary_path,
+                dropped_geojson_path=dropped_shapes_path,
+                gpx_path=gpx,
+                kml_path=(kml or ""),
+                waypoint_dedup_dropped=(wp_report.dropped_count if wp_report is not None else 0),
+            )
+            progress.advance(task)
+
+        console.print("\n[bold green]Done.[/]")
+        console.print("\n[bold]Created files:[/]")
+        console.print(f"- [cyan]{primary_path}[/]\n  Primary CalTopo-importable GeoJSON (deduped by default).")
+        console.print(f"- [cyan]{dropped_shapes_path}[/]\n  Dropped duplicate shapes preserved as GeoJSON.")
+        console.print(f"- [cyan]{summary_path}[/]\n  Human-readable explanation of dedup decisions.")
+        if trace is not None:
+            console.print(f"- [cyan]{Path(trace)}[/]\n  Machine-parseable trace log (JSON Lines) for debugging/replay.")
     finally:
         if trace_ctx:
             trace_ctx.emit({"event": "run.end"})
