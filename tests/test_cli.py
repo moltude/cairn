@@ -23,6 +23,18 @@ class TestCLI:
         assert result.exit_code == 0
         assert "INPUT_FILE" in result.stdout or "input" in result.stdout.lower()
 
+    def test_migrate_help(self):
+        """migrate --help works."""
+        result = runner.invoke(app, ["migrate", "--help"])
+        assert result.exit_code == 0
+
+    def test_migrate_onx_to_caltopo_help(self):
+        """migrate onx-to-caltopo --help works."""
+        result = runner.invoke(app, ["migrate", "onx-to-caltopo", "--help"])
+        assert result.exit_code == 0
+        out = result.stdout.lower()
+        assert "onx" in out and "caltopo" in out
+
     def test_config_help(self):
         """config --help works."""
         result = runner.invoke(app, ["config", "--help"])

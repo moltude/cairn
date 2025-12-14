@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Tuple
 import typer
 import logging
+from enum import Enum
 from rich.console import Console
 from rich.panel import Panel
 from rich.tree import Tree
@@ -24,6 +25,17 @@ from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review, preview_sorted_order
 
+# New bidirectional adapters (onX → CalTopo)
+from cairn.io.onx_gpx import read_onx_gpx
+from cairn.io.onx_kml import read_onx_kml
+from cairn.core.merge import merge_onx_gpx_and_kml
+from cairn.core.dedup import apply_waypoint_dedup
+from cairn.core.shape_dedup import apply_shape_dedup
+from cairn.io.caltopo_geojson import write_caltopo_geojson
+from cairn.core.trace import TraceWriter
+from cairn.core.diagnostics import document_inventory, dedup_inventory
+from cairn.core.shape_dedup_summary import write_shape_dedup_summary
+
 app = typer.Typer()
 console = Console()
 
@@ -31,6 +43,16 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 VERSION = "1.0.0"
+
+
+class FromFormat(str, Enum):
+    caltopo_geojson = "caltopo_geojson"
+    onx_gpx = "onx_gpx"
+
+
+class ToFormat(str, Enum):
+    onx = "onx"
+    caltopo_geojson = "caltopo_geojson"
 
 
 def print_header():
@@ -489,11 +511,21 @@ def display_name_sanitization_warnings():
 
 
 def convert(
-    input_file: Path = typer.Argument(..., help="CalTopo GeoJSON export file"),
+    input_file: Path = typer.Argument(..., help="Input file (default: CalTopo GeoJSON)"),
+    from_format: FromFormat = typer.Option(
+        FromFormat.caltopo_geojson,
+        "--from",
+        help="Input format (default: caltopo_geojson)",
+    ),
+    to_format: ToFormat = typer.Option(
+        ToFormat.onx,
+        "--to",
+        help="Output format (default: onx)",
+    ),
     output: Optional[Path] = typer.Option(
         "./onx_ready",
         "--output", "-o",
-        help="Output directory for converted files"
+        help="Output directory (onx) or output GeoJSON file/dir (caltopo_geojson)"
     ),
     config_file: Optional[Path] = typer.Option(
         None,
@@ -519,6 +551,26 @@ def convert(
         False,
         "--yes", "-y",
         help="Skip confirmation prompts (auto-confirm sorted order)"
+    ),
+    kml_file: Optional[Path] = typer.Option(
+        None,
+        "--kml",
+        help="Optional onX KML export to merge (improves polygon/area fidelity)",
+    ),
+    dedupe: bool = typer.Option(
+        True,
+        "--dedupe/--no-dedupe",
+        help="Deduplicate waypoints during onx_gpx → caltopo_geojson",
+    ),
+    dedupe_shapes: bool = typer.Option(
+        True,
+        "--dedupe-shapes/--no-dedupe-shapes",
+        help="Deduplicate shapes (polygons/lines) using fuzzy geometry match (default: enabled)",
+    ),
+    trace_path: Optional[Path] = typer.Option(
+        None,
+        "--trace",
+        help="Write JSONL trace log of transformation steps",
     )
 ):
     """
@@ -554,6 +606,110 @@ def convert(
 
     Or edit the source GeoJSON file directly.
     """
+    # ---------------------------------------------------------------------
+    # New path: onX → CalTopo GeoJSON
+    # ---------------------------------------------------------------------
+    if from_format == FromFormat.onx_gpx and to_format == ToFormat.caltopo_geojson:
+        if not input_file.exists():
+            console.print(f"\n[bold red]❌ Error:[/] File not found: {input_file}")
+            raise typer.Exit(1)
+
+        # Determine output GeoJSON path.
+        out_path: Path
+        out_opt = output or Path(".")
+        if out_opt.suffix.lower() == ".json":
+            out_path = out_opt
+        else:
+            out_dir = ensure_output_dir(out_opt)
+            out_path = out_dir / f"{input_file.stem}_caltopo.json"
+
+        if trace_path:
+            trace_path.parent.mkdir(parents=True, exist_ok=True)
+
+        trace_ctx = TraceWriter(trace_path) if trace_path else None
+        try:
+            if trace_ctx:
+                trace_ctx.emit({"event": "run.start", "from": from_format.value, "to": to_format.value})
+
+            gpx_doc = read_onx_gpx(input_file, trace=trace_ctx)
+            doc = gpx_doc
+
+            if kml_file is not None:
+                if not kml_file.exists():
+                    console.print(f"\n[bold red]❌ Error:[/] KML file not found: {kml_file}")
+                    raise typer.Exit(1)
+                kml_doc = read_onx_kml(kml_file, trace=trace_ctx)
+                doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+
+            if trace_ctx:
+                trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})
+
+            report = None
+            if dedupe:
+                report = apply_waypoint_dedup(doc, trace=trace_ctx)
+
+            if trace_ctx:
+                trace_ctx.emit({"event": "inventory.after_dedup", **document_inventory(doc)})
+                if report is not None:
+                    trace_ctx.emit({"event": "dedup.report", **dedup_inventory(report)})
+
+            # Shape dedup (default on): produce a primary usable dataset and preserve dropped duplicates separately.
+            shape_report = None
+            dropped_shapes_doc_path: Optional[Path] = None
+            summary_path: Optional[Path] = None
+
+            dropped_items: list = []
+            if dedupe_shapes:
+                shape_report, dropped_items = apply_shape_dedup(doc, trace=trace_ctx)
+
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            write_caltopo_geojson(doc, out_path, trace=trace_ctx)
+
+            # If shape dedup ran, write the dropped features to a secondary GeoJSON file
+            # and generate a SUMMARY.md documenting every group.
+            if dedupe_shapes and shape_report is not None:
+                dropped_shapes_doc_path = out_path.with_name(out_path.stem + "_dropped_shapes.json")
+                from cairn.model import MapDocument as _MapDocument
+
+                dropped_doc = _MapDocument(
+                    folders=list(doc.folders),
+                    items=list(dropped_items),
+                    metadata={
+                        "source": "cairn_shape_dedup_dropped",
+                        "primary": str(out_path),
+                    },
+                )
+                write_caltopo_geojson(dropped_doc, dropped_shapes_doc_path, trace=trace_ctx)
+
+                summary_path = out_path.with_name(out_path.stem + "_SUMMARY.md")
+                write_shape_dedup_summary(
+                    summary_path,
+                    report=shape_report,
+                    primary_geojson_path=out_path,
+                    dropped_geojson_path=dropped_shapes_doc_path,
+                    gpx_path=input_file,
+                    kml_path=(kml_file or ""),
+                    waypoint_dedup_dropped=(report.dropped_count if report is not None else 0),
+                )
+
+            console.print(f"\n[bold green]✔ SUCCESS[/] Wrote CalTopo GeoJSON: [underline]{out_path}[/]")
+            console.print(
+                f"[dim]Items:[/] {len(doc.waypoints())} waypoints, {len(doc.tracks())} lines, {len(doc.shapes())} areas"
+            )
+            if report is not None and report.dropped_count:
+                console.print(f"[yellow]⚠️  Dedup dropped {report.dropped_count} duplicate waypoint(s).[/]")
+            if dedupe_shapes and shape_report is not None and shape_report.dropped_count:
+                console.print(f"[yellow]⚠️  Shape dedup dropped {shape_report.dropped_count} duplicate shape(s).[/]")
+                console.print(f"[dim]Dropped shapes:[/] {dropped_shapes_doc_path}")
+                console.print(f"[dim]Summary:[/] {summary_path}")
+            if trace_path:
+                console.print(f"[dim]Trace log:[/] {trace_path}")
+            return
+        finally:
+            if trace_ctx:
+                trace_ctx.emit({"event": "run.end"})
+                trace_ctx.close()
+
     # Load configuration
     config = load_config(config_file)
 

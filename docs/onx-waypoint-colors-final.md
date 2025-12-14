@@ -80,12 +80,12 @@ Based on successful imports and exports:
 
 ## Recommendation
 
-We need to:
+I need to:
 1. **Remove White** - appears to not work for imports
 2. **Fix Orange** - find OnX's actual orange value
 3. **Fix Lime/Green** - find OnX's actual green value
 4. **Never use Pink** - doesn't exist in OnX waypoints
-5. **Add Blue** - missing from our palette but exists in OnX
+5. **Add Blue** - missing from my palette but exists in OnX
 
 ## Next Steps
 

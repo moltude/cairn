@@ -38,7 +38,7 @@ Row 2: [White]      [Purple] [Yellow] [Red] [Brown]
 
 ✅ **ALL 10 colors work correctly on import!**
 
-Previous testing showed checkmarks because we were using incorrect color values. The exact values above are confirmed to work.
+Previous testing showed checkmarks because I was using incorrect color values. The exact values above are confirmed to work.
 
 ### Track vs Waypoint Colors
 

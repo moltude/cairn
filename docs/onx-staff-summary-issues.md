@@ -116,4 +116,4 @@ Cairn aims to generate GPX files that match onX’s observed GPX extensions:
 - `<onx:icon>` and `<onx:color>` for waypoints
 - `<onx:color>`, `<onx:style>`, `<onx:weight>` for tracks
 
-However, we strive  preserve ordering and styling **up to onX’s import/UI behaviors** described above.
+However, I strive to preserve ordering and styling **up to onX’s import/UI behaviors** described above.

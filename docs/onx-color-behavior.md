@@ -27,7 +27,7 @@ Based on testing with the XC Skiing waypoint:
 |---------|-------------|-------|
 | **Track (Green Route)** | `rgba(52,199,89,1)` | OnX custom palette green |
 | **Track (manually edited to purple)** | `rgba(128,0,128,1)` | CSS standard purple |
-| **Waypoint (our test file)** | `rgba(175,82,222,1)` | OnX custom palette purple |
+| **Waypoint (my test file)** | `rgba(175,82,222,1)` | OnX custom palette purple |
 | **Waypoint (OnX exported)** | `rgba(128,0,128,1)` | CSS standard purple ✅ |
 
 ### Key Observation

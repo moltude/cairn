@@ -7,7 +7,7 @@ Main CLI entry point
 import typer
 
 # Import command modules
-from cairn.commands import convert_cmd, config_cmd, icon_cmd
+from cairn.commands import convert_cmd, config_cmd, icon_cmd, migrate_cmd
 
 app = typer.Typer(
     name="cairn",
@@ -22,6 +22,7 @@ app.command(name="convert", help="Convert CalTopo GeoJSON export to onX format")
 # Register command groups for config and icon
 app.add_typer(config_cmd.app, name="config", help="Manage configuration settings")
 app.add_typer(icon_cmd.app, name="icon", help="Manage icon mappings")
+app.add_typer(migrate_cmd.app, name="migrate", help="Migration helpers (onX ↔ CalTopo)")
 
 @app.callback()
 def callback():

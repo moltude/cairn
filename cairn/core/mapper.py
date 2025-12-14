@@ -92,7 +92,14 @@ def map_color(caltopo_color: str) -> str:
     Returns:
         KML-formatted color string (e.g., "ff0000ff" for red with full opacity)
     """
-    if not caltopo_color or len(caltopo_color) != 6:
+    if not caltopo_color:
+        return "ffffffff"  # Default to white with full opacity
+
+    caltopo_color = caltopo_color.strip()
+    if caltopo_color.startswith("#"):
+        caltopo_color = caltopo_color[1:]
+
+    if len(caltopo_color) != 6:
         return "ffffffff"  # Default to white with full opacity
 
     try:

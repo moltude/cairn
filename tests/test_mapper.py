@@ -129,6 +129,11 @@ class TestMapColor:
         result = map_color("ff0000")
         assert result == "ff0000ff"
 
+    def test_hash_prefixed_input(self):
+        """CalTopo exports often include leading #."""
+        result = map_color("#FF0000")
+        assert result == "ff0000ff"
+
 
 class TestGetIconEmoji:
     """Tests for get_icon_emoji function."""
