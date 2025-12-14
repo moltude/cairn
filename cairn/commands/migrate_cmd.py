@@ -33,10 +33,18 @@ app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 
-def _prompt_existing_path(label: str, *, default: Optional[Path] = None) -> Path:
+def _prompt_existing_path(
+    label: str,
+    *,
+    default: Optional[Path] = None,
+    expected_suffix: Optional[str] = None,
+) -> Path:
     while True:
         entered = typer.prompt(label, default=str(default) if default is not None else None)
         p = Path(str(entered)).expanduser()
+        if expected_suffix is not None and p.suffix.lower() != expected_suffix.lower():
+            console.print(f"[bold red]Expected a {expected_suffix} file:[/] {p}")
+            continue
         if p.exists():
             return p
         console.print(f"[bold red]File not found:[/] {p}")
@@ -71,7 +79,7 @@ def onx_to_caltopo(
     kml: Optional[Path] = typer.Option(
         None,
         "--kml",
-        help="Optional onX KML export (.kml). Strongly recommended for areas/polygons.",
+        help="onX KML export (.kml). Required for best fidelity (polygons/areas).",
     ),
     output_dir: Path = typer.Option(
         Path("./caltopo_ready"),
@@ -122,19 +130,22 @@ def onx_to_caltopo(
     # Interactive prompts when not provided.
     gpx = gpx_file or gpx_arg
     if gpx is None:
-        gpx = _prompt_existing_path("Path to onX GPX export (.gpx)")
+        gpx = _prompt_existing_path("Path to onX GPX export", expected_suffix=".gpx")
     else:
         gpx = gpx.expanduser()
+        if gpx.suffix.lower() != ".gpx":
+            raise typer.BadParameter(f"Expected a .gpx file: {gpx}")
         if not gpx.exists():
             raise typer.BadParameter(f"GPX file not found: {gpx}")
 
+    # KML is required (for polygons/areas). Prompt if missing.
     if kml is None:
-        if typer.confirm("Do you have an onX KML export too? (recommended for polygons/areas)", default=True):
-            kml = _prompt_existing_path("Path to onX KML export (.kml)")
-    else:
-        kml = kml.expanduser()
-        if not kml.exists():
-            raise typer.BadParameter(f"KML file not found: {kml}")
+        kml = _prompt_existing_path("Path to onX KML export", expected_suffix=".kml")
+    kml = kml.expanduser()
+    if kml.suffix.lower() != ".kml":
+        raise typer.BadParameter(f"Expected a .kml file: {kml}")
+    if not kml.exists():
+        raise typer.BadParameter(f"KML file not found: {kml}")
 
     # Prompt for outputs (with sensible defaults) when running interactively.
     if interactive:
@@ -145,7 +156,7 @@ def onx_to_caltopo(
 
     default_name = gpx.stem
     if name is None and interactive:
-        name = typer.prompt("Output base filename (no extension)", default=default_name).strip() or default_name
+        name = typer.prompt("Output base filename, no extension", default=default_name).strip() or default_name
     elif name is None:
         name = default_name
 
@@ -168,7 +179,7 @@ def onx_to_caltopo(
     try:
         if trace_ctx:
             trace_ctx.emit({"event": "run.start", "command": "migrate.onx-to-caltopo"})
-        steps_total = 7 if kml is not None else 5
+        steps_total = 7
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -183,14 +194,13 @@ def onx_to_caltopo(
             doc = read_onx_gpx(gpx, trace=trace_ctx)
             progress.advance(task)
 
-            if kml is not None:
-                progress.update(task, description="Reading KML")
-                kml_doc = read_onx_kml(kml, trace=trace_ctx)
-                progress.advance(task)
+            progress.update(task, description="Reading KML")
+            kml_doc = read_onx_kml(kml, trace=trace_ctx)
+            progress.advance(task)
 
-                progress.update(task, description="Merging GPX + KML (prefer polygons)")
-                doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
-                progress.advance(task)
+            progress.update(task, description="Merging GPX + KML (prefer polygons)")
+            doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+            progress.advance(task)
 
             if trace_ctx:
                 trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})

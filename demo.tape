@@ -15,7 +15,7 @@ Set Height 900
 Hide
 Type "export PS1='➜ '"
 Enter
-Type "mkdir -p demo/onx-to-caltopo/caltopo-ready"
+Type "rm -rf demo/onx-to-caltopo/caltopo-ready/tape-run && mkdir -p demo/onx-to-caltopo/caltopo-ready/tape-run"
 Enter
 Type 'cd "$(git rev-parse --show-toplevel)"'
 Enter
@@ -24,22 +24,7 @@ Enter
 Show
 
 # Title
-Type "# Cairn - Migrate onX → CalTopo"
-Enter
-Sleep 800ms
-
-# Show migrate help (optional)
-# Type "uv run cairn migrate onx-to-caltopo --help"
-# Enter
-# Sleep 6s
-
-# Run migration using demo exports
-Ctrl+L
 Type "# Convert onX exports (GPX + KML) into CalTopo-ready GeoJSON"
-Enter
-Sleep 600ms
-Sleep 500ms
-Type "rm -rf demo/onx-to-caltopo/caltopo-ready/tape-run && mkdir -p demo/onx-to-caltopo/caltopo-ready/tape-run"
 Enter
 Sleep 400ms
 
@@ -51,16 +36,15 @@ Enter
 Type "demo/onx-to-caltopo/onx-export/onx-export.gpx"
 Enter
 
-# Prompt: confirm KML (default yes)
-Enter
-
 # Prompt: KML path
 Type "demo/onx-to-caltopo/onx-export/onx-export.kml"
 Enter
+Sleep 1s
 
 # Prompt: output directory
 Type "demo/onx-to-caltopo/caltopo-ready/tape-run"
 Enter
+Sleep 1s
 
 # Prompt: base filename
 Type "caltopo-map"
@@ -70,15 +54,9 @@ Sleep 5s
 # Show summary excerpt
 Type "sed -n '1,25p' demo/onx-to-caltopo/caltopo-ready/tape-run/caltopo-map_SUMMARY.md"
 Enter
-Sleep 4s
-
-# Show outputs
-Ctrl+L
-Type "ls -lh demo/onx-to-caltopo/caltopo-ready/tape-run/"
-Enter
-Sleep 3s
+Sleep 5s
 
 # Final message
 Ctrl+L
-Type "# Next: Import demo/onx-to-caltopo/caltopo-ready/tape-run/caltopo-map.json into CalTopo"
+Type "# Import caltopo-map.json into CalTopo"
 Sleep 5s
