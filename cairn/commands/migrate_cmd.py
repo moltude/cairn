@@ -42,6 +42,21 @@ def _prompt_existing_path(label: str, *, default: Optional[Path] = None) -> Path
         console.print(f"[bold red]File not found:[/] {p}")
 
 
+def _display_path(p: Path) -> str:
+    """
+    Display-friendly path for CLI output.
+
+    Preference order:
+    - relative path from CWD when possible
+    - otherwise just the basename
+    """
+    try:
+        rel = p.resolve().relative_to(Path.cwd().resolve())
+        return str(rel)
+    except Exception:
+        return p.name
+
+
 @app.command("onx-to-caltopo")
 def onx_to_caltopo(
     gpx_arg: Optional[Path] = typer.Argument(
@@ -223,11 +238,19 @@ def onx_to_caltopo(
 
         console.print("\n[bold green]Done.[/]")
         console.print("\n[bold]Created files:[/]")
-        console.print(f"- [cyan]{primary_path}[/]\n  Primary CalTopo-importable GeoJSON (deduped by default).")
-        console.print(f"- [cyan]{dropped_shapes_path}[/]\n  Dropped duplicate shapes preserved as GeoJSON.")
-        console.print(f"- [cyan]{summary_path}[/]\n  Human-readable explanation of dedup decisions.")
+
+        console.print("\nPrimary CalTopo-importable GeoJSON (deduped by default):")
+        console.print(f"- [cyan]{_display_path(primary_path)}[/]")
+
+        console.print("\nDropped duplicate shapes preserved as GeoJSON:")
+        console.print(f"- [cyan]{_display_path(dropped_shapes_path)}[/]")
+
+        console.print("\nHuman-readable explanation of dedup decisions:")
+        console.print(f"- [cyan]{_display_path(summary_path)}[/]")
+
         if resolved_trace_path is not None:
-            console.print(f"- [cyan]{resolved_trace_path}[/]\n  Machine-parseable trace log (JSON Lines) for debugging/replay.")
+            console.print("\nMachine-parseable trace log (JSON Lines) for debugging/replay:")
+            console.print(f"- [cyan]{_display_path(resolved_trace_path)}[/]")
     finally:
         if trace_ctx:
             trace_ctx.emit({"event": "run.end"})
