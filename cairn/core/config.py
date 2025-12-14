@@ -23,34 +23,60 @@ GENERIC_SYMBOLS = frozenset([
 ])
 
 
-# onX Backcountry icon color mappings (RGBA format)
-# Based on actual onX GPX analysis and color palette
+# onX Backcountry waypoint icon color mappings (RGBA format).
+#
+# IMPORTANT:
+# - Waypoints support ONLY the official 10-color waypoint palette.
+# - These defaults must stay within that palette to avoid onX ignoring colors on import.
+# - See docs/onx-waypoint-colors-definitive.md for the canonical list.
 ICON_COLOR_MAP = {
-    # From GPX analysis - actual onX colors
-    "Location": "rgba(8,122,255,1)",        # Default blue (confirmed from GPX)
-    "Hazard": "rgba(255,51,0,1)",           # Orange-red (confirmed from GPX)
-    "Campsite": "rgba(255,165,0,1)",        # Orange
-    "Water Source": "rgba(0,255,255,1)",    # Cyan
-    "Parking": "rgba(128,128,128,1)",       # Gray
-    "XC Skiing": "rgba(255,255,255,1)",     # White
-    "Ski Touring": "rgba(255,255,255,1)",   # White
-    "Ski": "rgba(255,255,255,1)",           # White
-    "Summit": "rgba(255,0,0,1)",            # Red
-    "Photo": "rgba(255,255,0,1)",           # Yellow
-    "Cabin": "rgba(139,69,19,1)",           # Brown
-    "Trailhead": "rgba(132,212,0,1)",       # Green
-    "Cave": "rgba(8,122,255,1)",            # Blue
-    "Barrier": "rgba(255,0,0,1)",           # Red
-    "Camp": "rgba(255,165,0,1)",            # Orange
-    "Camp Area": "rgba(255,165,0,1)",       # Orange
-    "Camp Backcountry": "rgba(255,165,0,1)", # Orange
-    "Campground": "rgba(255,165,0,1)",      # Orange
-    "View": "rgba(255,255,0,1)",            # Yellow
-    "Lookout": "rgba(255,255,0,1)",         # Yellow
+    # Official waypoint palette colors (10 total)
+    "Location": "rgba(8,122,255,1)",          # Blue
+    "Hazard": "rgba(255,51,0,1)",             # Red-Orange
+    "Barrier": "rgba(255,0,0,1)",             # Red
+
+    # Camping (no true "orange" in waypoint palette; closest is Red-Orange)
+    "Campsite": "rgba(255,51,0,1)",           # Red-Orange
+    "Camp": "rgba(255,51,0,1)",               # Red-Orange
+    "Camp Area": "rgba(255,51,0,1)",          # Red-Orange
+    "Camp Backcountry": "rgba(255,51,0,1)",   # Red-Orange
+    "Campground": "rgba(0,0,0,1)",            # Black
+
+    # Water
+    "Water Source": "rgba(0,255,255,1)",      # Cyan
+    "Waterfall": "rgba(0,255,255,1)",         # Cyan
+    "Hot Spring": "rgba(255,255,0,1)",        # Yellow
+    "Potable Water": "rgba(0,255,255,1)",     # Cyan
+    "Water Crossing": "rgba(139,69,19,1)",    # Brown
+
+    # Transportation (no gray; use black)
+    "Parking": "rgba(0,0,0,1)",               # Black
+    "Trailhead": "rgba(132,212,0,1)",         # Lime
+    "4x4": "rgba(132,212,0,1)",               # Lime
+    "ATV": "rgba(132,212,0,1)",               # Lime
+
+    # Winter
+    "XC Skiing": "rgba(255,255,255,1)",       # White
+    "Ski Touring": "rgba(255,255,255,1)",     # White
+    "Ski": "rgba(255,255,255,1)",             # White
+    "Skin Track": "rgba(255,255,255,1)",      # White
+    "Snowboarder": "rgba(255,255,255,1)",     # White
+    "Snowmobile": "rgba(255,255,255,1)",      # White
+
+    # Terrain / observation / facilities
+    "Summit": "rgba(255,0,0,1)",              # Red
+    "Cave": "rgba(8,122,255,1)",              # Blue
+    "Photo": "rgba(255,255,0,1)",             # Yellow
+    "View": "rgba(255,255,0,1)",              # Yellow
+    "Lookout": "rgba(255,255,0,1)",           # Yellow
+    "Cabin": "rgba(139,69,19,1)",             # Brown
+    "Shelter": "rgba(139,69,19,1)",           # Brown
+    "House": "rgba(139,69,19,1)",             # Brown
+    "Food Source": "rgba(139,69,19,1)",       # Brown
 }
 
 
-def get_icon_color(icon_name: str) -> str:
+def get_icon_color(icon_name: str, *, default: str = "rgba(8,122,255,1)") -> str:
     """
     Get the appropriate RGBA color for an icon type.
 
@@ -60,7 +86,7 @@ def get_icon_color(icon_name: str) -> str:
     Returns:
         RGBA color string (e.g., "rgba(255,0,0,1)")
     """
-    return ICON_COLOR_MAP.get(icon_name, "rgba(8,122,255,1)")
+    return ICON_COLOR_MAP.get(icon_name, default)
 
 
 # Default CalTopo marker-symbol to onX Backcountry icon mappings
@@ -326,6 +352,9 @@ class IconMappingConfig:
         self.icon_emojis = self.DEFAULT_ICON_EMOJIS.copy()
         self.unmapped_symbols: Dict[str, List[str]] = defaultdict(list)
         self.enable_unmapped_detection = True
+        self.use_icon_name_prefix = False
+        self.default_icon = "Location"
+        self.default_color = "rgba(8,122,255,1)"
 
         # Load user config if provided
         if config_file and config_file.exists():
@@ -355,7 +384,8 @@ class IconMappingConfig:
 
             # Override symbol mappings
             if "symbol_mappings" in user_config:
-                self.symbol_map.update(user_config["symbol_mappings"])
+                normalized = {str(k).lower(): v for k, v in (user_config["symbol_mappings"] or {}).items()}
+                self.symbol_map.update(normalized)
 
             # Override keyword mappings
             if "keyword_mappings" in user_config:
@@ -364,6 +394,23 @@ class IconMappingConfig:
             # Override icon emojis for preview
             if "icon_emojis" in user_config:
                 self.icon_emojis.update(user_config["icon_emojis"])
+
+            # Set icon name prefix behavior
+            if "use_icon_name_prefix" in user_config:
+                self.use_icon_name_prefix = bool(user_config["use_icon_name_prefix"])
+
+            # Defaults
+            if "default_icon" in user_config and user_config["default_icon"]:
+                default_icon = str(user_config["default_icon"])
+                valid_icons = get_all_onx_icons()
+                if default_icon not in valid_icons:
+                    raise ValueError(f"Invalid default_icon '{default_icon}' (not a valid onX icon)")
+                self.default_icon = default_icon
+
+            if "default_color" in user_config and user_config["default_color"]:
+                # Quantize to official waypoint palette for safety.
+                from cairn.core.color_mapper import ColorMapper
+                self.default_color = ColorMapper.map_waypoint_color(str(user_config["default_color"]))
 
             # Set detection flag
             if "enable_unmapped_detection" in user_config:
@@ -656,7 +703,10 @@ keyword_mappings:
             "symbol_mappings_count": len(self.symbol_map),
             "keyword_mappings_count": len(self.keyword_map),
             "unique_onx_icons": len(set(self.symbol_map.values())),
-            "unmapped_detection_enabled": self.enable_unmapped_detection
+            "unmapped_detection_enabled": self.enable_unmapped_detection,
+            "use_icon_name_prefix": self.use_icon_name_prefix,
+            "default_icon": self.default_icon,
+            "default_color": self.default_color,
         }
 
 
@@ -746,7 +796,39 @@ def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_co
     if "symbol_mappings" not in config:
         config["symbol_mappings"] = {}
 
-    config["symbol_mappings"][symbol] = icon
+    symbol_key = (symbol or "").strip().lower()
+    config["symbol_mappings"][symbol_key] = icon
 
     with open(config_path, 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+
+def remove_user_mapping(symbol: str, config_path: Path = Path("cairn_config.yaml")) -> bool:
+    """
+    Remove a user's manual mapping from the YAML config file.
+
+    Args:
+        symbol: CalTopo symbol to remove
+        config_path: Path to YAML config file
+
+    Returns:
+        True if a mapping was removed, False if no mapping existed.
+    """
+    if not config_path.exists():
+        return False
+
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f) or {}
+
+    symbol_key = (symbol or "").strip().lower()
+    symbol_mappings = config.get("symbol_mappings") or {}
+    if symbol_key not in symbol_mappings:
+        return False
+
+    del symbol_mappings[symbol_key]
+    config["symbol_mappings"] = symbol_mappings
+
+    with open(config_path, 'w', encoding='utf-8') as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    return True

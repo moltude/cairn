@@ -19,7 +19,7 @@ from cairn.utils.utils import (
     ensure_output_dir, should_split, natural_sort_key
 )
 from cairn.core.mapper import get_icon_emoji, map_icon
-from cairn.core.config import load_config, IconMappingConfig, get_use_icon_name_prefix, get_all_onx_icons, save_user_mapping
+from cairn.core.config import load_config, IconMappingConfig, get_all_onx_icons, save_user_mapping
 from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review, preview_sorted_order
@@ -268,19 +268,31 @@ def process_and_write_files(
                     part_name = f"{safe_name}_Waypoints_Part{i}"
                     output_path = output_dir / f"{part_name}.gpx"
                     # Pass sort=False since we already sorted and reversed
-                    file_size = write_gpx_waypoints(chunk, output_path, f"{folder_name} - Part {i}", sort=False)
+                    file_size = write_gpx_waypoints(
+                        chunk,
+                        output_path,
+                        f"{folder_name} - Part {i}",
+                        sort=False,
+                        config=config,
+                    )
                     output_files.append((f"{part_name}.gpx", "GPX (Waypoints)", len(chunk), file_size))
                     console.print(f"       ├── 📄 [green]{part_name}.gpx[/] ({len(chunk)} items)")
 
-                    if get_use_icon_name_prefix():
-                        summary_path = generate_summary_file(chunk, output_path, f"{folder_name} - Part {i}")
+                    if config and config.use_icon_name_prefix:
+                        summary_path = generate_summary_file(chunk, output_path, f"{folder_name} - Part {i}", config=config)
                         summary_size = summary_path.stat().st_size
                         output_files.append((summary_path.name, "Summary (Text)", len(chunk), summary_size))
                         console.print(f"       └── 📋 [blue]{summary_path.name}[/] (Icon reference)")
             else:
                 output_path = output_dir / f"{safe_name}_Waypoints.gpx"
                 # Pass sort=False since we already sorted and reversed
-                file_size = write_gpx_waypoints(write_order_waypoints, output_path, folder_name, sort=False)
+                file_size = write_gpx_waypoints(
+                    write_order_waypoints,
+                    output_path,
+                    folder_name,
+                    sort=False,
+                    config=config,
+                )
 
                 # Debug: Verify order after write
                 if logger.isEnabledFor(logging.DEBUG):
@@ -299,8 +311,8 @@ def process_and_write_files(
 
                 output_files.append((f"{safe_name}_Waypoints.gpx", "GPX (Waypoints)", len(write_order_waypoints), file_size))
 
-                if get_use_icon_name_prefix():
-                    summary_path = generate_summary_file(sorted_waypoints, output_path, folder_name)
+                if config and config.use_icon_name_prefix:
+                    summary_path = generate_summary_file(sorted_waypoints, output_path, folder_name, config=config)
                     summary_size = summary_path.stat().st_size
                     output_files.append((summary_path.name, "Summary (Text)", len(sorted_waypoints), summary_size))
 

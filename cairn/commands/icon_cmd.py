@@ -6,8 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
 
-from cairn.core.config import get_all_onx_icons
-from cairn.core.config_manager import ConfigManager
+from cairn.core.config import get_all_onx_icons, load_config, save_user_mapping, remove_user_mapping
 from cairn.core.mapper import get_icon_emoji
 
 app = typer.Typer()
@@ -66,9 +65,13 @@ def map_symbol(
     icon: str = typer.Argument(..., help="onX icon name")
 ):
     """Map a CalTopo symbol to an onX icon."""
-    config_mgr = ConfigManager()
+    valid_icons = get_all_onx_icons()
+    if icon not in valid_icons:
+        console.print(f"[red]✗[/] Invalid icon: {icon}")
+        console.print("[dim]Run 'cairn icon list' to see all available icons[/]")
+        raise typer.Exit(1)
     try:
-        config_mgr.add_mapping(symbol, icon)
+        save_user_mapping(symbol, icon)
         emoji = get_icon_emoji(icon)
         console.print(f"[green]✓[/] Mapped '[cyan]{symbol}[/]' → {emoji} '[green]{icon}[/]'")
     except ValueError as e:
@@ -79,16 +82,18 @@ def map_symbol(
 @app.command("unmap")
 def unmap_symbol(symbol: str = typer.Argument(..., help="CalTopo symbol")):
     """Remove a symbol mapping."""
-    config_mgr = ConfigManager()
-    config_mgr.remove_mapping(symbol)
-    console.print(f"[green]✓[/] Removed mapping for '[cyan]{symbol}[/]'")
+    removed = remove_user_mapping(symbol)
+    if removed:
+        console.print(f"[green]✓[/] Removed mapping for '[cyan]{symbol}[/]'")
+    else:
+        console.print(f"[yellow]No user mapping found for '[cyan]{symbol}[/]'[/]")
 
 
 @app.command("show")
 def show_mapping(symbol: str = typer.Argument(..., help="CalTopo symbol")):
     """Show current mapping for a symbol."""
-    config_mgr = ConfigManager()
-    mapping = config_mgr.get_mapping(symbol)
+    cfg = load_config()
+    mapping = cfg.symbol_map.get(symbol.lower())
     if mapping:
         emoji = get_icon_emoji(mapping)
         console.print(f"'[cyan]{symbol}[/]' → {emoji} '[green]{mapping}[/]'")

@@ -16,7 +16,7 @@ from rich.prompt import Prompt, Confirm
 
 from cairn.core.parser import ParsedData, ParsedFeature
 from cairn.core.mapper import map_icon
-from cairn.core.config import IconMappingConfig, get_all_onx_icons
+from cairn.core.config import IconMappingConfig, get_all_onx_icons, save_user_mapping
 from cairn.core.matcher import FuzzyIconMatcher
 
 console = Console()
@@ -217,8 +217,7 @@ def interactive_review(parsed_data: ParsedData, config: IconMappingConfig) -> tu
                     symbols = [wp['feature'].symbol for wp in waypoints if wp['feature'].symbol]
                     if symbols:
                         most_common = max(set(symbols), key=symbols.count)
-                        config_manager = __import__('config_manager').ConfigManager()
-                        config_manager.add_mapping(most_common, new_icon)
+                        save_user_mapping(most_common, new_icon)
                         console.print(f"[green]✓[/] Updated mapping: {most_common} → {new_icon}")
                         changes_made = True
             elif action == "s":
@@ -256,7 +255,7 @@ def prompt_for_new_icon(current_icon: str) -> Optional[str]:
 
         if choice.lower() == "browse":
             # Show all icons
-            from main import browse_all_icons
+            from cairn.commands.icon_cmd import browse_all_icons
             return browse_all_icons()
 
         # Validate icon name
@@ -307,7 +306,7 @@ def show_mapping_preview(parsed_data: ParsedData, config: IconMappingConfig):
         # Show up to 10 waypoints
         for waypoint in folder_data["waypoints"][:10]:
             icon = map_icon(waypoint.title, waypoint.description or "", waypoint.symbol, config)
-            from mapper import get_icon_emoji
+            from cairn.core.mapper import get_icon_emoji
             emoji = get_icon_emoji(icon)
             console.print(f"  {emoji} {waypoint.title[:50]} → [yellow]{icon}[/]")
 

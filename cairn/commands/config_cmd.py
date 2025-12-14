@@ -5,10 +5,11 @@ from typing import Optional
 import typer
 from rich.console import Console
 import re
+import yaml
 
 from cairn.core.config import load_config, get_all_onx_icons
-from cairn.core.config_manager import ConfigManager
 from cairn.core.mapper import get_icon_emoji
+from cairn.core.color_mapper import ColorMapper
 
 app = typer.Typer()
 console = Console()
@@ -25,6 +26,9 @@ def show():
     console.print(f"  Keyword mappings: [cyan]{summary['keyword_mappings_count']}[/]")
     console.print(f"  Unique onX icons: [cyan]{summary['unique_onx_icons']}[/]")
     console.print(f"  Unmapped detection: [cyan]{'Enabled' if summary['unmapped_detection_enabled'] else 'Disabled'}[/]")
+    console.print(f"  Icon name prefixes: [cyan]{'Enabled' if summary.get('use_icon_name_prefix') else 'Disabled'}[/]")
+    console.print(f"  Default icon: [cyan]{summary.get('default_icon', 'Location')}[/]")
+    console.print(f"  Default color: [cyan]{summary.get('default_color', 'rgba(8,122,255,1)')}[/]")
 
     console.print("\n[bold]Available onX Icons:[/]")
     unique_icons = sorted(set(cfg.symbol_map.values()))
@@ -67,19 +71,38 @@ def set_default_icon(icon: str = typer.Argument(..., help="Icon name")):
         console.print("[dim]Run 'cairn icon list' to see all available icons[/]")
         raise typer.Exit(1)
 
-    config_mgr = ConfigManager()
-    config_mgr.set_default_icon(icon)
-    console.print(f"[bold green]✔[/] Default icon set to: [cyan]{icon}[/]")
+    config_path = Path("cairn_config.yaml")
+    if config_path.exists():
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    else:
+        data = {}
+    data["default_icon"] = icon
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    console.print(f"[bold green]✔[/] Default icon set to: [cyan]{icon}[/] (saved to {config_path})")
 
 
 @app.command("set-default-color")
 def set_default_color(color: str = typer.Argument(..., help="Color in rgba format")):
     """Set default color."""
-    if not re.match(r'rgba\(\d+,\s*\d+,\s*\d+,\s*[\d.]+\)', color):
+    # Keep the old rgba(...) hint, but accept hex/rgb/etc and quantize to an official waypoint color.
+    if not (color.startswith("#") or color.lower().startswith(("rgb", "rgba")) or re.fullmatch(r"[0-9a-fA-F]{6}", color or "")):
         console.print(f"[bold red]❌ Error:[/] Invalid color format")
-        console.print("[dim]Expected format: rgba(r,g,b,a) e.g. rgba(255,0,0,1)[/]")
+        console.print("[dim]Expected rgba(r,g,b,a) or #RRGGBB or RRGGBB[/]")
         raise typer.Exit(1)
 
-    config_mgr = ConfigManager()
-    config_mgr.set_default_color(color)
-    console.print(f"[bold green]✔[/] Default color set to: [cyan]{color}[/]")
+    onx_color = ColorMapper.map_waypoint_color(color)
+
+    config_path = Path("cairn_config.yaml")
+    if config_path.exists():
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    else:
+        data = {}
+
+    data["default_color"] = onx_color
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+    console.print(f"[bold green]✔[/] Default color set to: [cyan]{onx_color}[/] (saved to {config_path})")

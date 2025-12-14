@@ -9,7 +9,7 @@ This document provides a quick reference for color values used in Cairn for OnX 
 OnX Backcountry uses **different color systems** for tracks vs waypoints:
 
 - **Tracks**: Use OnX's custom color palette (brighter, more saturated colors)
-- **Waypoints**: Use CSS standard colors (simpler RGB values)
+- **Waypoints**: Support **only 10 official colors** (fixed RGBA values)
 
 ## Color Value Tables
 
@@ -28,39 +28,26 @@ OnX Backcountry uses **different color systems** for tracks vs waypoints:
 | Pink | `rgba(255,55,95,1)` | RGB(255, 55, 95) | `#FF375F` | 🌸 Bright pink |
 | Teal | `rgba(90,200,250,1)` | RGB(90, 200, 250) | `#5AC8FA` | 🔷 Bright teal |
 
-### Waypoint Colors (CSS Standard)
+### Waypoint Colors (Official 10-color Palette)
 
-| Color Name | RGBA Value | RGB | Hex | Visual | Status |
-|------------|------------|-----|-----|--------|--------|
-| Red | `rgba(255,0,0,1)` | RGB(255, 0, 0) | `#FF0000` | 🔴 Pure red | ✅ Updated |
-| Blue | `rgba(0,0,255,1)` | RGB(0, 0, 255) | `#0000FF` | 🔵 Pure blue | ✅ Updated |
-| Green | `rgba(0,128,0,1)` | RGB(0, 128, 0) | `#008000` | 🟢 Standard green | ✅ Updated |
-| Orange | `rgba(255,165,0,1)` | RGB(255, 165, 0) | `#FFA500` | 🟠 CSS orange | ✅ Updated |
-| Purple | `rgba(128,0,128,1)` | RGB(128, 0, 128) | `#800080` | 🟣 CSS purple | ✅ **Confirmed** |
-| Yellow | `rgba(255,255,0,1)` | RGB(255, 255, 0) | `#FFFF00` | 🟡 Pure yellow | ✅ Updated |
-| Cyan | `rgba(0,255,255,1)` | RGB(0, 255, 255) | `#00FFFF` | 🔷 Pure cyan | ✅ Updated |
-| Magenta | `rgba(255,0,255,1)` | RGB(255, 0, 255) | `#FF00FF` | 💗 Pure magenta | ✅ Updated |
-| Pink | `rgba(255,192,203,1)` | RGB(255, 192, 203) | `#FFC0CB` | 🌸 CSS pink | ✅ Updated |
-| Teal | `rgba(0,128,128,1)` | RGB(0, 128, 128) | `#008080` | 🔷 CSS teal | ✅ Updated |
+These 10 values are the **only** waypoint colors onX Backcountry supports reliably on import:
 
-**Note:** Purple (`rgba(128,0,128,1)`) is the only color confirmed through export testing. The others are CSS standard values that OnX likely uses.
+| # | Color Name | RGBA Value | Hex |
+|---|------------|------------|-----|
+| 1 | Red-Orange | `rgba(255,51,0,1)` | `#FF3300` |
+| 2 | Blue | `rgba(8,122,255,1)` | `#087AFF` |
+| 3 | Cyan | `rgba(0,255,255,1)` | `#00FFFF` |
+| 4 | Lime | `rgba(132,212,0,1)` | `#84D400` |
+| 5 | Black | `rgba(0,0,0,1)` | `#000000` |
+| 6 | White | `rgba(255,255,255,1)` | `#FFFFFF` |
+| 7 | Purple | `rgba(128,0,128,1)` | `#800080` |
+| 8 | Yellow | `rgba(255,255,0,1)` | `#FFFF00` |
+| 9 | Red | `rgba(255,0,0,1)` | `#FF0000` |
+| 10 | Brown | `rgba(139,69,19,1)` | `#8B4513` |
 
-## Color Conversion Table
+**Important:** Track colors and waypoint colors are different systems. **Only Blue uses the same RGBA value for tracks and waypoints.**
 
-For quick reference when converting from OnX track colors to waypoint colors:
-
-| From (Track Palette) | To (Waypoint CSS) | Color |
-|---------------------|-------------------|-------|
-| `rgba(255,59,48,1)` | `rgba(255,0,0,1)` | Red |
-| `rgba(8,122,255,1)` | `rgba(0,0,255,1)` | Blue |
-| `rgba(52,199,89,1)` | `rgba(0,128,0,1)` | Green |
-| `rgba(255,149,0,1)` | `rgba(255,165,0,1)` | Orange |
-| `rgba(175,82,222,1)` | `rgba(128,0,128,1)` | Purple ✅ |
-| `rgba(255,204,0,1)` | `rgba(255,255,0,1)` | Yellow |
-| `rgba(50,173,230,1)` | `rgba(0,255,255,1)` | Cyan |
-| `rgba(255,45,85,1)` | `rgba(255,0,255,1)` | Magenta |
-| `rgba(255,55,95,1)` | `rgba(255,192,203,1)` | Pink |
-| `rgba(90,200,250,1)` | `rgba(0,128,128,1)` | Teal |
+For full details (including picker layout), see [`docs/onx-waypoint-colors-definitive.md`](onx-waypoint-colors-definitive.md).
 
 ## Test Files
 
@@ -68,8 +55,7 @@ For quick reference when converting from OnX track colors to waypoint colors:
 
 - **[`tests/fixtures/rattlesnake_test_waypoints.gpx`](../tests/fixtures/rattlesnake_test_waypoints.gpx)**
   - 34 waypoints with all icon types
-  - Uses CSS standard colors for waypoints
-  - Updated to use correct color values
+  - Uses the official 10-color waypoint palette
 
 - **[`tests/fixtures/rattlesnake_test_tracks.gpx`](../tests/fixtures/rattlesnake_test_tracks.gpx)**
   - 10 tracks with different colors
@@ -93,8 +79,8 @@ track_color = "rgba(255,59,48,1)"  # Bright red for tracks
 
 ### For Waypoints
 ```python
-# Use CSS standard colors
-waypoint_color = "rgba(255,0,0,1)"  # Pure red for waypoints
+# Use ONLY the official 10 waypoint colors (see docs/onx-waypoint-colors-definitive.md)
+waypoint_color = "rgba(255,0,0,1)"  # Red (official waypoint palette)
 ```
 
 ## Related Documentation
@@ -114,6 +100,5 @@ waypoint_color = "rgba(255,0,0,1)"  # Pure red for waypoints
 ## Changelog
 
 - **2025-12-13**: Initial documentation
-- **2025-12-13**: Confirmed purple waypoint color `rgba(128,0,128,1)` through export testing
-- **2025-12-13**: Updated test waypoints file to use CSS standard colors
-- **2025-12-13**: Created color testing file for verification
+- **2025-12-13**: Added track palette reference table
+- **2025-12-13**: Superseded by definitive waypoint palette measurements

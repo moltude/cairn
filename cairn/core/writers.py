@@ -16,7 +16,7 @@ from datetime import datetime
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon, map_color
 from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_onx
-from cairn.core.config import get_icon_color, get_use_icon_name_prefix
+from cairn.core.config import IconMappingConfig, get_icon_color
 from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_to_weight
 
 # Register the onX namespace (note: 4 'w's is required)
@@ -102,7 +102,13 @@ def log_waypoint_order(features: List[ParsedFeature], label: str = "Waypoint ord
         logger.debug(f"  ... and {len(features) - max_items} more waypoints")
 
 
-def format_waypoint_name(original_name: str, icon_type: str) -> str:
+def format_waypoint_name(
+    original_name: str,
+    icon_type: str,
+    *,
+    use_prefix: bool,
+    default_icon: str = "Location",
+) -> str:
     """
     Format waypoint name with optional icon prefix based on config,
     and sanitize for OnX sorting compatibility.
@@ -114,10 +120,7 @@ def format_waypoint_name(original_name: str, icon_type: str) -> str:
     Returns:
         Formatted and sanitized name
     """
-    # Check if we should add icon prefixes
-    use_prefix = get_use_icon_name_prefix()
-
-    if use_prefix and icon_type != "Waypoint":
+    if use_prefix and icon_type != default_icon:
         # Add icon type prefix for non-default icons
         name_with_prefix = f"{icon_type} - {original_name}"
     else:
@@ -178,9 +181,14 @@ def verify_sanitization_preserves_sort_order(original_names: List[str], sanitize
     return True
 
 
-def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
-                        folder_name: str, sort: bool = True,
-                        add_timestamps: bool = False) -> int:
+def write_gpx_waypoints(
+    features: List[ParsedFeature],
+    output_path: Path,
+    folder_name: str,
+    sort: bool = True,
+    add_timestamps: bool = False,
+    config: Optional[IconMappingConfig] = None,
+) -> int:
     """
     Write waypoints to a GPX file with onX namespace extensions.
 
@@ -224,14 +232,19 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
 
         lat, lon = feature.coordinates[1], feature.coordinates[0]
 
-        # Map the icon
-        mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol)
+        # Map the icon (respect user config if provided)
+        mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol, config)
 
         # Track original title for verification
         original_titles.append(feature.title)
 
-        # Format the name (includes sanitization)
-        formatted_name = format_waypoint_name(feature.title, mapped_icon)
+        # Format the name (optional icon prefix + sanitization)
+        formatted_name = format_waypoint_name(
+            feature.title,
+            mapped_icon,
+            use_prefix=bool(getattr(config, "use_icon_name_prefix", False)),
+            default_icon=(getattr(config, "default_icon", "Location") if config else "Location"),
+        )
         sanitized_titles.append(formatted_name)
 
         # Escape XML special characters
@@ -259,9 +272,17 @@ def write_gpx_waypoints(features: List[ParsedFeature], output_path: Path,
         lines.append(f'    <extensions>')
         lines.append(f'      <onx:icon>{mapped_icon}</onx:icon>')
 
-        # Get color - use icon's default color
-        # Only transform if feature has a custom color from CalTopo
-        onx_color = get_icon_color(mapped_icon)
+        # Waypoint color policy:
+        # - If CalTopo provided a marker color, preserve intent but quantize to one of
+        #   onX's official 10 waypoint colors (onX ignores unsupported values).
+        # - Otherwise, fall back to a default color per icon type.
+        if feature.color:
+            onx_color = ColorMapper.map_waypoint_color(feature.color)
+        else:
+            onx_color = get_icon_color(
+                mapped_icon,
+                default=(config.default_color if config else ColorMapper.DEFAULT_WAYPOINT_COLOR),
+            )
 
         lines.append(f'      <onx:color>{onx_color}</onx:color>')
         lines.append(f'    </extensions>')
@@ -463,8 +484,12 @@ def write_kml_shapes(features: List[ParsedFeature], output_path: Path,
     return output_path.stat().st_size
 
 
-def generate_summary_file(features: List[ParsedFeature], output_path: Path,
-                         folder_name: str) -> Path:
+def generate_summary_file(
+    features: List[ParsedFeature],
+    output_path: Path,
+    folder_name: str,
+    config: Optional[IconMappingConfig] = None,
+) -> Path:
     """
     Generate a summary.txt file listing waypoints organized by icon type.
     Only generated if use_icon_name_prefix is True.
@@ -483,9 +508,14 @@ def generate_summary_file(features: List[ParsedFeature], output_path: Path,
     icon_groups = defaultdict(list)
 
     for feature in features:
-        icon_name = map_icon(feature.title, feature.description or "", feature.symbol)
+        icon_name = map_icon(feature.title, feature.description or "", feature.symbol, config)
         # Format name as it will appear in GPX
-        display_name = format_waypoint_name(feature.title, icon_name)
+        display_name = format_waypoint_name(
+            feature.title,
+            icon_name,
+            use_prefix=bool(getattr(config, "use_icon_name_prefix", False)),
+            default_icon=(getattr(config, "default_icon", "Location") if config else "Location"),
+        )
         icon_groups[icon_name].append(display_name)
 
     # Generate summary content

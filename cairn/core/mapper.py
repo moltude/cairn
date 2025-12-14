@@ -6,8 +6,9 @@ to onX Backcountry's specific icon IDs for better visual representation.
 """
 
 from typing import Optional
-import re
-from cairn.core.config import IconMappingConfig
+
+from cairn.core.config import GENERIC_SYMBOLS, IconMappingConfig
+from cairn.core.icon_resolver import IconResolver
 
 
 # Fallback keyword mapping (when no config provided)
@@ -24,6 +25,13 @@ ICON_MAP = {
     "View": ["view", "viewpoint", "vista", "overlook", "scenic"],
     "Cabin": ["cabin", "hut", "yurt"],
 }
+
+_LEGACY_RESOLVER = IconResolver(
+    symbol_map={},
+    keyword_map=ICON_MAP,
+    default_icon="Location",
+    generic_symbols=set(),
+)
 
 
 def map_icon(title: str, description: str = "", caltopo_symbol: str = "",
@@ -46,44 +54,29 @@ def map_icon(title: str, description: str = "", caltopo_symbol: str = "",
         The onX Backcountry icon ID (e.g., "Campsite", "Water Source")
         Defaults to "Location" if no match is found.
     """
-    # Use config-based mapping if available
-    if config:
-        # 1. PRIORITY: Check CalTopo marker-symbol first
-        if caltopo_symbol:
-            # Normalize symbol (remove prefixes like "circle-", extract base)
-            normalized_symbol = caltopo_symbol.lower().strip()
+    # Config-based mode (preferred): use an explainable resolver and cache it on the config instance.
+    if config is not None:
+        resolver = getattr(config, "_icon_resolver", None)
+        if resolver is None:
+            resolver = IconResolver(
+                symbol_map=config.symbol_map,
+                keyword_map=config.keyword_map,
+                default_icon=config.default_icon,
+                generic_symbols=set(GENERIC_SYMBOLS),
+            )
+            setattr(config, "_icon_resolver", resolver)
 
-            # Check direct match
-            if normalized_symbol in config.symbol_map:
-                return config.symbol_map[normalized_symbol]
+        decision = resolver.resolve(title, description or "", caltopo_symbol or "")
 
-            # Check if symbol contains a mapped keyword
-            for symbol_key, icon_id in config.symbol_map.items():
-                if symbol_key in normalized_symbol:
-                    return icon_id
+        # Track unmapped symbols for reporting (even if keywords matched).
+        symbol_norm = (caltopo_symbol or "").strip().lower()
+        if symbol_norm and symbol_norm not in GENERIC_SYMBOLS and symbol_norm not in config.symbol_map:
+            config.track_unmapped(symbol_norm, title)
 
-        # 2. FALLBACK: Check keywords in title/description
-        search_text = f"{title} {description}".lower()
-        for icon_id, keywords in config.keyword_map.items():
-            for keyword in keywords:
-                if keyword.lower() in search_text:
-                    return icon_id
+        return decision.icon
 
-        # Track unmapped symbol for reporting
-        if caltopo_symbol:
-            config.track_unmapped(caltopo_symbol, title)
-
-        # 3. DEFAULT - "Location" is onX's default icon name (confirmed from GPX analysis)
-        return "Location"
-
-    # Legacy mode (no config) - use old keyword-only matching
-    search_text = f"{title} {description} {caltopo_symbol}".lower()
-    for icon_id, keywords in ICON_MAP.items():
-        for keyword in keywords:
-            if keyword.lower() in search_text:
-                return icon_id
-
-    return "Location"
+    # Legacy mode (no config): keep behavior close to the old keyword-only mapping.
+    return _LEGACY_RESOLVER.resolve(title, description or "", caltopo_symbol or "").icon
 
 
 def map_color(caltopo_color: str) -> str:
