@@ -39,17 +39,17 @@ Enter
 # Prompt: KML path
 Type "demo/onx-to-caltopo/onx-export/onx-export.kml"
 Enter
-Sleep 1s
+Sleep 2s
 
 # Prompt: output directory
 Type "demo/onx-to-caltopo/caltopo-ready/tape-run"
 Enter
-Sleep 1s
+Sleep 2s
 
 # Prompt: base filename
 Type "caltopo-map"
 Enter
-Sleep 5s
+Sleep 2s
 
 # Show summary excerpt
 Type "sed -n '1,25p' demo/onx-to-caltopo/caltopo-ready/tape-run/caltopo-map_SUMMARY.md"
@@ -57,6 +57,5 @@ Enter
 Sleep 5s
 
 # Final message
-Ctrl+L
-Type "# Import caltopo-map.json into CalTopo"
+Type "# Ready to import caltopo-map.json into CalTopo"
 Sleep 5s

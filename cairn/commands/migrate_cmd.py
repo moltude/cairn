@@ -1,10 +1,13 @@
-"""
+"""\
 Migration-focused CLI commands.
 
 These are thin wrappers around the conversion pipeline that prioritize:
 - clear intent (one command per migration direction)
 - sensible defaults (dedupe on, polygon preference)
 - predictable output locations and filenames
+
+This module is intentionally UX-focused: interactive prompting, progress output,
+and a clean summary of generated artifacts.
 """
 
 from __future__ import annotations
@@ -33,53 +36,50 @@ app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 
-def _prompt_existing_path(
-    label: str,
-    *,
-    default: Optional[Path] = None,
-    expected_suffix: Optional[str] = None,
-) -> Path:
-    while True:
-        entered = typer.prompt(label, default=str(default) if default is not None else None)
-        p = Path(str(entered)).expanduser()
-        if expected_suffix is not None and p.suffix.lower() != expected_suffix.lower():
-            console.print(f"[bold red]Expected a {expected_suffix} file:[/] {p}")
-            continue
-        if p.exists():
-            return p
-        console.print(f"[bold red]File not found:[/] {p}")
-
-
 def _display_path(p: Path) -> str:
-    """
-    Display-friendly path for CLI output.
-
-    Preference order:
-    - relative path from CWD when possible
-    - otherwise just the basename
-    """
+    """Prefer a relative path; fall back to filename."""
     try:
-        rel = p.resolve().relative_to(Path.cwd().resolve())
-        return str(rel)
+        return str(p.resolve().relative_to(Path.cwd().resolve()))
     except Exception:
         return p.name
 
 
+def _prompt_existing_path(label: str, *, expected_suffix: str) -> Path:
+    """Prompt until the user enters an existing path with the expected suffix."""
+    while True:
+        entered = typer.prompt(label).strip()
+        p = Path(entered).expanduser()
+        if p.suffix.lower() != expected_suffix.lower():
+            console.print(f"[bold red]Expected a {expected_suffix} file:[/] {p}")
+            continue
+        if not p.exists():
+            console.print(f"[bold red]File not found:[/] {p}")
+            continue
+        return p
+
+
+def _validate_existing_file(value: Optional[Path], *, expected_suffix: str, label: str) -> Optional[Path]:
+    if value is None:
+        return None
+    p = value.expanduser()
+    if p.suffix.lower() != expected_suffix.lower():
+        raise typer.BadParameter(f"Expected a {expected_suffix} file: {p}")
+    if not p.exists():
+        raise typer.BadParameter(f"{label} file not found: {p}")
+    return p
+
+
 @app.command("onx-to-caltopo")
 def onx_to_caltopo(
-    gpx_arg: Optional[Path] = typer.Argument(
-        None,
-        help="onX GPX export (.gpx) (deprecated: pass as --gpx)",
-    ),
-    gpx_file: Optional[Path] = typer.Option(
+    gpx: Optional[Path] = typer.Option(
         None,
         "--gpx",
-        help="onX GPX export (.gpx)",
+        help="onX GPX export (.gpx). If omitted, Cairn will prompt.",
     ),
     kml: Optional[Path] = typer.Option(
         None,
         "--kml",
-        help="onX KML export (.kml). Required for best fidelity (polygons/areas).",
+        help="onX KML export (.kml). Required. If omitted, Cairn will prompt.",
     ),
     output_dir: Path = typer.Option(
         Path("./caltopo_ready"),
@@ -122,44 +122,27 @@ def onx_to_caltopo(
     - <name>_SUMMARY.md (human-readable explanation of dedup choices)
     - <name>_trace.jsonl (trace log; default enabled)
     """
-    if gpx_arg is not None and gpx_file is not None and gpx_arg != gpx_file:
-        raise typer.BadParameter("Provide GPX via positional argument OR --gpx (not both).")
 
-    interactive = (gpx_file is None and gpx_arg is None)
+    # Only prompt for the full set of inputs when the user runs the command "bare".
+    interactive = gpx is None and kml is None and name is None
 
-    # Interactive prompts when not provided.
-    gpx = gpx_file or gpx_arg
-    if gpx is None:
-        gpx = _prompt_existing_path("Path to onX GPX export", expected_suffix=".gpx")
-    else:
-        gpx = gpx.expanduser()
-        if gpx.suffix.lower() != ".gpx":
-            raise typer.BadParameter(f"Expected a .gpx file: {gpx}")
-        if not gpx.exists():
-            raise typer.BadParameter(f"GPX file not found: {gpx}")
+    gpx = _validate_existing_file(gpx, expected_suffix=".gpx", label="GPX")
+    kml = _validate_existing_file(kml, expected_suffix=".kml", label="KML")
 
-    # KML is required (for polygons/areas). Prompt if missing.
-    if kml is None:
-        kml = _prompt_existing_path("Path to onX KML export", expected_suffix=".kml")
-    kml = kml.expanduser()
-    if kml.suffix.lower() != ".kml":
-        raise typer.BadParameter(f"Expected a .kml file: {kml}")
-    if not kml.exists():
-        raise typer.BadParameter(f"KML file not found: {kml}")
-
-    # Prompt for outputs (with sensible defaults) when running interactively.
     if interactive:
+        console.print("\n[bold]onX → CalTopo migration[/]\n")
+        gpx = _prompt_existing_path("Path to onX GPX export", expected_suffix=".gpx")
+        kml = _prompt_existing_path("Path to onX KML export", expected_suffix=".kml")
         output_dir = Path(typer.prompt("Output directory", default=str(output_dir))).expanduser()
+        name = typer.prompt("Output base filename, no extension", default=gpx.stem).strip() or gpx.stem
+    else:
+        # In non-interactive mode, enforce required inputs.
+        if gpx is None:
+            raise typer.BadParameter("Missing --gpx (path/to/export.gpx)")
+        if kml is None:
+            raise typer.BadParameter("Missing --kml (path/to/export.kml)")
 
-    output_dir = output_dir.expanduser()
     out_dir = ensure_output_dir(output_dir)
-
-    default_name = gpx.stem
-    if name is None and interactive:
-        name = typer.prompt("Output base filename, no extension", default=default_name).strip() or default_name
-    elif name is None:
-        name = default_name
-
     base = (name or gpx.stem).strip() or gpx.stem
 
     primary_path = out_dir / f"{base}.json"
@@ -179,7 +162,7 @@ def onx_to_caltopo(
     try:
         if trace_ctx:
             trace_ctx.emit({"event": "run.start", "command": "migrate.onx-to-caltopo"})
-        steps_total = 7
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -188,7 +171,7 @@ def onx_to_caltopo(
             TimeElapsedColumn(),
             console=console,
         ) as progress:
-            task = progress.add_task("Migrating onX → CalTopo", total=steps_total)
+            task = progress.add_task("Migrating onX → CalTopo", total=7)
 
             progress.update(task, description="Reading GPX")
             doc = read_onx_gpx(gpx, trace=trace_ctx)
@@ -211,14 +194,13 @@ def onx_to_caltopo(
                 wp_report = apply_waypoint_dedup(doc, trace=trace_ctx)
                 if trace_ctx and wp_report is not None:
                     trace_ctx.emit({"event": "dedup.report", **dedup_inventory(wp_report)})
-                progress.advance(task)
             else:
                 progress.update(task, description="Skipping waypoint dedup")
-                progress.advance(task)
+            progress.advance(task)
 
+            progress.update(task, description="Deduplicating shapes")
             shape_report = None
             dropped_items = []
-            progress.update(task, description="Deduplicating shapes")
             if dedupe_shapes:
                 shape_report, dropped_items = apply_shape_dedup(doc, trace=trace_ctx)
             progress.advance(task)
@@ -241,7 +223,7 @@ def onx_to_caltopo(
                 primary_geojson_path=primary_path,
                 dropped_geojson_path=dropped_shapes_path,
                 gpx_path=gpx,
-                kml_path=(kml or ""),
+                kml_path=kml,
                 waypoint_dedup_dropped=(wp_report.dropped_count if wp_report is not None else 0),
             )
             progress.advance(task)
