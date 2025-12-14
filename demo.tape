@@ -15,7 +15,7 @@ Set Height 650
 Hide
 Type "export PS1='➜ '"
 Enter
-Type "cd \"$(git rev-parse --show-toplevel)\""
+Type 'cd "$(git rev-parse --show-toplevel)"'
 Enter
 Type "clear"
 Enter
