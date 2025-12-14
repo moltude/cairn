@@ -10,7 +10,7 @@ This tool started as an experiment and it surfaced a number of challenges. I’m
 
 ### What this tool is for
 
-I’m an advocate for open data and platform-agnostic exchange formats (GPX, KML, GeoJSON). In theory, that should make it easy to move between map platforms. In practice, each platform:
+In theory, these formats should make it easy to move between map platforms. In practice, each platform:
 
 - supports only a subset of each format
 - adds proprietary fields or extensions
@@ -85,7 +85,7 @@ If any of my assumptions are wrong, I want to know — the goal is a faithful mi
 
 ## Challenges I found migrating from CalTopo → onX (secondary)
 
-I still care provening out migration in both directions, but in practice **CalTopo → onX** is harder to make “high fidelity” because of how onX behaves on import and in the UI.
+I still care about proving out migration in both directions, but in practice **CalTopo → onX** is harder to make “high fidelity” because of how onX behaves on import and in the UI.
 
 Here are the blockers I ran into (stated plainly, not as criticism):
 

@@ -574,7 +574,11 @@ def convert(
     )
 ):
     """
-    Convert a CalTopo GeoJSON export to onX Backcountry format.
+    Convert between supported formats.
+
+    For the onX → CalTopo migration workflow, prefer:
+
+      cairn migrate onx-to-caltopo ...
 
     This tool will:
 
