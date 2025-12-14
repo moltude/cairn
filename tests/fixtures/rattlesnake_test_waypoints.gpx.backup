@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Cairn Test Suite">
+<metadata>
+<name>Rattlesnake Wilderness Test Waypoints</name>
+<desc>Comprehensive test file with all OnX icon types for import verification</desc>
+</metadata>
+
+<!-- CAMPING ICONS (5 types) -->
+<wpt lat="47.020000" lon="-113.500000">
+<name>Campsite - Alpine Meadow (Red)</name>
+<desc>Beautiful alpine meadow campsite with mountain views. Flat terrain, good drainage, protected from wind.</desc>
+<extensions>
+<onx:color>rgba(255,59,48,1)</onx:color>
+<onx:icon>Campsite</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.025000" lon="-113.505000">
+<name>Camp - Lakeside Spot (Blue)</name>
+<desc>Established camp area near Stuart Peak Lake. Fire ring present, bear box available.</desc>
+<extensions>
+<onx:color>rgba(8,122,255,1)</onx:color>
+<onx:icon>Camp</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.030000" lon="-113.510000">
+<name>Camp Backcountry - Remote Basin (Green)</name>
+<desc>Primitive backcountry camp in remote basin. No facilities, Leave No Trace principles essential.</desc>
+<extensions>
+<onx:color>rgba(52,199,89,1)</onx:color>
+<onx:icon>Camp Backcountry</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.035000" lon="-113.515000">
+<name>Camp Area - Ridge Camping Zone (Orange)</name>
+<desc>Designated camping area along ridge. Multiple tent sites available, dispersed camping allowed.</desc>
+<extensions>
+<onx:color>rgba(255,149,0,1)</onx:color>
+<onx:icon>Camp Area</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.040000" lon="-113.520000">
+<name>Campground - Rattlesnake Rec Area (Purple)</name>
+<desc>Developed campground with 15 sites. Vault toilets, picnic tables, potable water available May-October.</desc>
+<extensions>
+<onx:color>rgba(175,82,222,1)</onx:color>
+<onx:icon>Campground</onx:icon>
+</extensions>
+</wpt>
+
+<!-- WATER ICONS (5 types) -->
+<wpt lat="47.045000" lon="-113.525000">
+<name>Water Source - Spring Creek (Yellow)</name>
+<desc>Reliable spring-fed creek. Year-round flow, filter/treat before drinking. Easy access from trail.</desc>
+<extensions>
+<onx:color>rgba(255,204,0,1)</onx:color>
+<onx:icon>Water Source</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.050000" lon="-113.530000">
+<name>Waterfall - Cascade Falls (Cyan)</name>
+<desc>Spectacular 80-foot waterfall. Best flow in spring and early summer. Mist creates rainbow on sunny days.</desc>
+<extensions>
+<onx:color>rgba(50,173,230,1)</onx:color>
+<onx:icon>Waterfall</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.055000" lon="-113.535000">
+<name>Hot Spring - Wilderness Soak (Magenta)</name>
+<desc>Natural hot spring pool. Temperature ~102°F. Primitive setting, pack out all trash.</desc>
+<extensions>
+<onx:color>rgba(255,45,85,1)</onx:color>
+<onx:icon>Hot Spring</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.060000" lon="-113.540000">
+<name>Potable Water - Trailhead Spigot (Pink)</name>
+<desc>Treated water spigot at trailhead. Seasonal availability May-September. No treatment needed.</desc>
+<extensions>
+<onx:color>rgba(255,55,95,1)</onx:color>
+<onx:icon>Potable Water</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.065000" lon="-113.545000">
+<name>Water Crossing - Rattlesnake Ford (Teal)</name>
+<desc>Creek ford crossing. Knee-deep in spring, ankle-deep late summer. Rock hop possible when low.</desc>
+<extensions>
+<onx:color>rgba(90,200,250,1)</onx:color>
+<onx:icon>Water Crossing</onx:icon>
+</extensions>
+</wpt>
+
+<!-- TRANSPORTATION ICONS (4 types) -->
+<wpt lat="47.070000" lon="-113.550000">
+<name>Parking - Main Trailhead Lot (Red)</name>
+<desc>Large paved parking area. 30 spaces, vault toilet, info kiosk. Northwest Forest Pass required.</desc>
+<extensions>
+<onx:color>rgba(255,59,48,1)</onx:color>
+<onx:icon>Parking</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.075000" lon="-113.555000">
+<name>Trailhead - Rattlesnake Trail #515 (Blue)</name>
+<desc>Primary trailhead for Rattlesnake Wilderness. Well-maintained trail, moderate difficulty, 12 miles to summit.</desc>
+<extensions>
+<onx:color>rgba(8,122,255,1)</onx:color>
+<onx:icon>Trailhead</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.080000" lon="-113.560000">
+<name>4x4 - High Clearance Access (Green)</name>
+<desc>4x4 road access point. High clearance required, rough road conditions. Impassable when wet.</desc>
+<extensions>
+<onx:color>rgba(52,199,89,1)</onx:color>
+<onx:icon>4x4</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.085000" lon="-113.565000">
+<name>ATV - ORV Trail Junction (Orange)</name>
+<desc>ATV/OHV trail intersection. Motorized use allowed on designated routes only. Stay on trail.</desc>
+<extensions>
+<onx:color>rgba(255,149,0,1)</onx:color>
+<onx:icon>ATV</onx:icon>
+</extensions>
+</wpt>
+
+<!-- WINTER SPORTS ICONS (6 types) -->
+<wpt lat="47.090000" lon="-113.570000">
+<name>XC Skiing - Nordic Loop Start (Purple)</name>
+<desc>Cross-country ski loop trailhead. 8km groomed trail, classic and skate lanes. Warming hut at midpoint.</desc>
+<extensions>
+<onx:color>rgba(175,82,222,1)</onx:color>
+<onx:icon>XC Skiing</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.095000" lon="-113.575000">
+<name>Ski - Downhill Run Top (Yellow)</name>
+<desc>Top of backcountry ski descent. 1,200 vertical feet, northeast aspect. Best conditions December-March.</desc>
+<extensions>
+<onx:color>rgba(255,204,0,1)</onx:color>
+<onx:icon>Ski</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.100000" lon="-113.580000">
+<name>Ski Touring - Alpine Route (Cyan)</name>
+<desc>Ski touring route through alpine terrain. Avalanche terrain, proper equipment and training required.</desc>
+<extensions>
+<onx:color>rgba(50,173,230,1)</onx:color>
+<onx:icon>Ski Touring</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.105000" lon="-113.585000">
+<name>Skin Track - Ridge Ascent (Magenta)</name>
+<desc>Established skin track up ridge. Gradual grade, good for beginners. Watch for cornices at top.</desc>
+<extensions>
+<onx:color>rgba(255,45,85,1)</onx:color>
+<onx:icon>Skin Track</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.110000" lon="-113.590000">
+<name>Snowboarder - Powder Bowl (Pink)</name>
+<desc>Epic powder bowl for snowboarding. North-facing aspect holds snow well. Tree skiing options below.</desc>
+<extensions>
+<onx:color>rgba(255,55,95,1)</onx:color>
+<onx:icon>Snowboarder</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.115000" lon="-113.595000">
+<name>Snowmobile - Sled Parking Area (Teal)</name>
+<desc>Snowmobile staging area. Groomed trails access backcountry. Respect wilderness boundaries.</desc>
+<extensions>
+<onx:color>rgba(90,200,250,1)</onx:color>
+<onx:icon>Snowmobile</onx:icon>
+</extensions>
+</wpt>
+
+<!-- TERRAIN ICONS (2 types) -->
+<wpt lat="47.120000" lon="-113.500000">
+<name>Summit - Rattlesnake Peak (Red)</name>
+<desc>Rattlesnake Peak summit, elevation 8,620 feet. 360-degree views of Mission Mountains and Missoula Valley.</desc>
+<extensions>
+<onx:color>rgba(255,59,48,1)</onx:color>
+<onx:icon>Summit</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.125000" lon="-113.505000">
+<name>Cave - Limestone Cavern (Blue)</name>
+<desc>Small limestone cave. 20 feet deep, low ceiling. Headlamp required. Bat habitat - do not disturb.</desc>
+<extensions>
+<onx:color>rgba(8,122,255,1)</onx:color>
+<onx:icon>Cave</onx:icon>
+</extensions>
+</wpt>
+
+<!-- HAZARD ICONS (2 types) -->
+<wpt lat="47.130000" lon="-113.510000">
+<name>Hazard - Avalanche Zone (Green)</name>
+<desc>High avalanche danger area. Steep slope, multiple slide paths. Check avalanche forecast before travel.</desc>
+<extensions>
+<onx:color>rgba(52,199,89,1)</onx:color>
+<onx:icon>Hazard</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.135000" lon="-113.515000">
+<name>Barrier - Trail Closure (Orange)</name>
+<desc>Trail closed due to bridge washout. Detour available via alternate route. Check with ranger station.</desc>
+<extensions>
+<onx:color>rgba(255,149,0,1)</onx:color>
+<onx:icon>Barrier</onx:icon>
+</extensions>
+</wpt>
+
+<!-- HIKING ICONS (2 types) -->
+<wpt lat="47.020000" lon="-113.520000">
+<name>Hike - Scenic Vista Trail (Purple)</name>
+<desc>Day hike to scenic overlook. 4.2 miles round trip, 800 feet elevation gain. Family-friendly.</desc>
+<extensions>
+<onx:color>rgba(175,82,222,1)</onx:color>
+<onx:icon>Hike</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.025000" lon="-113.525000">
+<name>Backpacker - Multi-Day Route (Yellow)</name>
+<desc>Backpacking route start. 3-5 day loop through wilderness. Permits required, bear canisters recommended.</desc>
+<extensions>
+<onx:color>rgba(255,204,0,1)</onx:color>
+<onx:icon>Backpacker</onx:icon>
+</extensions>
+</wpt>
+
+<!-- OBSERVATION ICONS (3 types) -->
+<wpt lat="47.030000" lon="-113.530000">
+<name>Photo - Iconic View (Cyan)</name>
+<desc>Classic photo opportunity. Sunrise light spectacular. Mountain goats often visible on cliffs above.</desc>
+<extensions>
+<onx:color>rgba(50,173,230,1)</onx:color>
+<onx:icon>Photo</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.035000" lon="-113.535000">
+<name>View - Valley Overlook (Magenta)</name>
+<desc>Panoramic valley viewpoint. See Missoula to the west, Mission Mountains to the east. Bench available.</desc>
+<extensions>
+<onx:color>rgba(255,45,85,1)</onx:color>
+<onx:icon>View</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.040000" lon="-113.540000">
+<name>Lookout - Historic Fire Tower (Pink)</name>
+<desc>Restored fire lookout tower from 1930s. Open to public, staffed in summer. Incredible 360-degree views.</desc>
+<extensions>
+<onx:color>rgba(255,55,95,1)</onx:color>
+<onx:icon>Lookout</onx:icon>
+</extensions>
+</wpt>
+
+<!-- FACILITIES ICONS (4 types) -->
+<wpt lat="47.045000" lon="-113.545000">
+<name>Cabin - Wilderness Shelter (Teal)</name>
+<desc>Historic Forest Service cabin. Available for overnight rental. Sleeps 6, wood stove, no running water.</desc>
+<extensions>
+<onx:color>rgba(90,200,250,1)</onx:color>
+<onx:icon>Cabin</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.050000" lon="-113.550000">
+<name>Shelter - Emergency Bivouac (Red)</name>
+<desc>Emergency shelter structure. Three-sided lean-to, emergency use only. Not for planned overnight stays.</desc>
+<extensions>
+<onx:color>rgba(255,59,48,1)</onx:color>
+<onx:icon>Shelter</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.055000" lon="-113.555000">
+<name>House - Ranger Station (Blue)</name>
+<desc>Wilderness ranger station. Staffed June-September. Permits, maps, and trail conditions information available.</desc>
+<extensions>
+<onx:color>rgba(8,122,255,1)</onx:color>
+<onx:icon>House</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.060000" lon="-113.560000">
+<name>Food Source - Berry Patch (Green)</name>
+<desc>Productive huckleberry patch. Peak season late July-August. Bear activity common - make noise.</desc>
+<extensions>
+<onx:color>rgba(52,199,89,1)</onx:color>
+<onx:icon>Food Source</onx:icon>
+</extensions>
+</wpt>
+
+<!-- DEFAULT ICON (1 type) -->
+<wpt lat="47.065000" lon="-113.565000">
+<name>Location - Trail Junction (Orange)</name>
+<desc>Important trail junction. Multiple routes diverge here. Sign shows distances to key destinations.</desc>
+<extensions>
+<onx:color>rgba(255,149,0,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+</gpx>

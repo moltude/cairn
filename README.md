@@ -332,6 +332,27 @@ Cairn uses GPX with onX's custom namespace to preserve icons, colors, and styles
 | Track | `onx:style` | `solid`, `dash`, `dot` |
 | Track | `onx:weight` | `4.0` (standard), `6.0` (thick) |
 
+### OnX Waypoint Colors
+
+**Important:** OnX supports **only 10 specific colors** for waypoints. Using other color values will cause OnX to reject the color on import.
+
+#### The 10 Official OnX Waypoint Colors
+
+| Color | RGBA Value | Hex | Usage |
+|-------|------------|-----|-------|
+| **Red-Orange** | `rgba(255,51,0,1)` | `#FF3300` | Bright red-orange |
+| **Blue** | `rgba(8,122,255,1)` | `#087AFF` | Same as track blue |
+| **Cyan** | `rgba(0,255,255,1)` | `#00FFFF` | Pure cyan/aqua |
+| **Lime** | `rgba(132,212,0,1)` | `#84D400` | Bright lime green |
+| **Black** | `rgba(0,0,0,1)` | `#000000` | Pure black |
+| **White** | `rgba(255,255,255,1)` | `#FFFFFF` | Pure white |
+| **Purple** | `rgba(128,0,128,1)` | `#800080` | CSS purple |
+| **Yellow** | `rgba(255,255,0,1)` | `#FFFF00` | Pure yellow |
+| **Red** | `rgba(255,0,0,1)` | `#FF0000` | Pure red |
+| **Brown** | `rgba(139,69,19,1)` | `#8B4513` | Saddle brown |
+
+**Note:** OnX uses different color values for tracks vs waypoints. Track colors use OnX's custom palette, while waypoints use the 10 colors above. See [docs/onx-waypoint-colors-definitive.md](docs/onx-waypoint-colors-definitive.md) for complete details.
+
 ---
 
 ## Sorting and Preview
@@ -384,10 +405,12 @@ Use `--no-sort` to preserve original CalTopo order.
 ## Limitations
 
 - **OnX re-sorts after import** - Waypoints appear in **correct order during pre-import preview and import**, but the order **reverts to unpredictable/random ordering when viewing in folders**. Waypoints can also be moved to any position when removed from a folder and re-added. See [OnX Sorting Behavior](docs/onx-sorting-behavior.md) for details.
+- **10 waypoint colors only** - OnX waypoints support only 10 specific color values (see [OnX Waypoint Colors](#onx-waypoint-colors) above)
+- **Different track/waypoint colors** - Tracks use OnX's custom palette, waypoints use the 10 standard colors
 - **3,000 item limit** - onX limit per file (Cairn auto-splits)
 - **4MB file limit** - onX Web Map limit (Cairn splits conservatively)
 - **Plain text only** - HTML descriptions converted to plain text
-- **9 colors** - Track colors mapped to closest onX palette color
+- **9 track colors** - Track colors mapped to closest onX palette color
 - **3 line styles** - `solid`, `dash`, `dot` only
 
 ---

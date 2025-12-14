@@ -39,6 +39,7 @@ icon_emojis:
   Waterfall: "💧"
   Hot Spring: "♨️"
   Potable Water: "💧"
+  Water Crossing: "🌉"
 
   # Transportation
   Parking: "🅿️"
@@ -115,6 +116,7 @@ symbol_mappings:
   river: Water Source
   waterfall: Waterfall
   hot-spring: Hot Spring
+  ford: Water Crossing
 
   # Parking & Vehicles -> Parking (gray P)
   car: Parking
@@ -190,6 +192,10 @@ keyword_mappings:
     - refill
     - creek
     - stream
+
+  # Water Crossing keywords -> Water Crossing
+  Water Crossing:
+    - river crossing
 
   # Parking keywords -> Parking
   Parking:
