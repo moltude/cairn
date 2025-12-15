@@ -67,7 +67,7 @@ def set_default_icon(icon: str = typer.Argument(..., help="Icon name")):
     icon_canon = normalize_onx_icon_name(icon)
     if icon_canon is None:
         console.print(f"[bold red]❌ Error:[/] '{icon}' is not a valid OnX icon")
-        console.print("[dim]Run 'cairn icon list' to see all available icons[/]")
+        console.print("[dim]Tip: run 'cairn config show' to see icons already used in your mappings[/]")
         raise typer.Exit(1)
 
     config_path = Path("cairn_config.yaml")

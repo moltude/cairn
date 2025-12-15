@@ -25,7 +25,7 @@ def test_write_gpx_tracks_palette_color_round_trips(tmp_path):
     write_gpx_tracks([feature], out_path, "Folder", sort=False)
     gpx = out_path.read_text(encoding="utf-8")
 
-    assert "<OnX:color>rgba(255,0,255,1)</OnX:color>" in gpx
-    assert "<OnX:style>solid</OnX:style>" in gpx
-    assert "<OnX:weight>4.0</OnX:weight>" in gpx
+    assert "<onx:color>rgba(255,0,255,1)</onx:color>" in gpx
+    assert "<onx:style>solid</onx:style>" in gpx
+    assert "<onx:weight>4.0</onx:weight>" in gpx
     assert "color=rgba(255,0,255,1)" in gpx

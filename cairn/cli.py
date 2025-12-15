@@ -7,7 +7,7 @@ Main CLI entry point
 import typer
 
 # Import command modules
-from cairn.commands import convert_cmd, config_cmd, icon_cmd, migrate_cmd
+from cairn.commands import convert_cmd, config_cmd, migrate_cmd
 
 app = typer.Typer(
     name="cairn",
@@ -17,11 +17,10 @@ app = typer.Typer(
 )
 
 # Register the convert command directly (not as a sub-app)
-app.command(name="convert", help="Convert between supported formats (advanced)")(convert_cmd.convert)
+app.command(name="convert", help="Convert between supported formats (advanced)", hidden=True)(convert_cmd.convert)
 
-# Register command groups for config and icon
+# Register command groups
 app.add_typer(config_cmd.app, name="config", help="Manage configuration settings")
-app.add_typer(icon_cmd.app, name="icon", help="Manage icon mappings")
 app.add_typer(migrate_cmd.app, name="migrate", help="Migration helpers (OnX ↔ CalTopo)")
 
 @app.callback()
@@ -37,7 +36,6 @@ def callback():
 
     Utilities:
       config                  - Manage configuration settings
-      icon                    - Manage icon mappings
     """
     pass
 

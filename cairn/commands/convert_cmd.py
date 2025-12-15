@@ -174,7 +174,7 @@ def prompt_for_icon_mapping(symbol: str, waypoint_title: str,
         if choice_num <= len(suggestions):
             return suggestions[choice_num - 1][0]
         elif choice_num == len(suggestions) + 1:
-            from cairn.commands.icon_cmd import browse_all_icons
+            from cairn.core.icon_picker import browse_all_icons
             return browse_all_icons()
         else:
             return None
@@ -183,9 +183,14 @@ def prompt_for_icon_mapping(symbol: str, waypoint_title: str,
         return None
 
 
-def handle_unmapped_symbols(config: IconMappingConfig, interactive: bool = True) -> bool:
+def handle_unmapped_symbols(
+    config: IconMappingConfig,
+    *,
+    unmapped_report: Optional[dict[str, dict]] = None,
+    interactive: bool = True,
+) -> bool:
     """Handle unmapped symbols with interactive prompts or reporting."""
-    unmapped = config.get_unmapped_report()
+    unmapped = unmapped_report or config.get_unmapped_report()
 
     if not unmapped or len(unmapped) == 0:
         return False
@@ -429,21 +434,53 @@ def display_manifest(output_files: list):
     console.print(table)
 
 
-def display_unmapped_symbols(config: IconMappingConfig):
+def collect_unmapped_caltopo_symbols(parsed_data: ParsedData, config: IconMappingConfig) -> dict[str, dict]:
+    """
+    Collect unmapped CalTopo marker-symbol values from the parsed dataset.
+
+    This is computed without mutating `config.unmapped_symbols`, so it can be shown early
+    without double-counting later when `map_icon(...)` is called during export.
+    """
+    from cairn.core.config import GENERIC_SYMBOLS
+
+    by_symbol: dict[str, dict] = {}
+    folders = getattr(parsed_data, "folders", {}) or {}
+    for _, folder_data in folders.items():
+        for wp in folder_data.get("waypoints", []) or []:
+            sym = (getattr(wp, "symbol", "") or "").strip().lower()
+            if not sym or sym in GENERIC_SYMBOLS:
+                continue
+            if sym in (config.symbol_map or {}):
+                continue
+
+            row = by_symbol.get(sym)
+            if row is None:
+                row = {"count": 0, "examples": []}
+                by_symbol[sym] = row
+
+            row["count"] += 1
+            if len(row["examples"]) < 3:
+                title = (getattr(wp, "title", "") or "").strip()
+                if title:
+                    row["examples"].append(title)
+
+    return by_symbol
+
+
+def display_unmapped_symbols(config: IconMappingConfig, unmapped_report: Optional[dict[str, dict]] = None):
     """Display a report of unmapped CalTopo symbols found."""
-    if not config.has_unmapped_symbols():
+    report = unmapped_report or (config.get_unmapped_report() if config.has_unmapped_symbols() else {})
+    if not report:
         return
 
-    unmapped_report = config.get_unmapped_report()
-
-    console.print(f"\n[yellow]⚠️  Found {len(unmapped_report)} unmapped CalTopo symbol(s):[/]")
+    console.print(f"\n[yellow]⚠️  Found {len(report)} unmapped CalTopo symbol(s):[/]")
 
     table = Table(border_style="yellow")
     table.add_column("Symbol", style="cyan")
     table.add_column("Count", justify="right", style="white")
     table.add_column("Example Waypoint", style="dim")
 
-    for symbol, stats in sorted(unmapped_report.items(), key=lambda x: x[1]["count"], reverse=True):
+    for symbol, stats in sorted(report.items(), key=lambda x: x[1]["count"], reverse=True):
         example = stats["examples"][0] if stats["examples"] else "N/A"
         table.add_row(
             symbol,
@@ -624,11 +661,8 @@ def convert(
     shows exactly how items will appear in OnX. If you need a different order,
     you must rename items in CalTopo (or edit the GeoJSON) before converting.
 
-    To change icons or colors before export, use:
-
-      cairn icon map "symbol-name" "OnX-Icon"
-
-      cairn config set-default-color "rgba(255,0,0,1)"
+    To change icons or colors before export, edit `cairn_config.yaml` (symbol_mappings)
+    or adjust your config file passed via `--config`.
 
     Or edit the source GeoJSON file directly.
     """
@@ -795,6 +829,10 @@ def convert(
         console.print(f"\n[bold red]❌ Error parsing file:[/] {e}")
         raise typer.Exit(1)
 
+    # Show unmapped-symbol warning early so users can map symbols before export.
+    unmapped_report = collect_unmapped_caltopo_symbols(parsed_data, config)
+    display_unmapped_symbols(config, unmapped_report=unmapped_report)
+
     # Display folder tree (with config for icon mapping)
     display_folder_tree(parsed_data, config)
 
@@ -802,10 +840,6 @@ def convert(
     if dry_run:
         report = generate_dry_run_report(parsed_data, config)
         display_dry_run_report(report)
-
-        # Still show unmapped symbols for awareness
-        if config.has_unmapped_symbols():
-            display_unmapped_symbols(config)
 
         return
 
@@ -821,8 +855,8 @@ def convert(
             parsed_data = parse_geojson(input_file)
 
     # Handle unmapped symbols interactively (if not in review mode)
-    if not review and config.has_unmapped_symbols():
-        mappings_added = handle_unmapped_symbols(config, interactive=True)
+    if not review and unmapped_report:
+        mappings_added = handle_unmapped_symbols(config, unmapped_report=unmapped_report, interactive=True)
 
         if mappings_added:
             # Reload config with new mappings
@@ -831,6 +865,7 @@ def convert(
 
             # Re-parse to apply new mappings
             parsed_data = parse_geojson(input_file)
+            unmapped_report = collect_unmapped_caltopo_symbols(parsed_data, config)
 
     # Ensure output directory exists
     output_dir = ensure_output_dir(output)
@@ -917,9 +952,6 @@ def convert(
     # Display manifest
     console.print()
     display_manifest(output_files)
-
-    # Display any remaining unmapped symbols report
-    display_unmapped_symbols(config)
 
     # Display name sanitization warnings
     display_name_sanitization_warnings()

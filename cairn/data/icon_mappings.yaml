@@ -4,7 +4,7 @@
 # This file is intended to be:
 # - Easy to inspect in code review
 # - Safe to edit manually
-# - Validated by `cairn icon validate-mappings`
+# - Validated by unit tests / CI
 #
 # Notes:
 # - CalTopo symbols are treated case-insensitively; keep keys lowercase.

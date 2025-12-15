@@ -85,7 +85,8 @@ def create_track(name: str, start_lat: float, start_lon: float, color: str = "rg
 
     # Extensions with OnX color
     ext = ET.SubElement(trk, 'extensions')
-    color_elem = ET.SubElement(ext, '{https://wwww.OnXmaps.com/}color')
+    # Use the same namespace URI OnX exports today (lowercase domain).
+    color_elem = ET.SubElement(ext, '{https://wwww.onxmaps.com/}color')
     color_elem.text = color
 
     # Track segment with 2 points (creates a short line)
@@ -136,7 +137,7 @@ def generate_sort_test_gpx(output_path: Path = Path("test_sort_order.gpx")):
     # Build GPX manually as a string to avoid namespace issues
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.OnXmaps.com/" version="1.1" creator="Cairn Sort Order Test">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn Sort Order Test">',
         '  <metadata>',
         '    <name>Sort Order Test</name>',
         '    <desc>Testing if OnX respects XML element order for track sorting</desc>',
@@ -154,7 +155,7 @@ def generate_sort_test_gpx(output_path: Path = Path("test_sort_order.gpx")):
         lines.append(f'    <name>{name}</name>')
         lines.append(f'    <desc>Test track: {name}</desc>')
         lines.append('    <extensions>')
-        lines.append(f'      <OnX:color>{color}</OnX:color>')
+        lines.append(f'      <onx:color>{color}</onx:color>')
         lines.append('    </extensions>')
         lines.append('    <trkseg>')
         lines.append(f'      <trkpt lat="{lat1:.6f}" lon="{lon1:.6f}"/>')

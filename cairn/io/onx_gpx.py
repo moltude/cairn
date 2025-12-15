@@ -5,7 +5,7 @@ Reads an OnX-exported GPX file into Cairn's canonical MapDocument model.
 
 Notes:
 - OnX exports often include a key/value block in <desc> for both waypoints and tracks.
-- OnX also includes custom extensions in namespace https://wwww.OnXmaps.com/
+- OnX also includes custom extensions in namespace https://wwww.onxmaps.com/
 - OnX GPX export structure can vary (tracks vs routes), so we read <trk> and <rte>.
 """
 
@@ -21,7 +21,10 @@ from cairn.core.normalization import iso8601_to_epoch_ms, normalize_name
 from cairn.model import MapDocument, Style, Track, TrackPoint, Waypoint
 
 
-_OnX_NS = "https://wwww.OnXmaps.com/"
+# OnX-exported GPX uses lowercase domain here (and commonly declares it as `xmlns:onx=...`).
+_OnX_NS = "https://wwww.onxmaps.com/"
+# Back-compat: older exports (and some fixtures) use a differently-cased domain in the URI.
+_OnX_NS_CANDIDATES = (_OnX_NS, "https://wwww.OnXmaps.com/")
 _GPX_NS = "http://www.topografix.com/GPX/1/1"
 _NS = {"gpx": _GPX_NS, "OnX": _OnX_NS}
 
@@ -108,9 +111,12 @@ def _get_OnX_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
     """
     if elem is None:
         return None
-    child = elem.find(f"OnX:{local_name}", _NS)
-    if child is not None and child.text:
-        return child.text.strip()
+    # OnX exports typically use `xmlns:onx="https://wwww.onxmaps.com/"`, but prefix/URI
+    # casing varies in the wild. Match by namespace URI candidates, prefix-agnostic.
+    for uri in _OnX_NS_CANDIDATES:
+        child = elem.find(f"{{{uri}}}{local_name}")
+        if child is not None and child.text:
+            return child.text.strip()
     return None
 
 

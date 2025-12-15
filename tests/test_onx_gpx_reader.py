@@ -85,3 +85,18 @@ def test_read_OnX_gpx_reads_routes_and_preserves_time_when_present(tmp_path: Pat
     assert tracks[0].name == "Route 1"
     assert len(tracks[0].points) == 2
     assert tracks[0].points[0][3] is not None  # epoch_ms
+
+
+def test_read_OnX_gpx_reads_onx_extensions_from_fixture() -> None:
+    """
+    Regression: OnX-exported GPX typically declares `xmlns:onx="https://wwww.onxmaps.com/"`
+    and uses `<onx:color>` / `<onx:icon>`. We must reliably parse those extensions.
+    """
+    fixture = Path(__file__).parent / "fixtures" / "onx_waypoint_color_test.gpx"
+    doc = read_OnX_gpx(fixture)
+    wpts = doc.waypoints()
+    assert len(wpts) > 0
+
+    # First waypoint in the fixture includes both color and icon in <extensions>.
+    assert wpts[0].style.OnX_color_rgba is not None
+    assert wpts[0].style.OnX_icon is not None

@@ -66,7 +66,7 @@ def test_split_waypoints_gpx_by_bytes_preserves_order_and_onx_metadata(tmp_path:
     for pth, _, _ in parts:
         t = pth.read_text(encoding="utf-8")
         assert "<desc>" in t and "color=rgba(" in t and "icon=" in t
-        assert "<OnX:icon>" in t and "<OnX:color>" in t
+        assert "<onx:icon>" in t and "<onx:color>" in t
 
 
 def test_split_tracks_gpx_by_bytes_preserves_order_and_onx_metadata(tmp_path: Path):
@@ -92,4 +92,4 @@ def test_split_tracks_gpx_by_bytes_preserves_order_and_onx_metadata(tmp_path: Pa
         t = pth.read_text(encoding="utf-8")
         assert "<trk>" in t
         assert "<desc>" in t and "style=" in t and "weight=" in t
-        assert "<OnX:color>" in t and "<OnX:style>" in t and "<OnX:weight>" in t
+        assert "<onx:color>" in t and "<onx:style>" in t and "<onx:weight>" in t

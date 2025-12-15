@@ -58,13 +58,13 @@ Point Cairn at the directory containing your exports:
 
 ```bash
 # Interactive mode - will prompt for directory and let you select files
-uv run cairn migrate onx-to-caltopo
+uv run cairn migrate caltopo
 
 # Or specify the directory directly
-uv run cairn migrate onx-to-caltopo ~/Downloads/OnX-exports
+uv run cairn migrate caltopo ~/Downloads/OnX-exports
 
 # With custom output location
-uv run cairn migrate onx-to-caltopo ~/Downloads/OnX-exports -o ./my-output
+uv run cairn migrate caltopo ~/Downloads/OnX-exports -o ./my-output
 ```
 
 Cairn will:
@@ -87,7 +87,6 @@ Cairn creates these files in the output directory:
 
 - **`<name>.json`**: primary CalTopo-importable GeoJSON (deduped by default)
 - **`<name>_dropped_shapes.json`**: everything that was removed by shape dedup (so nothing is lost)
-- **`<name>_SUMMARY.md`**: human-readable explanation of dedup decisions
 - **`<name>_trace.jsonl`** (enabled by default): machine-parseable trace events for debugging and replay
 
 The base name defaults to your GPX filename (without extension), or you can specify it with `--name`.
@@ -103,7 +102,7 @@ By default, Cairn produces a **"most usable"** CalTopo file by:
 - **preferring polygons** (from KML) over track/route representations (from GPX) when they refer to the same OnX object
 - **deduplicating shapes** using a fuzzy geometry match (rotation/direction tolerant, coordinate rounding tolerant)
 
-Nothing is deleted permanently: every dropped duplicate is preserved in the secondary GeoJSON, and the summary explains the choices.
+Nothing is deleted permanently: every dropped duplicate is preserved in the secondary GeoJSON.
 
 ---
 
@@ -205,7 +204,7 @@ There's a recorded CLI demo script at `demo.tape` using:
 
 ## Advanced Options
 
-The `migrate onx-to-caltopo` command supports several options:
+The `migrate caltopo` (alias of `migrate onx-to-caltopo`) command supports several options:
 
 - **`-o, --output-dir PATH`**: Custom output directory (default: `<input-dir>/caltopo_ready`)
 - **`--name TEXT`**: Custom base name for output files (default: GPX filename)
@@ -217,7 +216,7 @@ The `migrate onx-to-caltopo` command supports several options:
 Example with options:
 
 ```bash
-uv run cairn migrate onx-to-caltopo ~/Downloads/OnX-exports \
+uv run cairn migrate caltopo ~/Downloads/OnX-exports \
   -o ./output \
   --name my_custom_name \
   --no-dedupe-shapes \
@@ -236,13 +235,13 @@ Export your map from CalTopo as GeoJSON, then:
 
 ```bash
 # Interactive mode - will prompt for directory and let you select file
-uv run cairn migrate caltopo-to-onx
+uv run cairn migrate onx
 
 # Or specify the directory directly
-uv run cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports
+uv run cairn migrate onx ~/Downloads/caltopo-exports
 
 # With custom output location
-uv run cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports -o ./output
+uv run cairn migrate onx ~/Downloads/caltopo-exports -o ./output
 ```
 
 Cairn will:
@@ -276,7 +275,7 @@ This is what the map looks like when you skip Cairn and rely on CalTopo’s GPX 
 #### 3) Export GeoJSON from CalTopo, run through Cairn, import to OnX
 
 ```bash
-uv run cairn migrate caltopo-to-onx demo/caltopo-to-onx
+uv run cairn migrate onx demo/caltopo-to-onx
 ```
 
 By default, Cairn writes outputs to `demo/caltopo-to-onx/onx_ready/`.

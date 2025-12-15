@@ -69,19 +69,6 @@ class TestCLI:
         result = runner.invoke(app, ["config", "--help"])
         assert result.exit_code == 0
 
-    def test_icon_help(self):
-        """icon --help works."""
-        result = runner.invoke(app, ["icon", "--help"])
-        assert result.exit_code == 0
-
-    def test_icon_list(self):
-        """icon list shows available icons."""
-        result = runner.invoke(app, ["icon", "list"])
-        assert result.exit_code == 0
-        # Should contain some common icon names
-        output_lower = result.stdout.lower()
-        assert "campsite" in output_lower or "waypoint" in output_lower or "location" in output_lower
-
     def test_convert_missing_file(self):
         """convert with missing file shows error."""
         result = runner.invoke(app, ["convert", "nonexistent_file.json"])

@@ -33,6 +33,63 @@ console = Console()
 _ONX_ICON_OVERRIDE_KEY = "cairn_onx_icon_override"
 
 
+def _parse_bulk_selection(raw: str, *, max_index: int) -> list[int]:
+    """
+    Parse a user selection string into 1-based indices.
+
+    Supports:
+      - "1,2,3" (commas, whitespace ok)
+      - "1-4" (inclusive ranges)
+      - "all" (select everything)
+
+    Returns sorted unique indices (1..max_index). Raises ValueError on invalid input.
+    """
+    if max_index <= 0:
+        raise ValueError("No items available to select.")
+
+    s = (raw or "").strip().lower()
+    if not s:
+        raise ValueError("Empty selection.")
+    if s in ("all", "*"):
+        return list(range(1, max_index + 1))
+
+    indices: set[int] = set()
+    parts = [p.strip() for p in s.split(",")]
+    for part in parts:
+        if not part:
+            continue
+
+        if "-" in part:
+            left, right = part.split("-", 1)
+            left = left.strip()
+            right = right.strip()
+            if not left.isdigit() or not right.isdigit():
+                raise ValueError("Invalid range syntax. Use e.g. 1-4.")
+            start = int(left)
+            end = int(right)
+            if start < 1 or end < 1:
+                raise ValueError("Selection indices must be >= 1.")
+            if end < start:
+                raise ValueError("Invalid range: end must be >= start (e.g. 1-4).")
+            for i in range(start, end + 1):
+                indices.add(i)
+        else:
+            if not part.isdigit():
+                raise ValueError("Invalid selection. Use e.g. 1,2,3 or 1-4 or all.")
+            indices.add(int(part))
+
+    if not indices:
+        raise ValueError("No valid indices found. Use e.g. 1,2,3 or 1-4 or all.")
+
+    bad = sorted([i for i in indices if i < 1 or i > max_index])
+    if bad:
+        if len(bad) == 1:
+            raise ValueError(f"Index {bad[0]} is out of range (1-{max_index}).")
+        raise ValueError(f"Indices {', '.join(map(str, bad))} are out of range (1-{max_index}).")
+
+    return sorted(indices)
+
+
 def _match_palette_color_choice(raw: str, palette: tuple) -> Optional[str]:
     """
     Match a user-provided color choice against an OnX palette.
@@ -176,7 +233,7 @@ def _prompt_icon_choice(
         if not raw:
             return None
         if raw.lower() == "browse":
-            from cairn.commands.icon_cmd import browse_all_icons
+            from cairn.core.icon_picker import browse_all_icons
             picked = browse_all_icons()
             if not picked:
                 return None
@@ -280,37 +337,43 @@ def interactive_edit_before_export(
         print_tracks()
         if Confirm.ask("Are there any routes you would like to change?", default=False):
             while True:
-                sel = Prompt.ask("Select route number (enter to finish)", default="").strip()
+                sel = Prompt.ask("Select route number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)", default="").strip()
                 if not sel:
                     break
                 try:
-                    idx = int(sel)
-                except ValueError:
-                    console.print("[red]Invalid selection[/]")
-                    continue
-                if idx < 1 or idx > len(tracks_index):
-                    console.print("[red]Invalid selection[/]")
+                    idxs = _parse_bulk_selection(sel, max_index=len(tracks_index))
+                except ValueError as e:
+                    console.print(f"[red]{e}[/]")
                     continue
 
-                folder_name, trk = tracks_index[idx - 1]
-                console.print(f"\n[bold]Editing route {idx}[/] [dim]({folder_name})[/]")
-                console.print(f"[dim]Current name:[/] {trk.title}")
-                console.print(f"[dim]Current description:[/]\n{(trk.description or '').strip() or '(none)'}\n")
+                selected = [tracks_index[i - 1] for i in idxs]
+                if len(selected) == 1:
+                    folder_name, trk = selected[0]
+                    console.print(f"\n[bold]Editing route {idxs[0]}[/] [dim]({folder_name})[/]")
+                    console.print(f"[dim]Current name:[/] {trk.title}")
+                    console.print(f"[dim]Current description:[/]\n{(trk.description or '').strip() or '(none)'}\n")
+                else:
+                    console.print(f"\n[bold]Editing {len(selected)} routes[/] [dim]({idxs[0]}..{idxs[-1]})[/]")
 
                 new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
                 if new_name:
-                    trk.title = new_name
+                    for _, trk in selected:
+                        trk.title = new_name
                     changes_made = True
 
                 new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
                 if new_desc:
-                    trk.description = _prompt_multiline_hint(new_desc)
+                    new_desc = _prompt_multiline_hint(new_desc)
+                    for _, trk in selected:
+                        trk.description = new_desc
                     changes_made = True
 
-                cur_rgba = _resolved_track_color(trk)
+                cur_rgba = _resolved_track_color(selected[0][1])
                 chosen = _palette_choice(title="Select route color", palette=ColorMapper.TRACK_PALETTE, current_rgba=cur_rgba)
                 if chosen:
-                    trk.stroke = _rgba_to_hex_hash(chosen)
+                    hex_color = _rgba_to_hex_hash(chosen)
+                    for _, trk in selected:
+                        trk.stroke = hex_color
                     changes_made = True
 
                 if not Confirm.ask("Would you like to change another route?", default=False):
@@ -322,49 +385,57 @@ def interactive_edit_before_export(
         print_waypoints()
         if Confirm.ask("Are there any waypoints you would like to change?", default=False):
             while True:
-                sel = Prompt.ask("Select waypoint number (enter to finish)", default="").strip()
+                sel = Prompt.ask("Select waypoint number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)", default="").strip()
                 if not sel:
                     break
                 try:
-                    idx = int(sel)
-                except ValueError:
-                    console.print("[red]Invalid selection[/]")
-                    continue
-                if idx < 1 or idx > len(waypoints_index):
-                    console.print("[red]Invalid selection[/]")
+                    idxs = _parse_bulk_selection(sel, max_index=len(waypoints_index))
+                except ValueError as e:
+                    console.print(f"[red]{e}[/]")
                     continue
 
-                folder_name, wp = waypoints_index[idx - 1]
-                console.print(f"\n[bold]Editing waypoint {idx}[/] [dim]({folder_name})[/]")
-                console.print(f"[dim]Current name:[/] {wp.title}")
-                console.print(f"[dim]Current description:[/]\n{(wp.description or '').strip() or '(none)'}\n")
+                selected = [waypoints_index[i - 1] for i in idxs]
+                if len(selected) == 1:
+                    folder_name, wp = selected[0]
+                    console.print(f"\n[bold]Editing waypoint {idxs[0]}[/] [dim]({folder_name})[/]")
+                    console.print(f"[dim]Current name:[/] {wp.title}")
+                    console.print(f"[dim]Current description:[/]\n{(wp.description or '').strip() or '(none)'}\n")
+                else:
+                    console.print(f"\n[bold]Editing {len(selected)} waypoints[/] [dim]({idxs[0]}..{idxs[-1]})[/]")
 
                 new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
                 if new_name:
-                    wp.title = new_name
+                    for _, wp in selected:
+                        wp.title = new_name
                     changes_made = True
 
                 new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
                 if new_desc:
-                    wp.description = _prompt_multiline_hint(new_desc)
+                    new_desc = _prompt_multiline_hint(new_desc)
+                    for _, wp in selected:
+                        wp.description = new_desc
                     changes_made = True
 
-                cur_icon = _resolved_waypoint_icon(wp, config)
+                cur_icon = _resolved_waypoint_icon(selected[0][1], config)
                 icon_choice = _prompt_icon_choice(current_icon=cur_icon)
                 if icon_choice == "CLEAR":
-                    if isinstance(getattr(wp, "properties", None), dict) and _ONX_ICON_OVERRIDE_KEY in wp.properties:
-                        del wp.properties[_ONX_ICON_OVERRIDE_KEY]
-                        changes_made = True
+                    for _, wp in selected:
+                        if isinstance(getattr(wp, "properties", None), dict) and _ONX_ICON_OVERRIDE_KEY in wp.properties:
+                            del wp.properties[_ONX_ICON_OVERRIDE_KEY]
+                            changes_made = True
                 elif icon_choice:
-                    if isinstance(getattr(wp, "properties", None), dict):
-                        wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
-                        changes_made = True
+                    for _, wp in selected:
+                        if isinstance(getattr(wp, "properties", None), dict):
+                            wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
+                            changes_made = True
 
-                final_icon = _resolved_waypoint_icon(wp, config)
-                cur_rgba = _resolved_waypoint_color(wp, final_icon, config)
+                final_icon = _resolved_waypoint_icon(selected[0][1], config)
+                cur_rgba = _resolved_waypoint_color(selected[0][1], final_icon, config)
                 chosen = _palette_choice(title="Select waypoint color", palette=ColorMapper.WAYPOINT_PALETTE, current_rgba=cur_rgba)
                 if chosen:
-                    wp.color = _rgba_to_hex_nohash(chosen)
+                    hex_nohash = _rgba_to_hex_nohash(chosen)
+                    for _, wp in selected:
+                        wp.color = hex_nohash
                     changes_made = True
 
                 if not Confirm.ask("Would you like to change another waypoint?", default=False):
@@ -420,35 +491,40 @@ def interactive_edit_before_export_per_folder(
 
             if Confirm.ask("\nWould you like to edit any routes in this folder?", default=False):
                 while True:
-                    sel = Prompt.ask("Select route number (enter to finish)", default="").strip()
+                    sel = Prompt.ask("Select route number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)", default="").strip()
                     if not sel:
                         break
                     try:
-                        idx = int(sel)
-                    except ValueError:
-                        console.print("[red]Invalid selection[/]")
-                        continue
-                    if idx < 1 or idx > len(tracks):
-                        console.print("[red]Invalid selection[/]")
+                        idxs = _parse_bulk_selection(sel, max_index=len(tracks))
+                    except ValueError as e:
+                        console.print(f"[red]{e}[/]")
                         continue
 
-                    trk = tracks[idx - 1]
-                    console.print(f"\n[bold]Editing route {idx}[/]")
+                    selected = [tracks[i - 1] for i in idxs]
+                    if len(selected) == 1:
+                        console.print(f"\n[bold]Editing route {idxs[0]}[/]")
+                    else:
+                        console.print(f"\n[bold]Editing {len(selected)} routes[/] [dim]({idxs[0]}..{idxs[-1]})[/]")
 
                     new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
                     if new_name:
-                        trk.title = new_name
+                        for trk in selected:
+                            trk.title = new_name
                         changes_made = True
 
                     new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
                     if new_desc:
-                        trk.description = _prompt_multiline_hint(new_desc)
+                        new_desc = _prompt_multiline_hint(new_desc)
+                        for trk in selected:
+                            trk.description = new_desc
                         changes_made = True
 
-                    cur_rgba = _resolved_track_color(trk)
+                    cur_rgba = _resolved_track_color(selected[0])
                     chosen = _palette_choice(title="Select route color", palette=ColorMapper.TRACK_PALETTE, current_rgba=cur_rgba)
                     if chosen:
-                        trk.stroke = _rgba_to_hex_hash(chosen)
+                        hex_color = _rgba_to_hex_hash(chosen)
+                        for trk in selected:
+                            trk.stroke = hex_color
                         changes_made = True
 
                     if not Confirm.ask("Would you like to change another route in this folder?", default=False):
@@ -469,47 +545,54 @@ def interactive_edit_before_export_per_folder(
 
             if Confirm.ask("\nWould you like to edit any waypoints in this folder?", default=False):
                 while True:
-                    sel = Prompt.ask("Select waypoint number (enter to finish)", default="").strip()
+                    sel = Prompt.ask("Select waypoint number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)", default="").strip()
                     if not sel:
                         break
                     try:
-                        idx = int(sel)
-                    except ValueError:
-                        console.print("[red]Invalid selection[/]")
-                        continue
-                    if idx < 1 or idx > len(waypoints):
-                        console.print("[red]Invalid selection[/]")
+                        idxs = _parse_bulk_selection(sel, max_index=len(waypoints))
+                    except ValueError as e:
+                        console.print(f"[red]{e}[/]")
                         continue
 
-                    wp = waypoints[idx - 1]
-                    console.print(f"\n[bold]Editing waypoint {idx}[/]")
+                    selected = [waypoints[i - 1] for i in idxs]
+                    if len(selected) == 1:
+                        console.print(f"\n[bold]Editing waypoint {idxs[0]}[/]")
+                    else:
+                        console.print(f"\n[bold]Editing {len(selected)} waypoints[/] [dim]({idxs[0]}..{idxs[-1]})[/]")
 
                     new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
                     if new_name:
-                        wp.title = new_name
+                        for wp in selected:
+                            wp.title = new_name
                         changes_made = True
 
                     new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
                     if new_desc:
-                        wp.description = _prompt_multiline_hint(new_desc)
+                        new_desc = _prompt_multiline_hint(new_desc)
+                        for wp in selected:
+                            wp.description = new_desc
                         changes_made = True
 
-                    cur_icon = _resolved_waypoint_icon(wp, config)
+                    cur_icon = _resolved_waypoint_icon(selected[0], config)
                     icon_choice = _prompt_icon_choice(current_icon=cur_icon)
                     if icon_choice == "CLEAR":
-                        if isinstance(getattr(wp, "properties", None), dict) and _ONX_ICON_OVERRIDE_KEY in wp.properties:
-                            del wp.properties[_ONX_ICON_OVERRIDE_KEY]
-                            changes_made = True
+                        for wp in selected:
+                            if isinstance(getattr(wp, "properties", None), dict) and _ONX_ICON_OVERRIDE_KEY in wp.properties:
+                                del wp.properties[_ONX_ICON_OVERRIDE_KEY]
+                                changes_made = True
                     elif icon_choice:
-                        if isinstance(getattr(wp, "properties", None), dict):
-                            wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
-                            changes_made = True
+                        for wp in selected:
+                            if isinstance(getattr(wp, "properties", None), dict):
+                                wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
+                                changes_made = True
 
-                    final_icon = _resolved_waypoint_icon(wp, config)
-                    cur_rgba = _resolved_waypoint_color(wp, final_icon, config)
+                    final_icon = _resolved_waypoint_icon(selected[0], config)
+                    cur_rgba = _resolved_waypoint_color(selected[0], final_icon, config)
                     chosen = _palette_choice(title="Select waypoint color", palette=ColorMapper.WAYPOINT_PALETTE, current_rgba=cur_rgba)
                     if chosen:
-                        wp.color = _rgba_to_hex_nohash(chosen)
+                        hex_nohash = _rgba_to_hex_nohash(chosen)
+                        for wp in selected:
+                            wp.color = hex_nohash
                         changes_made = True
 
                     if not Confirm.ask("Would you like to change another waypoint in this folder?", default=False):
@@ -756,7 +839,7 @@ def prompt_for_new_icon(current_icon: str) -> Optional[str]:
             return None
 
         if choice.lower() == "browse":
-            from cairn.commands.icon_cmd import browse_all_icons
+            from cairn.core.icon_picker import browse_all_icons
             picked = browse_all_icons()
             if not picked:
                 return None
@@ -881,7 +964,7 @@ def preview_sorted_order(
     doesn't allow reordering). Asks user to confirm before proceeding.
 
     For tracks: Shows colored squares matching the line color
-    For waypoints: Shows mapped icon name in brackets (e.g. "Start [Location]")
+    For waypoints: Shows color + mapped icon name in brackets (e.g. "Start [■ Location]")
 
     Args:
         features: List of features (already sorted)
@@ -922,7 +1005,10 @@ def preview_sorted_order(
             console.print(f"  [dim]{i:3}.[/] {indicator} {title}")
         elif feature_type == "waypoints":
             icon = _resolved_waypoint_icon(feature, config)
-            console.print(f"  [dim]{i:3}.[/] {title} [{icon}]")
+            rgba = _resolved_waypoint_color(feature, icon, config)
+            r, g, b = ColorMapper.parse_color(rgba)
+            square = _color_square_from_rgb(r, g, b)
+            console.print(f"  [dim]{i:3}.[/] {square} {title} [{icon}]")
         else:
             # Shapes or other types - no special indicator
             console.print(f"  [dim]{i:3}.[/] {title}")
