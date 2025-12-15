@@ -112,35 +112,35 @@ Here are the blockers I ran into:
 
   OnX waypoints support exactly 10 specific RGBA values. Any other color values may be ignored or normalized on import.
 
-  | # | Color Name | RGBA Value | RGB | Hex |
-  |---|------------|------------|-----|-----|
-  | 1 | Red-Orange | `rgba(255,51,0,1)` | RGB(255, 51, 0) | #FF3300 |
-  | 2 | Blue | `rgba(8,122,255,1)` | RGB(8, 122, 255) | #087AFF |
-  | 3 | Cyan | `rgba(0,255,255,1)` | RGB(0, 255, 255) | #00FFFF |
-  | 4 | Lime | `rgba(132,212,0,1)` | RGB(132, 212, 0) | #84D400 |
-  | 5 | Black | `rgba(0,0,0,1)` | RGB(0, 0, 0) | #000000 |
-  | 6 | White | `rgba(255,255,255,1)` | RGB(255, 255, 255) | #FFFFFF |
-  | 7 | Purple | `rgba(128,0,128,1)` | RGB(128, 0, 128) | #800080 |
-  | 8 | Yellow | `rgba(255,255,0,1)` | RGB(255, 255, 0) | #FFFF00 |
-  | 9 | Red | `rgba(255,0,0,1)` | RGB(255, 0, 0) | #FF0000 |
-  | 10 | Brown | `rgba(139,69,19,1)` | RGB(139, 69, 19) | #8B4513 |
+| #  | Color Name   | RGBA Value           | RGB              | Hex                                                                                  |
+|----|--------------|----------------------|------------------|--------------------------------------------------------------------------------------|
+| 1  | Red-Orange   | `rgba(255,51,0,1)`   | RGB(255, 51, 0)  | ![brand-ff3300](https://readme-swatches.vercel.app/FF3300?style=square&size=20) `#FF3300` |
+| 2  | Blue         | `rgba(8,122,255,1)`  | RGB(8, 122, 255) | ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` |
+| 3  | Cyan         | `rgba(0,255,255,1)`  | RGB(0, 255, 255) | ![brand-00ffff](https://readme-swatches.vercel.app/00FFFF?style=square&size=20) `#00FFFF` |
+| 4  | Lime         | `rgba(132,212,0,1)`  | RGB(132, 212, 0) | ![brand-84d400](https://readme-swatches.vercel.app/84D400?style=square&size=20) `#84D400` |
+| 5  | Black        | `rgba(0,0,0,1)`      | RGB(0, 0, 0)     | ![brand-000000](https://readme-swatches.vercel.app/000000?style=square&size=20) `#000000` |
+| 6  | White        | `rgba(255,255,255,1)`| RGB(255, 255, 255)| ![brand-ffffff](https://readme-swatches.vercel.app/FFFFFF?style=square&size=20) `#FFFFFF` |
+| 7  | Purple       | `rgba(128,0,128,1)`  | RGB(128, 0, 128) | ![brand-800080](https://readme-swatches.vercel.app/800080?style=square&size=20) `#800080` |
+| 8  | Yellow       | `rgba(255,255,0,1)`  | RGB(255, 255, 0) | ![brand-ffff00](https://readme-swatches.vercel.app/FFFF00?style=square&size=20) `#FFFF00` |
+| 9  | Red          | `rgba(255,0,0,1)`    | RGB(255, 0, 0)   | ![brand-ff0000](https://readme-swatches.vercel.app/FF0000?style=square&size=20) `#FF0000` |
+| 10 | Brown        | `rgba(139,69,19,1)`  | RGB(139, 69, 19) | ![brand-8b4513](https://readme-swatches.vercel.app/8B4513?style=square&size=20) `#8B4513` |
 
   ### Track/Line Colors (OnX Custom Palette)
 
   Tracks use OnX's custom color palette with brighter, more saturated colors.
 
-  | # | Color Name | RGBA Value | RGB | Hex |
-  |---|------------|------------|-----|-----|
-  | 1 | Red | `rgba(255,59,48,1)` | RGB(255, 59, 48) | #FF3B30 |
-  | 2 | Blue | `rgba(8,122,255,1)` | RGB(8, 122, 255) | #087AFF |
-  | 3 | Green | `rgba(52,199,89,1)` | RGB(52, 199, 89) | #34C759 |
-  | 4 | Orange | `rgba(255,149,0,1)` | RGB(255, 149, 0) | #FF9500 |
-  | 5 | Purple | `rgba(175,82,222,1)` | RGB(175, 82, 222) | #AF52DE |
-  | 6 | Yellow | `rgba(255,204,0,1)` | RGB(255, 204, 0) | #FFCC00 |
-  | 7 | Cyan | `rgba(50,173,230,1)` | RGB(50, 173, 230) | #32ADE6 |
-  | 8 | Magenta | `rgba(255,45,85,1)` | RGB(255, 45, 85) | #FF2D55 |
-  | 9 | Pink | `rgba(255,55,95,1)` | RGB(255, 55, 95) | #FF375F |
-  | 10 | Teal | `rgba(90,200,250,1)` | RGB(90, 200, 250) | #5AC8FA |
+| #  | Color Name | RGBA Value            | RGB              | Hex                                                                                  |
+|----|------------|-----------------------|------------------|--------------------------------------------------------------------------------------|
+| 1  | Red        | `rgba(255,59,48,1)`   | RGB(255, 59, 48) | ![brand-ff3b30](https://readme-swatches.vercel.app/FF3B30?style=square&size=20) `#FF3B30` |
+| 2  | Blue       | `rgba(8,122,255,1)`   | RGB(8, 122, 255) | ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` |
+| 3  | Green      | `rgba(52,199,89,1)`   | RGB(52, 199, 89) | ![brand-34c759](https://readme-swatches.vercel.app/34C759?style=square&size=20) `#34C759` |
+| 4  | Orange     | `rgba(255,149,0,1)`   | RGB(255, 149, 0) | ![brand-ff9500](https://readme-swatches.vercel.app/FF9500?style=square&size=20) `#FF9500` |
+| 5  | Purple     | `rgba(175,82,222,1)`  | RGB(175, 82, 222)| ![brand-af52de](https://readme-swatches.vercel.app/AF52DE?style=square&size=20) `#AF52DE` |
+| 6  | Yellow     | `rgba(255,204,0,1)`   | RGB(255, 204, 0) | ![brand-ffcc00](https://readme-swatches.vercel.app/FFCC00?style=square&size=20) `#FFCC00` |
+| 7  | Cyan       | `rgba(50,173,230,1)`  | RGB(50, 173, 230)| ![brand-32ade6](https://readme-swatches.vercel.app/32ADE6?style=square&size=20) `#32ADE6` |
+| 8  | Magenta    | `rgba(255,45,85,1)`   | RGB(255, 45, 85) | ![brand-ff2d55](https://readme-swatches.vercel.app/FF2D55?style=square&size=20) `#FF2D55` |
+| 9  | Pink       | `rgba(255,55,95,1)`   | RGB(255, 55, 95) | ![brand-ff375f](https://readme-swatches.vercel.app/FF375F?style=square&size=20) `#FF375F` |
+| 10 | Teal       | `rgba(90,200,250,1)`  | RGB(90, 200, 250)| ![brand-5ac8fa](https://readme-swatches.vercel.app/5AC8FA?style=square&size=20) `#5AC8FA` |
 
   ### Side-by-Side Comparison
 
