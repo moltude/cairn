@@ -3,7 +3,7 @@ Canonical in-memory data model for Cairn.
 
 This is the shared representation used to convert between:
 - CalTopo GeoJSON exports/imports
-- onX Backcountry GPX exports/imports
+- OnX Backcountry GPX exports/imports
 
 The model is intentionally lossy only when a source format cannot represent
 some fields. We preserve source-specific metadata in `Style` and `metadata`.
@@ -23,16 +23,16 @@ class Style:
     """
     Shared styling/metadata container.
 
-    - onX fields are preserved even if the destination can't render them.
+    - OnX fields are preserved even if the destination can't render them.
     - CalTopo fields represent fields we can express directly in CalTopo GeoJSON.
     """
 
-    # onX-specific
-    onx_icon: Optional[str] = None
-    onx_color_rgba: Optional[str] = None
-    onx_style: Optional[str] = None  # solid|dash|dot (tracks)
-    onx_weight: Optional[str] = None  # "4.0"|"6.0"|etc (tracks)
-    onx_id: Optional[str] = None  # onX UUID when present
+    # OnX-specific
+    OnX_icon: Optional[str] = None
+    OnX_color_rgba: Optional[str] = None
+    OnX_style: Optional[str] = None  # solid|dash|dot (tracks)
+    OnX_weight: Optional[str] = None  # "4.0"|"6.0"|etc (tracks)
+    OnX_id: Optional[str] = None  # OnX UUID when present
 
     # CalTopo-ish
     caltopo_marker_symbol: Optional[str] = None
@@ -152,4 +152,3 @@ class MapDocument:
 
     def shapes(self) -> List[Shape]:
         return [i for i in self.items if isinstance(i, Shape)]
-

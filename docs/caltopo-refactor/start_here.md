@@ -4,7 +4,7 @@ I am at my wits end trying to only work from CalTopo into OnX. There are some re
 
 I want to refactor this entire project so it is bi-directional. Currently I am transforming the complete GEOJSON export from CalTopo into seperate GPX files for tracks and markers that OnX can support but now I want to make it possible for people to migrate out of OnX into CalTopo in an easier way and preserve everything they've created.
 
-There looks like there are some issues exporting onx into Caltopo so I want to try and resolve those issues.
+There looks like there are some issues exporting OnX into Caltopo so I want to try and resolve those issues.
 
 Help me craft some instructions for gpt 5.2 to work though adding this functionality and doing a larger refactor to add this functionality. I can provide OnX export GPX file which was imported directly into CalTopo and the exported directly from CalTopo into GEOJSON
 
@@ -16,7 +16,7 @@ I want to maintain OnX colors and Icons and create nice human readable descripti
 
 The attached file is what was exported from CalTopo
 This is the link to the map in OnX
-[https://webmap.onxmaps.com/backcountry/share/content?share_id=01KCEX70KRMTSX321WTWA7P110](https://webmap.onxmaps.com/backcountry/share/content?share_id=01KCEX70KRMTSX321WTWA7P110)
+[https://webmap.OnXmaps.com/backcountry/share/content?share_id=01KCEX70KRMTSX321WTWA7P110](https://webmap.OnXmaps.com/backcountry/share/content?share_id=01KCEX70KRMTSX321WTWA7P110)
 
 
 ---
@@ -35,7 +35,7 @@ README_AGENT_BRIEFING.md
 
 Narrative briefing for an AI agent or human:
 
-Explains the OnX → CalTopo → GeoJSON duplication problem with concrete examples from your test-onx-export.json.
+Explains the OnX → CalTopo → GeoJSON duplication problem with concrete examples from your test-OnX-export.json.
 
 Describes the end-state: bi-directional conversion, metadata (colors/icons) preserved, round-trip safe.
 
@@ -49,7 +49,7 @@ Hypotheses (CalTopo export bug vs multiple imports vs folder flattening).
 
 Concrete experiments to run with OnX GPX and CalTopo imports/exports.
 
-How to analyze test-onx-export.json to understand why Bass Creek TH etc. are repeated many times.
+How to analyze test-OnX-export.json to understand why Bass Creek TH etc. are repeated many times.
 
 cairn_agentic_instructions.md
 
@@ -93,4 +93,4 @@ Code quality and performance targets.
 
 Risk analysis and mitigation (e.g., if CalTopo behavior is a hard bug).
 
-(Plus): We inspected your attached test-onx-export.json and characterized the duplication pattern so that all of the above docs can talk concretely about it.
+(Plus): We inspected your attached test-OnX-export.json and characterized the duplication pattern so that all of the above docs can talk concretely about it.

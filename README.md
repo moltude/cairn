@@ -4,7 +4,7 @@
 
 ### Why I built this
 
-I'm an advocate for open data and being able to exchange map data between platforms. GPX/KML/GeoJSON are meant to be platform-agnostic interchange formats (or at least that's how I understand them). Cairn is my attempt to make that promise feel real for backcountry mapping: move between onX and CalTopo while taking *all the map customization with you* (icons, colors, notes, and organization), not just raw shapes.
+I'm an advocate for open data and being able to exchange map data between platforms. GPX/KML/GeoJSON are meant to be platform-agnostic interchange formats (or at least that's how I understand them). Cairn is my attempt to make that promise feel real for backcountry mapping: move between OnX and CalTopo while taking *all the map customization with you* (icons, colors, notes, and organization), not just raw shapes.
 
 This tool started as an experiment and it surfaced a number of challenges. I'm not an expert — if my assumptions are wrong, I want to find out and correct them. The goal is a faithful migration, not "a file that happens to import."
 
@@ -16,20 +16,27 @@ In theory, these formats should make it easy to move between map platforms. In p
 - adds proprietary fields or extensions
 - rewrites data during import/export (sometimes subtly)
 
-I built Cairn to make migration between **onX Backcountry** and **CalTopo** easier *without losing the customization that makes a map valuable* (names, notes, colors, icons, and organizational intent) — not just the raw shapes.
+I built Cairn to make migration between **OnX Backcountry** and **CalTopo** easier *without losing the customization that makes a map valuable* (names, notes, colors, icons, and organizational intent) — not just the raw shapes.
 
-Right now, the most reliable direction is **onX → CalTopo**.
+Right now, the most reliable direction is **OnX → CalTopo**.
 
 ---
 
-## Quick start (onX → CalTopo)
+## Table of contents
 
-### 1) Export from onX (export both files)
+- [OnX → CalTopo](#OnX--caltopo)
+- [CalTopo → OnX](#caltopo--OnX)
+- [Development](#development)
+- [License](#license)
 
-Export the same map from onX in **both** formats and save them to a directory:
+## OnX → CalTopo
 
-- **GPX**: best source for waypoint metadata (name/notes) plus onX-specific icon/color extensions
-- **KML**: best source for areas/polygons (onX often exports areas as polygons in KML but as tracks/routes in GPX)
+### 1) Export from OnX (export both files)
+
+Export the same map from OnX in **both** formats and save them to a directory:
+
+- **GPX**: best source for waypoint metadata (name/notes) plus OnX-specific icon/color extensions
+- **KML**: best source for areas/polygons (OnX often exports areas as polygons in KML but as tracks/routes in GPX)
 
 You want both files from the same export session so they represent the same content.
 
@@ -39,13 +46,13 @@ Point Cairn at the directory containing your exports:
 
 ```bash
 # Interactive mode - will prompt for directory and let you select files
-uv run cairn migrate onx-to-caltopo
+uv run cairn migrate OnX-to-caltopo
 
 # Or specify the directory directly
-uv run cairn migrate onx-to-caltopo ~/Downloads/onx-exports
+uv run cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports
 
 # With custom output location
-uv run cairn migrate onx-to-caltopo ~/Downloads/onx-exports -o ./my-output
+uv run cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports -o ./my-output
 ```
 
 Cairn will:
@@ -62,7 +69,7 @@ Import `./caltopo_ready/most_usable.json` into CalTopo using CalTopo's GeoJSON i
 
 ---
 
-## What Cairn writes (onX → CalTopo)
+## What Cairn writes (OnX → CalTopo)
 
 Cairn creates these files in the output directory:
 
@@ -77,11 +84,11 @@ The base name defaults to your GPX filename (without extension), or you can spec
 
 ## Why dedup exists (and what it means)
 
-During this experiment I found cases where onX exports include many distinct objects (different IDs) with identical names and identical geometry. CalTopo will happily import them all, which can look like "duplicates everywhere".
+During this experiment I found cases where OnX exports include many distinct objects (different IDs) with identical names and identical geometry. CalTopo will happily import them all, which can look like "duplicates everywhere".
 
 By default, Cairn produces a **"most usable"** CalTopo file by:
 
-- **preferring polygons** (from KML) over track/route representations (from GPX) when they refer to the same onX object
+- **preferring polygons** (from KML) over track/route representations (from GPX) when they refer to the same OnX object
 - **deduplicating shapes** using a fuzzy geometry match (rotation/direction tolerant, coordinate rounding tolerant)
 
 Nothing is deleted permanently: every dropped duplicate is preserved in the secondary GeoJSON, and the summary explains the choices.
@@ -90,7 +97,7 @@ Nothing is deleted permanently: every dropped duplicate is preserved in the seco
 
 ## Known quirks / blockers I ran into
 
-- **onX export variance**: similar "linework" can export as `<trk>` vs `<rte>`. Areas/polygons often only appear as polygons in KML.
+- **OnX export variance**: similar "linework" can export as `<trk>` vs `<rte>`. Areas/polygons often only appear as polygons in KML.
 - **CalTopo's exported "GeoJSON" is CalTopo-flavored**: it may include extra properties and 4D coordinate arrays like `[lon, lat, ele, time]`. I treat this as normal normalization, not automatically a bug.
 - **Standards aren't fully standard in practice**: GPX/KML/GeoJSON are interchange formats, but platform behavior still matters more than file validity.
 
@@ -98,13 +105,13 @@ If any of my assumptions are wrong, I want to know — the goal is a faithful mi
 
 ---
 
-## Challenges I found migrating from CalTopo → onX (secondary)
+## Challenges I found migrating from CalTopo → OnX (secondary)
 
-I still care about proving out migration in both directions, but in practice **CalTopo → onX** is harder to keep the  fidelity because of how onX behaves on import and in the UI.
+I still care about proving out migration in both directions, but in practice **CalTopo → OnX** is harder to keep the  fidelity because of how OnX behaves on import and in the UI.
 
 Here are the blockers I ran into:
 
-- **Ordering is not reliable after import**: even if I carefully write GPX/KML in a particular order, onX may re-order items in folders after import and there isn't a stable user-visible "sort by name" / "sort by import order" workflow that guarantees the same outcome every time.
+- **Ordering is not reliable after import**: even if I carefully write GPX/KML in a particular order, OnX may re-order items in folders after import and there isn't a stable user-visible "sort by name" / "sort by import order" workflow that guarantees the same outcome every time.
 
 - **Waypoints and tracks use the same base colors, but tracks have one extra**: OnX Backcountry waypoints support 10 colors, while tracks/lines support 11 colors. The first 10 colors are identical between waypoints and tracks. Tracks have one additional color (Fuchsia) that waypoints don't support.
 
@@ -147,7 +154,7 @@ Here are the blockers I ran into:
 
   ### Why Color Preservation Matters
 
-  Color is a key filtering property in onX's "My Content" feature. When importing waypoints from CalTopo, having colors correctly mapped allows you to:
+  Color is a key filtering property in OnX's "My Content" feature. When importing waypoints from CalTopo, having colors correctly mapped allows you to:
   - Filter large sets of imported waypoints by color
   - Organize and find waypoints quickly after import
   - Maintain your organizational system from CalTopo
@@ -169,9 +176,9 @@ Here are the blockers I ran into:
   - OnX will assign the default ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` blue color on import for non-matching values
   - After manual edit, OnX exports using the exact 10 waypoint colors
 
-- **KML round-trip fidelity is limited**: styles, structure, and metadata may be reduced when moving through onX import/export cycles.
+- **KML round-trip fidelity is limited**: styles, structure, and metadata may be reduced when moving through OnX import/export cycles.
 
-These constraints don't make the direction impossible — they just make it easier to lose "polish" compared to onX → CalTopo.
+These constraints don't make the direction impossible — they just make it easier to lose "polish" compared to OnX → CalTopo.
 
 ---
 
@@ -179,14 +186,14 @@ These constraints don't make the direction impossible — they just make it easi
 
 There's a recorded CLI demo script at `demo.tape` using:
 
-- `demo/onx-to-caltopo/onx-export/` (source exports)
-- `demo/onx-to-caltopo/caltopo-ready/` (generated outputs)
+- `demo/OnX-to-caltopo/OnX-export/` (source exports)
+- `demo/OnX-to-caltopo/caltopo-ready/` (generated outputs)
 
 ---
 
 ## Advanced Options
 
-The `migrate onx-to-caltopo` command supports several options:
+The `migrate OnX-to-caltopo` command supports several options:
 
 - **`-o, --output-dir PATH`**: Custom output directory (default: `<input-dir>/caltopo_ready`)
 - **`--name TEXT`**: Custom base name for output files (default: GPX filename)
@@ -198,7 +205,7 @@ The `migrate onx-to-caltopo` command supports several options:
 Example with options:
 
 ```bash
-uv run cairn migrate onx-to-caltopo ~/Downloads/onx-exports \
+uv run cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports \
   -o ./output \
   --name my_custom_name \
   --no-dedupe-shapes \
@@ -207,9 +214,9 @@ uv run cairn migrate onx-to-caltopo ~/Downloads/onx-exports \
 
 ---
 
-## CalTopo → onX
+## CalTopo → OnX
 
-Cairn also supports migrating from CalTopo to onX Backcountry. This direction is more experimental due to onX's import behavior (see "Challenges" section above), but the workflow is similar to onX → CalTopo.
+Cairn also supports migrating from CalTopo to OnX Backcountry. This direction is more experimental due to OnX's import behavior (see "Challenges" section above), but the workflow is similar to OnX → CalTopo.
 
 ### Quick start
 
@@ -217,13 +224,13 @@ Export your map from CalTopo as GeoJSON, then:
 
 ```bash
 # Interactive mode - will prompt for directory and let you select file
-uv run cairn migrate caltopo-to-onx
+uv run cairn migrate caltopo-to-OnX
 
 # Or specify the directory directly
-uv run cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports
+uv run cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports
 
 # With custom output location
-uv run cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports -o ./output
+uv run cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports -o ./output
 ```
 
 Cairn will:
@@ -233,7 +240,40 @@ Cairn will:
 4. Ask for confirmation before processing
 5. Create GPX files (for waypoints and tracks) and KML files (for polygons/areas)
 
-The output files will be created in `<input-directory>/onx_ready/` by default.
+The output files will be created in `<input-directory>/OnX_ready/` by default.
+
+### Example: Collegiate Loop (CalTopo → OnX)
+
+The CalTopo → OnX demo is in `demo/caltopo-to-OnX/`.
+
+- **CalTopo public map**: [Collegiate Loop (CalTopo)](https://caltopo.com/m/MLUGE77)
+- **OnX share link**: [Collegiate Loop (OnX)](https://webmap.OnXmaps.com/backcountry/share/content?share_id=01KCFRGDVVEYPW1SWXQ4RFGWHT)
+
+#### 1) Original map in CalTopo
+
+![Collegiate Loop in CalTopo](demo/caltopo-to-OnX/map-in-caltopo.png)
+
+This map includes multiple colored segments and different waypoint symbols to represent different kinds of locations.
+
+#### 2) Export GPX directly from CalTopo and import to OnX
+
+![Direct GPX import from CalTopo into OnX](demo/caltopo-to-OnX/export-gpx-direct-to-OnX.png)
+
+This is what the map looks like when you skip Cairn and rely on CalTopo’s GPX export. In practice, this tends to lose some icon/symbol intent and can normalize styling during import.
+
+#### 3) Export GeoJSON from CalTopo, run through Cairn, import to OnX
+
+```bash
+uv run cairn migrate caltopo-to-OnX demo/caltopo-to-OnX
+```
+
+By default, Cairn writes outputs to `demo/caltopo-to-OnX/OnX_ready/`.
+
+![GeoJSON export from CalTopo migrated to OnX via Cairn](demo/caltopo-to-OnX/export-geojson-cairn-to-OnX.png)
+
+In this workflow, Cairn:
+- **Maps icons** using config-driven matching from CalTopo symbols/keywords to OnX icons (configurable via `cairn_config.yaml`).
+- **Maps colors** by quantizing CalTopo colors to the closest OnX-supported color (waypoints support 10 colors; tracks support those same 10 plus one extra track-only color: Fuchsia).
 
 ### What gets created
 
@@ -243,17 +283,17 @@ The output files will be created in `<input-directory>/onx_ready/` by default.
 
 ### Options
 
-- **`-o, --output-dir PATH`**: Custom output directory (default: `<input-dir>/onx_ready`)
+- **`-o, --output-dir PATH`**: Custom output directory (default: `<input-dir>/OnX_ready`)
 - **`-c, --config PATH`**: Custom icon mapping configuration file
 - **`--no-sort`**: Preserve original order instead of natural sorting (default: sorts naturally)
 
 ### Icon mapping
 
-CalTopo symbols are automatically mapped to onX icons using `cairn_config.yaml`. You can customize these mappings or use a custom config file with `--config`.
+CalTopo symbols are automatically mapped to OnX icons using `cairn_config.yaml`. You can customize these mappings or use a custom config file with `--config`.
 
 ### Note about ordering
 
-By default, Cairn sorts items using natural sort order (e.g., "01", "02", "10" instead of "01", "10", "02") which helps with logical organization in onX. However, onX may still reorder items after import based on its own logic.
+By default, Cairn sorts items using natural sort order (e.g., "01", "02", "10" instead of "01", "10", "02") which helps with logical organization in OnX. However, OnX may still reorder items after import based on its own logic.
 
 ---
 

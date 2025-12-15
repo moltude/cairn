@@ -16,7 +16,7 @@ from rich.prompt import Prompt, Confirm
 
 from cairn.core.parser import ParsedData, ParsedFeature
 from cairn.core.mapper import map_icon
-from cairn.core.config import IconMappingConfig, get_all_onx_icons, save_user_mapping
+from cairn.core.config import IconMappingConfig, get_all_OnX_icons, save_user_mapping
 from cairn.core.matcher import FuzzyIconMatcher
 
 console = Console()
@@ -259,7 +259,7 @@ def prompt_for_new_icon(current_icon: str) -> Optional[str]:
             return browse_all_icons()
 
         # Validate icon name
-        valid_icons = get_all_onx_icons()
+        valid_icons = get_all_OnX_icons()
         if choice in valid_icons:
             return choice
 
@@ -357,7 +357,7 @@ def get_waypoint_icon_preview(feature: ParsedFeature, config: Optional[IconMappi
     """
     from cairn.core.mapper import map_icon, get_icon_emoji
 
-    # Map the waypoint to an onX icon (use config if provided)
+    # Map the waypoint to an OnX icon (use config if provided)
     mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol, config)
 
     # Get the emoji - use config if available, otherwise fallback to mapper

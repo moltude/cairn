@@ -2,7 +2,7 @@
 Shape (line/polygon) deduplication.
 
 Goal: produce a more usable CalTopo dataset by collapsing identical or near-identical
-Shapes that appear multiple times in onX exports.
+Shapes that appear multiple times in OnX exports.
 
 We keep the dropped features in a separate output and write a human-readable summary.
 """
@@ -121,11 +121,11 @@ def apply_shape_dedup(
     dropped: List[object] = []
 
     def score(it: object) -> Tuple[int, int]:
-        # Prefer richer notes, then stable onx_id presence.
+        # Prefer richer notes, then stable OnX_id presence.
         notes = getattr(it, "notes", "") or ""
         style = getattr(it, "style", None)
-        onx_id = getattr(style, "onx_id", None) if style is not None else None
-        return (len(notes.strip()), 1 if onx_id else 0)
+        OnX_id = getattr(style, "OnX_id", None) if style is not None else None
+        return (len(notes.strip()), 1 if OnX_id else 0)
 
     for (kind, title, sig), members in groups.items():
         if len(members) <= 1:

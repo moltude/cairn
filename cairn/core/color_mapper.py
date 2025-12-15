@@ -1,10 +1,10 @@
 """
-Color and style transformation system for mapping CalTopo values to onX-supported values.
+Color and style transformation system for mapping CalTopo values to OnX-supported values.
 
-onX Backcountry uses **different color systems** in GPX:
+OnX Backcountry uses **different color systems** in GPX:
 
-- **Tracks**: use an onX custom palette (brighter/saturated RGBA values)
-- **Waypoints**: support only 10 specific colors (official onX picker values)
+- **Tracks**: use an OnX custom palette (brighter/saturated RGBA values)
+- **Waypoints**: support only 10 specific colors (official OnX picker values)
 
 This module provides explicit mapping functions for both, plus line style/weight mapping.
 """
@@ -72,7 +72,7 @@ _RGB_REGEX = re.compile(r"rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)")
 
 @dataclass(frozen=True)
 class _PaletteColor:
-    """An RGB color with its onX GPX RGBA string representation."""
+    """An RGB color with its OnX GPX RGBA string representation."""
 
     name: str
     r: int
@@ -83,13 +83,13 @@ class _PaletteColor:
 
 class ColorMapper:
     """
-    Transform colors to onX-supported values.
+    Transform colors to OnX-supported values.
 
     Prefer calling `map_track_color()` or `map_waypoint_color()` instead of the older
     `transform_color()` name (which remains for backwards compatibility).
     """
 
-    # Track palette (onX official colors). Source: onx-markups-12142025.gpx
+    # Track palette (OnX official colors). Source: OnX-markups-12142025.gpx
     # Note: Tracks support 11 colors (waypoints only support 10)
     # The first 10 colors are IDENTICAL to the waypoint palette
     TRACK_PALETTE: tuple[_PaletteColor, ...] = (
@@ -106,7 +106,7 @@ class ColorMapper:
         _PaletteColor("fuchsia", 255, 0, 255, "rgba(255,0,255,1)"),  # 11th color - track-only
     )
 
-    # Waypoint palette (official 10 colors). Source: docs/onx-waypoint-colors-definitive.md
+    # Waypoint palette (official 10 colors). Source: docs/OnX-waypoint-colors-definitive.md
     WAYPOINT_PALETTE: tuple[_PaletteColor, ...] = (
         _PaletteColor("red-orange", 255, 51, 0, "rgba(255,51,0,1)"),
         _PaletteColor("blue", 8, 122, 255, "rgba(8,122,255,1)"),
@@ -147,7 +147,7 @@ class ColorMapper:
     @classmethod
     def find_closest_color(cls, r: int, g: int, b: int) -> str:
         """
-        Backwards-compatible RGB → nearest onX **track** color mapping.
+        Backwards-compatible RGB → nearest OnX **track** color mapping.
 
         Prefer `map_track_color()` or `map_waypoint_color()` for new code.
         """
@@ -155,13 +155,13 @@ class ColorMapper:
 
     @classmethod
     def map_track_color(cls, color_str: str) -> str:
-        """Map a color to the closest onX **track** palette color."""
+        """Map a color to the closest OnX **track** palette color."""
         r, g, b = cls.parse_color(color_str)
         return cls._find_closest_in_palette(r, g, b, cls.TRACK_PALETTE).rgba
 
     @classmethod
     def map_waypoint_color(cls, color_str: str) -> str:
-        """Map a color to the closest onX **waypoint** palette color."""
+        """Map a color to the closest OnX **waypoint** palette color."""
         r, g, b = cls.parse_color(color_str)
         return cls._find_closest_in_palette(r, g, b, cls.WAYPOINT_PALETTE).rgba
 
@@ -183,7 +183,7 @@ class ColorMapper:
             RGB tuple (r, g, b) with values 0-255
         """
         if not color_str:
-            # Default to onX blue
+            # Default to OnX blue
             return (8, 122, 255)
 
         color_str = color_str.strip()
@@ -205,7 +205,7 @@ class ColorMapper:
             if match:
                 return tuple(map(int, match.groups()))
 
-        # Default to onX blue if parsing fails
+        # Default to OnX blue if parsing fails
         return (8, 122, 255)
 
     @classmethod
@@ -220,7 +220,7 @@ class ColorMapper:
     @classmethod
     def get_color_name(cls, rgba_str: str) -> str:
         """
-        Get the human-readable name of an onX color.
+        Get the human-readable name of an OnX color.
 
         Args:
             rgba_str: RGBA string like "rgba(255,0,0,1)"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cairn - onX ↔ CalTopo migration tool
+Cairn - OnX ↔ CalTopo migration tool
 Main CLI entry point
 """
 
@@ -11,7 +11,7 @@ from cairn.commands import convert_cmd, config_cmd, icon_cmd, migrate_cmd
 
 app = typer.Typer(
     name="cairn",
-    help="Migrate map data between onX Backcountry and CalTopo",
+    help="Migrate map data between OnX Backcountry and CalTopo",
     no_args_is_help=True,
     add_completion=True
 )
@@ -22,15 +22,15 @@ app.command(name="convert", help="Convert between supported formats (advanced)")
 # Register command groups for config and icon
 app.add_typer(config_cmd.app, name="config", help="Manage configuration settings")
 app.add_typer(icon_cmd.app, name="icon", help="Manage icon mappings")
-app.add_typer(migrate_cmd.app, name="migrate", help="Migration helpers (onX ↔ CalTopo)")
+app.add_typer(migrate_cmd.app, name="migrate", help="Migration helpers (OnX ↔ CalTopo)")
 
 @app.callback()
 def callback():
     """
-    Cairn - onX ↔ CalTopo migration tool
+    Cairn - OnX ↔ CalTopo migration tool
 
     Primary workflow:
-      migrate onx-to-caltopo  - Convert onX GPX (+ optional KML) into CalTopo-importable GeoJSON
+      migrate OnX-to-caltopo  - Convert OnX GPX (+ optional KML) into CalTopo-importable GeoJSON
 
     Advanced workflow:
       convert                 - Convert between supported formats using --from/--to

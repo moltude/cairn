@@ -1,7 +1,7 @@
 # =============================================================================
 # Cairn Icon Mapping Configuration
 # =============================================================================
-# This file maps CalTopo symbols to onX Backcountry icons.
+# This file maps CalTopo symbols to OnX Backcountry icons.
 #
 # HOW IT WORKS (in priority order):
 #   1. symbol_mappings - matches CalTopo marker-symbol field
@@ -23,7 +23,7 @@ enable_unmapped_detection: true
 # =============================================================================
 # ICON EMOJIS (for terminal preview)
 # =============================================================================
-# Format: "onX Icon Name": "emoji"
+# Format: "OnX Icon Name": "emoji"
 # Used in the preview to visualize icon assignments.
 #
 icon_emojis:
@@ -84,7 +84,7 @@ icon_emojis:
 # =============================================================================
 # SYMBOL MAPPINGS
 # =============================================================================
-# Format: caltopo_symbol: onX Icon Name
+# Format: caltopo_symbol: OnX Icon Name
 # Maps the "marker-symbol" field from CalTopo GeoJSON exports.
 #
 # NOTE: Don't add generic symbols like "point" or "marker" here!
@@ -171,7 +171,7 @@ symbol_mappings:
 # =============================================================================
 # KEYWORD MAPPINGS
 # =============================================================================
-# Format: "onX Icon Name": [list, of, keywords]
+# Format: "OnX Icon Name": [list, of, keywords]
 # Searches waypoint title and description for these keywords.
 # Only used when no symbol_mapping matches.
 # Case-insensitive, matches substrings.

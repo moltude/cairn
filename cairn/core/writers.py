@@ -1,7 +1,7 @@
 """
-GPX and KML file writers for onX Backcountry format.
+GPX and KML file writers for OnX Backcountry format.
 
-This module generates valid GPX 1.1 files with onX custom namespace extensions
+This module generates valid GPX 1.1 files with OnX custom namespace extensions
 for waypoints and tracks, and KML 2.2 files for shapes (polygons).
 """
 
@@ -15,12 +15,12 @@ from datetime import datetime
 
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon, map_color
-from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_onx
+from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_OnX
 from cairn.core.config import IconMappingConfig, get_icon_color
 from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_to_weight
 
-# Register the onX namespace (note: 4 'w's is required)
-ET.register_namespace('onx', 'https://wwww.onxmaps.com/')
+# Register the OnX namespace (note: 4 'w's is required)
+ET.register_namespace('OnX', 'https://wwww.OnXmaps.com/')
 
 # Set up logger for debug output
 logger = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ def format_waypoint_name(
         name_with_prefix = original_name
 
     # Sanitize name for OnX sorting compatibility
-    sanitized_name, was_changed = sanitize_name_for_onx(name_with_prefix)
+    sanitized_name, was_changed = sanitize_name_for_OnX(name_with_prefix)
 
     # Track changes for reporting
     if was_changed:
@@ -190,7 +190,7 @@ def write_gpx_waypoints(
     config: Optional[IconMappingConfig] = None,
 ) -> int:
     """
-    Write waypoints to a GPX file with onX namespace extensions.
+    Write waypoints to a GPX file with OnX namespace extensions.
 
     Args:
         features: List of waypoint features to write
@@ -203,7 +203,7 @@ def write_gpx_waypoints(
         File size in bytes
 
     Note:
-        onX may re-sort items after import based on name, icon type, or other criteria.
+        OnX may re-sort items after import based on name, icon type, or other criteria.
         GPX element order is respected during import but may change post-import.
         Adding timestamps is experimental and may help preserve order if OnX respects them.
     """
@@ -219,7 +219,7 @@ def write_gpx_waypoints(
     # Build GPX manually to ensure proper namespace handling
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to onX Migration Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.OnXmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
         f'  <metadata>',
         f'    <name>{folder_name}</name>',
         f'  </metadata>',
@@ -268,23 +268,23 @@ def write_gpx_waypoints(
             desc_text = escape(strip_html(feature.description))
             lines.append(f'    <desc>{desc_text}</desc>')
 
-        # Add onX extensions
+        # Add OnX extensions
         lines.append(f'    <extensions>')
-        lines.append(f'      <onx:icon>{mapped_icon}</onx:icon>')
+        lines.append(f'      <OnX:icon>{mapped_icon}</OnX:icon>')
 
         # Waypoint color policy:
         # - If CalTopo provided a marker color, preserve intent but quantize to one of
-        #   onX's official 10 waypoint colors (onX ignores unsupported values).
+        #   OnX's official 10 waypoint colors (OnX ignores unsupported values).
         # - Otherwise, fall back to a default color per icon type.
         if feature.color:
-            onx_color = ColorMapper.map_waypoint_color(feature.color)
+            OnX_color = ColorMapper.map_waypoint_color(feature.color)
         else:
-            onx_color = get_icon_color(
+            OnX_color = get_icon_color(
                 mapped_icon,
                 default=(config.default_color if config else ColorMapper.DEFAULT_WAYPOINT_COLOR),
             )
 
-        lines.append(f'      <onx:color>{onx_color}</onx:color>')
+        lines.append(f'      <OnX:color>{OnX_color}</OnX:color>')
         lines.append(f'    </extensions>')
         lines.append(f'  </wpt>')
 
@@ -316,19 +316,19 @@ def write_gpx_waypoints(
 def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
                      folder_name: str, sort: bool = True) -> int:
     """
-    Write tracks to a GPX file with onX namespace extensions for color, style, and weight.
+    Write tracks to a GPX file with OnX namespace extensions for color, style, and weight.
 
     Args:
         features: List of track features to write
         output_path: Path to write the GPX file
         folder_name: Name for the GPX metadata
-        sort: If True (default), sort and reverse features for onX display order
+        sort: If True (default), sort and reverse features for OnX display order
 
     Returns:
         File size in bytes
 
     Note:
-        onX displays items in the same order as the GPX file.
+        OnX displays items in the same order as the GPX file.
     """
     from xml.sax.saxutils import escape
 
@@ -336,10 +336,10 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
     if sort:
         features = sorted(features, key=lambda f: natural_sort_key(f.title))
 
-    # Build GPX manually with onX namespace
+    # Build GPX manually with OnX namespace
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to onX Migration Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.OnXmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
         f'  <metadata>',
         f'    <name>{escape(folder_name)}</name>',
         f'  </metadata>',
@@ -351,7 +351,7 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
             continue
 
         # Sanitize track name for OnX sorting compatibility
-        sanitized_track_name, was_changed = sanitize_name_for_onx(feature.title)
+        sanitized_track_name, was_changed = sanitize_name_for_OnX(feature.title)
         if was_changed:
             track_name_change('tracks', feature.title, sanitized_track_name)
 
@@ -363,20 +363,20 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
             desc_text = escape(strip_html(feature.description))
             lines.append(f'    <desc>{desc_text}</desc>')
 
-        # Add onX extensions for color, style, and weight
+        # Add OnX extensions for color, style, and weight
         lines.append(f'    <extensions>')
 
-        # Map CalTopo stroke color to closest onX color
-        onx_color = ColorMapper.transform_color(feature.stroke) if feature.stroke else ColorMapper.DEFAULT_COLOR
-        lines.append(f'      <onx:color>{onx_color}</onx:color>')
+        # Map CalTopo stroke color to closest OnX color
+        OnX_color = ColorMapper.transform_color(feature.stroke) if feature.stroke else ColorMapper.DEFAULT_COLOR
+        lines.append(f'      <OnX:color>{OnX_color}</OnX:color>')
 
-        # Map CalTopo pattern to onX style
-        onx_style = pattern_to_style(feature.pattern)
-        lines.append(f'      <onx:style>{onx_style}</onx:style>')
+        # Map CalTopo pattern to OnX style
+        OnX_style = pattern_to_style(feature.pattern)
+        lines.append(f'      <OnX:style>{OnX_style}</OnX:style>')
 
-        # Map CalTopo stroke-width to onX weight
-        onx_weight = stroke_width_to_weight(feature.stroke_width)
-        lines.append(f'      <onx:weight>{onx_weight}</onx:weight>')
+        # Map CalTopo stroke-width to OnX weight
+        OnX_weight = stroke_width_to_weight(feature.stroke_width)
+        lines.append(f'      <OnX:weight>{OnX_weight}</OnX:weight>')
 
         lines.append(f'    </extensions>')
 
@@ -525,7 +525,7 @@ def generate_summary_file(
         f"{'='*70}",
         "",
         "This file lists all waypoints organized by their recommended icon type.",
-        "Use this as a reference when manually setting icons in onX after import.",
+        "Use this as a reference when manually setting icons in OnX after import.",
         "",
         f"Total Waypoints: {len(features)}",
         f"Icon Types: {len(icon_groups)}",
@@ -554,13 +554,13 @@ def generate_summary_file(
     summary_lines.extend([
         "",
         f"{'='*70}",
-        "INSTRUCTIONS FOR SETTING ICONS IN ONX:",
+        "INSTRUCTIONS FOR SETTING ICONS IN OnX:",
         f"{'='*70}",
         "",
-        "1. Import the GPX file into onX Web Map",
+        "1. Import the GPX file into OnX Web Map",
         "2. All waypoints will appear with default icons",
         "3. Waypoint names include icon type prefix (e.g., 'Parking - Trail')",
-        "4. Use onX's filter/search to find waypoints by icon type",
+        "4. Use OnX's filter/search to find waypoints by icon type",
         "5. Select multiple waypoints and batch-edit to change icons",
         "6. Refer to this summary to see all waypoints by icon type",
         "",

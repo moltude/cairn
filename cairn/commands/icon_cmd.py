@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
 
-from cairn.core.config import get_all_onx_icons, load_config, save_user_mapping, remove_user_mapping
+from cairn.core.config import get_all_OnX_icons, load_config, save_user_mapping, remove_user_mapping
 from cairn.core.mapper import get_icon_emoji
 
 app = typer.Typer()
@@ -14,7 +14,7 @@ console = Console()
 
 
 def browse_all_icons() -> Optional[str]:
-    """Show categorized list of all onX icons for selection."""
+    """Show categorized list of all OnX icons for selection."""
     # Group icons by category
     categories = {
         "Camping": ["Camp", "Camp Area", "Camp Backcountry", "Campground", "Campsite"],
@@ -35,7 +35,7 @@ def browse_all_icons() -> Optional[str]:
     }
 
     # Display with rich Table
-    table = Table(title="onX Backcountry Icons", show_header=True, header_style="bold cyan")
+    table = Table(title="OnX Backcountry Icons", show_header=True, header_style="bold cyan")
     table.add_column("Category", style="cyan", width=20)
     table.add_column("Icons", style="white")
 
@@ -55,17 +55,17 @@ def browse_all_icons() -> Optional[str]:
 
 @app.command("list")
 def list_icons():
-    """List all available onX Backcountry icons."""
+    """List all available OnX Backcountry icons."""
     browse_all_icons()
 
 
 @app.command("map")
 def map_symbol(
     symbol: str = typer.Argument(..., help="CalTopo symbol"),
-    icon: str = typer.Argument(..., help="onX icon name")
+    icon: str = typer.Argument(..., help="OnX icon name")
 ):
-    """Map a CalTopo symbol to an onX icon."""
-    valid_icons = get_all_onx_icons()
+    """Map a CalTopo symbol to an OnX icon."""
+    valid_icons = get_all_OnX_icons()
     if icon not in valid_icons:
         console.print(f"[red]✗[/] Invalid icon: {icon}")
         console.print("[dim]Run 'cairn icon list' to see all available icons[/]")

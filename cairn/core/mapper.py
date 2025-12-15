@@ -1,8 +1,8 @@
 """
-Icon and symbol mapping for CalTopo to onX Backcountry conversion.
+Icon and symbol mapping for CalTopo to OnX Backcountry conversion.
 
 This module handles the translation of CalTopo's generic marker symbols
-to onX Backcountry's specific icon IDs for better visual representation.
+to OnX Backcountry's specific icon IDs for better visual representation.
 """
 
 from typing import Optional
@@ -37,7 +37,7 @@ _LEGACY_RESOLVER = IconResolver(
 def map_icon(title: str, description: str = "", caltopo_symbol: str = "",
              config: Optional[IconMappingConfig] = None) -> str:
     """
-    Map a CalTopo marker to an onX Backcountry icon ID.
+    Map a CalTopo marker to an OnX Backcountry icon ID.
 
     Priority order:
     1. CalTopo marker-symbol (if config provided)
@@ -51,7 +51,7 @@ def map_icon(title: str, description: str = "", caltopo_symbol: str = "",
         config: Optional IconMappingConfig instance for enhanced mapping
 
     Returns:
-        The onX Backcountry icon ID (e.g., "Campsite", "Water Source")
+        The OnX Backcountry icon ID (e.g., "Campsite", "Water Source")
         Defaults to "Location" if no match is found.
     """
     # Config-based mode (preferred): use an explainable resolver and cache it on the config instance.
@@ -119,7 +119,7 @@ def get_icon_emoji(icon_id: str) -> str:
     Get an emoji representation for an icon ID (for Rich UI display).
 
     Args:
-        icon_id: The onX icon ID
+        icon_id: The OnX icon ID
 
     Returns:
         An emoji string representing the icon

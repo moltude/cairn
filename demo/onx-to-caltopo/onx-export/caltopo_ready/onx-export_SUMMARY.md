@@ -4,15 +4,15 @@ This file explains why some shapes were removed from the primary CalTopo import 
 Nothing is deleted permanently: every dropped feature is preserved in the secondary GeoJSON.
 
 ### Inputs
-- **GPX**: `/Users/scott/_code/carin/demo/onx-to-caltopo/onx-export/onx-export.gpx`
-- **KML**: `/Users/scott/_code/carin/demo/onx-to-caltopo/onx-export/onx-export.kml`
+- **GPX**: `/Users/scott/_code/carin/demo/OnX-to-caltopo/OnX-export/OnX-export.gpx`
+- **KML**: `/Users/scott/_code/carin/demo/OnX-to-caltopo/OnX-export/OnX-export.kml`
 
 ### Outputs
-- **Primary (deduped)**: `/Users/scott/_code/carin/demo/onx-to-caltopo/onx-export/caltopo_ready/onx-export.json`
-- **Secondary (dropped duplicates)**: `/Users/scott/_code/carin/demo/onx-to-caltopo/onx-export/caltopo_ready/onx-export_dropped_shapes.json`
+- **Primary (deduped)**: `/Users/scott/_code/carin/demo/OnX-to-caltopo/OnX-export/caltopo_ready/OnX-export.json`
+- **Secondary (dropped duplicates)**: `/Users/scott/_code/carin/demo/OnX-to-caltopo/OnX-export/caltopo_ready/OnX-export_dropped_shapes.json`
 
 ### Dedup policy
-- **Polygon preference**: when the same onX id exists as both a route/track (GPX) and a polygon (KML), we keep the polygon and drop the line to avoid CalTopo id collisions.
+- **Polygon preference**: when the same OnX id exists as both a route/track (GPX) and a polygon (KML), we keep the polygon and drop the line to avoid CalTopo id collisions.
 - **Shape dedup default**: enabled (can be disabled via `--no-dedupe-shapes`).
 - **Fuzzy match definition**:
   - **Polygons**: round coordinates to 6 decimals; ignore ring start index; ignore ring direction.

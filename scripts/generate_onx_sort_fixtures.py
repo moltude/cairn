@@ -8,7 +8,7 @@ I use these fixtures to isolate whether OnX orders Waypoints/Tracks by:
 
 To regenerate all fixtures, I run:
 
-    python3 scripts/generate_onx_sort_fixtures.py
+    python3 scripts/generate_OnX_sort_fixtures.py
 
 This script overwrites the generated files under `tests/fixtures/`.
 """
@@ -24,7 +24,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 
 GPX_NS = "http://www.topografix.com/GPX/1/1"
-ONX_NS = "https://wwww.onxmaps.com/"  # yes, 4 w's
+OnX_NS = "https://wwww.OnXmaps.com/"  # yes, 4 w's
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ def build_gpx_header(*, creator: str, name: str, desc: str) -> list[str]:
     desc = xml_escape(desc)
     return [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<gpx xmlns="{GPX_NS}" xmlns:onx="{ONX_NS}" version="1.1" creator="{creator}">',
+        f'<gpx xmlns="{GPX_NS}" xmlns:OnX="{OnX_NS}" version="1.1" creator="{creator}">',
         "  <metadata>",
         f"    <name>{name}</name>",
         f"    <desc>{desc}</desc>",
@@ -81,8 +81,8 @@ def wpt_lines(wpt: Waypoint, *, icon: str, color: str) -> list[str]:
     lines.extend(
         [
             "    <extensions>",
-            f"      <onx:icon>{icon}</onx:icon>",
-            f"      <onx:color>{color}</onx:color>",
+            f"      <OnX:icon>{icon}</OnX:icon>",
+            f"      <OnX:color>{color}</OnX:color>",
             "    </extensions>",
             "  </wpt>",
         ]
@@ -109,7 +109,7 @@ def trk_lines(trk: Track) -> list[str]:
     lines.extend(
         [
             "    <extensions>",
-            f"      <onx:color>{color}</onx:color>",
+            f"      <OnX:color>{color}</OnX:color>",
             "    </extensions>",
             "    <trkseg>",
             f'      <trkpt lat="{trk.start_lat:.6f}" lon="{trk.start_lon:.6f}">',

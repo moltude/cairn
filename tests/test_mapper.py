@@ -162,7 +162,7 @@ class TestGetIconEmoji:
 
 
 class TestSymbolMappingsWithConfig:
-    """Tests for CalTopo symbol -> onX icon mappings using config."""
+    """Tests for CalTopo symbol -> OnX icon mappings using config."""
 
     @pytest.fixture
     def config(self):
@@ -314,7 +314,7 @@ class TestSymbolMappingsWithConfig:
 
 
 class TestKeywordMappingsWithConfig:
-    """Tests for title/description keyword -> onX icon mappings using config."""
+    """Tests for title/description keyword -> OnX icon mappings using config."""
 
     @pytest.fixture
     def config(self):

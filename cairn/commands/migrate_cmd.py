@@ -22,13 +22,13 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.diagnostics import check_data_quality, dedup_inventory, document_inventory
-from cairn.core.merge import merge_onx_gpx_and_kml
+from cairn.core.merge import merge_OnX_gpx_and_kml
 from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.core.shape_dedup_summary import write_shape_dedup_summary
 from cairn.core.trace import TraceWriter
 from cairn.io.caltopo_geojson import write_caltopo_geojson
-from cairn.io.onx_gpx import read_onx_gpx
-from cairn.io.onx_kml import read_onx_kml
+from cairn.io.OnX_gpx import read_OnX_gpx
+from cairn.io.OnX_kml import read_OnX_kml
 from cairn.model import MapDocument
 from cairn.utils.utils import ensure_output_dir, format_file_size
 
@@ -36,11 +36,11 @@ from cairn.utils.utils import ensure_output_dir, format_file_size
 app = typer.Typer(
     no_args_is_help=True,
     help="""
-Migration helpers for onX Backcountry ↔ CalTopo.
+Migration helpers for OnX Backcountry ↔ CalTopo.
 
 Currently supported:
-  onx-to-caltopo      Migrate onX exports to CalTopo GeoJSON
-  caltopo-to-onx      Migrate CalTopo GeoJSON to onX GPX/KML
+  OnX-to-caltopo      Migrate OnX exports to CalTopo GeoJSON
+  caltopo-to-OnX      Migrate CalTopo GeoJSON to OnX GPX/KML
 
 The migration workflow is designed to preserve all map customization
 (icons, colors, notes, organization) - not just raw shapes.
@@ -323,11 +323,11 @@ def _confirm_caltopo_migration(
     return confirm
 
 
-@app.command("onx-to-caltopo")
-def onx_to_caltopo(
+@app.command("OnX-to-caltopo")
+def OnX_to_caltopo(
     input_dir: Optional[Path] = typer.Argument(
         None,
-        help="Directory containing onX GPX and KML exports",
+        help="Directory containing OnX GPX and KML exports",
         exists=True,
         file_okay=False,
         dir_okay=True,
@@ -364,16 +364,16 @@ def onx_to_caltopo(
         help="Custom path for trace log (overrides default location)",
     ),
 ):
-    """Migrate onX Backcountry exports to CalTopo GeoJSON format.
+    """Migrate OnX Backcountry exports to CalTopo GeoJSON format.
 
     Interactive workflow to select files, review, and confirm.
     Removes duplicate waypoints and shapes automatically.
 
     \b
     Examples:
-      cairn migrate onx-to-caltopo
-      cairn migrate onx-to-caltopo ~/Downloads/onx-exports
-      cairn migrate onx-to-caltopo ~/Downloads/onx-exports -o ./output
+      cairn migrate OnX-to-caltopo
+      cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports
+      cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports -o ./output
 
     \b
     Input: Directory with GPX (waypoints) and KML (polygons).
@@ -385,7 +385,7 @@ def onx_to_caltopo(
 
     # 1. Validate input directory
     if input_dir is None:
-        input_dir_str = typer.prompt("Path to directory with onX exports")
+        input_dir_str = typer.prompt("Path to directory with OnX exports")
         input_dir = Path(input_dir_str).expanduser()
 
     input_dir = input_dir.expanduser().resolve()
@@ -430,7 +430,7 @@ def onx_to_caltopo(
     trace_ctx = TraceWriter(resolved_trace_path) if resolved_trace_path else None
     try:
         if trace_ctx:
-            trace_ctx.emit({"event": "run.start", "command": "migrate.onx-to-caltopo"})
+            trace_ctx.emit({"event": "run.start", "command": "migrate.OnX-to-caltopo"})
 
         with Progress(
             SpinnerColumn(),
@@ -440,11 +440,11 @@ def onx_to_caltopo(
             TimeElapsedColumn(),
             console=console,
         ) as progress:
-            task = progress.add_task("Migrating onX → CalTopo", total=7)
+            task = progress.add_task("Migrating OnX → CalTopo", total=7)
 
             progress.update(task, description="Reading GPX")
             try:
-                doc = read_onx_gpx(gpx, trace=trace_ctx)
+                doc = read_OnX_gpx(gpx, trace=trace_ctx)
             except ValueError as e:
                 progress.stop()
                 console.print(f"\n[bold red]❌ Error reading GPX file:[/]")
@@ -454,7 +454,7 @@ def onx_to_caltopo(
 
             progress.update(task, description="Reading KML")
             try:
-                kml_doc = read_onx_kml(kml, trace=trace_ctx)
+                kml_doc = read_OnX_kml(kml, trace=trace_ctx)
             except ValueError as e:
                 progress.stop()
                 console.print(f"\n[bold red]❌ Error reading KML file:[/]")
@@ -463,7 +463,7 @@ def onx_to_caltopo(
             progress.advance(task)
 
             progress.update(task, description="Merging GPX + KML (prefer polygons)")
-            doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+            doc = merge_OnX_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
             progress.advance(task)
 
             if trace_ctx:
@@ -567,8 +567,8 @@ def onx_to_caltopo(
             trace_ctx.close()
 
 
-@app.command("caltopo-to-onx")
-def caltopo_to_onx(
+@app.command("caltopo-to-OnX")
+def caltopo_to_OnX(
     input_dir: Optional[Path] = typer.Argument(
         None,
         help="Directory containing CalTopo GeoJSON export(s)",
@@ -580,7 +580,7 @@ def caltopo_to_onx(
         None,
         "--output-dir",
         "-o",
-        help="Output directory (defaults to <input-dir>/onx_ready)",
+        help="Output directory (defaults to <input-dir>/OnX_ready)",
     ),
     config_file: Optional[Path] = typer.Option(
         None,
@@ -594,16 +594,16 @@ def caltopo_to_onx(
         help="Preserve original order instead of natural sorting",
     ),
 ):
-    """Migrate CalTopo GeoJSON exports to onX-importable GPX/KML format.
+    """Migrate CalTopo GeoJSON exports to OnX-importable GPX/KML format.
 
     Interactive workflow to select file, validate, review, and confirm.
-    Maps CalTopo symbols to onX icons and preserves colors/styles.
+    Maps CalTopo symbols to OnX icons and preserves colors/styles.
 
     \b
     Examples:
-      cairn migrate caltopo-to-onx
-      cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports
-      cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports -o ./output
+      cairn migrate caltopo-to-OnX
+      cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports
+      cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports -o ./output
 
     \b
     Input: Directory with CalTopo GeoJSON export file(s).
@@ -649,7 +649,7 @@ def caltopo_to_onx(
 
     # 5. Determine output directory
     if output_dir is None:
-        output_dir = input_dir / "onx_ready"
+        output_dir = input_dir / "OnX_ready"
 
     out_dir = ensure_output_dir(output_dir)
 
@@ -688,4 +688,4 @@ def caltopo_to_onx(
 
     # Success footer
     console.print(f"\n[bold green]✔ SUCCESS[/] {len(output_files)} file(s) written to [underline]{out_dir}[/]")
-    console.print("[dim]Next: Import these files into onX Backcountry[/]\n")
+    console.print("[dim]Next: Import these files into OnX Backcountry[/]\n")

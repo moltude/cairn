@@ -7,7 +7,7 @@ from rich.console import Console
 import re
 import yaml
 
-from cairn.core.config import load_config, get_all_onx_icons
+from cairn.core.config import load_config, get_all_OnX_icons
 from cairn.core.mapper import get_icon_emoji
 from cairn.core.color_mapper import ColorMapper
 
@@ -24,13 +24,13 @@ def show():
     console.print("\n[bold]Current Configuration:[/]")
     console.print(f"  Symbol mappings: [cyan]{summary['symbol_mappings_count']}[/]")
     console.print(f"  Keyword mappings: [cyan]{summary['keyword_mappings_count']}[/]")
-    console.print(f"  Unique onX icons: [cyan]{summary['unique_onx_icons']}[/]")
+    console.print(f"  Unique OnX icons: [cyan]{summary['unique_OnX_icons']}[/]")
     console.print(f"  Unmapped detection: [cyan]{'Enabled' if summary['unmapped_detection_enabled'] else 'Disabled'}[/]")
     console.print(f"  Icon name prefixes: [cyan]{'Enabled' if summary.get('use_icon_name_prefix') else 'Disabled'}[/]")
     console.print(f"  Default icon: [cyan]{summary.get('default_icon', 'Location')}[/]")
     console.print(f"  Default color: [cyan]{summary.get('default_color', 'rgba(8,122,255,1)')}[/]")
 
-    console.print("\n[bold]Available onX Icons:[/]")
+    console.print("\n[bold]Available OnX Icons:[/]")
     unique_icons = sorted(set(cfg.symbol_map.values()))
     for icon in unique_icons:
         emoji = get_icon_emoji(icon)
@@ -65,9 +65,9 @@ def validate(config_file: Path = typer.Argument(..., help="Config file to valida
 @app.command("set-default-icon")
 def set_default_icon(icon: str = typer.Argument(..., help="Icon name")):
     """Set default icon for unmapped symbols."""
-    valid_icons = get_all_onx_icons()
+    valid_icons = get_all_OnX_icons()
     if icon not in valid_icons:
-        console.print(f"[bold red]❌ Error:[/] '{icon}' is not a valid onX icon")
+        console.print(f"[bold red]❌ Error:[/] '{icon}' is not a valid OnX icon")
         console.print("[dim]Run 'cairn icon list' to see all available icons[/]")
         raise typer.Exit(1)
 
@@ -92,7 +92,7 @@ def set_default_color(color: str = typer.Argument(..., help="Color in rgba forma
         console.print("[dim]Expected rgba(r,g,b,a) or #RRGGBB or RRGGBB[/]")
         raise typer.Exit(1)
 
-    onx_color = ColorMapper.map_waypoint_color(color)
+    OnX_color = ColorMapper.map_waypoint_color(color)
 
     config_path = Path("cairn_config.yaml")
     if config_path.exists():
@@ -101,8 +101,8 @@ def set_default_color(color: str = typer.Argument(..., help="Color in rgba forma
     else:
         data = {}
 
-    data["default_color"] = onx_color
+    data["default_color"] = OnX_color
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
-    console.print(f"[bold green]✔[/] Default color set to: [cyan]{onx_color}[/] (saved to {config_path})")
+    console.print(f"[bold green]✔[/] Default color set to: [cyan]{OnX_color}[/] (saved to {config_path})")

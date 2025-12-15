@@ -1,7 +1,7 @@
 """
 Utility functions for Cairn: chunking, HTML stripping, sorting, and file helpers.
 
-This module provides helper functions for handling onX import limits,
+This module provides helper functions for handling OnX import limits,
 cleaning data, natural sorting, and managing file operations.
 """
 
@@ -55,9 +55,9 @@ def natural_sort_key(text: str) -> List[Union[str, int]]:
 
 def chunk_data(items: List[Any], limit: int = 2500) -> Iterator[List[Any]]:
     """
-    Split a list into chunks to respect onX import limits.
+    Split a list into chunks to respect OnX import limits.
 
-    onX Backcountry crashes with >3000 items, so we use a conservative
+    OnX Backcountry crashes with >3000 items, so we use a conservative
     limit of 2500 by default.
 
     Args:
@@ -86,7 +86,7 @@ def strip_html(text: str) -> str:
     Remove HTML tags from text.
 
     CalTopo exports often contain HTML formatting in descriptions,
-    but onX Backcountry expects plain text.
+    but OnX Backcountry expects plain text.
 
     Args:
         text: Text potentially containing HTML tags
@@ -124,7 +124,7 @@ def strip_html(text: str) -> str:
     return text
 
 
-def sanitize_name_for_onx(name: str) -> Tuple[str, bool]:
+def sanitize_name_for_OnX(name: str) -> Tuple[str, bool]:
     """
     Sanitize waypoint/track names by removing problematic non-alphanumeric characters
     that can cause OnX sorting issues, while preserving natural sort order.
@@ -141,13 +141,13 @@ def sanitize_name_for_onx(name: str) -> Tuple[str, bool]:
         - was_changed: True if any characters were removed, False otherwise
 
     Examples:
-        >>> sanitize_name_for_onx("#01 Porcupine Mile 6.1")
+        >>> sanitize_name_for_OnX("#01 Porcupine Mile 6.1")
         ('01 Porcupine Mile 6.1', True)
-        >>> sanitize_name_for_onx("#03 & #05 Cow Camp")
+        >>> sanitize_name_for_OnX("#03 & #05 Cow Camp")
         ('03  05 Cow Camp', True)
-        >>> sanitize_name_for_onx("Deadfall")
+        >>> sanitize_name_for_OnX("Deadfall")
         ('Deadfall', False)
-        >>> sanitize_name_for_onx("CONICAL PASS CUTOFF 12:45 AM")
+        >>> sanitize_name_for_OnX("CONICAL PASS CUTOFF 12:45 AM")
         ('CONICAL PASS CUTOFF 12:45 AM', False)
     """
     if not name:
@@ -283,7 +283,7 @@ def get_geometry_type_name(geometry_type: str) -> str:
 def should_split(item_count: int, estimated_size: int,
                  max_items: int = 3000, max_size: int = 4 * 1024 * 1024) -> bool:
     """
-    Determine if a dataset should be split based on onX limits.
+    Determine if a dataset should be split based on OnX limits.
 
     Args:
         item_count: Number of items in the dataset

@@ -1,7 +1,7 @@
 
 import json
 
-with open('test-onx-export.json', 'r') as f:
+with open('test-OnX-export.json', 'r') as f:
     data = json.load(f)
 
 # Look at actual values in the data to spot duplicates
@@ -18,10 +18,10 @@ duplicates = []
 for i, point in enumerate(points[:10]):  # Sample first 10
     coords = tuple(point['geometry']['coordinates'])
     props = point['properties']
-    
+
     # Create a unique key from coordinates + important properties
     key = (coords, props.get('title', ''), props.get('description', ''))
-    
+
     if key in coords_seen:
         duplicates.append((i, coords_seen[key], props))
         print(f"[{i}] DUPLICATE: Coords {coords}")

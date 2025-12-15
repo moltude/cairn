@@ -1,8 +1,8 @@
 """
-Fuzzy matching system for mapping CalTopo symbols to onX Backcountry icons.
+Fuzzy matching system for mapping CalTopo symbols to OnX Backcountry icons.
 
 This module provides intelligent symbol matching using string similarity algorithms
-and semantic keyword matching to suggest the best onX icon for unmapped CalTopo symbols.
+and semantic keyword matching to suggest the best OnX icon for unmapped CalTopo symbols.
 """
 
 from difflib import SequenceMatcher
@@ -11,21 +11,21 @@ import re
 
 
 class FuzzyIconMatcher:
-    """Intelligent fuzzy matching for unmapped CalTopo symbols to onX icons."""
+    """Intelligent fuzzy matching for unmapped CalTopo symbols to OnX icons."""
 
     def __init__(self, valid_icons: List[str]):
         """
         Initialize the fuzzy matcher.
 
         Args:
-            valid_icons: List of valid onX icon names
+            valid_icons: List of valid OnX icon names
         """
         self.valid_icons = valid_icons
         self.synonyms = self._build_synonym_map()
 
     def find_best_matches(self, symbol: str, top_n: int = 3) -> List[Tuple[str, float]]:
         """
-        Find best matching onX icons for a CalTopo symbol.
+        Find best matching OnX icons for a CalTopo symbol.
 
         Args:
             symbol: CalTopo symbol to match
@@ -78,7 +78,7 @@ class FuzzyIconMatcher:
 
         Args:
             symbol: Normalized symbol string
-            icon: onX icon name
+            icon: OnX icon name
 
         Returns:
             Similarity score between 0.0 and 1.0
@@ -113,7 +113,7 @@ class FuzzyIconMatcher:
 
         Args:
             symbol: Normalized symbol string
-            icon: onX icon name
+            icon: OnX icon name
 
         Returns:
             Keyword match score between 0.0 and 1.0

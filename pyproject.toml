@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cairn"
 version = "1.0.0"
-description = "Migrate map data between onX Backcountry and CalTopo"
+description = "Migrate map data between OnX Backcountry and CalTopo"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

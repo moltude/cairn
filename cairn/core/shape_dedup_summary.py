@@ -41,7 +41,7 @@ def write_shape_dedup_summary(
     lines.append(f"- **Secondary (dropped duplicates)**: `{dropped_geojson_path}`")
     lines.append("")
     lines.append("### Dedup policy")
-    lines.append("- **Polygon preference**: when the same onX id exists as both a route/track (GPX) and a polygon (KML), we keep the polygon and drop the line to avoid CalTopo id collisions.")
+    lines.append("- **Polygon preference**: when the same OnX id exists as both a route/track (GPX) and a polygon (KML), we keep the polygon and drop the line to avoid CalTopo id collisions.")
     lines.append("- **Shape dedup default**: enabled (can be disabled via `--no-dedupe-shapes`).")
     lines.append("- **Fuzzy match definition**:")
     lines.append("  - **Polygons**: round coordinates to 6 decimals; ignore ring start index; ignore ring direction.")

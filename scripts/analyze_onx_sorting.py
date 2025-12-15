@@ -18,12 +18,12 @@ def read_gpx_waypoints(gpx_path: Path):
     tree = ET.parse(gpx_path)
     root = tree.getroot()
     ns = {'gpx': 'http://www.topografix.com/GPX/1/1'}
-    onx_ns = {'onx': 'https://wwww.onxmaps.com/'}
+    OnX_ns = {'OnX': 'https://wwww.OnXmaps.com/'}
 
     waypoints = []
     for wpt in root.findall('.//gpx:wpt', ns):
         name_elem = wpt.find('gpx:name', ns)
-        icon_elem = wpt.find('.//onx:icon', onx_ns)
+        icon_elem = wpt.find('.//OnX:icon', OnX_ns)
 
         if name_elem is not None and name_elem.text:
             name = name_elem.text.strip()
@@ -143,8 +143,8 @@ if __name__ == "__main__":
         # Note: Screenshot may not show all waypoints
     ]
 
-    original_gpx = Path("onx_ready/Crazy_Mountain_100M_Waypoints.gpx")
-    exported_gpx = Path("/Users/scott/downloads/onx-markups-12132025 (1).gpx")
+    original_gpx = Path("OnX_ready/Crazy_Mountain_100M_Waypoints.gpx")
+    exported_gpx = Path("/Users/scott/downloads/OnX-markups-12132025 (1).gpx")
 
     if not original_gpx.exists():
         console.print(f"[red]Error: {original_gpx} not found[/]")

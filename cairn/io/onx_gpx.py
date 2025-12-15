@@ -1,12 +1,12 @@
 """
-onX Backcountry GPX adapter.
+OnX Backcountry GPX adapter.
 
-Reads an onX-exported GPX file into Cairn's canonical MapDocument model.
+Reads an OnX-exported GPX file into Cairn's canonical MapDocument model.
 
 Notes:
-- onX exports often include a key/value block in <desc> for both waypoints and tracks.
-- onX also includes custom extensions in namespace https://wwww.onxmaps.com/
-- onX GPX export structure can vary (tracks vs routes), so we read <trk> and <rte>.
+- OnX exports often include a key/value block in <desc> for both waypoints and tracks.
+- OnX also includes custom extensions in namespace https://wwww.OnXmaps.com/
+- OnX GPX export structure can vary (tracks vs routes), so we read <trk> and <rte>.
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from cairn.core.normalization import iso8601_to_epoch_ms, normalize_name
 from cairn.model import MapDocument, Style, Track, TrackPoint, Waypoint
 
 
-_ONX_NS = "https://wwww.onxmaps.com/"
+_OnX_NS = "https://wwww.OnXmaps.com/"
 _GPX_NS = "http://www.topografix.com/GPX/1/1"
-_NS = {"gpx": _GPX_NS, "onx": _ONX_NS}
+_NS = {"gpx": _GPX_NS, "OnX": _OnX_NS}
 
 
 _DESC_KV_KEYS = (
@@ -44,9 +44,9 @@ def _stable_uuid_fallback() -> str:
     return str(uuid.uuid4())
 
 
-def parse_onx_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
+def parse_OnX_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
     """
-    Parse an onX <desc> key/value block.
+    Parse an OnX <desc> key/value block.
 
     The common structure is:
       name=...
@@ -102,21 +102,21 @@ def parse_onx_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
     return kv, notes
 
 
-def _get_onx_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
+def _get_OnX_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
     """
-    Read onX extension element by local name from an <extensions> element.
+    Read OnX extension element by local name from an <extensions> element.
     """
     if elem is None:
         return None
-    child = elem.find(f"onx:{local_name}", _NS)
+    child = elem.find(f"OnX:{local_name}", _NS)
     if child is not None and child.text:
         return child.text.strip()
     return None
 
 
-def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
+def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     """
-    Read an onX GPX export.
+    Read an OnX GPX export.
 
     Args:
       path: path to GPX
@@ -144,12 +144,12 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     if not (root.tag.endswith("gpx") or "gpx" in root.tag.lower()):
         raise ValueError(f"File does not appear to be a GPX file (root element: {root.tag})\nFile: {p}")
 
-    doc = MapDocument(metadata={"source": "onx_gpx", "path": str(p)})
+    doc = MapDocument(metadata={"source": "OnX_gpx", "path": str(p)})
 
     # Default folder structure (value-add for CalTopo)
-    doc.ensure_folder("onx_import", "OnX Import")
-    doc.ensure_folder("onx_waypoints", "Waypoints", parent_id="onx_import")
-    doc.ensure_folder("onx_tracks", "Tracks", parent_id="onx_import")
+    doc.ensure_folder("OnX_import", "OnX Import")
+    doc.ensure_folder("OnX_waypoints", "Waypoints", parent_id="OnX_import")
+    doc.ensure_folder("OnX_tracks", "Tracks", parent_id="OnX_import")
 
     # Waypoints
     for idx, wpt in enumerate(root.findall("gpx:wpt", _NS)):
@@ -187,19 +187,19 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
 
         desc_elem = wpt.find("gpx:desc", _NS)
         desc_raw = desc_elem.text if desc_elem is not None and desc_elem.text else ""
-        kv, notes = parse_onx_desc_kv(desc_raw)
+        kv, notes = parse_OnX_desc_kv(desc_raw)
 
         ext = wpt.find("gpx:extensions", _NS)
-        onx_color = _get_onx_extension_text(ext, "color") or kv.get("color")
-        onx_icon = _get_onx_extension_text(ext, "icon") or kv.get("icon")
-        onx_id = kv.get("id")
+        OnX_color = _get_OnX_extension_text(ext, "color") or kv.get("color")
+        OnX_icon = _get_OnX_extension_text(ext, "icon") or kv.get("icon")
+        OnX_id = kv.get("id")
 
-        style = Style(onx_icon=onx_icon, onx_color_rgba=onx_color, onx_id=onx_id)
+        style = Style(OnX_icon=OnX_icon, OnX_color_rgba=OnX_color, OnX_id=OnX_id)
         style.extra["desc_kv"] = kv
 
         wp = Waypoint(
-            id=onx_id or _stable_uuid_fallback(),
-            folder_id="onx_waypoints",
+            id=OnX_id or _stable_uuid_fallback(),
+            folder_id="OnX_waypoints",
             name=name,
             lon=lon,
             lat=lat,
@@ -218,7 +218,7 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
                     "lon": lon,
                     "name_raw": name_raw,
                     "name_norm": name,
-                    "onx": {"id": onx_id, "icon": onx_icon, "color": onx_color},
+                    "OnX": {"id": OnX_id, "icon": OnX_icon, "color": OnX_color},
                 }
             )
 
@@ -230,13 +230,13 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
 
         desc_elem = track_elem.find("gpx:desc", _NS)
         desc_raw = desc_elem.text if desc_elem is not None and desc_elem.text else ""
-        kv, notes = parse_onx_desc_kv(desc_raw)
+        kv, notes = parse_OnX_desc_kv(desc_raw)
 
         ext = track_elem.find("gpx:extensions", _NS)
-        onx_color = _get_onx_extension_text(ext, "color") or kv.get("color")
-        onx_style = _get_onx_extension_text(ext, "style") or kv.get("style")
-        onx_weight = _get_onx_extension_text(ext, "weight") or kv.get("weight")
-        onx_id = kv.get("id")
+        OnX_color = _get_OnX_extension_text(ext, "color") or kv.get("color")
+        OnX_style = _get_OnX_extension_text(ext, "style") or kv.get("style")
+        OnX_weight = _get_OnX_extension_text(ext, "weight") or kv.get("weight")
+        OnX_id = kv.get("id")
 
         points: List[TrackPoint] = []
 
@@ -287,17 +287,17 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
             return None
 
         style = Style(
-            onx_color_rgba=onx_color,
-            onx_style=onx_style,
-            onx_weight=onx_weight,
-            onx_id=onx_id,
+            OnX_color_rgba=OnX_color,
+            OnX_style=OnX_style,
+            OnX_weight=OnX_weight,
+            OnX_id=OnX_id,
         )
         style.extra["desc_kv"] = kv
         style.extra["gpx_type"] = gpx_type
 
         trk = Track(
-            id=onx_id or _stable_uuid_fallback(),
-            folder_id="onx_tracks",
+            id=OnX_id or _stable_uuid_fallback(),
+            folder_id="OnX_tracks",
             name=name,
             points=points,
             notes=normalize_name(notes) if notes else "",
@@ -313,11 +313,11 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
                     "name_raw": name_raw,
                     "name_norm": name,
                     "point_count": len(points),
-                    "onx": {
-                        "id": onx_id,
-                        "color": onx_color,
-                        "style": onx_style,
-                        "weight": onx_weight,
+                    "OnX": {
+                        "id": OnX_id,
+                        "color": OnX_color,
+                        "style": OnX_style,
+                        "weight": OnX_weight,
                     },
                 }
             )

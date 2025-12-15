@@ -23,12 +23,12 @@ GENERIC_SYMBOLS = frozenset([
 ])
 
 
-# onX Backcountry waypoint icon color mappings (RGBA format).
+# OnX Backcountry waypoint icon color mappings (RGBA format).
 #
 # IMPORTANT:
 # - Waypoints support ONLY the official 10-color waypoint palette.
-# - These defaults must stay within that palette to avoid onX ignoring colors on import.
-# - See docs/onx-waypoint-colors-definitive.md for the canonical list.
+# - These defaults must stay within that palette to avoid OnX ignoring colors on import.
+# - See docs/OnX-waypoint-colors-definitive.md for the canonical list.
 ICON_COLOR_MAP = {
     # Official waypoint palette colors (10 total)
     "Location": "rgba(8,122,255,1)",          # Blue
@@ -81,7 +81,7 @@ def get_icon_color(icon_name: str, *, default: str = "rgba(8,122,255,1)") -> str
     Get the appropriate RGBA color for an icon type.
 
     Args:
-        icon_name: The onX icon name (e.g., "Hazard", "Campsite")
+        icon_name: The OnX icon name (e.g., "Hazard", "Campsite")
 
     Returns:
         RGBA color string (e.g., "rgba(255,0,0,1)")
@@ -89,10 +89,10 @@ def get_icon_color(icon_name: str, *, default: str = "rgba(8,122,255,1)") -> str
     return ICON_COLOR_MAP.get(icon_name, default)
 
 
-# Default CalTopo marker-symbol to onX Backcountry icon mappings
-# Based on actual onX GPX analysis and icon screenshots (100+ icons)
+# Default CalTopo marker-symbol to OnX Backcountry icon mappings
+# Based on actual OnX GPX analysis and icon screenshots (100+ icons)
 DEFAULT_SYMBOL_MAP = {
-    # Hazards and warnings - onX uses "Hazard" (confirmed from GPX)
+    # Hazards and warnings - OnX uses "Hazard" (confirmed from GPX)
     "danger": "Hazard",
     "skull": "Hazard",
     "warning": "Hazard",
@@ -100,7 +100,7 @@ DEFAULT_SYMBOL_MAP = {
     "hazard": "Hazard",
     "alert": "Hazard",
 
-    # Camping - Multiple onX camp icons
+    # Camping - Multiple OnX camp icons
     "campsite": "Campsite",
     "tent": "Campsite",
     "camp": "Camp",
@@ -140,7 +140,7 @@ DEFAULT_SYMBOL_MAP = {
     "suv": "SUV",
     "truck": "Truck",
 
-    # Winter sports - onX uses "XC Skiing" (confirmed from GPX)
+    # Winter sports - OnX uses "XC Skiing" (confirmed from GPX)
     "skiing": "XC Skiing",
     "ski": "Ski",
     "xc-skiing": "XC Skiing",
@@ -269,7 +269,7 @@ DEFAULT_SYMBOL_MAP = {
 
 
 # Default keyword mappings (used as fallback)
-# Based on actual onX icon names from GPX analysis
+# Based on actual OnX icon names from GPX analysis
 DEFAULT_KEYWORD_MAP = {
     # Camping
     "Campsite": ["tent", "camp", "sleep", "overnight", "camping"],
@@ -402,9 +402,9 @@ class IconMappingConfig:
             # Defaults
             if "default_icon" in user_config and user_config["default_icon"]:
                 default_icon = str(user_config["default_icon"])
-                valid_icons = get_all_onx_icons()
+                valid_icons = get_all_OnX_icons()
                 if default_icon not in valid_icons:
-                    raise ValueError(f"Invalid default_icon '{default_icon}' (not a valid onX icon)")
+                    raise ValueError(f"Invalid default_icon '{default_icon}' (not a valid OnX icon)")
                 self.default_icon = default_icon
 
             if "default_color" in user_config and user_config["default_color"]:
@@ -447,7 +447,7 @@ class IconMappingConfig:
         Get emoji representation for an icon (for preview display).
 
         Args:
-            icon_id: The onX icon ID
+            icon_id: The OnX icon ID
 
         Returns:
             Emoji string (defaults to 📍 if not found)
@@ -486,7 +486,7 @@ class IconMappingConfig:
         yaml_content = '''# =============================================================================
 # Cairn Icon Mapping Configuration
 # =============================================================================
-# This file maps CalTopo symbols to onX Backcountry icons.
+# This file maps CalTopo symbols to OnX Backcountry icons.
 # YAML format allows inline comments for easier understanding.
 #
 # Priority order:
@@ -504,7 +504,7 @@ enable_unmapped_detection: true
 # =============================================================================
 # SYMBOL MAPPINGS
 # =============================================================================
-# Format: caltopo_symbol: onX Icon Name
+# Format: caltopo_symbol: OnX Icon Name
 # These match the "marker-symbol" field in CalTopo exports.
 #
 symbol_mappings:
@@ -611,7 +611,7 @@ symbol_mappings:
 # =============================================================================
 # KEYWORD MAPPINGS
 # =============================================================================
-# Format: "onX Icon Name": [list, of, keywords]
+# Format: "OnX Icon Name": [list, of, keywords]
 # Searches waypoint title and description for these keywords.
 # Only used if no symbol_mapping matches.
 #
@@ -702,7 +702,7 @@ keyword_mappings:
         return {
             "symbol_mappings_count": len(self.symbol_map),
             "keyword_mappings_count": len(self.keyword_map),
-            "unique_onx_icons": len(set(self.symbol_map.values())),
+            "unique_OnX_icons": len(set(self.symbol_map.values())),
             "unmapped_detection_enabled": self.enable_unmapped_detection,
             "use_icon_name_prefix": self.use_icon_name_prefix,
             "default_icon": self.default_icon,
@@ -759,9 +759,9 @@ def load_config(config_file: Optional[Path] = None) -> IconMappingConfig:
     return IconMappingConfig(config_file)
 
 
-def get_all_onx_icons() -> List[str]:
+def get_all_OnX_icons() -> List[str]:
     """
-    Get complete list of all onX Backcountry icon names.
+    Get complete list of all OnX Backcountry icon names.
 
     Returns:
         Sorted list of unique icon names
@@ -779,7 +779,7 @@ def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_co
 
     Args:
         symbol: CalTopo symbol to map
-        icon: onX icon name to map to
+        icon: OnX icon name to map to
         config_path: Path to YAML config file
     """
     if config_path.exists():

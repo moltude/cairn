@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import yaml
 
-from cairn.core.config import get_all_onx_icons, ICON_COLOR_MAP
+from cairn.core.config import get_all_OnX_icons, ICON_COLOR_MAP
 from cairn.core.color_mapper import ColorMapper
 
 
@@ -93,16 +93,16 @@ class ConfigManager:
         Set default icon with validation.
 
         Args:
-            icon: onX icon name
+            icon: OnX icon name
 
         Raises:
             ValueError: If icon is not valid
         """
-        valid_icons = get_all_onx_icons()
+        valid_icons = get_all_OnX_icons()
         if icon not in valid_icons:
             raise ValueError(
                 f"Invalid icon: '{icon}'. "
-                f"Must be one of {len(valid_icons)} valid onX icons. "
+                f"Must be one of {len(valid_icons)} valid OnX icons. "
                 f"Run 'python main.py config --icons' to see all options."
             )
         self.config["default_icon"] = icon
@@ -130,9 +130,9 @@ class ConfigManager:
         try:
             # Validate color format by parsing it
             ColorMapper.parse_color(color)
-            # Transform to onX format
-            onx_color = ColorMapper.transform_color(color)
-            self.config["default_color"] = onx_color
+            # Transform to OnX format
+            OnX_color = ColorMapper.transform_color(color)
+            self.config["default_color"] = OnX_color
             self.save()
         except Exception as e:
             raise ValueError(f"Invalid color format: {e}")
@@ -143,14 +143,14 @@ class ConfigManager:
 
         Args:
             symbol: CalTopo symbol
-            icon: onX icon name
+            icon: OnX icon name
             color: Optional color override
 
         Raises:
             ValueError: If icon is invalid
         """
         # Validate icon
-        valid_icons = get_all_onx_icons()
+        valid_icons = get_all_OnX_icons()
         if icon not in valid_icons:
             raise ValueError(f"Invalid icon: '{icon}'")
 
@@ -162,10 +162,10 @@ class ConfigManager:
         # Add color if provided
         if color:
             try:
-                onx_color = ColorMapper.transform_color(color)
+                OnX_color = ColorMapper.transform_color(color)
                 if "symbol_colors" not in self.config:
                     self.config["symbol_colors"] = {}
-                self.config["symbol_colors"][symbol] = onx_color
+                self.config["symbol_colors"][symbol] = OnX_color
             except Exception as e:
                 raise ValueError(f"Invalid color format: {e}")
 
@@ -233,7 +233,7 @@ class ConfigManager:
         Get color for an icon (from config or defaults).
 
         Args:
-            icon: onX icon name
+            icon: OnX icon name
 
         Returns:
             Color in rgba format

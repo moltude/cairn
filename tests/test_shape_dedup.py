@@ -20,8 +20,8 @@ def test_shape_dedup_polygon_fuzzy_rotation_and_rounding():
         (-114.1000000004, 46.0000000002),
     ]
 
-    s1 = Shape(id="s1", folder_id="onx_shapes", name="TestPoly", rings=[ring_a], style=Style(onx_id="A"))
-    s2 = Shape(id="s2", folder_id="onx_shapes", name="TestPoly", rings=[ring_b], style=Style(onx_id="B"))
+    s1 = Shape(id="s1", folder_id="OnX_shapes", name="TestPoly", rings=[ring_a], style=Style(OnX_id="A"))
+    s2 = Shape(id="s2", folder_id="OnX_shapes", name="TestPoly", rings=[ring_b], style=Style(OnX_id="B"))
 
     doc = MapDocument(folders=[], items=[s1, s2], metadata={})
     report, dropped = apply_shape_dedup(doc)

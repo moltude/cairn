@@ -18,15 +18,15 @@ from cairn.utils.utils import (
     ensure_output_dir, should_split, natural_sort_key
 )
 from cairn.core.mapper import get_icon_emoji, map_icon
-from cairn.core.config import load_config, IconMappingConfig, get_all_onx_icons, save_user_mapping
+from cairn.core.config import load_config, IconMappingConfig, get_all_OnX_icons, save_user_mapping
 from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review, preview_sorted_order
 
-# New bidirectional adapters (onX → CalTopo)
-from cairn.io.onx_gpx import read_onx_gpx
-from cairn.io.onx_kml import read_onx_kml
-from cairn.core.merge import merge_onx_gpx_and_kml
+# New bidirectional adapters (OnX → CalTopo)
+from cairn.io.OnX_gpx import read_OnX_gpx
+from cairn.io.OnX_kml import read_OnX_kml
+from cairn.core.merge import merge_OnX_gpx_and_kml
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.io.caltopo_geojson import write_caltopo_geojson
@@ -42,18 +42,18 @@ VERSION = "1.0.0"
 
 class FromFormat(str, Enum):
     caltopo_geojson = "caltopo_geojson"
-    onx_gpx = "onx_gpx"
+    OnX_gpx = "OnX_gpx"
 
 
 class ToFormat(str, Enum):
-    onx = "onx"
+    OnX = "OnX"
     caltopo_geojson = "caltopo_geojson"
 
 
 def print_header():
     """Print the Cairn header."""
     console.print(Panel.fit(
-        f"[bold yellow]CAIRN[/] v{VERSION}\n[italic]The CalTopo → onX Bridge[/]",
+        f"[bold yellow]CAIRN[/] v{VERSION}\n[italic]The CalTopo → OnX Bridge[/]",
         border_style="yellow",
         padding=(0, 4)
     ))
@@ -145,7 +145,7 @@ def prompt_for_icon_mapping(symbol: str, waypoint_title: str,
     """Prompt user to manually map an unmapped symbol."""
     console.print(f"\n[yellow]⚠️  Unmapped symbol:[/] [cyan]{symbol}[/]")
     console.print(f"[dim]   Example: {waypoint_title}[/]")
-    console.print("\n[bold]Suggested onX icons:[/]")
+    console.print("\n[bold]Suggested OnX icons:[/]")
 
     for i, (icon, confidence) in enumerate(suggestions, 1):
         confidence_pct = int(confidence * 100)
@@ -189,7 +189,7 @@ def handle_unmapped_symbols(config: IconMappingConfig, interactive: bool = True)
     console.print("\n[yellow]⚠️  Found unmapped symbols. Let's map them![/]")
     console.print("[dim]You can map these now or skip to use the default 'Location' icon.[/]\n")
 
-    matcher = FuzzyIconMatcher(get_all_onx_icons())
+    matcher = FuzzyIconMatcher(get_all_OnX_icons())
     mappings_added = False
 
     for symbol, info in unmapped.items():
@@ -254,7 +254,7 @@ def process_and_write_files(
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
-            # Write in sorted order - onX displays items in the same order as the GPX file
+            # Write in sorted order - OnX displays items in the same order as the GPX file
             write_order_waypoints = sorted_waypoints
 
             # Debug logging disabled (logger not configured)
@@ -267,7 +267,7 @@ def process_and_write_files(
 
             if total_waypoints > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_waypoints} waypoints)...")
-                console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
+                console.print(f"   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
                 chunks = list(chunk_data(write_order_waypoints, limit=2500))
@@ -338,12 +338,12 @@ def process_and_write_files(
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
-            # Write in sorted order - onX displays items in the same order as the GPX file
+            # Write in sorted order - OnX displays items in the same order as the GPX file
             write_order_tracks = sorted_tracks
 
             if total_tracks > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_tracks} tracks)...")
-                console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
+                console.print(f"   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
                 chunks = list(chunk_data(write_order_tracks, limit=2500))
@@ -375,12 +375,12 @@ def process_and_write_files(
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
-            # Write in sorted order - onX displays items in the same order as the file
+            # Write in sorted order - OnX displays items in the same order as the file
             write_order_shapes = sorted_shapes
 
             if total_shapes > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_shapes} shapes)...")
-                console.print(f"   [yellow]⚠️  Exceeds onX limit (3,000).[/]")
+                console.print(f"   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
                 console.print(f"   [yellow]✨  Auto-split into:[/]")
 
                 chunks = list(chunk_data(write_order_shapes, limit=2500))
@@ -440,7 +440,7 @@ def display_unmapped_symbols(config: IconMappingConfig):
         )
 
     console.print(table)
-    console.print("\n[dim]💡 Add these to cairn_config.yaml to map them to onX icons[/]")
+    console.print("\n[dim]💡 Add these to cairn_config.yaml to map them to OnX icons[/]")
     console.print("[dim]   Run 'cairn config --export' to create a template[/]")
 
 
@@ -503,14 +503,14 @@ def convert(
         help="Input format (default: caltopo_geojson)",
     ),
     to_format: ToFormat = typer.Option(
-        ToFormat.onx,
+        ToFormat.OnX,
         "--to",
-        help="Output format (default: onx)",
+        help="Output format (default: OnX)",
     ),
     output: Optional[Path] = typer.Option(
-        "./onx_ready",
+        "./OnX_ready",
         "--output", "-o",
-        help="Output directory (onx) or output GeoJSON file/dir (caltopo_geojson)"
+        help="Output directory (OnX) or output GeoJSON file/dir (caltopo_geojson)"
     ),
     config_file: Optional[Path] = typer.Option(
         None,
@@ -540,12 +540,12 @@ def convert(
     kml_file: Optional[Path] = typer.Option(
         None,
         "--kml",
-        help="Optional onX KML export to merge (improves polygon/area fidelity)",
+        help="Optional OnX KML export to merge (improves polygon/area fidelity)",
     ),
     dedupe: bool = typer.Option(
         True,
         "--dedupe/--no-dedupe",
-        help="Deduplicate waypoints during onx_gpx → caltopo_geojson",
+        help="Deduplicate waypoints during OnX_gpx → caltopo_geojson",
     ),
     dedupe_shapes: bool = typer.Option(
         True,
@@ -561,9 +561,9 @@ def convert(
     """
     Convert between supported formats.
 
-    For the onX → CalTopo migration workflow, prefer:
+    For the OnX → CalTopo migration workflow, prefer:
 
-      cairn migrate onx-to-caltopo ...
+      cairn migrate OnX-to-caltopo ...
 
     This tool will:
 
@@ -573,13 +573,13 @@ def convert(
 
     - Show a preview of the sorted order with colors (tracks) and icons (waypoints)
 
-    - Map CalTopo symbols and keywords to onX Backcountry icons
+    - Map CalTopo symbols and keywords to OnX Backcountry icons
 
     - Preserve track colors and line styles from CalTopo
 
-    - Split large datasets to respect onX's 3,000 item limit
+    - Split large datasets to respect OnX's 3,000 item limit
 
-    - Generate GPX files with onX extensions for waypoints and tracks
+    - Generate GPX files with OnX extensions for waypoints and tracks
 
     - Generate KML files for shapes/polygons
 
@@ -596,9 +596,9 @@ def convert(
     Or edit the source GeoJSON file directly.
     """
     # ---------------------------------------------------------------------
-    # New path: onX → CalTopo GeoJSON
+    # New path: OnX → CalTopo GeoJSON
     # ---------------------------------------------------------------------
-    if from_format == FromFormat.onx_gpx and to_format == ToFormat.caltopo_geojson:
+    if from_format == FromFormat.OnX_gpx and to_format == ToFormat.caltopo_geojson:
         if not input_file.exists():
             console.print(f"\n[bold red]❌ Error:[/] File not found: {input_file}")
             raise typer.Exit(1)
@@ -621,7 +621,7 @@ def convert(
                 trace_ctx.emit({"event": "run.start", "from": from_format.value, "to": to_format.value})
 
             try:
-                gpx_doc = read_onx_gpx(input_file, trace=trace_ctx)
+                gpx_doc = read_OnX_gpx(input_file, trace=trace_ctx)
                 doc = gpx_doc
             except ValueError as e:
                 console.print(f"\n[bold red]❌ Error reading GPX file:[/]")
@@ -633,8 +633,8 @@ def convert(
                     console.print(f"\n[bold red]❌ Error:[/] KML file not found: {kml_file}")
                     raise typer.Exit(1)
                 try:
-                    kml_doc = read_onx_kml(kml_file, trace=trace_ctx)
-                    doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+                    kml_doc = read_OnX_kml(kml_file, trace=trace_ctx)
+                    doc = merge_OnX_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
                 except ValueError as e:
                     console.print(f"\n[bold red]❌ Error reading KML file:[/]")
                     console.print(f"[red]{e}[/]")
@@ -793,4 +793,4 @@ def convert(
 
     # Success footer
     console.print(f"\n[bold green]✔ SUCCESS[/] {len(output_files)} file(s) written to [underline]{output_dir}[/]")
-    console.print("[dim]Next: Drag these files into onX Web Map → Import[/]\n")
+    console.print("[dim]Next: Drag these files into OnX Web Map → Import[/]\n")

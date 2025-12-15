@@ -4,7 +4,7 @@
 
 This document provides a quick reference for color values used in Cairn for OnX Backcountry GPX exports.
 
-**Source**: Official onX GPX export (`onx-markups-12142025.gpx`) containing all available colors.
+**Source**: Official OnX GPX export (`OnX-markups-12142025.gpx`) containing all available colors.
 
 ## Color System - Key Finding
 
@@ -39,7 +39,7 @@ OnX Backcountry uses the **same base color palette** for both tracks and waypoin
 
 ### Waypoint Colors (Official 10-color Palette)
 
-These 10 values are the **only** waypoint colors onX Backcountry supports reliably on import:
+These 10 values are the **only** waypoint colors OnX Backcountry supports reliably on import:
 
 | # | Color Name | RGBA Value | Hex |
 |---|------------|------------|-----|
@@ -56,7 +56,7 @@ These 10 values are the **only** waypoint colors onX Backcountry supports reliab
 
 **Important:** All 10 waypoint colors use the exact same RGBA values as the first 10 track colors. Tracks have one additional color (Fuchsia) that waypoints don't support.
 
-For historical details (including picker layout), see [`docs/onx-waypoint-colors-definitive.md`](onx-waypoint-colors-definitive.md).
+For historical details (including picker layout), see [`docs/OnX-waypoint-colors-definitive.md`](OnX-waypoint-colors-definitive.md).
 
 ## Test Files
 
@@ -73,7 +73,7 @@ For historical details (including picker layout), see [`docs/onx-waypoint-colors
 
 ### Color Testing File
 
-- **[`tests/fixtures/onx_waypoint_color_test.gpx`](../tests/fixtures/onx_waypoint_color_test.gpx)**
+- **[`tests/fixtures/OnX_waypoint_color_test.gpx`](../tests/fixtures/OnX_waypoint_color_test.gpx)**
   - 12 test waypoints, one for each color
   - For manual testing: import, change colors in OnX UI, export, and verify
   - Helps confirm OnX's actual color values
@@ -95,13 +95,13 @@ waypoint_color = "rgba(255,0,0,1)"  # Red (works for both waypoints and tracks)
 
 ## Related Documentation
 
-- [`onx-color-behavior.md`](onx-color-behavior.md) - Detailed behavior analysis
+- [`OnX-color-behavior.md`](OnX-color-behavior.md) - Detailed behavior analysis
 - [`cairn/core/mapper.py`](../cairn/core/mapper.py) - Color mapping implementation
 - [`cairn_config.yaml`](../cairn_config.yaml) - Color configuration
 
 ## Testing Instructions
 
-1. Import `tests/fixtures/onx_waypoint_color_test.gpx` into OnX
+1. Import `tests/fixtures/OnX_waypoint_color_test.gpx` into OnX
 2. For each waypoint, manually change its color in OnX UI to match the description
 3. Export the waypoints from OnX
 4. Compare exported color values to this reference table

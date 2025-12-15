@@ -34,7 +34,7 @@ def _read_names_and_times(gpx_path: Path) -> tuple[list[str], list[str | None], 
     return names, times, "trk"
 
 
-def test_generated_onx_sort_fixtures_shape_and_order() -> None:
+def test_generated_OnX_sort_fixtures_shape_and_order() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     fixtures_dir = repo_root / "tests" / "fixtures"
 

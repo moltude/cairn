@@ -1,5 +1,5 @@
 """
-Explainable icon selection for CalTopo → onX mapping.
+Explainable icon selection for CalTopo → OnX mapping.
 
 Historically Cairn used a simple "layered" approach:
 1) try symbol match
@@ -37,7 +37,7 @@ _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 class IconResolver:
     """
-    Resolve the best onX icon for a waypoint.
+    Resolve the best OnX icon for a waypoint.
 
     Inputs:
     - CalTopo marker symbol (strongest signal when non-generic)

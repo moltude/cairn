@@ -27,7 +27,7 @@ This section describes the structure of each fixture GPX, and what each is desig
 
 - **Root**: GPX 1.1 `<gpx>` with namespaces:
   - `xmlns="http://www.topografix.com/GPX/1/1"`
-  - `xmlns:onx="https://wwww.onxmaps.com/"`
+  - `xmlns:OnX="https://wwww.OnXmaps.com/"`
 - **Metadata**: `<metadata><name>…</name><desc>…</desc></metadata>` describing the intent.
 - **Waypoints only**:
   - 14 `<wpt>` elements
@@ -35,8 +35,8 @@ This section describes the structure of each fixture GPX, and what each is desig
 - Each waypoint includes:
   - `<name>` with intentionally mixed naming patterns (two `#0 …`, then `#01…#10 …`, then an unnumbered name, plus two “Dead fall/Deadfall” variants)
   - `<extensions>` with:
-    - `<onx:icon>`: mostly `Location`, plus `Hazard` for the last two
-    - `<onx:color>`: provided to demonstrate not relying on OnX defaults
+    - `<OnX:icon>`: mostly `Location`, plus `Hazard` for the last two
+    - `<OnX:color>`: provided to demonstrate not relying on OnX defaults
 
 **Intended XML waypoint order (ground truth)**
 
@@ -61,7 +61,7 @@ This section describes the structure of each fixture GPX, and what each is desig
 
 - **Root**: GPX 1.1 `<gpx>` with namespaces:
   - `xmlns="http://www.topografix.com/GPX/1/1"`
-  - `xmlns:onx="https://wwww.onxmaps.com/"`
+  - `xmlns:OnX="https://wwww.OnXmaps.com/"`
 - **Metadata**: `<metadata><name>…</name><desc>…</desc></metadata>` describing the intent.
 - **Tracks only**:
   - 5 `<trk>` elements
@@ -69,7 +69,7 @@ This section describes the structure of each fixture GPX, and what each is desig
 - Each track includes:
   - `<name>` (numbered 01–05)
   - `<desc>`
-  - `<extensions><onx:color>…</onx:color></extensions>`
+  - `<extensions><OnX:color>…</OnX:color></extensions>`
   - one `<trkseg>` containing **two** `<trkpt/>` points (minimal valid geometry)
   - intentionally **no timestamps** (to keep the test focused on ordering)
 
@@ -116,32 +116,32 @@ Fixture: `tests/fixtures/test_sort_order_waypoints.gpx`
     <name>#10 Hunting Camp Mile 92.8</name>
     <desc>Tenth numbered waypoint</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <OnX:icon>Location</OnX:icon>
+      <OnX:color>rgba(8,122,255,1)</OnX:color>
     </extensions>
   </wpt>
   <wpt lat="45.610000" lon="-114.610000">
     <name>CONICAL PASS CUTOFF 12:45 AM</name>
     <desc>Unnumbered waypoint - should appear after numbered waypoints</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <OnX:icon>Location</OnX:icon>
+      <OnX:color>rgba(8,122,255,1)</OnX:color>
     </extensions>
   </wpt>
   <wpt lat="45.620000" lon="-114.620000">
     <name>Dead fall</name>
     <desc>Hazard waypoint with different icon - testing if OnX groups by icon type</desc>
     <extensions>
-      <onx:icon>Hazard</onx:icon>
-      <onx:color>rgba(255,51,0,1)</onx:color>
+      <OnX:icon>Hazard</OnX:icon>
+      <OnX:color>rgba(255,51,0,1)</OnX:color>
     </extensions>
   </wpt>
   <wpt lat="45.630000" lon="-114.630000">
     <name>Deadfall</name>
     <desc>Another hazard waypoint - should be grouped with other hazards if OnX sorts by icon</desc>
     <extensions>
-      <onx:icon>Hazard</onx:icon>
-      <onx:color>rgba(255,51,0,1)</onx:color>
+      <OnX:icon>Hazard</OnX:icon>
+      <OnX:color>rgba(255,51,0,1)</OnX:color>
     </extensions>
   </wpt>
   ````

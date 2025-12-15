@@ -21,7 +21,7 @@ from cairn.core.color_mapper import ColorMapper
 from cairn.model import Folder, MapDocument, Shape, Track, Waypoint
 
 
-_ONX_ICON_TO_CALTOPO_SYMBOL: Dict[str, str] = {
+_OnX_ICON_TO_CALTOPO_SYMBOL: Dict[str, str] = {
     # Best-effort mapping. Unknown icons fall back to "point".
     "Location": "point",
     "Hazard": "danger",
@@ -41,7 +41,7 @@ _ONX_ICON_TO_CALTOPO_SYMBOL: Dict[str, str] = {
     "Shelter": "hut",
     "Photo": "camera",
     "View": "star",
-    # Some onX icons appear in exports directly
+    # Some OnX icons appear in exports directly
     "4x4": "car",
     "ATV": "car",
     "XC Skiing": "skiing",
@@ -58,23 +58,23 @@ def _rgba_to_caltopo_hex(rgba: Optional[str]) -> Optional[str]:
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
-def _map_onx_icon_to_caltopo_symbol(onx_icon: Optional[str]) -> str:
-    icon = (onx_icon or "").strip()
+def _map_OnX_icon_to_caltopo_symbol(OnX_icon: Optional[str]) -> str:
+    icon = (OnX_icon or "").strip()
     if not icon:
         return "point"
-    return _ONX_ICON_TO_CALTOPO_SYMBOL.get(icon, "point")
+    return _OnX_ICON_TO_CALTOPO_SYMBOL.get(icon, "point")
 
 
 def _build_description(
     *,
     title: str,
     notes: str,
-    onx_id: Optional[str],
-    onx_color: Optional[str],
-    onx_icon: Optional[str],
-    onx_style: Optional[str] = None,
-    onx_weight: Optional[str] = None,
-    source: str = "onx_gpx",
+    OnX_id: Optional[str],
+    OnX_color: Optional[str],
+    OnX_icon: Optional[str],
+    OnX_style: Optional[str] = None,
+    OnX_weight: Optional[str] = None,
+    source: str = "OnX_gpx",
 ) -> str:
     lines: List[str] = []
     notes = (notes or "").strip()
@@ -85,16 +85,16 @@ def _build_description(
     # Parseable metadata block.
     lines.append(f"cairn:source={source}")
     lines.append(f"name={title}")
-    if onx_id:
-        lines.append(f"onx:id={onx_id}")
-    if onx_color:
-        lines.append(f"onx:color={onx_color}")
-    if onx_icon:
-        lines.append(f"onx:icon={onx_icon}")
-    if onx_style:
-        lines.append(f"onx:style={onx_style}")
-    if onx_weight:
-        lines.append(f"onx:weight={onx_weight}")
+    if OnX_id:
+        lines.append(f"OnX:id={OnX_id}")
+    if OnX_color:
+        lines.append(f"OnX:color={OnX_color}")
+    if OnX_icon:
+        lines.append(f"OnX:icon={OnX_icon}")
+    if OnX_style:
+        lines.append(f"OnX:style={OnX_style}")
+    if OnX_weight:
+        lines.append(f"OnX:weight={OnX_weight}")
 
     return "\n".join(lines).strip("\n")
 
@@ -125,17 +125,17 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
     # Items
     for item in doc.items:
         if isinstance(item, Waypoint):
-            onx_color = item.style.onx_color_rgba
-            onx_icon = item.style.onx_icon
-            symbol = item.style.caltopo_marker_symbol or _map_onx_icon_to_caltopo_symbol(onx_icon)
-            marker_color = item.style.caltopo_marker_color or _rgba_to_caltopo_hex(onx_color) or "#FF0000"
+            OnX_color = item.style.OnX_color_rgba
+            OnX_icon = item.style.OnX_icon
+            symbol = item.style.caltopo_marker_symbol or _map_OnX_icon_to_caltopo_symbol(OnX_icon)
+            marker_color = item.style.caltopo_marker_color or _rgba_to_caltopo_hex(OnX_color) or "#FF0000"
             desc = _build_description(
                 title=item.name,
                 notes=item.notes,
-                onx_id=item.style.onx_id,
-                onx_color=onx_color,
-                onx_icon=onx_icon,
-                source=str(doc.metadata.get("source", "onx_gpx")),
+                OnX_id=item.style.OnX_id,
+                OnX_color=OnX_color,
+                OnX_icon=OnX_icon,
+                source=str(doc.metadata.get("source", "OnX_gpx")),
             )
 
             feat = {
@@ -166,21 +166,21 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                 )
 
         elif isinstance(item, Track):
-            onx_color = item.style.onx_color_rgba
-            stroke = item.style.caltopo_stroke or _rgba_to_caltopo_hex(onx_color) or "#0000FF"
-            # Best-effort mapping from onX style/weight.
-            pattern = item.style.caltopo_pattern or item.style.onx_style or "solid"
+            OnX_color = item.style.OnX_color_rgba
+            stroke = item.style.caltopo_stroke or _rgba_to_caltopo_hex(OnX_color) or "#0000FF"
+            # Best-effort mapping from OnX style/weight.
+            pattern = item.style.caltopo_pattern or item.style.OnX_style or "solid"
             stroke_width = item.style.caltopo_stroke_width or 2
 
             desc = _build_description(
                 title=item.name,
                 notes=item.notes,
-                onx_id=item.style.onx_id,
-                onx_color=onx_color,
-                onx_icon=None,
-                onx_style=item.style.onx_style,
-                onx_weight=item.style.onx_weight,
-                source=str(doc.metadata.get("source", "onx_gpx")),
+                OnX_id=item.style.OnX_id,
+                OnX_color=OnX_color,
+                OnX_icon=None,
+                OnX_style=item.style.OnX_style,
+                OnX_weight=item.style.OnX_weight,
+                source=str(doc.metadata.get("source", "OnX_gpx")),
             )
 
             # Preserve elevation/time if present anywhere.
@@ -225,17 +225,17 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                 )
 
         elif isinstance(item, Shape):
-            # Not currently produced by onX GPX ingest, but supported for completeness.
-            stroke = item.style.caltopo_stroke or _rgba_to_caltopo_hex(item.style.onx_color_rgba) or "#00FF00"
+            # Not currently produced by OnX GPX ingest, but supported for completeness.
+            stroke = item.style.caltopo_stroke or _rgba_to_caltopo_hex(item.style.OnX_color_rgba) or "#00FF00"
             stroke_width = item.style.caltopo_stroke_width or 2
-            pattern = item.style.caltopo_pattern or item.style.onx_style or "solid"
+            pattern = item.style.caltopo_pattern or item.style.OnX_style or "solid"
             desc = _build_description(
                 title=item.name,
                 notes=item.notes,
-                onx_id=item.style.onx_id,
-                onx_color=item.style.onx_color_rgba,
-                onx_icon=item.style.onx_icon,
-                source=str(doc.metadata.get("source", "onx_gpx")),
+                OnX_id=item.style.OnX_id,
+                OnX_color=item.style.OnX_color_rgba,
+                OnX_icon=item.style.OnX_icon,
+                source=str(doc.metadata.get("source", "OnX_gpx")),
             )
 
             # GeoJSON polygon: list of rings, each ring list of [lon,lat]
@@ -269,4 +269,3 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
     fc = {"type": "FeatureCollection", "features": features}
     out.write_text(json.dumps(fc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return out
-

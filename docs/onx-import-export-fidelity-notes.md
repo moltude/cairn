@@ -1,6 +1,6 @@
-## onX import/export fidelity notes (Dark Divide 100)
+## OnX import/export fidelity notes (Dark Divide 100)
 
-This document captures what data is present in the Dark Divide sample files and what fidelity is lost (or normalized) when importing into onX Backcountry and exporting back out.
+This document captures what data is present in the Dark Divide sample files and what fidelity is lost (or normalized) when importing into OnX Backcountry and exporting back out.
 
 ### Source files referenced
 
@@ -9,13 +9,13 @@ This document captures what data is present in the Dark Divide sample files and 
 - `sample-maps/dark-divide-100/Dark_Divide_100_Miler.kml`
 - `sample-maps/dark-divide-100/dark_Divide_100.json` (CalTopo GeoJSON)
 
-**onX exports (after import)**
-- `sample-maps/dark-divide-100/onx-markups-12132025.kml` (KML export after importing the CalTopo KML)
-- `/Users/scott/downloads/onx-markups-12132025.gpx` (GPX export after importing the CalTopo GPX)
+**OnX exports (after import)**
+- `sample-maps/dark-divide-100/OnX-markups-12132025.kml` (KML export after importing the CalTopo KML)
+- `/Users/scott/downloads/OnX-markups-12132025.gpx` (GPX export after importing the CalTopo GPX)
 
-**Other observed onX export variants (important nuance)**
-- `sample-maps/dark-divide-100/onx-export-dark-divide.gpx` (observed to export lines as routes)
-- `sample-maps/dark-divide-100/onx-export-dark-divide-gpx-to-gpx.gpx` (observed to include duplicated waypoints and both `<rte>` and `<trk>`)
+**Other observed OnX export variants (important nuance)**
+- `sample-maps/dark-divide-100/OnX-export-dark-divide.gpx` (observed to export lines as routes)
+- `sample-maps/dark-divide-100/OnX-export-dark-divide-gpx-to-gpx.gpx` (observed to include duplicated waypoints and both `<rte>` and `<trk>`)
 
 ---
 
@@ -51,10 +51,10 @@ This document captures what data is present in the Dark Divide sample files and 
 
 ---
 
-## 2) GPX → onX → GPX: what changes (using `/Users/scott/downloads/onx-markups-12132025.gpx`)
+## 2) GPX → OnX → GPX: what changes (using `/Users/scott/downloads/OnX-markups-12132025.gpx`)
 
 ### 2.1 Structure-level parity
-- Exported onX GPX contains:
+- Exported OnX GPX contains:
   - **9 `<wpt>`**
   - **11 `<trk>`**
   - **0 `<rte>`**
@@ -64,33 +64,33 @@ So this export matches the desired “20 elements” expectation.
 ### 2.2 File header / metadata
 - **Creator changes**
   - CalTopo: `creator="CALTOPO"`
-  - onX: `creator="onXmaps backcountry web"`
+  - OnX: `creator="OnXmaps backcountry web"`
 - **Metadata is dropped/emptied**
   - CalTopo includes `<metadata><name>…</name></metadata>`
-  - onX export emits `<metadata/>`
+  - OnX export emits `<metadata/>`
 
 **Loss:** GPX document-level name/metadata is not reliably preserved.
 
 ### 2.3 Waypoints (9) — notes preserved but normalized
 - CalTopo waypoint `<desc>` is just the raw multiline text.
-- onX rewrites `<desc>` into a key/value block:
+- OnX rewrites `<desc>` into a key/value block:
   - `name=...`
   - `notes=...` (this contains the original multiline description)
   - `id=<uuid>`
   - `color=rgba(...)`
   - `icon=Location`
-- onX also adds explicit waypoint extensions:
-  - `<onx:color>rgba(8,122,255,1)</onx:color>`
-  - `<onx:icon>Location</onx:icon>`
+- OnX also adds explicit waypoint extensions:
+  - `<OnX:color>rgba(8,122,255,1)</OnX:color>`
+  - `<OnX:icon>Location</OnX:icon>`
 
-**Key point:** waypoint content (name + notes) survives, but the export format becomes “onX canonical”. If you don’t set icon/color in onX, it will export defaults (`Location`, default blue).
+**Key point:** waypoint content (name + notes) survives, but the export format becomes “OnX canonical”. If you don’t set icon/color in OnX, it will export defaults (`Location`, default blue).
 
 ### 2.4 Tracks (11) — elevation kept, but time/extensions change
 - Trackpoints still include `<ele>` (elevation preserved).
-- onX adds `<time>` elements to trackpoints (often the same timestamp repeated across many points).
-- CalTopo’s Garmin extension `gpxx:TrackExtension/gpxx:DisplayColor` does not appear in the onX export.
-- onX adds track extensions such as:
-  - `<onx:weight>4.0</onx:weight>`
+- OnX adds `<time>` elements to trackpoints (often the same timestamp repeated across many points).
+- CalTopo’s Garmin extension `gpxx:TrackExtension/gpxx:DisplayColor` does not appear in the OnX export.
+- OnX adds track extensions such as:
+  - `<OnX:weight>4.0</OnX:weight>`
 - Lat/lon and elevation formatting are normalized:
   - fewer coordinate decimals
   - elevations may drop trailing `.0`
@@ -99,7 +99,7 @@ So this export matches the desired “20 elements” expectation.
 
 ---
 
-## 3) KML → onX → KML: what changes (using `onx-markups-12132025.kml`)
+## 3) KML → OnX → KML: what changes (using `OnX-markups-12132025.kml`)
 
 ### 3.1 Structure-level parity
 - Both KML files contain:
@@ -111,17 +111,17 @@ So geometry items are preserved 1:1.
 
 ### 3.2 Foldering and styling are stripped
 - CalTopo KML has 2 folders (`Points`, `LineStrings`).
-- onX-exported KML has **no `<Folder>`** elements (flattened).
+- OnX-exported KML has **no `<Folder>`** elements (flattened).
 
 - CalTopo KML uses `<Style>`, `<IconStyle>`, `<LineStyle>` and CalTopo icon URLs.
-- onX-exported KML contains **no** `<Style>` / `<IconStyle>` / `<LineStyle>` / `<PolyStyle>` and **no** CalTopo icon URLs.
+- OnX-exported KML contains **no** `<Style>` / `<IconStyle>` / `<LineStyle>` / `<PolyStyle>` and **no** CalTopo icon URLs.
 
 **Loss:** all organization and styling is removed.
 
 ### 3.3 Notes move from `<description>` to `<ExtendedData>`
 - CalTopo KML uses `<description>` on all 20 Placemarks.
-- onX-exported KML contains **no `<description>`**.
-- Instead, onX stores metadata in `<ExtendedData>`:
+- OnX-exported KML contains **no `<description>`**.
+- Instead, OnX stores metadata in `<ExtendedData>`:
   - `Data name="notes"` contains the CalTopo description text
   - additional fields like `id`, and for points `icon` + `color`
 
@@ -129,52 +129,52 @@ So geometry items are preserved 1:1.
 
 ### 3.4 Coordinate formatting is normalized
 - CalTopo Point coordinates include `lon,lat,0`.
-- onX Point coordinates export as `lon,lat` (no explicit altitude).
+- OnX Point coordinates export as `lon,lat` (no explicit altitude).
 - CalTopo LineString coordinates are multiline.
-- onX LineString coordinates export as a single space-separated list with `lon,lat,0` triplets and rounded precision.
+- OnX LineString coordinates export as a single space-separated list with `lon,lat,0` triplets and rounded precision.
 
 ---
 
-## 4) Important nuance: onX GPX export modes are inconsistent
+## 4) Important nuance: OnX GPX export modes are inconsistent
 
-In addition to the clean 20-element GPX export above, other onX-exported GPX files in `sample-maps/dark-divide-100/` demonstrate that onX may export the same logical lines differently depending on export path/settings:
+In addition to the clean 20-element GPX export above, other OnX-exported GPX files in `sample-maps/dark-divide-100/` demonstrate that OnX may export the same logical lines differently depending on export path/settings:
 
-- `onx-export-dark-divide.gpx` was observed to export the 11 lines as **routes** (`<rte>`) with **no elevation** (`<rtept .../>` only; no `<ele>`).
-- `onx-export-dark-divide-gpx-to-gpx.gpx` was observed to contain duplicated waypoints and both `<rte>` and `<trk>` content.
+- `OnX-export-dark-divide.gpx` was observed to export the 11 lines as **routes** (`<rte>`) with **no elevation** (`<rtept .../>` only; no `<ele>`).
+- `OnX-export-dark-divide-gpx-to-gpx.gpx` was observed to contain duplicated waypoints and both `<rte>` and `<trk>` content.
 
-**Practical takeaway:** if you care about predictable roundtrips, test against the exact export method you intend to use, and prefer the GPX structures onX itself emits for that workflow.
+**Practical takeaway:** if you care about predictable roundtrips, test against the exact export method you intend to use, and prefer the GPX structures OnX itself emits for that workflow.
 
 ---
 
 ## 5) Recommendations for Cairn (based on observed fidelity)
 
 ### 5.1 Don’t depend on KML for anything but geometry
-- onX KML export strips:
+- OnX KML export strips:
   - folders
   - styles/icons/line widths
   - `<description>` (notes are moved to `ExtendedData`)
 
 So: KML is not a reliable carrier for user notes, icons, or styling.
 
-### 5.2 Prefer GPX + onX namespace extensions for waypoint fidelity
-To maximize waypoint fidelity in onX, generate GPX waypoints with:
+### 5.2 Prefer GPX + OnX namespace extensions for waypoint fidelity
+To maximize waypoint fidelity in OnX, generate GPX waypoints with:
 - `<desc>` containing user notes
 - `<extensions>` containing:
-  - `<onx:icon>…</onx:icon>`
-  - `<onx:color>…</onx:color>`
+  - `<OnX:icon>…</OnX:icon>`
+  - `<OnX:color>…</OnX:color>`
 
-This matches onX’s own canonical export structure.
+This matches OnX’s own canonical export structure.
 
-### 5.3 For lines, choose output based on your intended onX export behavior
-- If you want the behavior seen in `/Users/scott/downloads/onx-markups-12132025.gpx`:
+### 5.3 For lines, choose output based on your intended OnX export behavior
+- If you want the behavior seen in `/Users/scott/downloads/OnX-markups-12132025.gpx`:
   - keep **tracks** (`<trk>`) and include `<ele>` if available
-  - optionally include `<onx:weight>` for consistent line weight
-- If your onX export workflow converts to **routes** (`<rte>`) and drops elevation:
+  - optionally include `<OnX:weight>` for consistent line weight
+- If your OnX export workflow converts to **routes** (`<rte>`) and drops elevation:
   - consider generating routes directly (or accept that elevation won’t roundtrip)
-  - keep a separate “archive” GPX with `<trkpt><ele>` if elevation matters outside onX.
+  - keep a separate “archive” GPX with `<trkpt><ele>` if elevation matters outside OnX.
 
-### 5.4 Expect onX to normalize formatting
-onX commonly:
+### 5.4 Expect OnX to normalize formatting
+OnX commonly:
 - empties GPX `<metadata>`
 - rewrites waypoint desc into `name=.../notes=.../id=.../color=.../icon=...`
 - rounds coordinate precision

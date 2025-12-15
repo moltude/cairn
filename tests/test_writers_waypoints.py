@@ -38,7 +38,7 @@ def test_write_gpx_waypoints_respects_config_icon_overrides_and_marker_color(tmp
     gpx = out_path.read_text(encoding="utf-8")
 
     # Config override should be reflected in the exported GPX.
-    assert "<onx:icon>Campsite</onx:icon>" in gpx
+    assert "<OnX:icon>Campsite</OnX:icon>" in gpx
 
     # Marker-color should be preserved (but quantized to an official waypoint color).
-    assert "<onx:color>rgba(255,0,0,1)</onx:color>" in gpx
+    assert "<OnX:color>rgba(255,0,0,1)</OnX:color>" in gpx

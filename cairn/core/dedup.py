@@ -1,7 +1,7 @@
 """
 Deduplication utilities.
 
-Primary goal: collapse duplicate items that arise from onX export variance or
+Primary goal: collapse duplicate items that arise from OnX export variance or
 user workflows that cause repeated elements to appear with different IDs but the
 same location/name.
 """
@@ -57,12 +57,12 @@ def _waypoint_score(wp: Waypoint) -> Tuple[int, int, int]:
     Higher is better.
 
     Criteria:
-    - has onX icon
-    - has onX color
+    - has OnX icon
+    - has OnX color
     - longer notes
     """
-    has_icon = 1 if (wp.style.onx_icon or "").strip() else 0
-    has_color = 1 if (wp.style.onx_color_rgba or "").strip() else 0
+    has_icon = 1 if (wp.style.OnX_icon or "").strip() else 0
+    has_color = 1 if (wp.style.OnX_color_rgba or "").strip() else 0
     notes_len = len((wp.notes or "").strip())
     return (has_icon + has_color, has_icon, notes_len)
 
@@ -102,12 +102,12 @@ def dedupe_waypoints(
                 best_score = sc
 
         conflicts: Dict[str, Any] = {}
-        icons = sorted({(m.style.onx_icon or "").strip() for m in members if (m.style.onx_icon or "").strip()})
-        colors = sorted({(m.style.onx_color_rgba or "").strip() for m in members if (m.style.onx_color_rgba or "").strip()})
+        icons = sorted({(m.style.OnX_icon or "").strip() for m in members if (m.style.OnX_icon or "").strip()})
+        colors = sorted({(m.style.OnX_color_rgba or "").strip() for m in members if (m.style.OnX_color_rgba or "").strip()})
         if len(icons) > 1:
-            conflicts["onx_icons"] = icons
+            conflicts["OnX_icons"] = icons
         if len(colors) > 1:
-            conflicts["onx_colors"] = colors
+            conflicts["OnX_colors"] = colors
 
         # Merge source IDs into the kept waypoint for forensic traceability.
         for wp in members:
@@ -129,7 +129,7 @@ def dedupe_waypoints(
             key=key,
             kept_id=best.id,
             dropped_ids=dropped_ids,
-            reason="prefer_has_onx_style_or_notes",
+            reason="prefer_has_OnX_style_or_notes",
             conflicts=conflicts,
         )
         reports.append(report)
@@ -169,4 +169,3 @@ def apply_waypoint_dedup(doc: MapDocument, *, trace: Any = None) -> DedupReport:
             new_items.append(i)
     doc.items = new_items
     return report
-

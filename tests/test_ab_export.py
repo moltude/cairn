@@ -6,7 +6,7 @@ This script reads a GPX track file or CalTopo GeoJSON file and generates two out
 1. test_variant_track.gpx - Preserves track format with red color
 2. test_variant_route.gpx - Converts to route format with blue color
 
-This allows A/B testing to compare how onX handles high-fidelity geometry
+This allows A/B testing to compare how OnX handles high-fidelity geometry
 when imported as tracks versus routes.
 """
 
@@ -156,16 +156,16 @@ def write_track_variant(points: List[Tuple[float, float, Optional[float]]], outp
     """
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.OnXmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
         '  <metadata>',
         '    <name>Track vs Route A/B Test</name>',
-        '    <desc>Testing onX geometry handling: Track variant (red)</desc>',
+        '    <desc>Testing OnX geometry handling: Track variant (red)</desc>',
         '  </metadata>',
         '  <trk>',
         '    <name>TEST - Track Variant</name>',
         '    <desc>Control: Track format with all original points</desc>',
         '    <extensions>',
-        '      <onx:color>rgba(255,0,0,1)</onx:color>',
+        '      <OnX:color>rgba(255,0,0,1)</OnX:color>',
         '    </extensions>',
         '    <trkseg>',
     ]
@@ -196,16 +196,16 @@ def write_route_variant(points: List[Tuple[float, float, Optional[float]]], outp
     """
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.OnXmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
         '  <metadata>',
         '    <name>Track vs Route A/B Test</name>',
-        '    <desc>Testing onX geometry handling: Route variant (blue)</desc>',
+        '    <desc>Testing OnX geometry handling: Route variant (blue)</desc>',
         '  </metadata>',
         '  <rte>',
         '    <name>TEST - Route Variant</name>',
         '    <desc>Experiment: Route format with all original points</desc>',
         '    <extensions>',
-        '      <onx:color>rgba(0,0,255,1)</onx:color>',
+        '      <OnX:color>rgba(0,0,255,1)</OnX:color>',
         '    </extensions>',
     ]
 
@@ -277,7 +277,7 @@ def main():
         print("SUCCESS: A/B test files generated")
         print("="*60)
         print("\nNext steps:")
-        print("1. Import both files into onX Backcountry")
+        print("1. Import both files into OnX Backcountry")
         print("2. Compare geometry fidelity on the map")
         print("3. Red = Track format (control)")
         print("4. Blue = Route format (experiment)")

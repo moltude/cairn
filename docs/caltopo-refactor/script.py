@@ -2,7 +2,7 @@
 import json
 
 # Load and analyze the OnX export that was imported to CalTopo and exported back to GeoJSON
-with open('test-onx-export.json', 'r') as f:
+with open('test-OnX-export.json', 'r') as f:
     data = json.load(f)
 
 # Get basic structure
@@ -17,13 +17,13 @@ feature_types = {}
 for i, feature in enumerate(data.get('features', [])):
     geom_type = feature.get('geometry', {}).get('type', 'Unknown')
     props = feature.get('properties', {})
-    
+
     name = props.get('name', 'Unnamed')
     feature_id = props.get('id', 'No ID')
-    
+
     if geom_type not in feature_types:
         feature_types[geom_type] = []
-    
+
     feature_types[geom_type].append({
         'index': i,
         'name': name,
