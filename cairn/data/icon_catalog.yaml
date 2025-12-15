@@ -1,13 +1,96 @@
-# =============================================================================
-# Cairn Icon Catalog (append-only)
-# =============================================================================
-# This file is written/updated automatically by migrations.
-#
-# It records which icon/symbol labels were seen in real datasets over time.
-# It is intended to help grow the mapping dictionary and validate coverage.
-# =============================================================================
-
 version: 1
-
-observed_caltopo_symbols: {}
-observed_onx_icons: {}
+observed_caltopo_symbols:
+  campsite:
+    count: 2
+    examples:
+    - Test Waypoint
+observed_onx_icons:
+  Location:
+    count: 294
+    examples:
+    - Mill Creek TH?
+    - Bass Creek TH
+    - Little St Joseph's
+  Cave:
+    count: 14
+    examples:
+    - cairn-Mill Creek TH?
+    - cairn-Cool ridge line traverse
+    - Test1-DoubleTap
+  Summit:
+    count: 6
+    examples:
+    - Little St Joseph's
+    - Gash knob
+    - Cool pointy summit
+  Water Source:
+    count: 8
+    examples:
+    - Mill Creek TH?
+    - Bass Creek TH
+    - Bass Creek trailhead
+  XC Skiing:
+    count: 10
+    examples:
+    - cairn-Cool ridge line traverse
+    - Waypoint 11/30/25 14:02
+    - Waypoint 11/30/25 14:03
+  Parking:
+    count: 4
+    examples:
+    - Parking
+    - Car
+  Trailhead:
+    count: 6
+    examples:
+    - Gash trailhead
+    - Staring point
+  4x4:
+    count: 4
+    examples:
+    - Waypoint 11/30/25 14:03
+  Access Point:
+    count: 4
+    examples:
+    - Waypoint 11/30/25 14:03
+  Barrier:
+    count: 4
+    examples:
+    - Waypoint 11/30/25 14:03
+  Camp Area:
+    count: 4
+    examples:
+    - Waypoint 11/30/25 14:03
+  Campsite:
+    count: 4
+    examples:
+    - Test2-ExtensionsOnly
+  Hazard:
+    count: 4
+    examples:
+    - Waypoint 11/30/25 14:03
+  Horseback:
+    count: 2
+    examples:
+    - cairn-Little St Joseph's
+  Snowboarder:
+    count: 4
+    examples:
+    - Waypoint 11/30/25 14:03
+  Water Crossing:
+    count: 4
+    examples:
+    - Waypoint 11/30/25 14:03
+  Campground:
+    count: 2
+    examples:
+    - Campsite
+  Food Source:
+    count: 2
+    examples:
+    - Lunch
+  Shelter:
+    count: 2
+    examples:
+    - Bathroom
+updated_at: '2025-12-15T15:19:56+00:00'

@@ -17,8 +17,12 @@ class ParsedFeature:
     def __init__(self, feature: Dict[str, Any]):
         """Initialize from a GeoJSON feature."""
         self.id = feature.get("id", "")
-        self.geometry = feature.get("geometry")
-        self.properties = feature.get("properties", {})
+
+        geom = feature.get("geometry")
+        self.geometry = geom if (geom is None or isinstance(geom, dict)) else None
+
+        props = feature.get("properties") or {}
+        self.properties = props if isinstance(props, dict) else {}
 
         # Extract common properties
         self.title = self.properties.get("title", "Untitled")
@@ -156,7 +160,25 @@ def parse_geojson(filepath: Path) -> ParsedData:
     except Exception as e:
         raise ValueError(f"Failed to read GeoJSON file: {e}\nFile: {filepath}")
 
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Invalid GeoJSON file: expected a JSON object at the top level\n"
+            f"File: {filepath}"
+        )
+
+    if (data.get("type") or "") != "FeatureCollection":
+        raise ValueError(
+            f"Invalid GeoJSON file: expected type='FeatureCollection'\n"
+            f"File: {filepath}\n"
+            f"Tip: Make sure this is a CalTopo export GeoJSON"
+        )
+
     features = data.get("features", [])
+    if not isinstance(features, list):
+        raise ValueError(
+            f"Invalid GeoJSON file: expected 'features' to be a list\n"
+            f"File: {filepath}"
+        )
 
     if not features:
         raise ValueError(
@@ -171,6 +193,8 @@ def parse_geojson(filepath: Path) -> ParsedData:
     non_folder_features = []
 
     for feature_dict in features:
+        if not isinstance(feature_dict, dict):
+            continue
         feature = ParsedFeature(feature_dict)
 
         if feature.is_folder():

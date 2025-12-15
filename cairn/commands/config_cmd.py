@@ -7,8 +7,7 @@ from rich.console import Console
 import re
 import yaml
 
-from cairn.core.config import load_config, get_all_OnX_icons
-from cairn.core.mapper import get_icon_emoji
+from cairn.core.config import load_config, get_all_OnX_icons, get_icon_emoji
 from cairn.core.color_mapper import ColorMapper
 
 app = typer.Typer()

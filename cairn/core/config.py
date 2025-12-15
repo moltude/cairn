@@ -89,6 +89,17 @@ def get_icon_color(icon_name: str, *, default: str = "rgba(8,122,255,1)") -> str
     return ICON_COLOR_MAP.get(icon_name, default)
 
 
+def get_icon_emoji(icon_id: str) -> str:
+    """
+    Get emoji representation for an icon (for preview display).
+
+    This is a small convenience wrapper used by CLI/preview code when a full
+    `IconMappingConfig` instance is not available.
+    """
+    icon_id = (icon_id or "").strip()
+    return IconMappingConfig.DEFAULT_ICON_EMOJIS.get(icon_id, "📍")
+
+
 # Default CalTopo marker-symbol to OnX Backcountry icon mappings
 # Based on actual OnX GPX analysis and icon screenshots (100+ icons)
 DEFAULT_SYMBOL_MAP = {

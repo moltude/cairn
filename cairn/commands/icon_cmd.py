@@ -9,15 +9,14 @@ from rich.table import Table
 from rich.prompt import Prompt
 import yaml
 
-from cairn.core.config import get_all_OnX_icons, load_config, save_user_mapping, remove_user_mapping
-from cairn.core.mapper import get_icon_emoji
+from cairn.core.config import get_all_OnX_icons, load_config, save_user_mapping, remove_user_mapping, get_icon_emoji
 from cairn.core.icon_registry import IconRegistry, default_mappings_path
 
 app = typer.Typer(
     help=(
         "Manage icon mappings and inspect how Cairn transfers icons between CalTopo and OnX.\n\n"
         "Key commands:\n"
-        "- show-mappings: human-friendly summary of repo mappings\n"
+        "- show-mappings: human-friendly summary of repo mappings (symbol vs keyword flow)\n"
         "- validate-mappings: validate mapping file structure\n"
         "- map/unmap: map CalTopo symbol → OnX icon (local cairn_config.yaml)\n"
         "- map-onx-to-caltopo: map OnX icon → CalTopo symbol (repo icon_mappings.yaml)\n"
@@ -116,7 +115,11 @@ def show_mapping(symbol: str = typer.Argument(..., help="CalTopo symbol")):
 
 
 def _validate_choice(value: str, *, allowed: set[str], label: str) -> str:
-    v = (value or "").strip().lower()
+    # When invoked via Typer CLI, Typer provides a string. When invoked directly
+    # in unit tests, the default can be a Typer OptionInfo instance.
+    if hasattr(value, "default"):
+        value = getattr(value, "default")
+    v = (str(value) if value is not None else "").strip().lower()
     if v not in allowed:
         raise typer.BadParameter(f"Invalid {label}: {value!r}. Expected one of: {', '.join(sorted(allowed))}")
     return v
@@ -336,10 +339,16 @@ def show_mappings(
     - Prints a short summary + a small alphabetical sample of each mapping table
     - Uses pretty Rich tables for readability
 
+    CalTopo → OnX flow (how to read the table):
+    - If the incoming CalTopo waypoint has a marker-symbol listed under “If CalTopo marker-symbol is…”
+      then Cairn maps directly to that OnX icon.
+    - Else, Cairn falls back to keyword matching against the waypoint name/notes (“Else if … contains…”).
+
     Examples:
       cairn icon show-mappings
       cairn icon show-mappings --direction onx-to-caltopo --full
       cairn icon show-mappings --format markdown --direction caltopo-to-onx
+      cairn icon show-mappings --format table --limit 25
     """
     dir_norm = _validate_choice(direction, allowed={"both", "caltopo-to-onx", "onx-to-caltopo"}, label="direction")
     fmt_norm = _validate_choice(format, allowed={"table", "yaml", "json", "markdown"}, label="format")

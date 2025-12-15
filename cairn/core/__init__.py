@@ -5,7 +5,6 @@ __all__ = [
     "mapper",
     "writers",
     "config",
-    "config_manager",
     "matcher",
     "color_mapper",
     "preview"

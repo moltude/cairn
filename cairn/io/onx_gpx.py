@@ -339,3 +339,8 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
         rte_idx += 1
 
     return doc
+
+
+# Backward-compatible alias: prefer snake_case in new code.
+def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
+    return read_OnX_gpx(path, trace=trace)

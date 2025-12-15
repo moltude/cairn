@@ -306,7 +306,7 @@ def show_mapping_preview(parsed_data: ParsedData, config: IconMappingConfig):
         # Show up to 10 waypoints
         for waypoint in folder_data["waypoints"][:10]:
             icon = map_icon(waypoint.title, waypoint.description or "", waypoint.symbol, config)
-            from cairn.core.mapper import get_icon_emoji
+            from cairn.core.config import get_icon_emoji
             emoji = get_icon_emoji(icon)
             console.print(f"  {emoji} {waypoint.title[:50]} → [yellow]{icon}[/]")
 
@@ -355,7 +355,8 @@ def get_waypoint_icon_preview(feature: ParsedFeature, config: Optional[IconMappi
     Returns:
         Emoji string representing the mapped icon
     """
-    from cairn.core.mapper import map_icon, get_icon_emoji
+    from cairn.core.mapper import map_icon
+    from cairn.core.config import get_icon_emoji
 
     # Map the waypoint to an OnX icon (use config if provided)
     mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol, config)

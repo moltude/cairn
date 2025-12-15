@@ -7,7 +7,7 @@ to OnX Backcountry's specific icon IDs for better visual representation.
 
 from typing import Optional
 
-from cairn.core.config import GENERIC_SYMBOLS, IconMappingConfig
+from cairn.core.config import GENERIC_SYMBOLS, IconMappingConfig, get_icon_emoji as _get_icon_emoji
 from cairn.core.icon_resolver import IconResolver
 
 
@@ -124,49 +124,6 @@ def get_icon_emoji(icon_id: str) -> str:
     Returns:
         An emoji string representing the icon
     """
-    emoji_map = {
-        # Camping
-        "Campsite": "⛺",
-        "Camp": "⛺",
-        "Camp Backcountry": "⛺",
-        "Camp Area": "⛺",
-        "Campground": "⛺",
-        # Water
-        "Water Source": "💧",
-        "Waterfall": "💧",
-        "Hot Spring": "♨️",
-        "Potable Water": "💧",
-        # Transportation
-        "Parking": "🅿️",
-        "Trailhead": "🥾",
-        "4x4": "🚙",
-        "ATV": "🏍️",
-        # Winter
-        "XC Skiing": "⛷️",
-        "Ski": "⛷️",
-        "Ski Touring": "⛷️",
-        "Skin Track": "⛷️",
-        "Snowboarder": "🏂",
-        "Snowmobile": "🛷",
-        # Terrain
-        "Summit": "🏔️",
-        "Cave": "🕳️",
-        # Hazards
-        "Hazard": "⚠️",
-        "Barrier": "🚧",
-        # Hiking
-        "Hike": "🥾",
-        "Backpacker": "🎒",
-        # Observation
-        "Photo": "📷",
-        "View": "👁️",
-        "Lookout": "🔭",
-        # Facilities
-        "Cabin": "🏠",
-        "Shelter": "🏚️",
-        "House": "🏠",
-        "Food Source": "🍎",
-        # Default
-        "Location": "📍",
-    }
-    return emoji_map.get(icon_id, "📍")
+    # Deprecated: prefer `IconMappingConfig.get_icon_emoji()` (config-aware) or
+    # `cairn.core.config.get_icon_emoji()` (config-less).
+    return _get_icon_emoji(icon_id)

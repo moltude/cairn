@@ -34,3 +34,4 @@ packages = ["cairn"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "--cov=cairn --cov-report=term-missing"

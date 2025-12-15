@@ -11,7 +11,7 @@ from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Tuple
 
 from cairn.core.dedup import DedupReport
-from cairn.model import MapDocument, Waypoint
+from cairn.model import MapDocument, Track, Waypoint
 
 
 def document_inventory(doc: MapDocument) -> Dict[str, Any]:
@@ -55,6 +55,7 @@ def check_data_quality(doc: MapDocument) -> Dict[str, Any]:
         "empty_names": [],
         "duplicate_names": [],
         "suspicious_coords": [],
+        "empty_tracks": [],
     }
 
     # Check for empty or default names
@@ -94,5 +95,18 @@ def check_data_quality(doc: MapDocument) -> Dict[str, Any]:
                     lon,
                     "Near (0,0) - possible default/invalid coordinate"
                 ))
+            # Check for out-of-range coordinates
+            if not (-90 <= float(lat) <= 90) or not (-180 <= float(lon) <= 180):
+                warnings["suspicious_coords"].append((
+                    "Waypoint",
+                    item.id,
+                    item.name,
+                    lat,
+                    lon,
+                    "Out of valid range (-90..90, -180..180)"
+                ))
+        elif isinstance(item, Track):
+            if not getattr(item, "points", None):
+                warnings["empty_tracks"].append((item.id, item.name))
 
     return warnings

@@ -5,8 +5,8 @@ from pathlib import Path
 from cairn.core.mapper import (
     map_icon,
     map_color,
-    get_icon_emoji,
 )
+from cairn.core.config import get_icon_emoji
 from cairn.core.config import IconMappingConfig, load_config
 
 

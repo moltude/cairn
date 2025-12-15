@@ -17,7 +17,8 @@ from cairn.utils.utils import (
     chunk_data, sanitize_filename, format_file_size,
     ensure_output_dir, should_split, natural_sort_key
 )
-from cairn.core.mapper import get_icon_emoji, map_icon
+from cairn.core.mapper import map_icon
+from cairn.core.config import get_icon_emoji
 from cairn.core.config import load_config, IconMappingConfig, get_all_OnX_icons, save_user_mapping
 from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.color_mapper import ColorMapper
