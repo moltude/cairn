@@ -15,15 +15,16 @@ def _repo_root() -> Path:
 
 
 def _fixture_gpx() -> Path:
-    # Prefer stable, checked-in demo fixture (docs refactor fixtures were removed).
-    return _repo_root() / "demo" / "onx-to-caltopo" / "onx-export" / "onx-export.gpx"
+    # Strict fixture: requires xmlns:onx="https://wwww.onxmaps.com/" (no legacy namespace accepted).
+    return _repo_root() / "tests" / "fixtures" / "onx_export_strict.gpx"
 
 def _demo_OnX_export_dir() -> Path:
     return _repo_root() / "demo" / "onx-to-caltopo" / "onx-export"
 
 
 def _demo_OnX_gpx() -> Path:
-    return _demo_OnX_export_dir() / "onx-export.gpx"
+    # Keep tests strict: demo export must also use the strict namespace.
+    return _fixture_gpx()
 
 
 def _demo_OnX_kml() -> Path:

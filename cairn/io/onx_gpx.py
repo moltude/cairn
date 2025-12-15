@@ -5,9 +5,9 @@ Reads an OnX-exported GPX file into Cairn's canonical MapDocument model.
 
 Notes:
 - OnX exports often include a key/value block in <desc> for both waypoints and tracks.
-- OnX also includes custom extensions in an OnX namespace. In practice we've seen both:
-  - https://wwww.onxmaps.com/
-  - https://wwww.OnXmaps.com/
+- OnX also includes custom extensions in the OnX namespace. This reader is STRICT:
+  it requires the exact namespace declaration `xmlns:onx="https://wwww.onxmaps.com/"`
+  and rejects legacy/case-variant values.
 - OnX GPX export structure can vary (tracks vs routes), so we read <trk> and <rte>.
 """
 
@@ -23,9 +23,9 @@ from cairn.core.normalization import iso8601_to_epoch_ms, normalize_name
 from cairn.model import MapDocument, Style, Track, TrackPoint, Waypoint
 
 
-# OnX exports have been observed using both of these namespace URIs.
-# Namespace URI comparisons are case-sensitive, so we accept both for robustness.
-_ONX_NS_URIS = ("https://wwww.onxmaps.com/", "https://wwww.OnXmaps.com/")
+# Strict OnX namespace requirements (prefix + URI).
+_ONX_PREFIX = "onx"
+_ONX_NS = "https://wwww.onxmaps.com/"
 _GPX_NS = "http://www.topografix.com/GPX/1/1"
 _NS = {"gpx": _GPX_NS}
 
@@ -112,12 +112,52 @@ def _get_OnX_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
     """
     if elem is None:
         return None
-    # We match by namespace URI (not prefix) and accept legacy variants.
-    for uri in _ONX_NS_URIS:
-        child = elem.find(f"{{{uri}}}{local_name}")
-        if child is not None and child.text:
-            return child.text.strip()
+    child = elem.find(f"{{{_ONX_NS}}}{local_name}")
+    if child is not None and child.text:
+        return child.text.strip()
     return None
+
+
+def _assert_strict_onx_namespace(p: Path) -> None:
+    """
+    Enforce strict OnX namespace requirements.
+
+    We require:
+      xmlns:onx="https://wwww.onxmaps.com/"
+
+    We reject:
+      - Any prefix other than "onx" bound to an onxmaps.com namespace
+      - Any case-variant URI like https://wwww.OnXmaps.com/
+    """
+    try:
+        head = p.read_text(encoding="utf-8", errors="ignore")[:4096]
+    except Exception:
+        head = ""
+
+    # Fast reject: case-variant URI in header
+    if "https://wwww.OnXmaps.com/" in head:
+        raise ValueError(
+            f"Unsupported OnX namespace URI in GPX header (must be exactly '{_ONX_NS}'): {p}"
+        )
+
+    # Must declare the exact namespace (prefix + URI).
+    required = f'xmlns:{_ONX_PREFIX}="{_ONX_NS}"'
+    if required not in head:
+        raise ValueError(
+            f"Missing required OnX namespace declaration in GPX header: {required}. File: {p}"
+        )
+
+    # If an onxmaps namespace is declared, ensure it's declared with prefix 'onx'
+    m = re.search(r'xmlns:(?P<pfx>[A-Za-z0-9_]+)="(?P<uri>https?://[^"]*onxmaps\.com/)"', head)
+    if m:
+        pfx = (m.group("pfx") or "").strip()
+        uri = (m.group("uri") or "").strip()
+        if pfx != _ONX_PREFIX or uri != _ONX_NS:
+            raise ValueError(
+                f"Unsupported OnX namespace declaration in GPX header. "
+                f"Expected xmlns:{_ONX_PREFIX}=\"{_ONX_NS}\", got xmlns:{pfx}=\"{uri}\". "
+                f"File: {p}"
+            )
 
 
 def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
@@ -149,6 +189,8 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     # Validate it's actually a GPX file
     if not (root.tag.endswith("gpx") or "gpx" in root.tag.lower()):
         raise ValueError(f"File does not appear to be a GPX file (root element: {root.tag})\nFile: {p}")
+
+    _assert_strict_onx_namespace(p)
 
     doc = MapDocument(metadata={"source": "OnX_gpx", "path": str(p)})
 

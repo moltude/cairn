@@ -18,17 +18,16 @@ def read_gpx_waypoints(gpx_path: Path):
     tree = ET.parse(gpx_path)
     root = tree.getroot()
     ns = {'gpx': 'http://www.topografix.com/GPX/1/1'}
-    # OnX has used multiple namespace URI/prefix variants across exports.
-    onx_uris = ("https://wwww.onxmaps.com/", "https://wwww.OnXmaps.com/")
+    # Strict namespace (must match Cairn's writer + current OnX export behavior)
+    onx_uri = "https://wwww.onxmaps.com/"
 
     def _find_ext_icon(wpt_elem: ET.Element) -> str:
         ext = wpt_elem.find('gpx:extensions', ns)
         if ext is None:
             return "Unknown"
-        for uri in onx_uris:
-            icon_elem = ext.find(f'{{{uri}}}icon')
-            if icon_elem is not None and icon_elem.text:
-                return icon_elem.text.strip()
+        icon_elem = ext.find(f'{{{onx_uri}}}icon')
+        if icon_elem is not None and icon_elem.text:
+            return icon_elem.text.strip()
         return "Unknown"
 
     waypoints = []
