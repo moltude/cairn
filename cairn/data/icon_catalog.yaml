@@ -5,12 +5,12 @@ observed_caltopo_symbols:
     examples:
     - Test Waypoint
   placemark2:
-    count: 20
+    count: 24
     examples:
     - Start
     - Exit
   binoc:
-    count: 10
+    count: 12
     examples:
     - Peak + Photos
 observed_onx_icons:
@@ -106,4 +106,4 @@ observed_onx_icons:
     count: 1
     examples:
     - Peak + Photos
-updated_at: '2025-12-15T19:44:21+00:00'
+updated_at: '2025-12-15T21:43:47+00:00'

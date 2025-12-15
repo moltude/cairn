@@ -27,6 +27,24 @@ ET.register_namespace("onx", "https://wwww.onxmaps.com/")
 # Set up logger for debug output
 logger = logging.getLogger(__name__)
 
+# region agent log
+def _agent_ndjson_log(payload: dict) -> None:
+    """
+    Debug-mode NDJSON logger (append-only).
+    Writes one JSON object per line to .cursor/debug.log.
+    """
+    try:
+        import json, os  # noqa: E401
+        payload = dict(payload or {})
+        payload.setdefault("timestamp", int(datetime.utcnow().timestamp() * 1000))
+        payload.setdefault("sessionId", "debug-session")
+        payload.setdefault("runId", os.environ.get("CAIRN_RUN_ID", "pre-fix"))
+        with open("/Users/scott/_code/cairn/.cursor/debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+# endregion
+
 # OnX import max GPX size is 4MB. Use a slightly lower default to avoid edge cases.
 DEFAULT_MAX_GPX_BYTES = int(math.floor(3.75 * 1024 * 1024))
 
@@ -304,6 +322,22 @@ def write_gpx_waypoints_maybe_split(
     ]
     footer_line = "</gpx>"
 
+    # region agent log
+    _agent_ndjson_log(
+        {
+            "hypothesisId": "A",
+            "location": "cairn/core/writers.py:write_gpx_waypoints_maybe_split",
+            "message": "Waypoints GPX header namespace",
+            "data": {
+                "output_path": str(output_path),
+                "folder_name": folder_name,
+                "header_gpx_line": header_lines[1],
+                "registered_ns_uri": "https://wwww.OnXmaps.com/",
+            },
+        }
+    )
+    # endregion
+
     item_blocks: List[List[str]] = []
     written_count = 0
     for feature in features:
@@ -340,6 +374,27 @@ def write_gpx_waypoints_maybe_split(
                 default=(config.default_color if config else ColorMapper.DEFAULT_WAYPOINT_COLOR),
             )
 
+        # region agent log
+        if written_count < 3:
+            _agent_ndjson_log(
+                {
+                    "hypothesisId": "B",
+                    "location": "cairn/core/writers.py:write_gpx_waypoints_maybe_split",
+                    "message": "Waypoint style mapping prior to write",
+                    "data": {
+                        "idx": written_count,
+                        "title": feature.title,
+                        "symbol": getattr(feature, "symbol", None),
+                        "feature_color_raw": getattr(feature, "color", None),
+                        "mapped_icon": mapped_icon,
+                        "onx_color": OnX_color,
+                        "used_feature_color": bool(feature.color),
+                        "extensions_tag_sample": "<OnX:icon>/<OnX:color>",
+                    },
+                }
+            )
+        # endregion
+
         wp_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         notes_clean = strip_html(feature.description or "")
         desc_kv = "\n".join(
@@ -372,12 +427,41 @@ def write_gpx_waypoints_maybe_split(
     if not split:
         payload = header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
         output_path.write_text("\n".join(payload), encoding="utf-8")
+        # region agent log
+        _agent_ndjson_log(
+            {
+                "hypothesisId": "E",
+                "location": "cairn/core/writers.py:write_gpx_waypoints_maybe_split",
+                "message": "Waypoints GPX written (no split)",
+                "data": {
+                    "output_path": str(output_path),
+                    "size_bytes": int(output_path.stat().st_size),
+                    "written_count": written_count,
+                },
+            }
+        )
+        # endregion
         return [(output_path, output_path.stat().st_size, written_count)]
 
     # First check: would a single file exceed threshold?
     full_payload = header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
     if _utf8_joined_size(full_payload) <= max_bytes:
         output_path.write_text("\n".join(full_payload), encoding="utf-8")
+        # region agent log
+        _agent_ndjson_log(
+            {
+                "hypothesisId": "E",
+                "location": "cairn/core/writers.py:write_gpx_waypoints_maybe_split",
+                "message": "Waypoints GPX written (single part)",
+                "data": {
+                    "output_path": str(output_path),
+                    "size_bytes": int(output_path.stat().st_size),
+                    "written_count": written_count,
+                    "max_bytes": int(max_bytes),
+                },
+            }
+        )
+        # endregion
         return [(output_path, output_path.stat().st_size, written_count)]
 
     parts = _split_gpx_lines_by_bytes(
@@ -398,6 +482,21 @@ def write_gpx_waypoints_maybe_split(
         except Exception:
             cnt = 0
         out.append((pth, sz, cnt))
+    # region agent log
+    _agent_ndjson_log(
+        {
+            "hypothesisId": "E",
+            "location": "cairn/core/writers.py:write_gpx_waypoints_maybe_split",
+            "message": "Waypoints GPX written (split parts)",
+            "data": {
+                "base_output_path": str(output_path),
+                "parts": [{"path": str(p), "size_bytes": int(s), "wpt_count": int(c)} for (p, s, c) in out],
+                "total_written_count": written_count,
+                "max_bytes": int(max_bytes),
+            },
+        }
+    )
+    # endregion
     return out
 
 
@@ -430,6 +529,22 @@ def write_gpx_tracks_maybe_split(
     ]
     footer_line = "</gpx>"
 
+    # region agent log
+    _agent_ndjson_log(
+        {
+            "hypothesisId": "A",
+            "location": "cairn/core/writers.py:write_gpx_tracks_maybe_split",
+            "message": "Tracks GPX header namespace",
+            "data": {
+                "output_path": str(output_path),
+                "folder_name": folder_name,
+                "header_gpx_line": header_lines[1],
+                "registered_ns_uri": "https://wwww.OnXmaps.com/",
+            },
+        }
+    )
+    # endregion
+
     item_blocks: List[List[str]] = []
     written_count = 0
 
@@ -444,6 +559,26 @@ def write_gpx_tracks_maybe_split(
         OnX_color = ColorMapper.transform_color(feature.stroke) if feature.stroke else ColorMapper.DEFAULT_COLOR
         OnX_style = pattern_to_style(feature.pattern)
         OnX_weight = stroke_width_to_weight(feature.stroke_width)
+
+        # region agent log
+        if written_count < 3:
+            _agent_ndjson_log(
+                {
+                    "hypothesisId": "B",
+                    "location": "cairn/core/writers.py:write_gpx_tracks_maybe_split",
+                    "message": "Track style mapping prior to write",
+                    "data": {
+                        "idx": written_count,
+                        "title": feature.title,
+                        "stroke_raw": getattr(feature, "stroke", None),
+                        "pattern_raw": getattr(feature, "pattern", None),
+                        "stroke_width_raw": getattr(feature, "stroke_width", None),
+                        "onx": {"color": OnX_color, "style": OnX_style, "weight": OnX_weight},
+                        "extensions_tag_sample": "<OnX:color>/<OnX:style>/<OnX:weight>",
+                    },
+                }
+            )
+        # endregion
 
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         notes_clean = strip_html(feature.description or "")
@@ -872,94 +1007,3 @@ def write_kml_shapes(features: List[ParsedFeature], output_path: Path,
     return output_path.stat().st_size
 
 
-def generate_summary_file(
-    features: List[ParsedFeature],
-    output_path: Path,
-    folder_name: str,
-    config: Optional[IconMappingConfig] = None,
-) -> Path:
-    """
-    Generate a summary.txt file listing waypoints organized by icon type.
-    Only generated if use_icon_name_prefix is True.
-
-    Args:
-        features: List of waypoint features
-        output_path: Path where summary file should be written (same dir as GPX)
-        folder_name: Name of the folder/dataset
-
-    Returns:
-        Path to the generated summary file
-    """
-    from collections import defaultdict
-
-    # Group waypoints by icon type
-    icon_groups = defaultdict(list)
-
-    for feature in features:
-        icon_name = map_icon(feature.title, feature.description or "", feature.symbol, config)
-        # Format name as it will appear in GPX
-        display_name = format_waypoint_name(
-            feature.title,
-            icon_name,
-            use_prefix=bool(getattr(config, "use_icon_name_prefix", False)),
-            default_icon=(getattr(config, "default_icon", "Location") if config else "Location"),
-        )
-        icon_groups[icon_name].append(display_name)
-
-    # Generate summary content
-    summary_lines = [
-        f"{'='*70}",
-        f"WAYPOINT ICON REFERENCE: {folder_name}",
-        f"{'='*70}",
-        "",
-        "This file lists all waypoints organized by their recommended icon type.",
-        "Use this as a reference when manually setting icons in OnX after import.",
-        "",
-        f"Total Waypoints: {len(features)}",
-        f"Icon Types: {len(icon_groups)}",
-        "",
-        f"{'='*70}",
-        ""
-    ]
-
-    # Sort icon types alphabetically, but put "Waypoint" last
-    sorted_icons = sorted(icon_groups.keys())
-    if "Waypoint" in sorted_icons:
-        sorted_icons.remove("Waypoint")
-        sorted_icons.append("Waypoint")
-
-    for icon_type in sorted_icons:
-        waypoints = sorted(icon_groups[icon_type])
-        summary_lines.append(f"\n{icon_type.upper()} ({len(waypoints)} waypoints)")
-        summary_lines.append("-" * 70)
-
-        for waypoint in waypoints:
-            summary_lines.append(f"  • {waypoint}")
-
-        summary_lines.append("")
-
-    # Add instructions
-    summary_lines.extend([
-        "",
-        f"{'='*70}",
-        "INSTRUCTIONS FOR SETTING ICONS IN OnX:",
-        f"{'='*70}",
-        "",
-        "1. Import the GPX file into OnX Web Map",
-        "2. All waypoints will appear with default icons",
-        "3. Waypoint names include icon type prefix (e.g., 'Parking - Trail')",
-        "4. Use OnX's filter/search to find waypoints by icon type",
-        "5. Select multiple waypoints and batch-edit to change icons",
-        "6. Refer to this summary to see all waypoints by icon type",
-        "",
-        "Note: Waypoints without a prefix are generic waypoints and can remain",
-        "as the default 'Waypoint' icon.",
-        ""
-    ])
-
-    # Write summary file
-    summary_path = output_path.parent / f"{output_path.stem}_SUMMARY.txt"
-    with open(summary_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(summary_lines))
-
-    return summary_path

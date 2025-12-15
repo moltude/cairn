@@ -25,7 +25,6 @@ from cairn.core.diagnostics import check_data_quality, dedup_inventory, document
 from cairn.core.icon_registry import IconRegistry, write_icon_report_markdown
 from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.shape_dedup import apply_shape_dedup
-from cairn.core.shape_dedup_summary import write_shape_dedup_summary
 from cairn.core.trace import TraceWriter
 from cairn.io.caltopo_geojson import write_caltopo_geojson
 from cairn.io.onx_gpx import read_OnX_gpx
@@ -191,7 +190,6 @@ def _confirm_migration(
     console.print(f"\n[bold cyan]Output Files (will be created):[/]")
     console.print(f"  • {base_name}.json [dim](primary GeoJSON)[/]")
     console.print(f"  • {base_name}_dropped_shapes.json [dim](duplicates)[/]")
-    console.print(f"  • {base_name}_SUMMARY.md [dim](dedup report)[/]")
     console.print(f"  • {base_name}_trace.jsonl [dim](debug log)[/]")
 
     # Options
@@ -429,7 +427,6 @@ def OnX_to_caltopo(
 
     primary_path = out_dir / f"{base}.json"
     dropped_shapes_path = out_dir / f"{base}_dropped_shapes.json"
-    summary_path = out_dir / f"{base}_SUMMARY.md"
 
     resolved_trace_path: Optional[Path]
     if not trace:
@@ -599,7 +596,7 @@ def OnX_to_caltopo(
 
             progress.advance(task)
 
-            progress.update(task, description="Writing dropped-duplicates GeoJSON + summary")
+            progress.update(task, description="Writing dropped-duplicates GeoJSON")
             dropped_doc = MapDocument(
                 folders=list(doc.folders),
                 items=list(dropped_items),
@@ -613,18 +610,8 @@ def OnX_to_caltopo(
                 route_color_strategy=route_color_norm,  # type: ignore[arg-type]
             )
 
-            write_shape_dedup_summary(
-                summary_path,
-                report=(shape_report or type("Empty", (), {"groups": [], "dropped_count": 0})()),
-                primary_geojson_path=primary_path,
-                dropped_geojson_path=dropped_shapes_path,
-                gpx_path=gpx,
-                kml_path=kml,
-                waypoint_dedup_dropped=(wp_report.dropped_count if wp_report is not None else 0),
-            )
-
             # Validate secondary files were written
-            if not dropped_shapes_path.exists() or not summary_path.exists():
+            if not dropped_shapes_path.exists():
                 progress.stop()
                 console.print(f"\n[yellow]⚠️  Warning:[/] Some output files may not have been written correctly")
 
@@ -649,10 +636,6 @@ def OnX_to_caltopo(
         dropped_size = dropped_shapes_path.stat().st_size if dropped_shapes_path.exists() else 0
         console.print("\nDropped duplicate shapes preserved as GeoJSON:")
         console.print(f"- [cyan]{_display_path(dropped_shapes_path)}[/] [dim]({dropped_size:,} bytes)[/]")
-
-        summary_size = summary_path.stat().st_size if summary_path.exists() else 0
-        console.print("\nHuman-readable explanation of dedup decisions:")
-        console.print(f"- [cyan]{_display_path(summary_path)}[/] [dim]({summary_size:,} bytes)[/]")
 
         if resolved_trace_path is not None:
             console.print("\nMachine-parseable trace log (JSON Lines) for debugging/replay:")

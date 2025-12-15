@@ -12,7 +12,7 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 from cairn.core.parser import parse_geojson, get_file_summary, ParsedData
-from cairn.core.writers import write_gpx_waypoints, write_gpx_tracks, write_kml_shapes, generate_summary_file, verify_gpx_waypoint_order, get_name_changes, clear_name_changes
+from cairn.core.writers import write_gpx_waypoints, write_gpx_tracks, write_kml_shapes, verify_gpx_waypoint_order, get_name_changes, clear_name_changes
 from cairn.utils.utils import (
     chunk_data, sanitize_filename, format_file_size,
     ensure_output_dir, should_split, natural_sort_key
@@ -40,7 +40,6 @@ from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.io.caltopo_geojson import write_caltopo_geojson
 from cairn.core.trace import TraceWriter
 from cairn.core.diagnostics import document_inventory, dedup_inventory
-from cairn.core.shape_dedup_summary import write_shape_dedup_summary
 
 app = typer.Typer()
 console = Console()
@@ -305,15 +304,6 @@ def process_and_write_files(
                     for pth, sz, cnt in written_parts:
                         output_files.append((pth.name, "GPX (Waypoints)", cnt, sz))
                     console.print(f"       ├── 📄 [green]{output_path.name}[/] ({len(chunk)} items)")
-
-                    if config and config.use_icon_name_prefix:
-                        # Preserve legacy behavior: one summary per (logical) chunk.
-                        # If the chunk is size-split, write summary next to the first part file.
-                        summary_target = written_parts[0][0] if written_parts else output_path
-                        summary_path = generate_summary_file(chunk, summary_target, f"{folder_name} - Part {i}", config=config)
-                        summary_size = summary_path.stat().st_size
-                        output_files.append((summary_path.name, "Summary (Text)", len(chunk), summary_size))
-                        console.print(f"       └── 📋 [blue]{summary_path.name}[/] (Icon reference)")
             else:
                 output_path = output_dir / f"{safe_name}_Waypoints.gpx"
                 # Pass sort=False since we already sorted and reversed
@@ -328,13 +318,6 @@ def process_and_write_files(
                 )
                 for pth, sz, cnt in written_parts:
                     output_files.append((pth.name, "GPX (Waypoints)", cnt, sz))
-
-                if config and config.use_icon_name_prefix:
-                    # Preserve legacy behavior: one summary per folder waypoint export.
-                    summary_target = written_parts[0][0] if written_parts else output_path
-                    summary_path = generate_summary_file(sorted_waypoints, summary_target, folder_name, config=config)
-                    summary_size = summary_path.stat().st_size
-                    output_files.append((summary_path.name, "Summary (Text)", len(sorted_waypoints), summary_size))
 
         # Handle tracks
         if tracks:
@@ -753,8 +736,7 @@ def convert(
             except Exception:
                 pass
 
-            # If shape dedup ran, write the dropped features to a secondary GeoJSON file
-            # and generate a SUMMARY.md documenting every group.
+            # If shape dedup ran, write the dropped features to a secondary GeoJSON file.
             if dedupe_shapes and shape_report is not None:
                 dropped_shapes_doc_path = out_path.with_name(out_path.stem + "_dropped_shapes.json")
                 from cairn.model import MapDocument as _MapDocument
@@ -775,17 +757,6 @@ def convert(
                     route_color_strategy=route_color_norm,  # type: ignore[arg-type]
                 )
 
-                summary_path = out_path.with_name(out_path.stem + "_SUMMARY.md")
-                write_shape_dedup_summary(
-                    summary_path,
-                    report=shape_report,
-                    primary_geojson_path=out_path,
-                    dropped_geojson_path=dropped_shapes_doc_path,
-                    gpx_path=input_file,
-                    kml_path=(kml_file or ""),
-                    waypoint_dedup_dropped=(report.dropped_count if report is not None else 0),
-                )
-
             console.print(f"\n[bold green]✔ SUCCESS[/] Wrote CalTopo GeoJSON: [underline]{out_path}[/]")
             console.print(
                 f"[dim]Items:[/] {len(doc.waypoints())} waypoints, {len(doc.tracks())} lines, {len(doc.shapes())} areas"
@@ -795,7 +766,6 @@ def convert(
             if dedupe_shapes and shape_report is not None and shape_report.dropped_count:
                 console.print(f"[yellow]⚠️  Shape dedup dropped {shape_report.dropped_count} duplicate shape(s).[/]")
                 console.print(f"[dim]Dropped shapes:[/] {dropped_shapes_doc_path}")
-                console.print(f"[dim]Summary:[/] {summary_path}")
             if trace_path:
                 console.print(f"[dim]Trace log:[/] {trace_path}")
             return

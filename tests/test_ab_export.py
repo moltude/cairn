@@ -156,7 +156,7 @@ def write_track_variant(points: List[Tuple[float, float, Optional[float]]], outp
     """
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.OnXmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
         '  <metadata>',
         '    <name>Track vs Route A/B Test</name>',
         '    <desc>Testing OnX geometry handling: Track variant (red)</desc>',
@@ -165,7 +165,7 @@ def write_track_variant(points: List[Tuple[float, float, Optional[float]]], outp
         '    <name>TEST - Track Variant</name>',
         '    <desc>Control: Track format with all original points</desc>',
         '    <extensions>',
-        '      <onx:color>rgba(255,0,0,1)</onx:color>',
+        '      <OnX:color>rgba(255,0,0,1)</OnX:color>',
         '    </extensions>',
         '    <trkseg>',
     ]
@@ -196,7 +196,7 @@ def write_route_variant(points: List[Tuple[float, float, Optional[float]]], outp
     """
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.OnXmaps.com/" version="1.1" creator="Cairn A/B Export Tool">',
         '  <metadata>',
         '    <name>Track vs Route A/B Test</name>',
         '    <desc>Testing OnX geometry handling: Route variant (blue)</desc>',
@@ -205,7 +205,7 @@ def write_route_variant(points: List[Tuple[float, float, Optional[float]]], outp
         '    <name>TEST - Route Variant</name>',
         '    <desc>Experiment: Route format with all original points</desc>',
         '    <extensions>',
-        '      <onx:color>rgba(0,0,255,1)</onx:color>',
+        '      <OnX:color>rgba(0,0,255,1)</OnX:color>',
         '    </extensions>',
     ]
 

@@ -125,17 +125,15 @@ class TestCLI:
         Exercise the interactive onx-to-caltopo flow (file selection + confirm) to improve
         coverage over migrate_cmd's main path.
         """
-        # Copy strict fixtures into a temp input directory so the command can discover them.
+        # Copy demo fixtures into a temp input directory so the command can discover them.
         repo_root = Path(__file__).resolve().parents[1]
-        gpx_src = repo_root / "tests" / "fixtures" / "onx_export_strict.gpx"
-        # KML fixture can remain the demo KML; it's not subject to the OnX GPX namespace rule.
         demo_dir = repo_root / "demo" / "onx-to-caltopo" / "onx-export"
+        gpx_src = demo_dir / "onx-export.gpx"
         kml_src = demo_dir / "onx-export.kml"
 
         input_dir = tmp_path / "exports"
         input_dir.mkdir(parents=True, exist_ok=True)
-        # Keep the conventional name so the interactive selector output remains stable.
-        (input_dir / "onx-export.gpx").write_text(gpx_src.read_text(encoding="utf-8"), encoding="utf-8")
+        (input_dir / gpx_src.name).write_text(gpx_src.read_text(encoding="utf-8"), encoding="utf-8")
         (input_dir / kml_src.name).write_text(kml_src.read_text(encoding="utf-8"), encoding="utf-8")
 
         # Prompts:
