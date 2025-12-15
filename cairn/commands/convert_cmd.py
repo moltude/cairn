@@ -22,7 +22,13 @@ from cairn.core.config import get_icon_emoji
 from cairn.core.config import load_config, IconMappingConfig, get_all_OnX_icons, save_user_mapping
 from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.color_mapper import ColorMapper
-from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review, preview_sorted_order
+from cairn.core.preview import (
+    generate_dry_run_report,
+    display_dry_run_report,
+    interactive_review,
+    interactive_edit_before_export,
+    preview_sorted_order,
+)
 from cairn.core.icon_registry import IconRegistry, write_icon_report_markdown
 
 # New bidirectional adapters (OnX → CalTopo)
@@ -213,7 +219,10 @@ def process_and_write_files(
     output_dir: Path,
     sort: bool = True,
     skip_confirmation: bool = False,
-    config: IconMappingConfig = None
+    config: IconMappingConfig = None,
+    *,
+    split_gpx: bool = True,
+    max_gpx_bytes: Optional[int] = None,
 ) -> list:
     """
     Process folders and write output files.
@@ -232,6 +241,13 @@ def process_and_write_files(
 
     # Clear name changes tracker before processing
     clear_name_changes()
+
+    from cairn.core.writers import DEFAULT_MAX_GPX_BYTES as _DEFAULT_MAX_GPX_BYTES
+    from cairn.core.writers import write_gpx_waypoints_maybe_split, write_gpx_tracks_maybe_split
+
+    # Defensive: keep defaults even if caller didn't pass new args (older call sites).
+    if max_gpx_bytes is None:
+        max_gpx_bytes = _DEFAULT_MAX_GPX_BYTES
 
     for folder_id, folder_data in parsed_data.folders.items():
         folder_name = folder_data["name"]
@@ -277,51 +293,46 @@ def process_and_write_files(
                     part_name = f"{safe_name}_Waypoints_Part{i}"
                     output_path = output_dir / f"{part_name}.gpx"
                     # Pass sort=False since we already sorted and reversed
-                    file_size = write_gpx_waypoints(
+                    written_parts = write_gpx_waypoints_maybe_split(
                         chunk,
                         output_path,
                         f"{folder_name} - Part {i}",
                         sort=False,
                         config=config,
+                        split=split_gpx,
+                        max_bytes=max_gpx_bytes,
                     )
-                    output_files.append((f"{part_name}.gpx", "GPX (Waypoints)", len(chunk), file_size))
-                    console.print(f"       ├── 📄 [green]{part_name}.gpx[/] ({len(chunk)} items)")
+                    for pth, sz, cnt in written_parts:
+                        output_files.append((pth.name, "GPX (Waypoints)", cnt, sz))
+                    console.print(f"       ├── 📄 [green]{output_path.name}[/] ({len(chunk)} items)")
 
                     if config and config.use_icon_name_prefix:
-                        summary_path = generate_summary_file(chunk, output_path, f"{folder_name} - Part {i}", config=config)
+                        # Preserve legacy behavior: one summary per (logical) chunk.
+                        # If the chunk is size-split, write summary next to the first part file.
+                        summary_target = written_parts[0][0] if written_parts else output_path
+                        summary_path = generate_summary_file(chunk, summary_target, f"{folder_name} - Part {i}", config=config)
                         summary_size = summary_path.stat().st_size
                         output_files.append((summary_path.name, "Summary (Text)", len(chunk), summary_size))
                         console.print(f"       └── 📋 [blue]{summary_path.name}[/] (Icon reference)")
             else:
                 output_path = output_dir / f"{safe_name}_Waypoints.gpx"
                 # Pass sort=False since we already sorted and reversed
-                file_size = write_gpx_waypoints(
+                written_parts = write_gpx_waypoints_maybe_split(
                     write_order_waypoints,
                     output_path,
                     folder_name,
                     sort=False,
                     config=config,
+                    split=split_gpx,
+                    max_bytes=max_gpx_bytes,
                 )
-
-                # Debug logging disabled (logger not configured)
-                # if logger.isEnabledFor(logging.DEBUG):
-                #     gpx_order = verify_gpx_waypoint_order(output_path)
-                #     if gpx_order:
-                #         logger.debug(f"[DEBUG] Waypoint order in GPX file ({output_path.name}):")
-                #         for i, name in enumerate(gpx_order, 1):
-                #             logger.debug(f"  {i}. {name}")
-                #         # Compare with expected order
-                #         expected_names = [wp.title for wp in write_order_waypoints[:len(gpx_order)]]
-                #         if expected_names != gpx_order:
-                #             logger.warning("[DEBUG] WARNING: GPX order differs from expected order!")
-                #             logger.debug("Expected order:")
-                #             for i, name in enumerate(expected_names, 1):
-                #                 logger.debug(f"  {i}. {name}")
-
-                output_files.append((f"{safe_name}_Waypoints.gpx", "GPX (Waypoints)", len(write_order_waypoints), file_size))
+                for pth, sz, cnt in written_parts:
+                    output_files.append((pth.name, "GPX (Waypoints)", cnt, sz))
 
                 if config and config.use_icon_name_prefix:
-                    summary_path = generate_summary_file(sorted_waypoints, output_path, folder_name, config=config)
+                    # Preserve legacy behavior: one summary per folder waypoint export.
+                    summary_target = written_parts[0][0] if written_parts else output_path
+                    summary_path = generate_summary_file(sorted_waypoints, summary_target, folder_name, config=config)
                     summary_size = summary_path.stat().st_size
                     output_files.append((summary_path.name, "Summary (Text)", len(sorted_waypoints), summary_size))
 
@@ -353,14 +364,30 @@ def process_and_write_files(
                     part_name = f"{safe_name}_Tracks_Part{i}"
                     output_path = output_dir / f"{part_name}.gpx"
                     # Pass sort=False since we already sorted and reversed
-                    file_size = write_gpx_tracks(chunk, output_path, f"{folder_name} - Part {i}", sort=False)
-                    output_files.append((f"{part_name}.gpx", "GPX (Tracks)", len(chunk), file_size))
-                    console.print(f"       ├── 📄 [green]{part_name}.gpx[/] ({len(chunk)} items)")
+                    written_parts = write_gpx_tracks_maybe_split(
+                        chunk,
+                        output_path,
+                        f"{folder_name} - Part {i}",
+                        sort=False,
+                        split=split_gpx,
+                        max_bytes=max_gpx_bytes,
+                    )
+                    for pth, sz, cnt in written_parts:
+                        output_files.append((pth.name, "GPX (Tracks)", cnt, sz))
+                    console.print(f"       ├── 📄 [green]{output_path.name}[/] ({len(chunk)} items)")
             else:
                 output_path = output_dir / f"{safe_name}_Tracks.gpx"
                 # Pass sort=False since we already sorted and reversed
-                file_size = write_gpx_tracks(write_order_tracks, output_path, folder_name, sort=False)
-                output_files.append((f"{safe_name}_Tracks.gpx", "GPX (Tracks)", len(write_order_tracks), file_size))
+                written_parts = write_gpx_tracks_maybe_split(
+                    write_order_tracks,
+                    output_path,
+                    folder_name,
+                    sort=False,
+                    split=split_gpx,
+                    max_bytes=max_gpx_bytes,
+                )
+                for pth, sz, cnt in written_parts:
+                    output_files.append((pth.name, "GPX (Tracks)", cnt, sz))
 
         # Handle shapes (KML)
         if shapes:
@@ -529,10 +556,25 @@ def convert(
         "--review",
         help="Interactive review of icon mappings before conversion"
     ),
+    edit: Optional[bool] = typer.Option(
+        None,
+        "--edit/--no-edit",
+        help="Interactive global edit of tracks/waypoints (names/descriptions/icons/colors) before writing files (CalTopo → OnX only)",
+    ),
     no_sort: bool = typer.Option(
         False,
         "--no-sort",
         help="Preserve original order instead of sorting items"
+    ),
+    max_gpx_mb: float = typer.Option(
+        3.75,
+        "--max-gpx-mb",
+        help="Maximum GPX file size in MB before auto-splitting (OnX import limit is 4MB; default keeps a safety margin).",
+    ),
+    split_gpx: bool = typer.Option(
+        True,
+        "--split-gpx/--no-split-gpx",
+        help="Automatically split GPX files that exceed the max size into multiple numbered parts.",
     ),
     yes: bool = typer.Option(
         False,
@@ -823,6 +865,12 @@ def convert(
     # Ensure output directory exists
     output_dir = ensure_output_dir(output)
 
+    # Optional: global preview + edit loop before writing any OnX import files.
+    # Default behavior: if edit is not specified, enable edit when interactive and disable when --yes is used.
+    edit_enabled = (not yes) if edit is None else bool(edit)
+    if edit_enabled:
+        interactive_edit_before_export(parsed_data, config, edit_tracks=True, edit_waypoints=True)
+
     # Icon report + catalog for CalTopo → OnX (best-effort; never fails conversion)
     try:
         reg = IconRegistry()
@@ -891,7 +939,9 @@ def convert(
         output_dir,
         sort=sort_enabled,
         skip_confirmation=yes,
-        config=config
+        config=config,
+        split_gpx=split_gpx,
+        max_gpx_bytes=int(max(0.0, float(max_gpx_mb)) * 1024 * 1024),
     )
 
     # Display manifest

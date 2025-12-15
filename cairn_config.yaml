@@ -156,10 +156,15 @@ symbol_mappings:
   camera: Photo
   photo: Photo
   binoculars: View
+  # CalTopo sometimes uses abbreviated binocular symbol ids in exports
+  binoc: View
   viewpoint: View
   vista: View
   overlook: View
   lookout: Lookout
+
+  # CalTopo generic placemark variants (treat as a generic Location marker)
+  placemark2: Location
 
   # Facilities -> Cabin (brown)
   cabin: Cabin

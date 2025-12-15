@@ -696,6 +696,16 @@ def caltopo_to_OnX(
         "--no-sort",
         help="Preserve original order instead of natural sorting",
     ),
+    max_gpx_mb: float = typer.Option(
+        3.75,
+        "--max-gpx-mb",
+        help="Maximum GPX file size in MB before auto-splitting (OnX import limit is 4MB; default keeps a safety margin).",
+    ),
+    split_gpx: bool = typer.Option(
+        True,
+        "--split-gpx/--no-split-gpx",
+        help="Automatically split GPX files that exceed the max size into multiple numbered parts.",
+    ),
 ):
     """Migrate CalTopo GeoJSON exports to OnX-importable GPX/KML format.
 
@@ -722,6 +732,10 @@ def caltopo_to_OnX(
         process_and_write_files,
     )
     from cairn.core.config import load_config
+    from cairn.core.preview import preview_sorted_order, interactive_edit_before_export_per_folder
+    from rich.prompt import Confirm
+    from cairn.utils.utils import natural_sort_key
+    import sys
 
     # 1. Validate input directory
     if input_dir is None:
@@ -759,13 +773,39 @@ def caltopo_to_OnX(
     # 6. Load icon mapping config
     config = load_config(config_file)
 
-    # 7. Display migration summary and confirm
+    # 7. Preview (and optional edit) before final confirmation
     sort_enabled = not no_sort
+
+    console.print("\n[bold]Preview (what will be written for OnX)[/]")
+    console.print("[dim]This shows the per-folder sorted order. You can optionally edit items next.[/]\n")
+
+    # Show per-folder previews (tracks then waypoints) before any output is written.
+    folder_items = list((getattr(parsed_data, "folders", {}) or {}).items())
+    folder_items.sort(key=lambda kv: natural_sort_key(str((kv[1] or {}).get("name") or kv[0])))
+    for _, folder_data in folder_items:
+        folder_name = str(folder_data.get("name") or "")
+        tracks = list(folder_data.get("tracks", []) or [])
+        waypoints = list(folder_data.get("waypoints", []) or [])
+        if sort_enabled:
+            tracks = sorted(tracks, key=lambda f: natural_sort_key(f.title))
+            waypoints = sorted(waypoints, key=lambda f: natural_sort_key(f.title))
+
+        if tracks:
+            preview_sorted_order(tracks, "tracks", folder_name, skip_confirmation=True, config=None)
+        if waypoints:
+            preview_sorted_order(waypoints, "waypoints", folder_name, skip_confirmation=True, config=config)
+
+    # Only prompt for edits in interactive terminals (prevents EOF issues in non-interactive runs/tests).
+    if sys.stdin is not None and getattr(sys.stdin, "isatty", lambda: False)():
+        if Confirm.ask("Would you like to edit anything before export?", default=False):
+            interactive_edit_before_export_per_folder(parsed_data, config, sort_enabled=sort_enabled)
+
+    # 8. Display final migration summary and confirm (after edits)
     if not _confirm_caltopo_migration(selected_file, parsed_data, out_dir, sort_enabled):
         console.print("[yellow]Migration cancelled[/]")
         raise typer.Exit(0)
 
-    # 8. Process and write files
+    # 9. Process and write files
     console.print(f"\n[bold white]Processing...[/]\n")
 
     # Icon report + catalog for CalTopo → OnX (best-effort; never fails the migration)
@@ -799,10 +839,12 @@ def caltopo_to_OnX(
         out_dir,
         sort=sort_enabled,
         skip_confirmation=True,  # Already confirmed
-        config=config
+        config=config,
+        split_gpx=split_gpx,
+        max_gpx_bytes=int(max(0.0, float(max_gpx_mb)) * 1024 * 1024),
     )
 
-    # 9. Display results
+    # 10. Display results
     if not output_files:
         console.print("[yellow]No files were created[/]")
         raise typer.Exit(1)

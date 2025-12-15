@@ -157,13 +157,15 @@ class ColorMapper:
     def map_track_color(cls, color_str: str) -> str:
         """Map a color to the closest OnX **track** palette color."""
         r, g, b = cls.parse_color(color_str)
-        return cls._find_closest_in_palette(r, g, b, cls.TRACK_PALETTE).rgba
+        chosen = cls._find_closest_in_palette(r, g, b, cls.TRACK_PALETTE)
+        return chosen.rgba
 
     @classmethod
     def map_waypoint_color(cls, color_str: str) -> str:
         """Map a color to the closest OnX **waypoint** palette color."""
         r, g, b = cls.parse_color(color_str)
-        return cls._find_closest_in_palette(r, g, b, cls.WAYPOINT_PALETTE).rgba
+        chosen = cls._find_closest_in_palette(r, g, b, cls.WAYPOINT_PALETTE)
+        return chosen.rgba
 
     @classmethod
     def parse_color(cls, color_str: str) -> Tuple[int, int, int]:

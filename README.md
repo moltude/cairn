@@ -22,6 +22,18 @@ Right now, the most reliable direction is **OnX → CalTopo**.
 
 ---
 
+## Use case
+
+Lets consider the following scenario, someone sends you a GPX file that contains details of an area with possible hiking and backpacking routes. Some of this is on-trail, some off trail. There are important
+waypoints that indicate hazards, water sources and ideal campsites. When they constructed this dataset they took the time to assign colors, icons and other metadata beyond the lines, dots and polygons to help
+you and others to maximize this dataset. You don't know which platform was used to generate this so you try to upload it into your platform of choice.
+
+
+
+
+
+
+
 ## Table of contents
 
 - [OnX → CalTopo](#OnX--caltopo)

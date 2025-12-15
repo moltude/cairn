@@ -21,7 +21,8 @@ from cairn.core.normalization import iso8601_to_epoch_ms, normalize_name
 from cairn.model import MapDocument, Style, Track, TrackPoint, Waypoint
 
 
-_OnX_NS = "https://wwww.OnXmaps.com/"
+# OnX exports use lowercase domain in the namespace URI (URI comparisons are case-sensitive).
+_OnX_NS = "https://wwww.onxmaps.com/"
 _GPX_NS = "http://www.topografix.com/GPX/1/1"
 _NS = {"gpx": _GPX_NS, "OnX": _OnX_NS}
 

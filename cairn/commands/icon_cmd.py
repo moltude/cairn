@@ -9,7 +9,7 @@ from rich.table import Table
 from rich.prompt import Prompt
 import yaml
 
-from cairn.core.config import get_all_OnX_icons, load_config, save_user_mapping, remove_user_mapping, get_icon_emoji
+from cairn.core.config import get_all_OnX_icons, load_config, normalize_onx_icon_name, save_user_mapping, remove_user_mapping, get_icon_emoji
 from cairn.core.icon_registry import IconRegistry, default_mappings_path
 
 app = typer.Typer(
@@ -52,17 +52,22 @@ def browse_all_icons() -> Optional[str]:
     table.add_column("Icons", style="white")
 
     for category, icon_list in categories.items():
-        # Get emojis for icons
-        icons_with_emoji = [f"{get_icon_emoji(icon)} {icon}" for icon in icon_list]
-        table.add_row(category, ", ".join(icons_with_emoji))
+        # Text-only list (emoji are not part of OnX and add clutter in the picker).
+        table.add_row(category, ", ".join(icon_list))
 
     console.print(table)
 
-    try:
-        icon_name = Prompt.ask("\nEnter icon name (or press Enter to skip)", default="")
-        return icon_name if icon_name else None
-    except (KeyboardInterrupt, EOFError):
-        return None
+    while True:
+        try:
+            icon_name = Prompt.ask("\nEnter icon name (or press Enter to cancel)", default="").strip()
+        except (KeyboardInterrupt, EOFError):
+            return None
+        if not icon_name:
+            return None
+        canon = normalize_onx_icon_name(icon_name)
+        if canon is not None:
+            return canon
+        console.print(f"[red]Invalid icon:[/] {icon_name} [dim](try again, or press Enter to cancel)[/]")
 
 
 @app.command("list")
@@ -77,15 +82,15 @@ def map_symbol(
     icon: str = typer.Argument(..., help="OnX icon name")
 ):
     """Map a CalTopo symbol to an OnX icon."""
-    valid_icons = get_all_OnX_icons()
-    if icon not in valid_icons:
+    icon_canon = normalize_onx_icon_name(icon)
+    if icon_canon is None:
         console.print(f"[red]✗[/] Invalid icon: {icon}")
         console.print("[dim]Run 'cairn icon list' to see all available icons[/]")
         raise typer.Exit(1)
     try:
-        save_user_mapping(symbol, icon)
-        emoji = get_icon_emoji(icon)
-        console.print(f"[green]✓[/] Mapped '[cyan]{symbol}[/]' → {emoji} '[green]{icon}[/]'")
+        save_user_mapping(symbol, icon_canon)
+        emoji = get_icon_emoji(icon_canon)
+        console.print(f"[green]✓[/] Mapped '[cyan]{symbol}[/]' → {emoji} '[green]{icon_canon}[/]'")
     except ValueError as e:
         console.print(f"[red]✗[/] {e}")
         raise typer.Exit(1)

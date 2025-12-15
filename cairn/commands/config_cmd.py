@@ -7,7 +7,7 @@ from rich.console import Console
 import re
 import yaml
 
-from cairn.core.config import load_config, get_all_OnX_icons, get_icon_emoji
+from cairn.core.config import load_config, normalize_onx_icon_name, get_icon_emoji
 from cairn.core.color_mapper import ColorMapper
 
 app = typer.Typer()
@@ -64,8 +64,8 @@ def validate(config_file: Path = typer.Argument(..., help="Config file to valida
 @app.command("set-default-icon")
 def set_default_icon(icon: str = typer.Argument(..., help="Icon name")):
     """Set default icon for unmapped symbols."""
-    valid_icons = get_all_OnX_icons()
-    if icon not in valid_icons:
+    icon_canon = normalize_onx_icon_name(icon)
+    if icon_canon is None:
         console.print(f"[bold red]❌ Error:[/] '{icon}' is not a valid OnX icon")
         console.print("[dim]Run 'cairn icon list' to see all available icons[/]")
         raise typer.Exit(1)
@@ -76,10 +76,10 @@ def set_default_icon(icon: str = typer.Argument(..., help="Icon name")):
             data = yaml.safe_load(f) or {}
     else:
         data = {}
-    data["default_icon"] = icon
+    data["default_icon"] = icon_canon
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
-    console.print(f"[bold green]✔[/] Default icon set to: [cyan]{icon}[/] (saved to {config_path})")
+    console.print(f"[bold green]✔[/] Default icon set to: [cyan]{icon_canon}[/] (saved to {config_path})")
 
 
 @app.command("set-default-color")

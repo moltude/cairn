@@ -22,6 +22,136 @@ GENERIC_SYMBOLS = frozenset([
     "circle",
 ])
 
+# Canonical OnX Backcountry icon names (from user-provided screenshots).
+# This is the single source of truth for what Cairn considers "valid OnX icons".
+ONX_ICON_NAMES_CANONICAL: tuple[str, ...] = (
+    "4x4",
+    "Access Point",
+    "ATV",
+    "Backpacker",
+    "Barrier",
+    "Beach Combing",
+    "Bike",
+    "Camp",
+    "Camp Area",
+    "Camp Backcountry",
+    "Campground",
+    "Canoe",
+    "Cave",
+    "Caving",
+    "Climbing",
+    "Closed Gate",
+    "Cornice",
+    "Couloir",
+    "Crossing",
+    "Dirt Bike",
+    "Dog Sledding",
+    "Eagle",
+    "Emergency Phone",
+    "Feeding Area",
+    "Fish",
+    "Food Source",
+    "Food Storage",
+    "Footbridge",
+    "Foraging",
+    "Fuel",
+    "Gate",
+    "Gear",
+    "Geyser",
+    "Hand Launch",
+    "Hang Gliding",
+    "Hazard",
+    "Hike",
+    "Horseback",
+    "Hot Spring",
+    "House",
+    "Kayak",
+    "Kennels",
+    "Lighthouses",
+    "Location",
+    "Log Obstacle",
+    "Lookout",
+    "Marina",
+    "Mountain Biking",
+    "Mountaineer",
+    "Mushroom",
+    "Observation Towers",
+    "Open Gate",
+    "Overland",
+    "Parking",
+    "Photo",
+    "Picnic Area",
+    "Potable Water",
+    "Put In",
+    "Raft",
+    "Rapids",
+    "Rappel",
+    "Road Barrier",
+    "Ruins",
+    "RV",
+    "Sasquatch",
+    "Shelter",
+    "Ski",
+    "Ski Areas",
+    "Ski Touring",
+    "Skin Track",
+    "Slide Path",
+    "Snow Pit",
+    "Snowboarder",
+    "Snowmobile",
+    "Snowpark",
+    "Steep Trail",
+    "Stock Tank",
+    "Summit",
+    "Surfing Area",
+    "SUV",
+    "Swimming",
+    "Take Out",
+    "Trailhead",
+    "Truck",
+    "View",
+    "Visitor Center",
+    "Washout",
+    "Water Crossing",
+    "Water Source",
+    "Waterfall",
+    "Webcam",
+    "Wetland",
+    "Wildflower",
+    "Windsurfing",
+    "XC Skiing",
+)
+
+
+def _norm_onx_icon_key(value: str) -> str:
+    """
+    Normalize an icon name for comparison.
+    - case-insensitive
+    - collapses whitespace
+    - treats underscores/hyphens as spaces
+    """
+    s = (value or "").strip().lower().replace("_", " ").replace("-", " ")
+    s = " ".join(s.split())
+    return s
+
+
+_ONX_ICON_BY_NORM: Dict[str, str] = { _norm_onx_icon_key(n): n for n in ONX_ICON_NAMES_CANONICAL }
+_ONX_ICON_BY_COMPACT: Dict[str, str] = { _norm_onx_icon_key(n).replace(" ", ""): n for n in ONX_ICON_NAMES_CANONICAL }
+
+
+def normalize_onx_icon_name(value: str) -> Optional[str]:
+    """
+    Normalize user input to a canonical OnX icon name.
+    Returns canonical name or None if unknown.
+    """
+    k = _norm_onx_icon_key(value)
+    if not k:
+        return None
+    if k in _ONX_ICON_BY_NORM:
+        return _ONX_ICON_BY_NORM[k]
+    ck = k.replace(" ", "")
+    return _ONX_ICON_BY_COMPACT.get(ck)
+
 
 # OnX Backcountry waypoint icon color mappings (RGBA format).
 #
@@ -464,10 +594,10 @@ class IconMappingConfig:
 
             # Defaults
             if "default_icon" in user_config and user_config["default_icon"]:
-                default_icon = str(user_config["default_icon"])
-                valid_icons = get_all_OnX_icons()
-                if default_icon not in valid_icons:
-                    raise ValueError(f"Invalid default_icon '{default_icon}' (not a valid OnX icon)")
+                default_icon_raw = str(user_config["default_icon"])
+                default_icon = normalize_onx_icon_name(default_icon_raw)
+                if default_icon is None:
+                    raise ValueError(f"Invalid default_icon '{default_icon_raw}' (not a valid OnX icon)")
                 self.default_icon = default_icon
 
             if "default_color" in user_config and user_config["default_color"]:
@@ -827,13 +957,9 @@ def get_all_OnX_icons() -> List[str]:
     Get complete list of all OnX Backcountry icon names.
 
     Returns:
-        Sorted list of unique icon names
+        Canonical list of icon names
     """
-    # Get all unique icons from symbol map
-    icons = set(DEFAULT_SYMBOL_MAP.values())
-    # Add any icons from keyword map
-    icons.update(DEFAULT_KEYWORD_MAP.keys())
-    return sorted(list(icons))
+    return list(ONX_ICON_NAMES_CANONICAL)
 
 
 def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_config.yaml")):
@@ -860,7 +986,10 @@ def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_co
         config["symbol_mappings"] = {}
 
     symbol_key = (symbol or "").strip().lower()
-    config["symbol_mappings"][symbol_key] = icon
+    icon_canon = normalize_onx_icon_name(icon)
+    if icon_canon is None:
+        raise ValueError(f"Invalid OnX icon '{icon}' (must match canonical icon list)")
+    config["symbol_mappings"][symbol_key] = icon_canon
 
     with open(config_path, 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)

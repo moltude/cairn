@@ -16,10 +16,506 @@ from rich.prompt import Prompt, Confirm
 
 from cairn.core.parser import ParsedData, ParsedFeature
 from cairn.core.mapper import map_icon
-from cairn.core.config import IconMappingConfig, get_all_OnX_icons, save_user_mapping
+from cairn.core.config import (
+    IconMappingConfig,
+    get_all_OnX_icons,
+    normalize_onx_icon_name,
+    save_user_mapping,
+    get_icon_color,
+)
 from cairn.core.matcher import FuzzyIconMatcher
+from cairn.core.color_mapper import ColorMapper
+from cairn.utils.utils import natural_sort_key
+import re
 
 console = Console()
+
+_ONX_ICON_OVERRIDE_KEY = "cairn_onx_icon_override"
+
+
+def _match_palette_color_choice(raw: str, palette: tuple) -> Optional[str]:
+    """
+    Match a user-provided color choice against an OnX palette.
+
+    Supports common inputs like: "BLUE", "red-orange", "red orange", "RedOrange", "1".
+    Returns the palette RGBA on match, otherwise None.
+    """
+    def _norm_name(s: str) -> str:
+        s1 = (s or "").strip().upper()
+        s1 = re.sub(r"[\s\-_]+", "", s1)
+        return s1
+
+    by_name: dict[str, str] = {}
+    for p in palette:
+        key = _norm_name(getattr(p, "name", ""))
+        if key:
+            by_name[key] = getattr(p, "rgba", "")
+
+    # Common user-friendly aliases.
+    if "REDORANGE" in by_name:
+        by_name.setdefault("ORANGE", by_name["REDORANGE"])
+
+    key = _norm_name(raw)
+    rgba = by_name.get(key)
+    return rgba or None
+
+
+def _color_square_from_rgb(r: int, g: int, b: int) -> str:
+    return f"[rgb({r},{g},{b})]■[/]"
+
+
+def _onx_color_name_upper(rgba: str) -> str:
+    name = (ColorMapper.get_color_name(rgba) or "custom").replace("-", " ").upper()
+    return name
+
+
+def _desc_snippet(desc: str, *, max_len: int = 90) -> str:
+    d = (desc or "").strip()
+    if not d:
+        return "[dim](no description)[/]"
+    d1 = d.replace("\r\n", "\n").replace("\r", "\n").split("\n", 1)[0].strip()
+    if len(d1) > max_len:
+        return d1[: max_len - 3] + "..."
+    return d1
+
+
+def _prompt_multiline_hint(value: str) -> str:
+    # Let users enter "\n" to represent line breaks (Prompt is single-line).
+    return (value or "").replace("\\n", "\n")
+
+
+def _palette_choice(
+    *,
+    title: str,
+    palette: tuple,
+    current_rgba: str,
+) -> Optional[str]:
+    """
+    Prompt user to select a color from a controlled palette.
+    Returns chosen RGBA string, or None to keep current.
+    """
+    console.print(f"\n[bold]{title}[/]")
+    for i, p in enumerate(palette, 1):
+        square = _color_square_from_rgb(p.r, p.g, p.b)
+        nm = (p.name or "").replace("-", " ").upper()
+        suffix = " [dim](current)[/]" if p.rgba == current_rgba else ""
+        console.print(f"  [dim]{i}.[/] {square} {nm}{suffix}")
+
+    while True:
+        choice = Prompt.ask("Color (enter to keep)", default="").strip()
+        if not choice:
+            return None
+
+        # Numeric selection
+        try:
+            idx = int(choice)
+            if 1 <= idx <= len(palette):
+                return palette[idx - 1].rgba
+            console.print("[red]Invalid selection[/] (number out of range)")
+            continue
+        except ValueError:
+            pass
+
+        # Name selection (BLUE, RED, etc.)
+        picked = _match_palette_color_choice(choice, palette)
+        if picked:
+            return picked
+
+        console.print("[red]Invalid selection[/] (enter a number or a color name like BLUE)")
+
+
+def _rgba_to_hex_nohash(rgba: str) -> str:
+    r, g, b = ColorMapper.parse_color(rgba)
+    return f"{r:02X}{g:02X}{b:02X}"
+
+
+def _rgba_to_hex_hash(rgba: str) -> str:
+    return "#" + _rgba_to_hex_nohash(rgba)
+
+
+def _resolved_waypoint_icon(feature: ParsedFeature, config: Optional[IconMappingConfig]) -> str:
+    override = None
+    if isinstance(getattr(feature, "properties", None), dict):
+        override = (feature.properties.get(_ONX_ICON_OVERRIDE_KEY) or "").strip()
+    if override:
+        return override
+    return map_icon(feature.title, feature.description or "", feature.symbol, config)
+
+
+def _resolved_waypoint_color(feature: ParsedFeature, icon: str, config: Optional[IconMappingConfig]) -> str:
+    # Mirror cairn/core/writers.py waypoint policy.
+    if getattr(feature, "color", ""):
+        return ColorMapper.map_waypoint_color(feature.color)
+    return get_icon_color(icon, default=(config.default_color if config else ColorMapper.DEFAULT_WAYPOINT_COLOR))
+
+
+def _resolved_track_color(feature: ParsedFeature) -> str:
+    # Mirror cairn/core/writers.py track policy.
+    stroke = (getattr(feature, "stroke", "") or "").strip()
+    return ColorMapper.transform_color(stroke) if stroke else ColorMapper.DEFAULT_TRACK_COLOR
+
+
+def _prompt_icon_choice(
+    *,
+    current_icon: str,
+) -> Optional[str]:
+    """
+    Prompt user to choose an OnX icon. Returns icon string, or None to keep current.
+    Supports:
+      - enter: keep
+      - 'clear': clear override (caller decides)
+      - exact icon name
+      - 'browse': browse_all_icons()
+      - fuzzy search with numbered pick
+    """
+    valid = list(get_all_OnX_icons())
+    prompt = "Icon (enter to keep, 'clear' to remove override, 'browse' to list all)"
+
+    while True:
+        raw = Prompt.ask(prompt, default="").strip()
+        if not raw:
+            return None
+        if raw.lower() == "browse":
+            from cairn.commands.icon_cmd import browse_all_icons
+            picked = browse_all_icons()
+            if not picked:
+                return None
+            icon_canon = normalize_onx_icon_name(picked)
+            if icon_canon is not None:
+                return icon_canon
+            console.print("[red]Invalid icon[/] (not in OnX icon set)")
+            continue
+        if raw.lower() == "clear":
+            return "CLEAR"
+
+        icon_canon = normalize_onx_icon_name(raw)
+        if icon_canon is not None:
+            return icon_canon
+
+        matcher = FuzzyIconMatcher(valid)
+        matches = matcher.find_best_matches(raw, top_n=8)
+        if not matches:
+            console.print("[red]No icon matches found[/]. Try again or type 'browse'.")
+            continue
+
+        console.print("\n[bold]Did you mean:[/]")
+        for i, (icon, confidence) in enumerate(matches, 1):
+            console.print(f"  [dim]{i}.[/] {icon} [dim]({int(confidence*100)}% match)[/]")
+
+        while True:
+            picked = Prompt.ask("Select (enter to cancel)", default="").strip()
+            if not picked:
+                return None
+            try:
+                idx = int(picked)
+            except ValueError:
+                console.print("[red]Invalid selection[/]")
+                continue
+            if idx < 1 or idx > len(matches):
+                console.print("[red]Invalid selection[/]")
+                continue
+            return matches[idx - 1][0]
+
+
+def interactive_edit_before_export(
+    parsed_data: ParsedData,
+    config: Optional[IconMappingConfig],
+    *,
+    edit_tracks: bool = True,
+    edit_waypoints: bool = True,
+) -> bool:
+    """
+    Global pre-export preview + edit loop for CalTopo → OnX.
+
+    Output-only: mutates ParsedFeature objects in-memory (titles/descriptions/colors/icon overrides)
+    but does not write back to the source GeoJSON.
+    """
+    # Build global lists
+    tracks_index: List[tuple[str, ParsedFeature]] = []
+    waypoints_index: List[tuple[str, ParsedFeature]] = []
+
+    for _, folder in (getattr(parsed_data, "folders", {}) or {}).items():
+        folder_name = str(folder.get("name") or "")
+        for trk in folder.get("tracks", []) or []:
+            tracks_index.append((folder_name, trk))
+        for wp in folder.get("waypoints", []) or []:
+            waypoints_index.append((folder_name, wp))
+
+    # Stable, predictable order for review (global).
+    tracks_index.sort(key=lambda t: (natural_sort_key(t[0]), natural_sort_key(t[1].title)))
+    waypoints_index.sort(key=lambda t: (natural_sort_key(t[0]), natural_sort_key(t[1].title)))
+
+    changes_made = False
+
+    def print_tracks():
+        console.print()
+        console.print(Panel.fit("[bold]ROUTES / TRACKS[/]", border_style="cyan"))
+        console.print(f"There are {len(tracks_index)} routes\n")
+        for i, (folder_name, trk) in enumerate(tracks_index, 1):
+            rgba = _resolved_track_color(trk)
+            r, g, b = ColorMapper.parse_color(rgba)
+            square = _color_square_from_rgb(r, g, b)
+            nm = _onx_color_name_upper(rgba)
+            title = trk.title or "Untitled"
+            console.print(f"{i}. {square} {title} - [bold]{nm}[/] [dim]({folder_name})[/]")
+            console.print(f"   {_desc_snippet(trk.description)}")
+            console.print()
+
+    def print_waypoints():
+        console.print()
+        console.print(Panel.fit("[bold]WAYPOINTS[/]", border_style="cyan"))
+        console.print(f"There are {len(waypoints_index)} waypoints\n")
+        for i, (folder_name, wp) in enumerate(waypoints_index, 1):
+            icon = _resolved_waypoint_icon(wp, config)
+            rgba = _resolved_waypoint_color(wp, icon, config)
+            r, g, b = ColorMapper.parse_color(rgba)
+            square = _color_square_from_rgb(r, g, b)
+            nm = _onx_color_name_upper(rgba)
+            title = wp.title or "Untitled"
+            console.print(f"{i}. {square} {title} - [bold]{nm}[/] [{icon}] [dim]({folder_name})[/]")
+            console.print(f"   {_desc_snippet(wp.description)}")
+            console.print()
+
+    if edit_tracks and tracks_index:
+        print_tracks()
+        if Confirm.ask("Are there any routes you would like to change?", default=False):
+            while True:
+                sel = Prompt.ask("Select route number (enter to finish)", default="").strip()
+                if not sel:
+                    break
+                try:
+                    idx = int(sel)
+                except ValueError:
+                    console.print("[red]Invalid selection[/]")
+                    continue
+                if idx < 1 or idx > len(tracks_index):
+                    console.print("[red]Invalid selection[/]")
+                    continue
+
+                folder_name, trk = tracks_index[idx - 1]
+                console.print(f"\n[bold]Editing route {idx}[/] [dim]({folder_name})[/]")
+                console.print(f"[dim]Current name:[/] {trk.title}")
+                console.print(f"[dim]Current description:[/]\n{(trk.description or '').strip() or '(none)'}\n")
+
+                new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
+                if new_name:
+                    trk.title = new_name
+                    changes_made = True
+
+                new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
+                if new_desc:
+                    trk.description = _prompt_multiline_hint(new_desc)
+                    changes_made = True
+
+                cur_rgba = _resolved_track_color(trk)
+                chosen = _palette_choice(title="Select route color", palette=ColorMapper.TRACK_PALETTE, current_rgba=cur_rgba)
+                if chosen:
+                    trk.stroke = _rgba_to_hex_hash(chosen)
+                    changes_made = True
+
+                if not Confirm.ask("Would you like to change another route?", default=False):
+                    break
+            # Re-print after edits
+            print_tracks()
+
+    if edit_waypoints and waypoints_index:
+        print_waypoints()
+        if Confirm.ask("Are there any waypoints you would like to change?", default=False):
+            while True:
+                sel = Prompt.ask("Select waypoint number (enter to finish)", default="").strip()
+                if not sel:
+                    break
+                try:
+                    idx = int(sel)
+                except ValueError:
+                    console.print("[red]Invalid selection[/]")
+                    continue
+                if idx < 1 or idx > len(waypoints_index):
+                    console.print("[red]Invalid selection[/]")
+                    continue
+
+                folder_name, wp = waypoints_index[idx - 1]
+                console.print(f"\n[bold]Editing waypoint {idx}[/] [dim]({folder_name})[/]")
+                console.print(f"[dim]Current name:[/] {wp.title}")
+                console.print(f"[dim]Current description:[/]\n{(wp.description or '').strip() or '(none)'}\n")
+
+                new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
+                if new_name:
+                    wp.title = new_name
+                    changes_made = True
+
+                new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
+                if new_desc:
+                    wp.description = _prompt_multiline_hint(new_desc)
+                    changes_made = True
+
+                cur_icon = _resolved_waypoint_icon(wp, config)
+                icon_choice = _prompt_icon_choice(current_icon=cur_icon)
+                if icon_choice == "CLEAR":
+                    if isinstance(getattr(wp, "properties", None), dict) and _ONX_ICON_OVERRIDE_KEY in wp.properties:
+                        del wp.properties[_ONX_ICON_OVERRIDE_KEY]
+                        changes_made = True
+                elif icon_choice:
+                    if isinstance(getattr(wp, "properties", None), dict):
+                        wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
+                        changes_made = True
+
+                final_icon = _resolved_waypoint_icon(wp, config)
+                cur_rgba = _resolved_waypoint_color(wp, final_icon, config)
+                chosen = _palette_choice(title="Select waypoint color", palette=ColorMapper.WAYPOINT_PALETTE, current_rgba=cur_rgba)
+                if chosen:
+                    wp.color = _rgba_to_hex_nohash(chosen)
+                    changes_made = True
+
+                if not Confirm.ask("Would you like to change another waypoint?", default=False):
+                    break
+            print_waypoints()
+
+    return changes_made
+
+
+def interactive_edit_before_export_per_folder(
+    parsed_data: ParsedData,
+    config: Optional[IconMappingConfig],
+    *,
+    sort_enabled: bool = True,
+) -> bool:
+    """
+    Per-folder pre-export preview + edit loop for CalTopo → OnX.
+
+    Output-only: mutates ParsedFeature objects in-memory (titles/descriptions/colors/icon overrides)
+    but does not write back to the source GeoJSON.
+    """
+    folders = list((getattr(parsed_data, "folders", {}) or {}).items())
+    folders.sort(key=lambda kv: natural_sort_key(str((kv[1] or {}).get("name") or kv[0])))
+
+    changes_made = False
+
+    for folder_id, folder in folders:
+        folder_name = str((folder or {}).get("name") or folder_id)
+        tracks: List[ParsedFeature] = list((folder or {}).get("tracks", []) or [])
+        waypoints: List[ParsedFeature] = list((folder or {}).get("waypoints", []) or [])
+
+        if sort_enabled:
+            tracks.sort(key=lambda f: natural_sort_key(f.title))
+            waypoints.sort(key=lambda f: natural_sort_key(f.title))
+
+        if not tracks and not waypoints:
+            continue
+
+        console.print()
+        console.print(Panel.fit(f"[bold cyan]{folder_name}[/]", border_style="cyan"))
+
+        # Tracks editor
+        if tracks:
+            console.print(f"\n[bold]Routes / Tracks[/] ({len(tracks)})\n")
+            for i, trk in enumerate(tracks, 1):
+                rgba = _resolved_track_color(trk)
+                r, g, b = ColorMapper.parse_color(rgba)
+                square = _color_square_from_rgb(r, g, b)
+                nm = _onx_color_name_upper(rgba)
+                title = trk.title or "Untitled"
+                console.print(f"{i}. {square} {title} - [bold]{nm}[/]")
+                console.print(f"   {_desc_snippet(trk.description)}")
+
+            if Confirm.ask("\nWould you like to edit any routes in this folder?", default=False):
+                while True:
+                    sel = Prompt.ask("Select route number (enter to finish)", default="").strip()
+                    if not sel:
+                        break
+                    try:
+                        idx = int(sel)
+                    except ValueError:
+                        console.print("[red]Invalid selection[/]")
+                        continue
+                    if idx < 1 or idx > len(tracks):
+                        console.print("[red]Invalid selection[/]")
+                        continue
+
+                    trk = tracks[idx - 1]
+                    console.print(f"\n[bold]Editing route {idx}[/]")
+
+                    new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
+                    if new_name:
+                        trk.title = new_name
+                        changes_made = True
+
+                    new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
+                    if new_desc:
+                        trk.description = _prompt_multiline_hint(new_desc)
+                        changes_made = True
+
+                    cur_rgba = _resolved_track_color(trk)
+                    chosen = _palette_choice(title="Select route color", palette=ColorMapper.TRACK_PALETTE, current_rgba=cur_rgba)
+                    if chosen:
+                        trk.stroke = _rgba_to_hex_hash(chosen)
+                        changes_made = True
+
+                    if not Confirm.ask("Would you like to change another route in this folder?", default=False):
+                        break
+
+        # Waypoints editor
+        if waypoints:
+            console.print(f"\n[bold]Waypoints[/] ({len(waypoints)})\n")
+            for i, wp in enumerate(waypoints, 1):
+                icon = _resolved_waypoint_icon(wp, config)
+                rgba = _resolved_waypoint_color(wp, icon, config)
+                r, g, b = ColorMapper.parse_color(rgba)
+                square = _color_square_from_rgb(r, g, b)
+                nm = _onx_color_name_upper(rgba)
+                title = wp.title or "Untitled"
+                console.print(f"{i}. {square} {title} - [bold]{nm}[/] [{icon}]")
+                console.print(f"   {_desc_snippet(wp.description)}")
+
+            if Confirm.ask("\nWould you like to edit any waypoints in this folder?", default=False):
+                while True:
+                    sel = Prompt.ask("Select waypoint number (enter to finish)", default="").strip()
+                    if not sel:
+                        break
+                    try:
+                        idx = int(sel)
+                    except ValueError:
+                        console.print("[red]Invalid selection[/]")
+                        continue
+                    if idx < 1 or idx > len(waypoints):
+                        console.print("[red]Invalid selection[/]")
+                        continue
+
+                    wp = waypoints[idx - 1]
+                    console.print(f"\n[bold]Editing waypoint {idx}[/]")
+
+                    new_name = Prompt.ask("Name (press enter to keep existing value)", default="").strip()
+                    if new_name:
+                        wp.title = new_name
+                        changes_made = True
+
+                    new_desc = Prompt.ask("Description (press enter to keep existing value)", default="").strip()
+                    if new_desc:
+                        wp.description = _prompt_multiline_hint(new_desc)
+                        changes_made = True
+
+                    cur_icon = _resolved_waypoint_icon(wp, config)
+                    icon_choice = _prompt_icon_choice(current_icon=cur_icon)
+                    if icon_choice == "CLEAR":
+                        if isinstance(getattr(wp, "properties", None), dict) and _ONX_ICON_OVERRIDE_KEY in wp.properties:
+                            del wp.properties[_ONX_ICON_OVERRIDE_KEY]
+                            changes_made = True
+                    elif icon_choice:
+                        if isinstance(getattr(wp, "properties", None), dict):
+                            wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
+                            changes_made = True
+
+                    final_icon = _resolved_waypoint_icon(wp, config)
+                    cur_rgba = _resolved_waypoint_color(wp, final_icon, config)
+                    chosen = _palette_choice(title="Select waypoint color", palette=ColorMapper.WAYPOINT_PALETTE, current_rgba=cur_rgba)
+                    if chosen:
+                        wp.color = _rgba_to_hex_nohash(chosen)
+                        changes_made = True
+
+                    if not Confirm.ask("Would you like to change another waypoint in this folder?", default=False):
+                        break
+
+    return changes_made
 
 
 def generate_dry_run_report(parsed_data: ParsedData, config: IconMappingConfig) -> Dict[str, Any]:
@@ -247,42 +743,55 @@ def prompt_for_new_icon(current_icon: str) -> Optional[str]:
     console.print(f"\n[bold]Change from '[cyan]{current_icon}[/]' to:[/]")
     console.print("[dim]Enter icon name, or 'browse' to see all options, or Enter to cancel[/]")
 
-    try:
-        choice = Prompt.ask("New icon", default="")
+    valid_icons = get_all_OnX_icons()
+    matcher = FuzzyIconMatcher(valid_icons)
+
+    while True:
+        try:
+            choice = Prompt.ask("New icon", default="").strip()
+        except (KeyboardInterrupt, EOFError):
+            return None
 
         if not choice:
             return None
 
         if choice.lower() == "browse":
-            # Show all icons
             from cairn.commands.icon_cmd import browse_all_icons
-            return browse_all_icons()
+            picked = browse_all_icons()
+            if not picked:
+                return None
+            icon_canon = normalize_onx_icon_name(picked)
+            if icon_canon is not None:
+                return icon_canon
+            console.print(f"[red]Invalid icon name:[/] {picked}")
+            continue
 
-        # Validate icon name
-        valid_icons = get_all_OnX_icons()
-        if choice in valid_icons:
-            return choice
+        icon_canon = normalize_onx_icon_name(choice)
+        if icon_canon is not None:
+            return icon_canon
 
-        # Try fuzzy matching
-        matcher = FuzzyIconMatcher(valid_icons)
         matches = matcher.find_best_matches(choice, top_n=3)
-
         if matches and matches[0][1] > 0.8:
             console.print(f"\n[yellow]Did you mean:[/]")
             for i, (icon, confidence) in enumerate(matches, 1):
                 console.print(f"  {i}. {icon} ({int(confidence*100)}% match)")
 
-            selection = Prompt.ask("Select", choices=[str(i) for i in range(1, len(matches)+1)] + [""], default="")
-
-            if selection:
-                return matches[int(selection)-1][0]
+            while True:
+                selection = Prompt.ask(
+                    "Select (enter to cancel)",
+                    choices=[str(i) for i in range(1, len(matches) + 1)] + [""],
+                    default="",
+                )
+                if not selection:
+                    break
+                try:
+                    return matches[int(selection) - 1][0]
+                except Exception:
+                    console.print("[red]Invalid selection[/]")
+                    continue
         else:
             console.print(f"[red]Invalid icon name:[/] {choice}")
-
-        return None
-
-    except (KeyboardInterrupt, EOFError):
-        return None
+        # Reprompt
 
 
 def show_mapping_preview(parsed_data: ParsedData, config: IconMappingConfig):
@@ -301,14 +810,12 @@ def show_mapping_preview(parsed_data: ParsedData, config: IconMappingConfig):
             continue
 
         folder_name = folder_data["name"]
-        console.print(f"[cyan]📂 {folder_name}[/]")
+        console.print(f"[cyan]{folder_name}[/]")
 
         # Show up to 10 waypoints
         for waypoint in folder_data["waypoints"][:10]:
             icon = map_icon(waypoint.title, waypoint.description or "", waypoint.symbol, config)
-            from cairn.core.config import get_icon_emoji
-            emoji = get_icon_emoji(icon)
-            console.print(f"  {emoji} {waypoint.title[:50]} → [yellow]{icon}[/]")
+            console.print(f"  {waypoint.title[:50]} → [yellow]{icon}[/]")
 
         if len(folder_data["waypoints"]) > 10:
             console.print(f"  [dim]... and {len(folder_data['waypoints']) - 10} more[/]")
@@ -346,28 +853,18 @@ def get_color_square(feature: ParsedFeature) -> str:
 
 def get_waypoint_icon_preview(feature: ParsedFeature, config: Optional[IconMappingConfig] = None) -> str:
     """
-    Get an icon/emoji preview for a waypoint.
+    Get an icon preview for a waypoint.
 
     Args:
         feature: The waypoint feature
         config: Optional config for keyword/symbol mappings
 
     Returns:
-        Emoji string representing the mapped icon
+        Icon label like "[Location]"
     """
     from cairn.core.mapper import map_icon
-    from cairn.core.config import get_icon_emoji
-
-    # Map the waypoint to an OnX icon (use config if provided)
     mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol, config)
-
-    # Get the emoji - use config if available, otherwise fallback to mapper
-    if config:
-        emoji = config.get_icon_emoji(mapped_icon)
-    else:
-        emoji = get_icon_emoji(mapped_icon)
-
-    return emoji
+    return f"[{mapped_icon}]"
 
 
 def preview_sorted_order(
@@ -384,7 +881,7 @@ def preview_sorted_order(
     doesn't allow reordering). Asks user to confirm before proceeding.
 
     For tracks: Shows colored squares matching the line color
-    For waypoints: Shows icon/emoji matching the mapped icon type
+    For waypoints: Shows mapped icon name in brackets (e.g. "Start [Location]")
 
     Args:
         features: List of features (already sorted)
@@ -424,8 +921,8 @@ def preview_sorted_order(
             indicator = get_color_square(feature)
             console.print(f"  [dim]{i:3}.[/] {indicator} {title}")
         elif feature_type == "waypoints":
-            indicator = get_waypoint_icon_preview(feature, config)
-            console.print(f"  [dim]{i:3}.[/] {indicator} {title}")
+            icon = _resolved_waypoint_icon(feature, config)
+            console.print(f"  [dim]{i:3}.[/] {title} [{icon}]")
         else:
             # Shapes or other types - no special indicator
             console.print(f"  [dim]{i:3}.[/] {title}")
