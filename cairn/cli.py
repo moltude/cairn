@@ -30,7 +30,7 @@ def callback():
     Cairn - OnX ↔ CalTopo migration tool
 
     Primary workflow:
-      migrate OnX-to-caltopo  - Convert OnX GPX (+ optional KML) into CalTopo-importable GeoJSON
+      migrate onx-to-caltopo  - Convert OnX GPX (+ optional KML) into CalTopo-importable GeoJSON
 
     Advanced workflow:
       convert                 - Convert between supported formats using --from/--to

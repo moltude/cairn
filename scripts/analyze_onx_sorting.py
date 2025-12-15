@@ -143,7 +143,7 @@ if __name__ == "__main__":
         # Note: Screenshot may not show all waypoints
     ]
 
-    original_gpx = Path("OnX_ready/Crazy_Mountain_100M_Waypoints.gpx")
+    original_gpx = Path("onx_ready/Crazy_Mountain_100M_Waypoints.gpx")
     exported_gpx = Path("/Users/scott/downloads/OnX-markups-12132025 (1).gpx")
 
     if not original_gpx.exists():

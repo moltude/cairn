@@ -24,8 +24,8 @@ from cairn.core.color_mapper import ColorMapper
 from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review, preview_sorted_order
 
 # New bidirectional adapters (OnX → CalTopo)
-from cairn.io.OnX_gpx import read_OnX_gpx
-from cairn.io.OnX_kml import read_OnX_kml
+from cairn.io.onx_gpx import read_OnX_gpx
+from cairn.io.onx_kml import read_OnX_kml
 from cairn.core.merge import merge_OnX_gpx_and_kml
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.shape_dedup import apply_shape_dedup
@@ -508,7 +508,7 @@ def convert(
         help="Output format (default: OnX)",
     ),
     output: Optional[Path] = typer.Option(
-        "./OnX_ready",
+        "./onx_ready",
         "--output", "-o",
         help="Output directory (OnX) or output GeoJSON file/dir (caltopo_geojson)"
     ),
@@ -563,7 +563,7 @@ def convert(
 
     For the OnX → CalTopo migration workflow, prefer:
 
-      cairn migrate OnX-to-caltopo ...
+      cairn migrate onx-to-caltopo ...
 
     This tool will:
 

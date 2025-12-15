@@ -46,13 +46,13 @@ Point Cairn at the directory containing your exports:
 
 ```bash
 # Interactive mode - will prompt for directory and let you select files
-uv run cairn migrate OnX-to-caltopo
+uv run cairn migrate onx-to-caltopo
 
 # Or specify the directory directly
-uv run cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports
+uv run cairn migrate onx-to-caltopo ~/Downloads/OnX-exports
 
 # With custom output location
-uv run cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports -o ./my-output
+uv run cairn migrate onx-to-caltopo ~/Downloads/OnX-exports -o ./my-output
 ```
 
 Cairn will:
@@ -186,14 +186,14 @@ These constraints don't make the direction impossible — they just make it easi
 
 There's a recorded CLI demo script at `demo.tape` using:
 
-- `demo/OnX-to-caltopo/OnX-export/` (source exports)
-- `demo/OnX-to-caltopo/caltopo-ready/` (generated outputs)
+- `demo/onx-to-caltopo/onx-export/` (source exports)
+- `demo/onx-to-caltopo/caltopo_ready/` (generated outputs)
 
 ---
 
 ## Advanced Options
 
-The `migrate OnX-to-caltopo` command supports several options:
+The `migrate onx-to-caltopo` command supports several options:
 
 - **`-o, --output-dir PATH`**: Custom output directory (default: `<input-dir>/caltopo_ready`)
 - **`--name TEXT`**: Custom base name for output files (default: GPX filename)
@@ -205,7 +205,7 @@ The `migrate OnX-to-caltopo` command supports several options:
 Example with options:
 
 ```bash
-uv run cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports \
+uv run cairn migrate onx-to-caltopo ~/Downloads/OnX-exports \
   -o ./output \
   --name my_custom_name \
   --no-dedupe-shapes \
@@ -224,13 +224,13 @@ Export your map from CalTopo as GeoJSON, then:
 
 ```bash
 # Interactive mode - will prompt for directory and let you select file
-uv run cairn migrate caltopo-to-OnX
+uv run cairn migrate caltopo-to-onx
 
 # Or specify the directory directly
-uv run cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports
+uv run cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports
 
 # With custom output location
-uv run cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports -o ./output
+uv run cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports -o ./output
 ```
 
 Cairn will:
@@ -240,36 +240,36 @@ Cairn will:
 4. Ask for confirmation before processing
 5. Create GPX files (for waypoints and tracks) and KML files (for polygons/areas)
 
-The output files will be created in `<input-directory>/OnX_ready/` by default.
+The output files will be created in `<input-directory>/onx_ready/` by default.
 
 ### Example: Collegiate Loop (CalTopo → OnX)
 
-The CalTopo → OnX demo is in `demo/caltopo-to-OnX/`.
+The CalTopo → OnX demo is in `demo/caltopo-to-onx/`.
 
 - **CalTopo public map**: [Collegiate Loop (CalTopo)](https://caltopo.com/m/MLUGE77)
 - **OnX share link**: [Collegiate Loop (OnX)](https://webmap.OnXmaps.com/backcountry/share/content?share_id=01KCFRGDVVEYPW1SWXQ4RFGWHT)
 
 #### 1) Original map in CalTopo
 
-![Collegiate Loop in CalTopo](demo/caltopo-to-OnX/map-in-caltopo.png)
+![Collegiate Loop in CalTopo](demo/caltopo-to-onx/map-in-caltopo.png)
 
 This map includes multiple colored segments and different waypoint symbols to represent different kinds of locations.
 
 #### 2) Export GPX directly from CalTopo and import to OnX
 
-![Direct GPX import from CalTopo into OnX](demo/caltopo-to-OnX/export-gpx-direct-to-OnX.png)
+![Direct GPX import from CalTopo into OnX](demo/caltopo-to-onx/export-gpx-direct-to-onx.png)
 
 This is what the map looks like when you skip Cairn and rely on CalTopo’s GPX export. In practice, this tends to lose some icon/symbol intent and can normalize styling during import.
 
 #### 3) Export GeoJSON from CalTopo, run through Cairn, import to OnX
 
 ```bash
-uv run cairn migrate caltopo-to-OnX demo/caltopo-to-OnX
+uv run cairn migrate caltopo-to-onx demo/caltopo-to-onx
 ```
 
-By default, Cairn writes outputs to `demo/caltopo-to-OnX/OnX_ready/`.
+By default, Cairn writes outputs to `demo/caltopo-to-onx/onx_ready/`.
 
-![GeoJSON export from CalTopo migrated to OnX via Cairn](demo/caltopo-to-OnX/export-geojson-cairn-to-OnX.png)
+![GeoJSON export from CalTopo migrated to OnX via Cairn](demo/caltopo-to-onx/export-geojson-cairn-to-onx.png)
 
 In this workflow, Cairn:
 - **Maps icons** using config-driven matching from CalTopo symbols/keywords to OnX icons (configurable via `cairn_config.yaml`).
@@ -283,7 +283,7 @@ In this workflow, Cairn:
 
 ### Options
 
-- **`-o, --output-dir PATH`**: Custom output directory (default: `<input-dir>/OnX_ready`)
+- **`-o, --output-dir PATH`**: Custom output directory (default: `<input-dir>/onx_ready`)
 - **`-c, --config PATH`**: Custom icon mapping configuration file
 - **`--no-sort`**: Preserve original order instead of natural sorting (default: sorts naturally)
 

@@ -27,8 +27,8 @@ from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.core.shape_dedup_summary import write_shape_dedup_summary
 from cairn.core.trace import TraceWriter
 from cairn.io.caltopo_geojson import write_caltopo_geojson
-from cairn.io.OnX_gpx import read_OnX_gpx
-from cairn.io.OnX_kml import read_OnX_kml
+from cairn.io.onx_gpx import read_OnX_gpx
+from cairn.io.onx_kml import read_OnX_kml
 from cairn.model import MapDocument
 from cairn.utils.utils import ensure_output_dir, format_file_size
 
@@ -39,8 +39,8 @@ app = typer.Typer(
 Migration helpers for OnX Backcountry ↔ CalTopo.
 
 Currently supported:
-  OnX-to-caltopo      Migrate OnX exports to CalTopo GeoJSON
-  caltopo-to-OnX      Migrate CalTopo GeoJSON to OnX GPX/KML
+  onx-to-caltopo      Migrate OnX exports to CalTopo GeoJSON
+  caltopo-to-onx      Migrate CalTopo GeoJSON to OnX GPX/KML
 
 The migration workflow is designed to preserve all map customization
 (icons, colors, notes, organization) - not just raw shapes.
@@ -323,7 +323,9 @@ def _confirm_caltopo_migration(
     return confirm
 
 
-@app.command("OnX-to-caltopo")
+# Canonical name is lowercase `onx` (CLI-friendly).
+@app.command("OnX-to-caltopo", hidden=True, deprecated=True)
+@app.command("onx-to-caltopo")
 def OnX_to_caltopo(
     input_dir: Optional[Path] = typer.Argument(
         None,
@@ -371,9 +373,9 @@ def OnX_to_caltopo(
 
     \b
     Examples:
-      cairn migrate OnX-to-caltopo
-      cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports
-      cairn migrate OnX-to-caltopo ~/Downloads/OnX-exports -o ./output
+      cairn migrate onx-to-caltopo
+      cairn migrate onx-to-caltopo ~/Downloads/OnX-exports
+      cairn migrate onx-to-caltopo ~/Downloads/OnX-exports -o ./output
 
     \b
     Input: Directory with GPX (waypoints) and KML (polygons).
@@ -567,7 +569,9 @@ def OnX_to_caltopo(
             trace_ctx.close()
 
 
-@app.command("caltopo-to-OnX")
+# Canonical name is lowercase `onx` (CLI-friendly).
+@app.command("caltopo-to-OnX", hidden=True, deprecated=True)
+@app.command("caltopo-to-onx")
 def caltopo_to_OnX(
     input_dir: Optional[Path] = typer.Argument(
         None,
@@ -580,7 +584,7 @@ def caltopo_to_OnX(
         None,
         "--output-dir",
         "-o",
-        help="Output directory (defaults to <input-dir>/OnX_ready)",
+        help="Output directory (defaults to <input-dir>/onx_ready)",
     ),
     config_file: Optional[Path] = typer.Option(
         None,
@@ -601,9 +605,9 @@ def caltopo_to_OnX(
 
     \b
     Examples:
-      cairn migrate caltopo-to-OnX
-      cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports
-      cairn migrate caltopo-to-OnX ~/Downloads/caltopo-exports -o ./output
+      cairn migrate caltopo-to-onx
+      cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports
+      cairn migrate caltopo-to-onx ~/Downloads/caltopo-exports -o ./output
 
     \b
     Input: Directory with CalTopo GeoJSON export file(s).
@@ -649,7 +653,7 @@ def caltopo_to_OnX(
 
     # 5. Determine output directory
     if output_dir is None:
-        output_dir = input_dir / "OnX_ready"
+        output_dir = input_dir / "onx_ready"
 
     out_dir = ensure_output_dir(output_dir)
 

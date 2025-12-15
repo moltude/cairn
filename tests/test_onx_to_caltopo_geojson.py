@@ -4,7 +4,7 @@ from pathlib import Path
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.trace import TraceReader, TraceWriter
 from cairn.io.caltopo_geojson import write_caltopo_geojson
-from cairn.io.OnX_gpx import read_OnX_gpx
+from cairn.io.onx_gpx import read_OnX_gpx
 
 
 def _repo_root() -> Path:
