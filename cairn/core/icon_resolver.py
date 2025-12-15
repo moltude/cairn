@@ -175,3 +175,4 @@ class IconResolver:
             source="default",
             reasons=(f"default icon '{self._default_icon}'",),
         )
+

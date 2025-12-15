@@ -323,6 +323,58 @@ DEFAULT_KEYWORD_MAP = {
 }
 
 
+def _try_load_repo_icon_mapping_defaults() -> Optional[tuple[Dict[str, str], Dict[str, List[str]]]]:
+    """
+    Best-effort load of repo-versioned defaults from `cairn/data/icon_mappings.yaml`.
+
+    This keeps the editable YAML as the primary source of truth while preserving
+    a safe fallback to the in-code defaults if loading fails.
+    """
+    try:
+        data_path = Path(__file__).resolve().parents[1] / "data" / "icon_mappings.yaml"
+        if not data_path.exists():
+            return None
+        raw = yaml.safe_load(data_path.read_text(encoding="utf-8")) or {}
+        if not isinstance(raw, dict) or raw.get("version") != 1:
+            return None
+        c2o = raw.get("caltopo_to_onx") or {}
+        if not isinstance(c2o, dict):
+            return None
+        symbol_map = c2o.get("symbol_map") or {}
+        keyword_map = c2o.get("keyword_map") or {}
+        if not isinstance(symbol_map, dict) or not isinstance(keyword_map, dict):
+            return None
+
+        loaded_symbol_map: Dict[str, str] = {}
+        for k, v in symbol_map.items():
+            kk = str(k).strip().lower()
+            vv = str(v).strip()
+            if kk and vv:
+                loaded_symbol_map[kk] = vv
+
+        loaded_keyword_map: Dict[str, List[str]] = {}
+        for icon, kws in keyword_map.items():
+            icon_name = str(icon).strip()
+            if not icon_name:
+                continue
+            if not isinstance(kws, list):
+                continue
+            cleaned = [str(x).strip() for x in kws if str(x).strip()]
+            loaded_keyword_map[icon_name] = cleaned
+
+        if loaded_symbol_map and loaded_keyword_map:
+            return loaded_symbol_map, loaded_keyword_map
+        return None
+    except Exception:
+        return None
+
+
+# Prefer YAML-backed defaults (editable + inspectable).
+_loaded_defaults = _try_load_repo_icon_mapping_defaults()
+if _loaded_defaults is not None:
+    DEFAULT_SYMBOL_MAP, DEFAULT_KEYWORD_MAP = _loaded_defaults
+
+
 class IconMappingConfig:
     """Manages icon mapping configuration with user overrides."""
 

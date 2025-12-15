@@ -54,3 +54,4 @@ def test_keyword_tie_breaks_by_priority_order():
     )
     decision = resolver.resolve("Trailhead parking", "", "")
     assert decision.icon == "Parking"
+

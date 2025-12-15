@@ -22,6 +22,7 @@ from cairn.core.config import load_config, IconMappingConfig, get_all_OnX_icons,
 from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.preview import generate_dry_run_report, display_dry_run_report, interactive_review, preview_sorted_order
+from cairn.core.icon_registry import IconRegistry, write_icon_report_markdown
 
 # New bidirectional adapters (OnX → CalTopo)
 from cairn.io.onx_gpx import read_OnX_gpx
@@ -552,6 +553,16 @@ def convert(
         "--dedupe-shapes/--no-dedupe-shapes",
         help="Deduplicate shapes (polygons/lines) using fuzzy geometry match (default: enabled)",
     ),
+    description_mode: str = typer.Option(
+        "notes-only",
+        "--description-mode",
+        help="CalTopo description content when writing GeoJSON: notes-only (default) or debug",
+    ),
+    route_color_strategy: str = typer.Option(
+        "palette",
+        "--route-color-strategy",
+        help="Route stroke color when OnX line color is missing: palette (default), default-blue, or none",
+    ),
     trace_path: Optional[Path] = typer.Option(
         None,
         "--trace",
@@ -662,7 +673,42 @@ def convert(
                 shape_report, dropped_items = apply_shape_dedup(doc, trace=trace_ctx)
 
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            write_caltopo_geojson(doc, out_path, trace=trace_ctx)
+            desc_mode_norm = (description_mode or "").strip().lower().replace("-", "_")
+            if desc_mode_norm in ("notes_only", "notes"):
+                desc_mode_norm = "notes_only"
+            elif desc_mode_norm != "debug":
+                raise typer.BadParameter("--description-mode must be one of: notes-only, debug")
+
+            route_color_norm = (route_color_strategy or "").strip().lower().replace("-", "_")
+            if route_color_norm == "defaultblue":
+                route_color_norm = "default_blue"
+            if route_color_norm not in ("palette", "default_blue", "none"):
+                raise typer.BadParameter("--route-color-strategy must be one of: palette, default-blue, none")
+
+            write_caltopo_geojson(
+                doc,
+                out_path,
+                trace=trace_ctx,
+                description_mode=desc_mode_norm,  # type: ignore[arg-type]
+                route_color_strategy=route_color_norm,  # type: ignore[arg-type]
+            )
+
+            # Icon report + catalog (best-effort; never fails conversion)
+            try:
+                reg = IconRegistry()
+                inv = reg.collect_onx_icon_inventory(doc)
+                rows = reg.collect_onx_icon_mapping_rows(doc)
+                icon_report_path = out_path.with_name(out_path.stem + "_ICON_REPORT.md")
+                write_icon_report_markdown(
+                    output_path=icon_report_path,
+                    title="OnX → CalTopo icon mapping report",
+                    inventories=inv,
+                    rows=rows,
+                    notes=([f"Input GPX: `{input_file.name}`"] + ([f"Input KML: `{kml_file.name}`"] if kml_file else [])),
+                )
+                reg.append_onx_icon_inventory_to_catalog(inv)
+            except Exception:
+                pass
 
             # If shape dedup ran, write the dropped features to a secondary GeoJSON file
             # and generate a SUMMARY.md documenting every group.
@@ -678,7 +724,13 @@ def convert(
                         "primary": str(out_path),
                     },
                 )
-                write_caltopo_geojson(dropped_doc, dropped_shapes_doc_path, trace=trace_ctx)
+                write_caltopo_geojson(
+                    dropped_doc,
+                    dropped_shapes_doc_path,
+                    trace=trace_ctx,
+                    description_mode=desc_mode_norm,  # type: ignore[arg-type]
+                    route_color_strategy=route_color_norm,  # type: ignore[arg-type]
+                )
 
                 summary_path = out_path.with_name(out_path.stem + "_SUMMARY.md")
                 write_shape_dedup_summary(
@@ -769,6 +821,66 @@ def convert(
 
     # Ensure output directory exists
     output_dir = ensure_output_dir(output)
+
+    # Icon report + catalog for CalTopo → OnX (best-effort; never fails conversion)
+    try:
+        reg = IconRegistry()
+        inventory = reg.collect_caltopo_symbol_inventory(parsed_data)
+
+        from cairn.core.config import GENERIC_SYMBOLS
+        from cairn.core.icon_resolver import IconResolver
+        from cairn.core.icon_registry import IconReportRow
+
+        resolver = IconResolver(
+            symbol_map={str(k).strip().lower(): str(v).strip() for k, v in (config.symbol_map or {}).items()},
+            keyword_map=config.keyword_map or {},
+            default_icon=config.default_icon,
+            generic_symbols=set(GENERIC_SYMBOLS),
+        )
+
+        mapping_counts = {}
+        mapping_examples = {}
+        mapping_colors = {}
+        for folder in (getattr(parsed_data, "folders", {}) or {}).values():
+            for feat in folder.get("waypoints", []) or []:
+                title = getattr(feat, "title", "") or ""
+                desc = getattr(feat, "description", "") or ""
+                sym = (getattr(feat, "symbol", "") or "").strip().lower() or "(missing)"
+                decision = resolver.resolve(title, desc, "" if sym == "(missing)" else sym)
+                key = (sym, decision.icon, decision.source)
+                mapping_counts[key] = mapping_counts.get(key, 0) + 1
+                if title and len(mapping_examples.get(key, [])) < 3:
+                    mapping_examples.setdefault(key, []).append(title)
+                c = (getattr(feat, "color", "") or "").strip()
+                if c:
+                    cur = mapping_colors.setdefault(key, [])
+                    if c not in cur and len(cur) < 3:
+                        cur.append(c)
+
+        rows = []
+        for (sym, icon, src), n in sorted(mapping_counts.items(), key=lambda kv: (-kv[1], kv[0][0], kv[0][1], kv[0][2])):
+            rows.append(
+                IconReportRow(
+                    incoming=sym,
+                    mapped=icon,
+                    mapping_source=src,
+                    count=n,
+                    examples=tuple(mapping_examples.get((sym, icon, src), [])),
+                    colors=tuple(mapping_colors.get((sym, icon, src), [])),
+                )
+            )
+
+        icon_report_path = output_dir / f"{input_file.stem}_ICON_REPORT.md"
+        write_icon_report_markdown(
+            output_path=icon_report_path,
+            title="CalTopo → OnX icon mapping report",
+            inventories=inventory,
+            rows=rows,
+            notes=([f"Input GeoJSON: `{input_file.name}`"] + ([f"Config: `{config_file}`"] if config_file else [])),
+        )
+        reg.append_symbol_inventory_to_catalog(inventory)
+    except Exception:
+        pass
 
     # Process and write files with sorting and confirmation
     sort_enabled = not no_sort

@@ -1,0 +1,13 @@
+# =============================================================================
+# Cairn Icon Catalog (append-only)
+# =============================================================================
+# This file is written/updated automatically by migrations.
+#
+# It records which icon/symbol labels were seen in real datasets over time.
+# It is intended to help grow the mapping dictionary and validate coverage.
+# =============================================================================
+
+version: 1
+
+observed_caltopo_symbols: {}
+observed_onx_icons: {}

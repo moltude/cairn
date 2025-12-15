@@ -14,7 +14,7 @@ from rich.table import Table
 console = Console()
 
 
-def read_gpx_waypoint_order(gpx_path: Path) -> List[str]:
+def read_gpx_waypoint_order(gpx_path: Path, *, console: Optional[Console] = None) -> List[str]:
     """
     Read waypoint names from a GPX file in the order they appear.
 
@@ -24,6 +24,7 @@ def read_gpx_waypoint_order(gpx_path: Path) -> List[str]:
     Returns:
         List of waypoint names in GPX file order
     """
+    c = console or globals()["console"]
     try:
         tree = ET.parse(gpx_path)
         root = tree.getroot()
@@ -39,12 +40,14 @@ def read_gpx_waypoint_order(gpx_path: Path) -> List[str]:
 
         return waypoint_names
     except Exception as e:
-        console.print(f"[red]Error reading GPX file: {e}[/]")
+        c.print(f"[red]Error reading GPX file: {e}[/]")
         return []
 
 
 def compare_orders(expected: List[str], actual: List[str],
-                   max_display: int = 20) -> Tuple[bool, List[Tuple[int, str, Optional[str]]]]:
+                   max_display: int = 20,
+                   *,
+                   console: Optional[Console] = None) -> Tuple[bool, List[Tuple[int, str, Optional[str]]]]:
     """
     Compare expected order with actual order and identify differences.
 
@@ -62,7 +65,8 @@ def compare_orders(expected: List[str], actual: List[str],
     # Check if lengths match
     if len(expected) != len(actual):
         is_match = False
-        console.print(f"[yellow]Warning: Length mismatch - Expected {len(expected)}, got {len(actual)}[/]")
+        c = console or globals()["console"]
+        c.print(f"[yellow]Warning: Length mismatch - Expected {len(expected)}, got {len(actual)}[/]")
 
     # Compare up to the minimum length
     max_len = min(len(expected), len(actual), max_display)
@@ -79,7 +83,9 @@ def compare_orders(expected: List[str], actual: List[str],
 
 
 def display_order_comparison(expected: List[str], actual: List[str],
-                             title: str = "Order Comparison") -> None:
+                             title: str = "Order Comparison",
+                             *,
+                             console: Optional[Console] = None) -> None:
     """
     Display a formatted comparison of expected vs actual waypoint order.
 
@@ -88,14 +94,15 @@ def display_order_comparison(expected: List[str], actual: List[str],
         actual: List of waypoint names in actual order
         title: Title for the comparison table
     """
-    is_match, differences = compare_orders(expected, actual)
+    c = console or globals()["console"]
+    is_match, differences = compare_orders(expected, actual, console=c)
 
     if is_match:
-        console.print(f"[green]✓[/] {title}: Orders match!")
+        c.print(f"[green]✓[/] {title}: Orders match!")
         return
 
-    console.print(f"\n[bold]{title}[/]")
-    console.print(f"[yellow]⚠️  Orders differ - {len(differences)} difference(s) found[/]\n")
+    c.print(f"\n[bold]{title}[/]")
+    c.print(f"[yellow]⚠️  Orders differ - {len(differences)} difference(s) found[/]\n")
 
     # Create comparison table
     table = Table(show_header=True, header_style="bold cyan")
@@ -121,13 +128,13 @@ def display_order_comparison(expected: List[str], actual: List[str],
             f"[{match_style}]{match_symbol}[/]"
         )
 
-    console.print(table)
+    c.print(table)
 
     if max_len > max_display:
-        console.print(f"\n[dim]... showing first {max_display} of {max_len} waypoints[/]")
+        c.print(f"\n[dim]... showing first {max_display} of {max_len} waypoints[/]")
 
 
-def analyze_gpx_order(gpx_path: Path, expected_order: Optional[List[str]] = None) -> None:
+def analyze_gpx_order(gpx_path: Path, expected_order: Optional[List[str]] = None, *, console: Optional[Console] = None) -> None:
     """
     Analyze and display the order of waypoints in a GPX file.
 
@@ -135,29 +142,34 @@ def analyze_gpx_order(gpx_path: Path, expected_order: Optional[List[str]] = None
         gpx_path: Path to the GPX file to analyze
         expected_order: Optional list of expected waypoint names in order
     """
-    console.print(f"\n[bold]Analyzing GPX file:[/] [cyan]{gpx_path.name}[/]")
+    c = console or globals()["console"]
+    c.print(f"\n[bold]Analyzing GPX file:[/] [cyan]{gpx_path.name}[/]")
 
-    actual_order = read_gpx_waypoint_order(gpx_path)
+    actual_order = read_gpx_waypoint_order(gpx_path, console=c)
 
     if not actual_order:
-        console.print("[red]No waypoints found in GPX file[/]")
+        c.print("[red]No waypoints found in GPX file[/]")
         return
 
-    console.print(f"[green]Found {len(actual_order)} waypoint(s)[/]\n")
+    c.print(f"[green]Found {len(actual_order)} waypoint(s)[/]\n")
 
     # Display actual order
-    console.print("[bold]Waypoint order in GPX file:[/]")
+    c.print("[bold]Waypoint order in GPX file:[/]")
     for i, name in enumerate(actual_order[:20], 1):
-        console.print(f"  {i}. {name}")
+        c.print(f"  {i}. {name}")
 
     if len(actual_order) > 20:
-        console.print(f"  [dim]... and {len(actual_order) - 20} more waypoints[/]")
+        c.print(f"  [dim]... and {len(actual_order) - 20} more waypoints[/]")
 
     # Compare with expected order if provided
     if expected_order:
-        console.print()
-        display_order_comparison(expected_order, actual_order,
-                                f"Expected vs Actual Order ({gpx_path.name})")
+        c.print()
+        display_order_comparison(
+            expected_order,
+            actual_order,
+            f"Expected vs Actual Order ({gpx_path.name})",
+            console=c,
+        )
 
 
 def find_order_mismatches(gpx_path: Path, expected_order: List[str]) -> List[int]:

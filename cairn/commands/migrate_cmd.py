@@ -22,6 +22,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.diagnostics import check_data_quality, dedup_inventory, document_inventory
+from cairn.core.icon_registry import IconRegistry, write_icon_report_markdown
 from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.core.shape_dedup_summary import write_shape_dedup_summary
@@ -365,6 +366,16 @@ def OnX_to_caltopo(
         "--trace-path",
         help="Custom path for trace log (overrides default location)",
     ),
+    description_mode: str = typer.Option(
+        "notes-only",
+        "--description-mode",
+        help="CalTopo description content: notes-only (default) or debug",
+    ),
+    route_color_strategy: str = typer.Option(
+        "palette",
+        "--route-color-strategy",
+        help="Route stroke color when OnX line color is missing: palette (default), default-blue, or none",
+    ),
 ):
     """Migrate OnX Backcountry exports to CalTopo GeoJSON format.
 
@@ -468,6 +479,41 @@ def OnX_to_caltopo(
             doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
             progress.advance(task)
 
+            # Icon inventory + mapping report (before dedup so it reflects incoming data)
+            try:
+                registry = IconRegistry()
+                onx_icon_inventory = registry.collect_onx_icon_inventory(doc)
+                onx_icon_rows = registry.collect_onx_icon_mapping_rows(doc)
+
+                # Append to repo catalog (policy: append catalog only; no auto-mapping)
+                registry.append_onx_icon_inventory_to_catalog(onx_icon_inventory)
+
+                icon_report_path = out_dir / f"{base}_ICON_REPORT.md"
+                write_icon_report_markdown(
+                    output_path=icon_report_path,
+                    title="OnX → CalTopo icon report",
+                    rows=onx_icon_rows,
+                    inventories=onx_icon_inventory,
+                    notes=(
+                        f"Mappings source: `{registry.mappings_path}`",
+                        f"Catalog updated: `{registry.catalog_path}`",
+                        "Counts reflect input after GPX+KML merge and before dedup.",
+                    ),
+                )
+                if trace_ctx:
+                    trace_ctx.emit(
+                        {
+                            "event": "icons.report",
+                            "direction": "onx_to_caltopo",
+                            "report_path": str(icon_report_path),
+                            "unique_icons": len(onx_icon_inventory),
+                        }
+                    )
+            except Exception as e:
+                # Non-fatal: migration output should not depend on report/catalog.
+                if trace_ctx:
+                    trace_ctx.emit({"event": "icons.report.error", "error": str(e)})
+
             if trace_ctx:
                 trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})
 
@@ -495,7 +541,49 @@ def OnX_to_caltopo(
             progress.advance(task)
 
             progress.update(task, description="Writing CalTopo GeoJSON")
-            write_caltopo_geojson(doc, primary_path, trace=trace_ctx)
+            desc_mode_norm = (description_mode or "").strip().lower().replace("-", "_")
+            if desc_mode_norm in ("notes_only", "notes"):
+                desc_mode_norm = "notes_only"
+            elif desc_mode_norm != "debug":
+                raise typer.BadParameter("--description-mode must be one of: notes-only, debug")
+
+            route_color_norm = (route_color_strategy or "").strip().lower().replace("-", "_")
+            if route_color_norm == "defaultblue":
+                route_color_norm = "default_blue"
+            if route_color_norm not in ("palette", "default_blue", "none"):
+                raise typer.BadParameter("--route-color-strategy must be one of: palette, default-blue, none")
+
+            # Icon report + catalog (best-effort; never fails the migration)
+            try:
+                reg = IconRegistry()
+                inventory = reg.collect_onx_icon_inventory(doc)
+                rows = reg.collect_onx_icon_mapping_rows(doc)
+                icon_report_path = out_dir / f"{base}_ICON_REPORT.md"
+                write_icon_report_markdown(
+                    output_path=icon_report_path,
+                    title="OnX → CalTopo icon mapping report",
+                    inventories=inventory,
+                    rows=rows,
+                    notes=(
+                        [
+                            f"Input GPX: `{gpx.name}`",
+                            f"Input KML: `{kml.name if kml else 'None'}`",
+                            f"Output GeoJSON: `{primary_path.name}`",
+                        ]
+                    ),
+                )
+                reg.append_onx_icon_inventory_to_catalog(inventory)
+            except Exception as e:
+                if trace_ctx:
+                    trace_ctx.emit({"event": "icon_report.error", "error": str(e)})
+
+            write_caltopo_geojson(
+                doc,
+                primary_path,
+                trace=trace_ctx,
+                description_mode=desc_mode_norm,  # type: ignore[arg-type]
+                route_color_strategy=route_color_norm,  # type: ignore[arg-type]
+            )
 
             # Validate output file was written successfully
             if not primary_path.exists():
@@ -517,7 +605,13 @@ def OnX_to_caltopo(
                 items=list(dropped_items),
                 metadata={"source": "cairn_shape_dedup_dropped", "primary": str(primary_path)},
             )
-            write_caltopo_geojson(dropped_doc, dropped_shapes_path, trace=trace_ctx)
+            write_caltopo_geojson(
+                dropped_doc,
+                dropped_shapes_path,
+                trace=trace_ctx,
+                description_mode=desc_mode_norm,  # type: ignore[arg-type]
+                route_color_strategy=route_color_norm,  # type: ignore[arg-type]
+            )
 
             write_shape_dedup_summary(
                 summary_path,
@@ -563,6 +657,11 @@ def OnX_to_caltopo(
         if resolved_trace_path is not None:
             console.print("\nMachine-parseable trace log (JSON Lines) for debugging/replay:")
             console.print(f"- [cyan]{_display_path(resolved_trace_path)}[/]")
+
+        icon_report_path = out_dir / f"{base}_ICON_REPORT.md"
+        if icon_report_path.exists():
+            console.print("\nIcon mapping report (incoming icons → mapped symbols + colors):")
+            console.print(f"- [cyan]{_display_path(icon_report_path)}[/]")
     finally:
         if trace_ctx:
             trace_ctx.emit({"event": "run.end"})
@@ -668,6 +767,33 @@ def caltopo_to_OnX(
 
     # 8. Process and write files
     console.print(f"\n[bold white]Processing...[/]\n")
+
+    # Icon report + catalog for CalTopo → OnX (best-effort; never fails the migration)
+    try:
+        registry = IconRegistry()
+        inventory = registry.collect_caltopo_symbol_inventory(parsed_data)
+        rows = registry.collect_caltopo_to_onx_mapping_rows_using_config(parsed_data, config)
+
+        # Append to repo catalog (policy: append catalog only; no auto-mapping)
+        registry.append_symbol_inventory_to_catalog(inventory)
+
+        icon_report_path = out_dir / f"{selected_file.stem}_ICON_REPORT.md"
+        write_icon_report_markdown(
+            output_path=icon_report_path,
+            title="CalTopo → OnX icon report",
+            inventories=inventory,
+            rows=rows,
+            notes=(
+                f"Input GeoJSON: `{selected_file.name}`",
+                *(tuple([f"Config: `{config_file}`"]) if config_file else ()),
+                f"Mappings source: `{registry.mappings_path}` (conversion uses runtime config, including user overrides)",
+                f"Catalog updated: `{registry.catalog_path}`",
+            ),
+        )
+    except Exception:
+        # Migration should still succeed even if reporting fails.
+        pass
+
     output_files = process_and_write_files(
         parsed_data,
         out_dir,

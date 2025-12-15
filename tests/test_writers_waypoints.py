@@ -42,3 +42,4 @@ def test_write_gpx_waypoints_respects_config_icon_overrides_and_marker_color(tmp
 
     # Marker-color should be preserved (but quantized to an official waypoint color).
     assert "<OnX:color>rgba(255,0,0,1)</OnX:color>" in gpx
+

@@ -146,3 +146,47 @@ class TestCLI:
         out_dir = input_dir / "caltopo_ready"
         assert out_dir.exists()
         assert list(out_dir.glob("*.json")), "Expected GeoJSON outputs in caltopo_ready/"
+
+    def test_convert_onx_to_caltopo_writes_geojson_and_respects_flags(self, tmp_path: Path):
+        """
+        Exercise the non-interactive convert OnX_gpx -> caltopo_geojson path to improve coverage
+        over convert_cmd's OnX→CalTopo fast path (and our new flags).
+        """
+        repo_root = Path(__file__).resolve().parents[1]
+        gpx_src = repo_root / "demo" / "onx-to-caltopo" / "onx-export" / "onx-training.gpx"
+
+        input_gpx = tmp_path / "input.gpx"
+        input_gpx.write_text(gpx_src.read_text(encoding="utf-8"), encoding="utf-8")
+
+        out_json = tmp_path / "out.json"
+        result = runner.invoke(
+            app,
+            [
+                "convert",
+                str(input_gpx),
+                "--from",
+                "OnX_gpx",
+                "--to",
+                "caltopo_geojson",
+                "--output",
+                str(out_json),
+                "--no-dedupe",
+                "--no-dedupe-shapes",
+                "--description-mode",
+                "debug",
+                "--route-color-strategy",
+                "none",
+            ],
+        )
+        assert result.exit_code == 0, result.stdout
+        assert out_json.exists()
+
+        data = json.loads(out_json.read_text(encoding="utf-8"))
+        markers = [f for f in data["features"] if f.get("properties", {}).get("class") == "Marker"]
+        assert markers, "expected at least one marker"
+        assert "cairn:source=" in (markers[0]["properties"].get("description") or "")
+
+        # With route-color-strategy=none and no OnX line colors in this sample, lines should omit stroke.
+        shapes = [f for f in data["features"] if f.get("properties", {}).get("class") == "Shape"]
+        assert shapes, "expected at least one line"
+        assert all("stroke" not in f["properties"] for f in shapes)

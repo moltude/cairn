@@ -153,3 +153,4 @@ def test_generated_OnX_sort_fixtures_shape_and_order() -> None:
             assert len(unique_times) == 5, f"{fname}: expected 5 unique times"
         else:
             assert all(t is None for t in times), f"{fname}: did not expect <time>"
+

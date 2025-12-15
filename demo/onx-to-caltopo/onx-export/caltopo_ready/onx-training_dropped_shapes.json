@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_import",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "OnX Import"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_shapes",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Areas"
+      }
+    }
+  ]
+}

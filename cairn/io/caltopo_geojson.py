@@ -14,10 +14,12 @@ Important notes:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
+import hashlib
 import json
 
 from cairn.core.color_mapper import ColorMapper
+from cairn.core.icon_registry import IconRegistry
 from cairn.model import Folder, MapDocument, Shape, Track, Waypoint
 
 
@@ -26,27 +28,45 @@ _OnX_ICON_TO_CALTOPO_SYMBOL: Dict[str, str] = {
     "Location": "point",
     "Hazard": "danger",
     "Barrier": "danger",
-    "Parking": "car",
+    # Vehicles / access
+    "Parking": "automobile",
     "Trailhead": "circle-p",
-    "Water Source": "water",
-    "Waterfall": "water",
-    "Hot Spring": "water",
-    "Potable Water": "water",
-    "Campsite": "camp",
-    "Camp": "camp",
-    "Camp Backcountry": "camp",
-    "Campground": "camp",
+    "4x4": "automobile",
+    "ATV": "automobile",
+    "Car": "automobile",
+
+    # Water
+    # CalTopo’s symbol set differs from OnX; `repair-streamcrossing` is a close, widely-supported icon.
+    "Water Source": "repair-streamcrossing",
+    "Waterfall": "repair-streamcrossing",
+    "Hot Spring": "repair-streamcrossing",
+    "Potable Water": "repair-streamcrossing",
+
+    # Camping
+    "Campsite": "camping",
+    "Camp": "camping",
+    "Camp Backcountry": "camping",
+    "Campground": "camping",
+
     "Summit": "peak",
     "Cabin": "hut",
     "Shelter": "hut",
-    "Photo": "camera",
-    "View": "star",
-    # Some OnX icons appear in exports directly
-    "4x4": "car",
-    "ATV": "car",
-    "XC Skiing": "skiing",
-    "Ski": "skiing",
-    "Horseback": "horse-riding",
+    "House": "hut",
+    # Camera/star aren’t present in our CalTopo exports; use a safe, non-default icon.
+    "Photo": "flag-1",
+    "View": "flag-1",
+
+    # Winter
+    "XC Skiing": "snowboarding",
+    "Ski": "snowboarding",
+    "Snowboarder": "snowboarding",
+
+    # Activities
+    "Climbing": "climbing-2",
+    "Scrambling": "scrambling",
+
+    # Other
+    "Horseback": "point",
     "Cave": "cave",
 }
 
@@ -58,11 +78,70 @@ def _rgba_to_caltopo_hex(rgba: Optional[str]) -> Optional[str]:
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
-def _map_OnX_icon_to_caltopo_symbol(OnX_icon: Optional[str]) -> str:
+_ICON_REGISTRY: Optional[IconRegistry] = None
+
+
+def _get_icon_registry() -> Optional[IconRegistry]:
+    """
+    Best-effort load of the repo-versioned icon registry.
+
+    This should never crash conversion; if the YAML cannot be loaded (e.g. in a
+    stripped-down environment), we fall back to the legacy in-module mapping.
+    """
+    global _ICON_REGISTRY
+    if _ICON_REGISTRY is not None:
+        return _ICON_REGISTRY
+    try:
+        _ICON_REGISTRY = IconRegistry()
+        return _ICON_REGISTRY
+    except Exception:
+        return None
+
+
+def _map_OnX_icon_to_caltopo_symbol(OnX_icon: Optional[str]) -> Tuple[Optional[str], str]:
+    """
+    Returns:
+      (mapped_symbol_or_None, mapping_source)
+
+    mapping_source is one of: 'direct', 'default', 'legacy'
+    """
     icon = (OnX_icon or "").strip()
+    reg = _get_icon_registry()
+    if reg is not None:
+        symbol, src = reg.map_onx_icon_to_caltopo_symbol(icon or None)
+        return (symbol or None), src
     if not icon:
-        return "point"
-    return _OnX_ICON_TO_CALTOPO_SYMBOL.get(icon, "point")
+        return None, "legacy"
+    return _OnX_ICON_TO_CALTOPO_SYMBOL.get(icon), "legacy"
+
+DescriptionMode = Literal["notes_only", "debug"]
+RouteColorStrategy = Literal["palette", "default_blue", "none"]
+
+# A small, high-contrast set. Chosen to look good on topo and satellite bases.
+_ROUTE_COLOR_PALETTE: List[str] = [
+    "#FFAA00",  # orange
+    "#4CB36E",  # green
+    "#EF00FF",  # magenta
+    "#00CD00",  # bright green
+    "#C659A9",  # purple
+    "#B9AC91",  # tan
+    "#FF0000",  # red
+    "#000000",  # black
+    "#00A3FF",  # azure
+    "#8B4513",  # brown
+]
+
+
+def _stable_palette_color(name: str, palette: List[str] = _ROUTE_COLOR_PALETTE) -> str:
+    """
+    Pick a deterministic color from a palette based on a name.
+    """
+    n = (name or "").strip().lower()
+    if not n:
+        return palette[0]
+    digest = hashlib.md5(n.encode("utf-8")).digest()
+    idx = int.from_bytes(digest[:4], "big") % len(palette)
+    return palette[idx]
 
 
 def _build_description(
@@ -75,11 +154,15 @@ def _build_description(
     OnX_style: Optional[str] = None,
     OnX_weight: Optional[str] = None,
     source: str = "OnX_gpx",
+    mode: DescriptionMode = "notes_only",
 ) -> str:
+    notes_clean = (notes or "").strip()
+    if mode == "notes_only":
+        return notes_clean
+
     lines: List[str] = []
-    notes = (notes or "").strip()
-    if notes:
-        lines.append(notes)
+    if notes_clean:
+        lines.append(notes_clean)
         lines.append("")
 
     # Parseable metadata block.
@@ -99,7 +182,46 @@ def _build_description(
     return "\n".join(lines).strip("\n")
 
 
-def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: Any = None) -> Path:
+def _build_cairn_metadata(
+    *,
+    title: str,
+    source: str,
+    OnX_id: Optional[str],
+    OnX_color: Optional[str],
+    OnX_icon: Optional[str],
+    OnX_style: Optional[str] = None,
+    OnX_weight: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Structured metadata preserved for downstream tooling.
+    CalTopo will ignore unknown fields, but we keep provenance for round-trips.
+    """
+    onx: Dict[str, Any] = {}
+    if OnX_id:
+        onx["id"] = OnX_id
+    if OnX_color:
+        onx["color"] = OnX_color
+    if OnX_icon:
+        onx["icon"] = OnX_icon
+    if OnX_style:
+        onx["style"] = OnX_style
+    if OnX_weight:
+        onx["weight"] = OnX_weight
+
+    meta: Dict[str, Any] = {"source": source, "name": title}
+    if onx:
+        meta["OnX"] = onx
+    return meta
+
+
+def write_caltopo_geojson(
+    doc: MapDocument,
+    output_path: str | Path,
+    *,
+    trace: Any = None,
+    description_mode: DescriptionMode = "notes_only",
+    route_color_strategy: RouteColorStrategy = "palette",
+) -> Path:
     """
     Write CalTopo GeoJSON to output_path.
     """
@@ -108,6 +230,10 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
 
     # Write folders first (CalTopo exports folders as geometry=null features).
     for folder in doc.folders:
+        # This is a convenience root folder we create for internal organization.
+        # CalTopo doesn't need it, and it shows up empty because no item has folderId=OnX_import.
+        if folder.id == "OnX_import":
+            continue
         features.append(
             {
                 "type": "Feature",
@@ -127,7 +253,11 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
         if isinstance(item, Waypoint):
             OnX_color = item.style.OnX_color_rgba
             OnX_icon = item.style.OnX_icon
-            symbol = item.style.caltopo_marker_symbol or _map_OnX_icon_to_caltopo_symbol(OnX_icon)
+            mapped_symbol, mapping_source = _map_OnX_icon_to_caltopo_symbol(OnX_icon)
+            symbol = item.style.caltopo_marker_symbol or mapped_symbol or "point"
+
+            # User preference: if we can't determine an icon, use a dot but keep the provided color.
+            # Only fall back to a red dot if neither icon nor color is available.
             marker_color = item.style.caltopo_marker_color or _rgba_to_caltopo_hex(OnX_color) or "#FF0000"
             desc = _build_description(
                 title=item.name,
@@ -136,6 +266,30 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                 OnX_color=OnX_color,
                 OnX_icon=OnX_icon,
                 source=str(doc.metadata.get("source", "OnX_gpx")),
+                mode=description_mode,
+            )
+
+            # If the icon is unknown (not mapped) and we're in notes-only mode, preserve the
+            # original OnX icon name in the human-visible description for manual recovery.
+            reg = _get_icon_registry()
+            unknown_icon_policy = reg.policies.get("unknown_icon_handling") if reg is not None else None
+            if (
+                description_mode == "notes_only"
+                and (OnX_icon or "").strip()
+                and mapping_source != "direct"
+                and item.style.caltopo_marker_symbol is None
+                and (unknown_icon_policy in (None, "keep_point_and_append_to_description"))
+            ):
+                # Avoid adding noise if it's already present.
+                token = f"OnX icon: {OnX_icon}".strip()
+                if token and token not in desc:
+                    desc = (desc + ("\n\n" if desc else "") + token).strip()
+            cairn_meta = _build_cairn_metadata(
+                title=item.name,
+                source=str(doc.metadata.get("source", "OnX_gpx")),
+                OnX_id=item.style.OnX_id,
+                OnX_color=OnX_color,
+                OnX_icon=OnX_icon,
             )
 
             feat = {
@@ -149,6 +303,7 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                     "marker-symbol": symbol,
                     "marker-color": marker_color,
                     "folderId": item.folder_id,
+                    "cairn": cairn_meta,
                 },
             }
             features.append(feat)
@@ -162,12 +317,20 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                         "title": item.name,
                         "marker-symbol": symbol,
                         "marker-color": marker_color,
+                        "icon_mapping_source": mapping_source,
                     }
                 )
 
         elif isinstance(item, Track):
             OnX_color = item.style.OnX_color_rgba
-            stroke = item.style.caltopo_stroke or _rgba_to_caltopo_hex(OnX_color) or "#0000FF"
+            stroke: Optional[str] = item.style.caltopo_stroke or _rgba_to_caltopo_hex(OnX_color)
+            if not stroke:
+                if route_color_strategy == "palette":
+                    stroke = _stable_palette_color(item.name)
+                elif route_color_strategy == "default_blue":
+                    stroke = "#0000FF"
+                else:
+                    stroke = None
             # Best-effort mapping from OnX style/weight.
             pattern = item.style.caltopo_pattern or item.style.OnX_style or "solid"
             stroke_width = item.style.caltopo_stroke_width or 2
@@ -181,6 +344,16 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                 OnX_style=item.style.OnX_style,
                 OnX_weight=item.style.OnX_weight,
                 source=str(doc.metadata.get("source", "OnX_gpx")),
+                mode=description_mode,
+            )
+            cairn_meta = _build_cairn_metadata(
+                title=item.name,
+                source=str(doc.metadata.get("source", "OnX_gpx")),
+                OnX_id=item.style.OnX_id,
+                OnX_color=OnX_color,
+                OnX_icon=None,
+                OnX_style=item.style.OnX_style,
+                OnX_weight=item.style.OnX_weight,
             )
 
             # Preserve elevation/time if present anywhere.
@@ -201,12 +374,14 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                     "class": "Shape",
                     "title": item.name,
                     "description": desc,
-                    "stroke": stroke,
                     "stroke-width": stroke_width,
                     "pattern": pattern,
                     "folderId": item.folder_id,
+                    "cairn": cairn_meta,
                 },
             }
+            if stroke is not None:
+                feat["properties"]["stroke"] = stroke
             features.append(feat)
             if trace is not None:
                 trace.emit(
@@ -226,16 +401,34 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
 
         elif isinstance(item, Shape):
             # Not currently produced by OnX GPX ingest, but supported for completeness.
-            stroke = item.style.caltopo_stroke or _rgba_to_caltopo_hex(item.style.OnX_color_rgba) or "#00FF00"
+            OnX_color = item.style.OnX_color_rgba
+            stroke: Optional[str] = item.style.caltopo_stroke or _rgba_to_caltopo_hex(OnX_color)
+            if not stroke:
+                if route_color_strategy == "palette":
+                    stroke = _stable_palette_color(item.name)
+                elif route_color_strategy == "default_blue":
+                    stroke = "#0000FF"
+                else:
+                    stroke = None
             stroke_width = item.style.caltopo_stroke_width or 2
             pattern = item.style.caltopo_pattern or item.style.OnX_style or "solid"
             desc = _build_description(
                 title=item.name,
                 notes=item.notes,
                 OnX_id=item.style.OnX_id,
-                OnX_color=item.style.OnX_color_rgba,
+                OnX_color=OnX_color,
                 OnX_icon=item.style.OnX_icon,
                 source=str(doc.metadata.get("source", "OnX_gpx")),
+                mode=description_mode,
+            )
+            cairn_meta = _build_cairn_metadata(
+                title=item.name,
+                source=str(doc.metadata.get("source", "OnX_gpx")),
+                OnX_id=item.style.OnX_id,
+                OnX_color=OnX_color,
+                OnX_icon=item.style.OnX_icon,
+                OnX_style=item.style.OnX_style,
+                OnX_weight=item.style.OnX_weight,
             )
 
             # GeoJSON polygon: list of rings, each ring list of [lon,lat]
@@ -248,12 +441,14 @@ def write_caltopo_geojson(doc: MapDocument, output_path: str | Path, *, trace: A
                     "class": "Shape",
                     "title": item.name,
                     "description": desc,
-                    "stroke": stroke,
                     "stroke-width": stroke_width,
                     "pattern": pattern,
                     "folderId": item.folder_id,
+                    "cairn": cairn_meta,
                 },
             }
+            if stroke is not None:
+                feat["properties"]["stroke"] = stroke
             features.append(feat)
             if trace is not None:
                 trace.emit(
