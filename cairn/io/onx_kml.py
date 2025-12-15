@@ -75,7 +75,7 @@ def _parse_kml_coords_list(text: str) -> List[Tuple[float, float, Optional[float
     return pts
 
 
-def read_OnX_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
+def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
     """
     Read an OnX KML export.
 
@@ -222,3 +222,7 @@ def read_OnX_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
             continue
 
     return doc
+
+
+# Backward-compatible alias (deprecated): keep to avoid breaking older callers/tests.
+read_OnX_kml = read_onx_kml

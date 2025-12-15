@@ -25,8 +25,8 @@ from cairn.core.preview import generate_dry_run_report, display_dry_run_report, 
 
 # New bidirectional adapters (OnX → CalTopo)
 from cairn.io.onx_gpx import read_OnX_gpx
-from cairn.io.onx_kml import read_OnX_kml
-from cairn.core.merge import merge_OnX_gpx_and_kml
+from cairn.io.onx_kml import read_onx_kml
+from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.io.caltopo_geojson import write_caltopo_geojson
@@ -633,8 +633,8 @@ def convert(
                     console.print(f"\n[bold red]❌ Error:[/] KML file not found: {kml_file}")
                     raise typer.Exit(1)
                 try:
-                    kml_doc = read_OnX_kml(kml_file, trace=trace_ctx)
-                    doc = merge_OnX_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+                    kml_doc = read_onx_kml(kml_file, trace=trace_ctx)
+                    doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
                 except ValueError as e:
                     console.print(f"\n[bold red]❌ Error reading KML file:[/]")
                     console.print(f"[red]{e}[/]")

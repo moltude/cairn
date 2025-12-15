@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 from cairn.model import MapDocument, Shape, Track, Waypoint
 
 
-def merge_OnX_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = None) -> MapDocument:
+def merge_onx_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = None) -> MapDocument:
     """
     Merge KML-derived items into a GPX-derived document.
 
@@ -150,3 +150,7 @@ def merge_OnX_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = No
     out.metadata["merged_kml"] = True
     out.metadata["kml_path"] = str(kml.metadata.get("path", ""))
     return out
+
+
+# Backward-compatible alias (deprecated): keep to avoid breaking older callers/tests.
+merge_OnX_gpx_and_kml = merge_onx_gpx_and_kml

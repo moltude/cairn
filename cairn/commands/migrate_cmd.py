@@ -22,13 +22,13 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.diagnostics import check_data_quality, dedup_inventory, document_inventory
-from cairn.core.merge import merge_OnX_gpx_and_kml
+from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.core.shape_dedup_summary import write_shape_dedup_summary
 from cairn.core.trace import TraceWriter
 from cairn.io.caltopo_geojson import write_caltopo_geojson
 from cairn.io.onx_gpx import read_OnX_gpx
-from cairn.io.onx_kml import read_OnX_kml
+from cairn.io.onx_kml import read_onx_kml
 from cairn.model import MapDocument
 from cairn.utils.utils import ensure_output_dir, format_file_size
 
@@ -456,7 +456,7 @@ def OnX_to_caltopo(
 
             progress.update(task, description="Reading KML")
             try:
-                kml_doc = read_OnX_kml(kml, trace=trace_ctx)
+                kml_doc = read_onx_kml(kml, trace=trace_ctx)
             except ValueError as e:
                 progress.stop()
                 console.print(f"\n[bold red]❌ Error reading KML file:[/]")
@@ -465,7 +465,7 @@ def OnX_to_caltopo(
             progress.advance(task)
 
             progress.update(task, description="Merging GPX + KML (prefer polygons)")
-            doc = merge_OnX_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+            doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
             progress.advance(task)
 
             if trace_ctx:
