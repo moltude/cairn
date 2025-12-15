@@ -139,14 +139,30 @@ def parse_geojson(filepath: Path) -> ParsedData:
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
 
-    # Load the GeoJSON
-    with open(filepath, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    # Validate file is not empty
+    if filepath.stat().st_size == 0:
+        raise ValueError(f"GeoJSON file is empty: {filepath}")
+
+    # Load the GeoJSON with error handling
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Invalid GeoJSON file (JSON parse error): {e}\n"
+            f"File: {filepath}\n"
+            f"Tip: Check that the file is valid JSON format"
+        )
+    except Exception as e:
+        raise ValueError(f"Failed to read GeoJSON file: {e}\nFile: {filepath}")
 
     features = data.get("features", [])
 
     if not features:
-        raise ValueError("No features found in GeoJSON file")
+        raise ValueError(
+            f"No features found in GeoJSON file: {filepath}\n"
+            f"Tip: Make sure this is a CalTopo export with at least one feature"
+        )
 
     parsed_data = ParsedData()
 

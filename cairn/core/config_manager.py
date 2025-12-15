@@ -1,6 +1,13 @@
 """
 Enhanced configuration management for Cairn.
 
+⚠️  NOTE: This module is currently UNUSED in the production codebase.
+It was designed for future programmatic config management but the current
+implementation uses cairn/core/config.py with YAML-based configuration instead.
+
+This module is kept for potential future use or as a reference implementation.
+If you're looking for the active config system, see cairn/core/config.py.
+
 This module provides comprehensive configuration management including
 default icon/color settings, validation, and persistence.
 """

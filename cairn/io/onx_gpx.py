@@ -11,14 +11,13 @@ Notes:
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import re
 import uuid
 import xml.etree.ElementTree as ET
 
-from cairn.core.normalization import iso8601_to_epoch_ms, normalize_key, normalize_name
+from cairn.core.normalization import iso8601_to_epoch_ms, normalize_name
 from cairn.model import MapDocument, Style, Track, TrackPoint, Waypoint
 
 
@@ -122,10 +121,28 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     Args:
       path: path to GPX
       trace: optional TraceWriter-like object with `emit(event: dict)` method
+
+    Raises:
+      ValueError: If the file is not a valid GPX file or is empty
     """
     p = Path(path)
-    tree = ET.parse(p)
-    root = tree.getroot()
+
+    # Validate file is not empty
+    if p.stat().st_size == 0:
+        raise ValueError(f"GPX file is empty: {p}")
+
+    # Parse XML with error handling
+    try:
+        tree = ET.parse(p)
+        root = tree.getroot()
+    except ET.ParseError as e:
+        raise ValueError(f"Invalid GPX file (XML parse error): {e}\nFile: {p}")
+    except Exception as e:
+        raise ValueError(f"Failed to read GPX file: {e}\nFile: {p}")
+
+    # Validate it's actually a GPX file
+    if not (root.tag.endswith("gpx") or "gpx" in root.tag.lower()):
+        raise ValueError(f"File does not appear to be a GPX file (root element: {root.tag})\nFile: {p}")
 
     doc = MapDocument(metadata={"source": "onx_gpx", "path": str(p)})
 
@@ -136,8 +153,33 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
 
     # Waypoints
     for idx, wpt in enumerate(root.findall("gpx:wpt", _NS)):
-        lat = float(wpt.attrib.get("lat"))
-        lon = float(wpt.attrib.get("lon"))
+        try:
+            lat = float(wpt.attrib.get("lat"))
+            lon = float(wpt.attrib.get("lon"))
+        except (ValueError, TypeError) as e:
+            # Skip waypoint with invalid coordinates but continue processing
+            if trace is not None:
+                trace.emit({
+                    "event": "input.wpt.error",
+                    "idx": idx,
+                    "error": f"Invalid coordinates: {e}",
+                    "lat_raw": wpt.attrib.get("lat"),
+                    "lon_raw": wpt.attrib.get("lon"),
+                })
+            continue
+
+        # Validate coordinate ranges
+        if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+            if trace is not None:
+                trace.emit({
+                    "event": "input.wpt.warning",
+                    "idx": idx,
+                    "warning": "Coordinates out of valid range",
+                    "lat": lat,
+                    "lon": lon,
+                })
+            # Continue processing but log the warning
+            continue
 
         name_elem = wpt.find("gpx:name", _NS)
         name_raw = name_elem.text if name_elem is not None and name_elem.text else ""
@@ -201,20 +243,42 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
         if gpx_type == "trk":
             for seg in track_elem.findall("gpx:trkseg", _NS):
                 for pt in seg.findall("gpx:trkpt", _NS):
-                    plat = float(pt.attrib.get("lat"))
-                    plon = float(pt.attrib.get("lon"))
+                    try:
+                        plat = float(pt.attrib.get("lat"))
+                        plon = float(pt.attrib.get("lon"))
+                        # Skip invalid coordinates
+                        if not (-90 <= plat <= 90) or not (-180 <= plon <= 180):
+                            continue
+                    except (ValueError, TypeError):
+                        continue  # Skip invalid point
+
                     ele_elem = pt.find("gpx:ele", _NS)
-                    ele = float(ele_elem.text) if ele_elem is not None and ele_elem.text else None
+                    try:
+                        ele = float(ele_elem.text) if ele_elem is not None and ele_elem.text else None
+                    except (ValueError, TypeError):
+                        ele = None
+
                     time_elem = pt.find("gpx:time", _NS)
                     t_ms = iso8601_to_epoch_ms(time_elem.text) if time_elem is not None and time_elem.text else None
                     points.append((plon, plat, ele, t_ms))
         else:
             # Route: treat rtept as points (elevation often absent)
             for pt in track_elem.findall("gpx:rtept", _NS):
-                plat = float(pt.attrib.get("lat"))
-                plon = float(pt.attrib.get("lon"))
+                try:
+                    plat = float(pt.attrib.get("lat"))
+                    plon = float(pt.attrib.get("lon"))
+                    # Skip invalid coordinates
+                    if not (-90 <= plat <= 90) or not (-180 <= plon <= 180):
+                        continue
+                except (ValueError, TypeError):
+                    continue  # Skip invalid point
+
                 ele_elem = pt.find("gpx:ele", _NS)
-                ele = float(ele_elem.text) if ele_elem is not None and ele_elem.text else None
+                try:
+                    ele = float(ele_elem.text) if ele_elem is not None and ele_elem.text else None
+                except (ValueError, TypeError):
+                    ele = None
+
                 time_elem = pt.find("gpx:time", _NS)
                 t_ms = iso8601_to_epoch_ms(time_elem.text) if time_elem is not None and time_elem.text else None
                 points.append((plon, plat, ele, t_ms))
@@ -275,4 +339,3 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
         rte_idx += 1
 
     return doc
-

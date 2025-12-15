@@ -8,10 +8,10 @@ especially when paired with JSONL trace logs.
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from cairn.core.dedup import DedupReport
-from cairn.model import MapDocument
+from cairn.model import MapDocument, Waypoint
 
 
 def document_inventory(doc: MapDocument) -> Dict[str, Any]:
@@ -41,3 +41,58 @@ def dedup_inventory(report: DedupReport) -> Dict[str, Any]:
         ],
     }
 
+
+def check_data_quality(doc: MapDocument) -> Dict[str, Any]:
+    """
+    Check data quality and return warnings.
+
+    Returns a dict with:
+    - empty_names: list of (item_type, item_id, name) with empty/default names
+    - duplicate_names: list of (name, count, items) for names appearing multiple times
+    - suspicious_coords: list of (item_type, item_id, name, lat, lon, reason) with suspicious coordinates
+    """
+    warnings: Dict[str, Any] = {
+        "empty_names": [],
+        "duplicate_names": [],
+        "suspicious_coords": [],
+    }
+
+    # Check for empty or default names
+    for item in doc.items:
+        name = getattr(item, "name", "")
+        if not name or name.lower() in ["untitled", "unnamed", ""]:
+            item_type = type(item).__name__
+            item_id = getattr(item, "id", "unknown")
+            warnings["empty_names"].append((item_type, item_id, name or "(empty)"))
+
+    # Check for duplicate names (potential duplicates before dedup)
+    name_counts: Dict[str, List[Tuple[str, str]]] = {}  # name -> [(type, id)]
+    for item in doc.items:
+        name = getattr(item, "name", "")
+        if name:
+            item_type = type(item).__name__
+            item_id = getattr(item, "id", "unknown")
+            if name not in name_counts:
+                name_counts[name] = []
+            name_counts[name].append((item_type, item_id))
+
+    for name, items in name_counts.items():
+        if len(items) > 1:
+            warnings["duplicate_names"].append((name, len(items), items[:3]))  # Show first 3
+
+    # Check for suspicious coordinates (e.g., exactly 0,0 or very close)
+    for item in doc.items:
+        if isinstance(item, Waypoint):
+            lat, lon = item.lat, item.lon
+            # Check for null island (0, 0) or very close
+            if abs(lat) < 0.001 and abs(lon) < 0.001:
+                warnings["suspicious_coords"].append((
+                    "Waypoint",
+                    item.id,
+                    item.name,
+                    lat,
+                    lon,
+                    "Near (0,0) - possible default/invalid coordinate"
+                ))
+
+    return warnings

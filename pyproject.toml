@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cairn"
 version = "1.0.0"
-description = "Convert CalTopo exports to onX Backcountry format"
+description = "Migrate map data between onX Backcountry and CalTopo"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

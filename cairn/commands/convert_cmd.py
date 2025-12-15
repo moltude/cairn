@@ -3,15 +3,13 @@
 from pathlib import Path
 from typing import Optional, List, Tuple
 import typer
-import logging
 from enum import Enum
 from rich.console import Console
 from rich.panel import Panel
 from rich.tree import Tree
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt
 from rich.table import Table
-import time
 
 from cairn.core.parser import parse_geojson, get_file_summary, ParsedData
 from cairn.core.writers import write_gpx_waypoints, write_gpx_tracks, write_kml_shapes, generate_summary_file, verify_gpx_waypoint_order, get_name_changes, clear_name_changes
@@ -38,9 +36,6 @@ from cairn.core.shape_dedup_summary import write_shape_dedup_summary
 
 app = typer.Typer()
 console = Console()
-
-# Set up logger for debug output
-logger = logging.getLogger(__name__)
 
 VERSION = "1.0.0"
 
@@ -75,23 +70,13 @@ def parse_with_progress(input_file: Path) -> ParsedData:
     """Parse the GeoJSON file with a progress indicator."""
     console.print()
 
+    # Show spinner while parsing (no fake progress)
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("{task.percentage:>3.0f}%"),
         console=console
     ) as progress:
-        task1 = progress.add_task("[cyan]Parsing GeoJSON...", total=100)
-        task2 = progress.add_task("[magenta]Mapping Icons...", total=100)
-
-        # Simulate parsing progress
-        for i in range(100):
-            time.sleep(0.005)
-            progress.update(task1, advance=1)
-            if i > 30:
-                progress.update(task2, advance=1.5)
-
+        progress.add_task("[cyan]Parsing GeoJSON and mapping icons...", total=None)
         # Actually parse the file
         parsed_data = parse_geojson(input_file)
 
@@ -272,13 +257,13 @@ def process_and_write_files(
             # Write in sorted order - onX displays items in the same order as the GPX file
             write_order_waypoints = sorted_waypoints
 
-            # Debug: Log order before write
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"[DEBUG] Waypoint order before write ({folder_name}):")
-                for i, wp in enumerate(write_order_waypoints[:20], 1):
-                    logger.debug(f"  {i}. {wp.title}")
-                if len(write_order_waypoints) > 20:
-                    logger.debug(f"  ... and {len(write_order_waypoints) - 20} more waypoints")
+            # Debug logging disabled (logger not configured)
+            # if logger.isEnabledFor(logging.DEBUG):
+            #     logger.debug(f"[DEBUG] Waypoint order before write ({folder_name}):")
+            #     for i, wp in enumerate(write_order_waypoints[:20], 1):
+            #         logger.debug(f"  {i}. {wp.title}")
+            #     if len(write_order_waypoints) > 20:
+            #         logger.debug(f"  ... and {len(write_order_waypoints) - 20} more waypoints")
 
             if total_waypoints > 2500:
                 console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_waypoints} waypoints)...")
@@ -316,20 +301,20 @@ def process_and_write_files(
                     config=config,
                 )
 
-                # Debug: Verify order after write
-                if logger.isEnabledFor(logging.DEBUG):
-                    gpx_order = verify_gpx_waypoint_order(output_path)
-                    if gpx_order:
-                        logger.debug(f"[DEBUG] Waypoint order in GPX file ({output_path.name}):")
-                        for i, name in enumerate(gpx_order, 1):
-                            logger.debug(f"  {i}. {name}")
-                        # Compare with expected order
-                        expected_names = [wp.title for wp in write_order_waypoints[:len(gpx_order)]]
-                        if expected_names != gpx_order:
-                            logger.warning("[DEBUG] WARNING: GPX order differs from expected order!")
-                            logger.debug("Expected order:")
-                            for i, name in enumerate(expected_names, 1):
-                                logger.debug(f"  {i}. {name}")
+                # Debug logging disabled (logger not configured)
+                # if logger.isEnabledFor(logging.DEBUG):
+                #     gpx_order = verify_gpx_waypoint_order(output_path)
+                #     if gpx_order:
+                #         logger.debug(f"[DEBUG] Waypoint order in GPX file ({output_path.name}):")
+                #         for i, name in enumerate(gpx_order, 1):
+                #             logger.debug(f"  {i}. {name}")
+                #         # Compare with expected order
+                #         expected_names = [wp.title for wp in write_order_waypoints[:len(gpx_order)]]
+                #         if expected_names != gpx_order:
+                #             logger.warning("[DEBUG] WARNING: GPX order differs from expected order!")
+                #             logger.debug("Expected order:")
+                #             for i, name in enumerate(expected_names, 1):
+                #                 logger.debug(f"  {i}. {name}")
 
                 output_files.append((f"{safe_name}_Waypoints.gpx", "GPX (Waypoints)", len(write_order_waypoints), file_size))
 
@@ -635,15 +620,25 @@ def convert(
             if trace_ctx:
                 trace_ctx.emit({"event": "run.start", "from": from_format.value, "to": to_format.value})
 
-            gpx_doc = read_onx_gpx(input_file, trace=trace_ctx)
-            doc = gpx_doc
+            try:
+                gpx_doc = read_onx_gpx(input_file, trace=trace_ctx)
+                doc = gpx_doc
+            except ValueError as e:
+                console.print(f"\n[bold red]❌ Error reading GPX file:[/]")
+                console.print(f"[red]{e}[/]")
+                raise typer.Exit(1)
 
             if kml_file is not None:
                 if not kml_file.exists():
                     console.print(f"\n[bold red]❌ Error:[/] KML file not found: {kml_file}")
                     raise typer.Exit(1)
-                kml_doc = read_onx_kml(kml_file, trace=trace_ctx)
-                doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+                try:
+                    kml_doc = read_onx_kml(kml_file, trace=trace_ctx)
+                    doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
+                except ValueError as e:
+                    console.print(f"\n[bold red]❌ Error reading KML file:[/]")
+                    console.print(f"[red]{e}[/]")
+                    raise typer.Exit(1)
 
             if trace_ctx:
                 trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})

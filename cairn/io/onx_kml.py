@@ -48,9 +48,10 @@ def _parse_extended_data(pm: ET.Element) -> Dict[str, str]:
 
 def _parse_kml_coords_list(text: str) -> List[Tuple[float, float, Optional[float]]]:
     """
-    Parse KML coordinate lists.
+    Parse KML coordinate lists with error handling.
 
     KML coordinates are: lon,lat[,alt] separated by whitespace/newlines.
+    Skips invalid coordinates and continues processing.
     """
     text = (text or "").strip()
     if not text:
@@ -60,16 +61,48 @@ def _parse_kml_coords_list(text: str) -> List[Tuple[float, float, Optional[float
         parts = token.split(",")
         if len(parts) < 2:
             continue
-        lon = float(parts[0])
-        lat = float(parts[1])
-        alt = float(parts[2]) if len(parts) >= 3 and parts[2] != "" else None
-        pts.append((lon, lat, alt))
+        try:
+            lon = float(parts[0])
+            lat = float(parts[1])
+            # Validate coordinate ranges
+            if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+                continue  # Skip invalid coordinates
+            alt = float(parts[2]) if len(parts) >= 3 and parts[2] != "" else None
+            pts.append((lon, lat, alt))
+        except (ValueError, TypeError):
+            # Skip malformed coordinate but continue processing
+            continue
     return pts
 
 
 def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
+    """
+    Read an onX KML export.
+
+    Args:
+      path: path to KML file
+      trace: optional TraceWriter-like object with `emit(event: dict)` method
+
+    Raises:
+      ValueError: If the file is not a valid KML file or is empty
+    """
     p = Path(path)
-    root = ET.parse(p).getroot()
+
+    # Validate file is not empty
+    if p.stat().st_size == 0:
+        raise ValueError(f"KML file is empty: {p}")
+
+    # Parse XML with error handling
+    try:
+        root = ET.parse(p).getroot()
+    except ET.ParseError as e:
+        raise ValueError(f"Invalid KML file (XML parse error): {e}\nFile: {p}")
+    except Exception as e:
+        raise ValueError(f"Failed to read KML file: {e}\nFile: {p}")
+
+    # Validate it's actually a KML file
+    if not (root.tag.endswith("kml") or "kml" in root.tag.lower()):
+        raise ValueError(f"File does not appear to be a KML file (root element: {root.tag})\nFile: {p}")
 
     doc = MapDocument(metadata={"source": "onx_kml", "path": str(p)})
     doc.ensure_folder("onx_import", "OnX Import")

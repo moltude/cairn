@@ -8,8 +8,8 @@ Set PlaybackSpeed 1.2
 
 Set Shell "bash"
 Set FontSize 14
-Set Width 1500
-Set Height 900
+Set Width 1800
+Set Height 1000
 
 # 1) Hide startup noise
 Hide
@@ -30,17 +30,17 @@ Sleep 400ms
 
 # Run the interactive CLI (prompts for inputs)
 Type "uv run cairn migrate onx-to-caltopo"
+Sleep 2s
 Enter
-
 # Prompt: GPX path
+Sleep 2s
 Type "demo/onx-to-caltopo/onx-export/onx-export.gpx"
+Sleep 500ms
 Enter
-
 # Prompt: KML path
 Type "demo/onx-to-caltopo/onx-export/onx-export.kml"
 Enter
 Sleep 2s
-
 # Prompt: output directory
 Type "demo/onx-to-caltopo/caltopo-ready/tape-run"
 Enter
@@ -49,13 +49,5 @@ Sleep 2s
 # Prompt: base filename
 Type "caltopo-map"
 Enter
-Sleep 2s
-
-# Show summary excerpt
-Type "sed -n '1,25p' demo/onx-to-caltopo/caltopo-ready/tape-run/caltopo-map_SUMMARY.md"
-Enter
-Sleep 5s
-
-# Final message
 Type "# Ready to import caltopo-map.json into CalTopo"
-Sleep 5s
+Sleep 7s
