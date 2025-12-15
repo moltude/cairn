@@ -112,18 +112,18 @@ Here are the blockers I ran into:
 
   OnX waypoints support exactly 10 specific RGBA values. Any other color values may be ignored or normalized on import.
 
-  | # | Color Name | RGBA Value | RGB | Hex | Picker Position |
-  |---|------------|------------|-----|-----|-----------------|
-  | 1 | Red-Orange | `rgba(255,51,0,1)` | RGB(255, 51, 0) | #FF3300 | Top row, 1st |
-  | 2 | Blue | `rgba(8,122,255,1)` | RGB(8, 122, 255) | #087AFF | Top row, 2nd |
-  | 3 | Cyan | `rgba(0,255,255,1)` | RGB(0, 255, 255) | #00FFFF | Top row, 3rd |
-  | 4 | Lime | `rgba(132,212,0,1)` | RGB(132, 212, 0) | #84D400 | Top row, 4th |
-  | 5 | Black | `rgba(0,0,0,1)` | RGB(0, 0, 0) | #000000 | Top row, 5th |
-  | 6 | White | `rgba(255,255,255,1)` | RGB(255, 255, 255) | #FFFFFF | Bottom row, 1st |
-  | 7 | Purple | `rgba(128,0,128,1)` | RGB(128, 0, 128) | #800080 | Bottom row, 2nd |
-  | 8 | Yellow | `rgba(255,255,0,1)` | RGB(255, 255, 0) | #FFFF00 | Bottom row, 3rd |
-  | 9 | Red | `rgba(255,0,0,1)` | RGB(255, 0, 0) | #FF0000 | Bottom row, 4th |
-  | 10 | Brown | `rgba(139,69,19,1)` | RGB(139, 69, 19) | #8B4513 | Bottom row, 5th |
+  | # | Color Name | RGBA Value | RGB | Hex |
+  |---|------------|------------|-----|-----|
+  | 1 | Red-Orange | `rgba(255,51,0,1)` | RGB(255, 51, 0) | #FF3300 |
+  | 2 | Blue | `rgba(8,122,255,1)` | RGB(8, 122, 255) | #087AFF |
+  | 3 | Cyan | `rgba(0,255,255,1)` | RGB(0, 255, 255) | #00FFFF |
+  | 4 | Lime | `rgba(132,212,0,1)` | RGB(132, 212, 0) | #84D400 |
+  | 5 | Black | `rgba(0,0,0,1)` | RGB(0, 0, 0) | #000000 |
+  | 6 | White | `rgba(255,255,255,1)` | RGB(255, 255, 255) | #FFFFFF |
+  | 7 | Purple | `rgba(128,0,128,1)` | RGB(128, 0, 128) | #800080 |
+  | 8 | Yellow | `rgba(255,255,0,1)` | RGB(255, 255, 0) | #FFFF00 |
+  | 9 | Red | `rgba(255,0,0,1)` | RGB(255, 0, 0) | #FF0000 |
+  | 10 | Brown | `rgba(139,69,19,1)` | RGB(139, 69, 19) | #8B4513 |
 
   ### Track/Line Colors (OnX Custom Palette)
 
@@ -155,6 +155,15 @@ Here are the blockers I ran into:
   | Green | `rgba(132,212,0,1)` (Lime) | `rgba(52,199,89,1)` | ❌ Different |
 
   **Only Blue uses the same RGBA value for both waypoints and tracks!**
+
+  ### Why Color Preservation Matters
+
+  Color is a key filtering property in onX's "My Content" feature. When importing waypoints from CalTopo, having colors correctly mapped allows you to:
+  - Filter large sets of imported waypoints by color
+  - Organize and find waypoints quickly after import
+  - Maintain your organizational system from CalTopo
+
+  This makes color mapping especially important when migrating large datasets between platforms.
 
   ### Import Behavior
 
