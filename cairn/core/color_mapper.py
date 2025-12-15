@@ -89,18 +89,21 @@ class ColorMapper:
     `transform_color()` name (which remains for backwards compatibility).
     """
 
-    # Track palette (onX custom palette). Source: docs/color-mapping-reference.md
+    # Track palette (onX official colors). Source: onx-markups-12142025.gpx
+    # Note: Tracks support 11 colors (waypoints only support 10)
+    # The first 10 colors are IDENTICAL to the waypoint palette
     TRACK_PALETTE: tuple[_PaletteColor, ...] = (
-        _PaletteColor("red", 255, 59, 48, "rgba(255,59,48,1)"),
+        _PaletteColor("red-orange", 255, 51, 0, "rgba(255,51,0,1)"),
         _PaletteColor("blue", 8, 122, 255, "rgba(8,122,255,1)"),
-        _PaletteColor("green", 52, 199, 89, "rgba(52,199,89,1)"),
-        _PaletteColor("orange", 255, 149, 0, "rgba(255,149,0,1)"),
-        _PaletteColor("purple", 175, 82, 222, "rgba(175,82,222,1)"),
-        _PaletteColor("yellow", 255, 204, 0, "rgba(255,204,0,1)"),
-        _PaletteColor("cyan", 50, 173, 230, "rgba(50,173,230,1)"),
-        _PaletteColor("magenta", 255, 45, 85, "rgba(255,45,85,1)"),
-        _PaletteColor("pink", 255, 55, 95, "rgba(255,55,95,1)"),
-        _PaletteColor("teal", 90, 200, 250, "rgba(90,200,250,1)"),
+        _PaletteColor("cyan", 0, 255, 255, "rgba(0,255,255,1)"),
+        _PaletteColor("lime", 132, 212, 0, "rgba(132,212,0,1)"),
+        _PaletteColor("black", 0, 0, 0, "rgba(0,0,0,1)"),
+        _PaletteColor("white", 255, 255, 255, "rgba(255,255,255,1)"),
+        _PaletteColor("purple", 128, 0, 128, "rgba(128,0,128,1)"),
+        _PaletteColor("yellow", 255, 255, 0, "rgba(255,255,0,1)"),
+        _PaletteColor("red", 255, 0, 0, "rgba(255,0,0,1)"),
+        _PaletteColor("brown", 139, 69, 19, "rgba(139,69,19,1)"),
+        _PaletteColor("fuchsia", 255, 0, 255, "rgba(255,0,255,1)"),  # 11th color - track-only
     )
 
     # Waypoint palette (official 10 colors). Source: docs/onx-waypoint-colors-definitive.md

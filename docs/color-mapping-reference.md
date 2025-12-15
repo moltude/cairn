@@ -4,29 +4,38 @@
 
 This document provides a quick reference for color values used in Cairn for OnX Backcountry GPX exports.
 
-## Color System Differences
+**Source**: Official onX GPX export (`onx-markups-12142025.gpx`) containing all available colors.
 
-OnX Backcountry uses **different color systems** for tracks vs waypoints:
+## Color System - Key Finding
 
-- **Tracks**: Use OnX's custom color palette (brighter, more saturated colors)
-- **Waypoints**: Support **only 10 official colors** (fixed RGBA values)
+OnX Backcountry uses the **same base color palette** for both tracks and waypoints:
+
+- **Waypoints**: Support exactly 10 official colors (fixed RGBA values)
+- **Tracks**: Support 11 official colors (the same 10 as waypoints + Fuchsia)
+
+**All 10 waypoint colors are available in tracks with identical RGBA values!** Tracks simply have one additional color (Fuchsia) that waypoints don't support.
 
 ## Color Value Tables
 
-### Track Colors (OnX Custom Palette)
+### Track Colors (11 Official Colors)
 
-| Color Name | RGBA Value | RGB | Hex | Visual |
-|------------|------------|-----|-----|--------|
-| Red | `rgba(255,59,48,1)` | RGB(255, 59, 48) | `#FF3B30` | 🔴 Bright red |
-| Blue | `rgba(8,122,255,1)` | RGB(8, 122, 255) | `#087AFF` | 🔵 Bright blue |
-| Green | `rgba(52,199,89,1)` | RGB(52, 199, 89) | `#34C759` | 🟢 Bright green |
-| Orange | `rgba(255,149,0,1)` | RGB(255, 149, 0) | `#FF9500` | 🟠 Bright orange |
-| Purple | `rgba(175,82,222,1)` | RGB(175, 82, 222) | `#AF52DE` | 🟣 Bright purple |
-| Yellow | `rgba(255,204,0,1)` | RGB(255, 204, 0) | `#FFCC00` | 🟡 Bright yellow |
-| Cyan | `rgba(50,173,230,1)` | RGB(50, 173, 230) | `#32ADE6` | 🔷 Bright cyan |
-| Magenta | `rgba(255,45,85,1)` | RGB(255, 45, 85) | `#FF2D55` | 🔴 Hot pink/magenta |
-| Pink | `rgba(255,55,95,1)` | RGB(255, 55, 95) | `#FF375F` | 🌸 Bright pink |
-| Teal | `rgba(90,200,250,1)` | RGB(90, 200, 250) | `#5AC8FA` | 🔷 Bright teal |
+**Tracks support 11 colors** (waypoints only support 10).
+
+**IMPORTANT:** The first 10 colors are IDENTICAL to the waypoint palette. Only Fuchsia is track-exclusive.
+
+| # | Color Name | RGBA Value | RGB | Hex | In Waypoints? |
+|---|------------|------------|-----|-----|---------------|
+| 1 | Red-Orange | `rgba(255,51,0,1)` | RGB(255, 51, 0) | `#FF3300` | ✅ Yes |
+| 2 | Blue | `rgba(8,122,255,1)` | RGB(8, 122, 255) | `#087AFF` | ✅ Yes |
+| 3 | Cyan | `rgba(0,255,255,1)` | RGB(0, 255, 255) | `#00FFFF` | ✅ Yes |
+| 4 | Lime | `rgba(132,212,0,1)` | RGB(132, 212, 0) | `#84D400` | ✅ Yes |
+| 5 | Black | `rgba(0,0,0,1)` | RGB(0, 0, 0) | `#000000` | ✅ Yes |
+| 6 | White | `rgba(255,255,255,1)` | RGB(255, 255, 255) | `#FFFFFF` | ✅ Yes |
+| 7 | Purple | `rgba(128,0,128,1)` | RGB(128, 0, 128) | `#800080` | ✅ Yes |
+| 8 | Yellow | `rgba(255,255,0,1)` | RGB(255, 255, 0) | `#FFFF00` | ✅ Yes |
+| 9 | Red | `rgba(255,0,0,1)` | RGB(255, 0, 0) | `#FF0000` | ✅ Yes |
+| 10 | Brown | `rgba(139,69,19,1)` | RGB(139, 69, 19) | `#8B4513` | ✅ Yes |
+| 11 | Fuchsia | `rgba(255,0,255,1)` | RGB(255, 0, 255) | `#FF00FF` | ❌ No (track-only) |
 
 ### Waypoint Colors (Official 10-color Palette)
 
@@ -45,9 +54,9 @@ These 10 values are the **only** waypoint colors onX Backcountry supports reliab
 | 9 | Red | `rgba(255,0,0,1)` | `#FF0000` |
 | 10 | Brown | `rgba(139,69,19,1)` | `#8B4513` |
 
-**Important:** Track colors and waypoint colors are different systems. **Only Blue uses the same RGBA value for tracks and waypoints.**
+**Important:** All 10 waypoint colors use the exact same RGBA values as the first 10 track colors. Tracks have one additional color (Fuchsia) that waypoints don't support.
 
-For full details (including picker layout), see [`docs/onx-waypoint-colors-definitive.md`](onx-waypoint-colors-definitive.md).
+For historical details (including picker layout), see [`docs/onx-waypoint-colors-definitive.md`](onx-waypoint-colors-definitive.md).
 
 ## Test Files
 
@@ -74,13 +83,14 @@ For full details (including picker layout), see [`docs/onx-waypoint-colors-defin
 ### For Tracks
 ```python
 # Use OnX custom palette colors
-track_color = "rgba(255,59,48,1)"  # Bright red for tracks
+track_color = "rgba(255,0,0,1)"  # Red (same as waypoint red)
 ```
 
 ### For Waypoints
 ```python
-# Use ONLY the official 10 waypoint colors (see docs/onx-waypoint-colors-definitive.md)
-waypoint_color = "rgba(255,0,0,1)"  # Red (official waypoint palette)
+# Use ONLY the official 10 waypoint colors (same as first 10 track colors)
+waypoint_color = "rgba(255,0,0,1)"  # Red (works for both waypoints and tracks)
+# Note: Cannot use rgba(255,0,255,1) - Fuchsia is track-only
 ```
 
 ## Related Documentation

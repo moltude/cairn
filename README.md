@@ -106,11 +106,13 @@ Here are the blockers I ran into:
 
 - **Ordering is not reliable after import**: even if I carefully write GPX/KML in a particular order, onX may re-order items in folders after import and there isn't a stable user-visible "sort by name" / "sort by import order" workflow that guarantees the same outcome every time.
 
-- **Waypoints and tracks use completely different color palettes**: OnX Backcountry uses completely different color palettes for waypoints versus tracks (lines). Only Blue uses the same RGBA value for both.
+- **Waypoints and tracks use the same base colors, but tracks have one extra**: OnX Backcountry waypoints support 10 colors, while tracks/lines support 11 colors. The first 10 colors are identical between waypoints and tracks. Tracks have one additional color (Fuchsia) that waypoints don't support.
 
   ### Waypoint Colors (10 Official Colors)
 
-  OnX waypoints support exactly 10 specific RGBA values. Any other color values may be ignored or normalized on import.
+  OnX waypoints support exactly **10 specific RGBA values**. Any other color values may be ignored or normalized on import.
+
+  **Note:** Tracks/lines use these exact same 10 colors, plus one additional color (Fuchsia).
 
 | #  | Color Name   | RGBA Value           | RGB              | Hex                                                                                  |
 |----|--------------|----------------------|------------------|--------------------------------------------------------------------------------------|
@@ -125,36 +127,43 @@ Here are the blockers I ran into:
 | 9  | Red          | `rgba(255,0,0,1)`    | RGB(255, 0, 0)   | ![brand-ff0000](https://readme-swatches.vercel.app/FF0000?style=square&size=20) `#FF0000` |
 | 10 | Brown        | `rgba(139,69,19,1)`  | RGB(139, 69, 19) | ![brand-8b4513](https://readme-swatches.vercel.app/8B4513?style=square&size=20) `#8B4513` |
 
-  ### Track/Line Colors (OnX Custom Palette)
+  ### Track/Line Colors (11 Official Colors)
 
-  Tracks use OnX's custom color palette with brighter, more saturated colors.
+  **Tracks support 11 colors** (waypoints only support 10). The first 10 colors are **identical** to the waypoint colors above. Tracks have one additional color: Fuchsia.
 
-| #  | Color Name | RGBA Value            | RGB              | Hex                                                                                  |
-|----|------------|-----------------------|------------------|--------------------------------------------------------------------------------------|
-| 1  | Red        | `rgba(255,59,48,1)`   | RGB(255, 59, 48) | ![brand-ff3b30](https://readme-swatches.vercel.app/FF3B30?style=square&size=20) `#FF3B30` |
-| 2  | Blue       | `rgba(8,122,255,1)`   | RGB(8, 122, 255) | ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` |
-| 3  | Green      | `rgba(52,199,89,1)`   | RGB(52, 199, 89) | ![brand-34c759](https://readme-swatches.vercel.app/34C759?style=square&size=20) `#34C759` |
-| 4  | Orange     | `rgba(255,149,0,1)`   | RGB(255, 149, 0) | ![brand-ff9500](https://readme-swatches.vercel.app/FF9500?style=square&size=20) `#FF9500` |
-| 5  | Purple     | `rgba(175,82,222,1)`  | RGB(175, 82, 222)| ![brand-af52de](https://readme-swatches.vercel.app/AF52DE?style=square&size=20) `#AF52DE` |
-| 6  | Yellow     | `rgba(255,204,0,1)`   | RGB(255, 204, 0) | ![brand-ffcc00](https://readme-swatches.vercel.app/FFCC00?style=square&size=20) `#FFCC00` |
-| 7  | Cyan       | `rgba(50,173,230,1)`  | RGB(50, 173, 230)| ![brand-32ade6](https://readme-swatches.vercel.app/32ADE6?style=square&size=20) `#32ADE6` |
-| 8  | Magenta    | `rgba(255,45,85,1)`   | RGB(255, 45, 85) | ![brand-ff2d55](https://readme-swatches.vercel.app/FF2D55?style=square&size=20) `#FF2D55` |
-| 9  | Pink       | `rgba(255,55,95,1)`   | RGB(255, 55, 95) | ![brand-ff375f](https://readme-swatches.vercel.app/FF375F?style=square&size=20) `#FF375F` |
-| 10 | Teal       | `rgba(90,200,250,1)`  | RGB(90, 200, 250)| ![brand-5ac8fa](https://readme-swatches.vercel.app/5AC8FA?style=square&size=20) `#5AC8FA` |
+| #  | Color Name   | RGBA Value           | RGB              | Hex                                                                                  | In Waypoints? |
+|----|--------------|----------------------|------------------|--------------------------------------------------------------------------------------|---------------|
+| 1  | Red-Orange   | `rgba(255,51,0,1)`   | RGB(255, 51, 0)  | ![brand-ff3300](https://readme-swatches.vercel.app/FF3300?style=square&size=20) `#FF3300` | ✅ Yes |
+| 2  | Blue         | `rgba(8,122,255,1)`  | RGB(8, 122, 255) | ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` | ✅ Yes |
+| 3  | Cyan         | `rgba(0,255,255,1)`  | RGB(0, 255, 255) | ![brand-00ffff](https://readme-swatches.vercel.app/00FFFF?style=square&size=20) `#00FFFF` | ✅ Yes |
+| 4  | Lime         | `rgba(132,212,0,1)`  | RGB(132, 212, 0) | ![brand-84d400](https://readme-swatches.vercel.app/84D400?style=square&size=20) `#84D400` | ✅ Yes |
+| 5  | Black        | `rgba(0,0,0,1)`      | RGB(0, 0, 0)     | ![brand-000000](https://readme-swatches.vercel.app/000000?style=square&size=20) `#000000` | ✅ Yes |
+| 6  | White        | `rgba(255,255,255,1)`| RGB(255, 255, 255)| ![brand-ffffff](https://readme-swatches.vercel.app/FFFFFF?style=square&size=20) `#FFFFFF` | ✅ Yes |
+| 7  | Purple       | `rgba(128,0,128,1)`  | RGB(128, 0, 128) | ![brand-800080](https://readme-swatches.vercel.app/800080?style=square&size=20) `#800080` | ✅ Yes |
+| 8  | Yellow       | `rgba(255,255,0,1)`  | RGB(255, 255, 0) | ![brand-ffff00](https://readme-swatches.vercel.app/FFFF00?style=square&size=20) `#FFFF00` | ✅ Yes |
+| 9  | Red          | `rgba(255,0,0,1)`    | RGB(255, 0, 0)   | ![brand-ff0000](https://readme-swatches.vercel.app/FF0000?style=square&size=20) `#FF0000` | ✅ Yes |
+| 10 | Brown        | `rgba(139,69,19,1)`  | RGB(139, 69, 19) | ![brand-8b4513](https://readme-swatches.vercel.app/8B4513?style=square&size=20) `#8B4513` | ✅ Yes |
+| 11 | Fuchsia      | `rgba(255,0,255,1)`  | RGB(255, 0, 255) | ![brand-ff00ff](https://readme-swatches.vercel.app/FF00FF?style=square&size=20) `#FF00FF` | ❌ No (track-only) |
 
-  ### Side-by-Side Comparison
+  ### Key Insight: Shared Color Palette
 
-  | Color | Waypoint Palette | Track Palette | Match? |
-  |-------|------------------|---------------|--------|
-  | Blue | `rgba(8,122,255,1)` | `rgba(8,122,255,1)` | ✅ SAME |
-  | Red | `rgba(255,0,0,1)` | `rgba(255,59,48,1)` | ❌ Different |
-  | Orange | `rgba(255,51,0,1)` (Red-Orange) | `rgba(255,149,0,1)` | ❌ Different |
-  | Yellow | `rgba(255,255,0,1)` | `rgba(255,204,0,1)` | ❌ Different |
-  | Purple | `rgba(128,0,128,1)` | `rgba(175,82,222,1)` | ❌ Different |
-  | Cyan | `rgba(0,255,255,1)` | `rgba(50,173,230,1)` | ❌ Different |
-  | Green | `rgba(132,212,0,1)` (Lime) | `rgba(52,199,89,1)` | ❌ Different |
+  **All 10 waypoint colors are available in tracks with identical RGBA values!**
 
-  **Only Blue uses the same RGBA value for both waypoints and tracks!**
+  | # | Color Name | RGBA Value | Available in Waypoints? | Available in Tracks? |
+  |---|------------|------------|-------------------------|----------------------|
+  | 1 | Red-Orange | `rgba(255,51,0,1)` | ✅ Yes | ✅ Yes |
+  | 2 | Blue | `rgba(8,122,255,1)` | ✅ Yes | ✅ Yes |
+  | 3 | Cyan | `rgba(0,255,255,1)` | ✅ Yes | ✅ Yes |
+  | 4 | Lime | `rgba(132,212,0,1)` | ✅ Yes | ✅ Yes |
+  | 5 | Black | `rgba(0,0,0,1)` | ✅ Yes | ✅ Yes |
+  | 6 | White | `rgba(255,255,255,1)` | ✅ Yes | ✅ Yes |
+  | 7 | Purple | `rgba(128,0,128,1)` | ✅ Yes | ✅ Yes |
+  | 8 | Yellow | `rgba(255,255,0,1)` | ✅ Yes | ✅ Yes |
+  | 9 | Red | `rgba(255,0,0,1)` | ✅ Yes | ✅ Yes |
+  | 10 | Brown | `rgba(139,69,19,1)` | ✅ Yes | ✅ Yes |
+  | 11 | Fuchsia | `rgba(255,0,255,1)` | ❌ No | ✅ Yes (track-only) |
+
+  This means color mapping between CalTopo and onX is much simpler than previously documented - the same 10 colors work for both waypoints and tracks!
 
   ### Why Color Preservation Matters
 
@@ -168,15 +177,15 @@ Here are the blockers I ran into:
   ### Import Behavior
 
   **Tracks** ✅
-  - Colors ARE imported and preserved correctly
+  - All 11 colors are imported and preserved correctly
   - Colors can be manually changed in OnX UI
-  - Custom color values are supported
-  - Uses OnX's custom color palette
+  - Must use one of the 11 official RGBA values listed above
 
-  **Waypoints** ⚠️
-  - Colors use a DIFFERENT palette than tracks
-  - OnX uses the 10 specific colors listed above
-  - Import behavior: Colors may NOT be imported correctly if they don't match the exact 10 values
+  **Waypoints** ✅
+  - All 10 colors are imported and preserved correctly
+  - Colors can be manually changed in OnX UI
+  - Must use one of the 10 official RGBA values listed above
+  - Cannot use Fuchsia (track-only color)
   - OnX may assign default/automatic colors on import for non-matching values
   - After manual edit, OnX exports using the exact 10 waypoint colors
 
