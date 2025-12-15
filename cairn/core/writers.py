@@ -22,7 +22,7 @@ from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_
 
 # Register the OnX namespace (note: 4 'w's is required)
 # IMPORTANT: OnX exports use lowercase domain in the namespace URI.
-ET.register_namespace("onx", "https://wwww.onxmaps.com/")
+ET.register_namespace("OnX", "https://wwww.onxmaps.com/")
 
 # Set up logger for debug output
 logger = logging.getLogger(__name__)
@@ -315,7 +315,7 @@ def write_gpx_waypoints_maybe_split(
 
     header_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
         '  <metadata>',
         f'    <name>{escape(folder_name)}</name>',
         '  </metadata>',
@@ -415,8 +415,8 @@ def write_gpx_waypoints_maybe_split(
             block.append(f'    <time>{timestamp}</time>')
         block.append(f'    <desc>{escape(desc_kv)}</desc>')
         block.append('    <extensions>')
-        block.append(f'      <onx:icon>{mapped_icon}</onx:icon>')
-        block.append(f'      <onx:color>{OnX_color}</onx:color>')
+        block.append(f'      <OnX:icon>{mapped_icon}</OnX:icon>')
+        block.append(f'      <OnX:color>{OnX_color}</OnX:color>')
         block.append('    </extensions>')
         block.append('  </wpt>')
 
@@ -522,7 +522,7 @@ def write_gpx_tracks_maybe_split(
 
     header_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
         '  <metadata>',
         f'    <name>{escape(folder_name)}</name>',
         '  </metadata>',
@@ -598,9 +598,9 @@ def write_gpx_tracks_maybe_split(
         block.append(f'    <name>{escape(sanitized_track_name)}</name>')
         block.append(f'    <desc>{escape(desc_kv)}</desc>')
         block.append('    <extensions>')
-        block.append(f'      <onx:color>{OnX_color}</onx:color>')
-        block.append(f'      <onx:style>{OnX_style}</onx:style>')
-        block.append(f'      <onx:weight>{OnX_weight}</onx:weight>')
+        block.append(f'      <OnX:color>{OnX_color}</OnX:color>')
+        block.append(f'      <OnX:style>{OnX_style}</OnX:style>')
+        block.append(f'      <OnX:weight>{OnX_weight}</OnX:weight>')
         block.append('    </extensions>')
         block.append('    <trkseg>')
 
@@ -715,7 +715,7 @@ def write_gpx_waypoints(
     # Build GPX manually to ensure proper namespace handling
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
         f'  <metadata>',
         f'    <name>{folder_name}</name>',
         f'  </metadata>',
@@ -795,9 +795,9 @@ def write_gpx_waypoints(
 
         # Add OnX extensions
         lines.append(f'    <extensions>')
-        lines.append(f'      <onx:icon>{mapped_icon}</onx:icon>')
+        lines.append(f'      <OnX:icon>{mapped_icon}</OnX:icon>')
 
-        lines.append(f'      <onx:color>{OnX_color}</onx:color>')
+        lines.append(f'      <OnX:color>{OnX_color}</OnX:color>')
         lines.append(f'    </extensions>')
         lines.append(f'  </wpt>')
 
@@ -852,7 +852,7 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
     # Build GPX manually with OnX namespace
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:OnX="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
         f'  <metadata>',
         f'    <name>{escape(folder_name)}</name>',
         f'  </metadata>',
@@ -893,13 +893,13 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
 
         # Add OnX extensions for color, style, and weight
         lines.append(f'    <extensions>')
-        lines.append(f'      <onx:color>{OnX_color}</onx:color>')
+        lines.append(f'      <OnX:color>{OnX_color}</OnX:color>')
 
         # Map CalTopo pattern to OnX style
-        lines.append(f'      <onx:style>{OnX_style}</onx:style>')
+        lines.append(f'      <OnX:style>{OnX_style}</OnX:style>')
 
         # Map CalTopo stroke-width to OnX weight
-        lines.append(f'      <onx:weight>{OnX_weight}</onx:weight>')
+        lines.append(f'      <OnX:weight>{OnX_weight}</OnX:weight>')
 
         lines.append(f'    </extensions>')
 
@@ -1005,5 +1005,3 @@ def write_kml_shapes(features: List[ParsedFeature], output_path: Path,
     output_path.write_text(xml_string, encoding='utf-8')
 
     return output_path.stat().st_size
-
-

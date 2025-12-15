@@ -309,7 +309,6 @@ def _confirm_caltopo_migration(
     console.print(f"\n[bold cyan]Output Files (will be created):[/]")
     console.print(f"  • GPX files for waypoints and tracks")
     console.print(f"  • KML files for shapes/polygons")
-    console.print(f"  • Summary files (if icon prefixes used)")
 
     # Options
     console.print(f"\n[bold cyan]Processing Options:[/]")

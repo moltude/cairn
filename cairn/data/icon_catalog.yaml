@@ -1,7 +1,7 @@
 version: 1
 observed_caltopo_symbols:
   campsite:
-    count: 20
+    count: 22
     examples:
     - Test Waypoint
   placemark2:
@@ -15,95 +15,95 @@ observed_caltopo_symbols:
     - Peak + Photos
 observed_onx_icons:
   Location:
-    count: 2954
+    count: 3248
     examples:
     - Mill Creek TH?
     - Bass Creek TH
     - Little St Joseph's
   Cave:
-    count: 140
+    count: 154
     examples:
     - cairn-Mill Creek TH?
     - cairn-Cool ridge line traverse
     - Test1-DoubleTap
   Summit:
-    count: 60
+    count: 66
     examples:
     - Little St Joseph's
     - Gash knob
     - Cool pointy summit
   Water Source:
-    count: 81
+    count: 89
     examples:
     - Mill Creek TH?
     - Bass Creek TH
     - Bass Creek trailhead
   XC Skiing:
-    count: 100
+    count: 110
     examples:
     - cairn-Cool ridge line traverse
     - Waypoint 11/30/25 14:02
     - Waypoint 11/30/25 14:03
   Parking:
-    count: 40
+    count: 44
     examples:
     - Parking
     - Car
   Trailhead:
-    count: 60
+    count: 66
     examples:
     - Gash trailhead
     - Staring point
   4x4:
-    count: 40
+    count: 44
     examples:
     - Waypoint 11/30/25 14:03
   Access Point:
-    count: 40
+    count: 44
     examples:
     - Waypoint 11/30/25 14:03
   Barrier:
-    count: 40
+    count: 44
     examples:
     - Waypoint 11/30/25 14:03
   Camp Area:
-    count: 40
+    count: 44
     examples:
     - Waypoint 11/30/25 14:03
   Campsite:
-    count: 40
+    count: 44
     examples:
     - Test2-ExtensionsOnly
   Hazard:
-    count: 40
+    count: 44
     examples:
     - Waypoint 11/30/25 14:03
   Horseback:
-    count: 20
+    count: 22
     examples:
     - cairn-Little St Joseph's
   Snowboarder:
-    count: 40
+    count: 44
     examples:
     - Waypoint 11/30/25 14:03
   Water Crossing:
-    count: 40
+    count: 44
     examples:
     - Waypoint 11/30/25 14:03
   Campground:
-    count: 21
+    count: 23
     examples:
     - Campsite
   Food Source:
-    count: 21
+    count: 23
     examples:
     - Lunch
   Shelter:
-    count: 21
+    count: 23
     examples:
     - Bathroom
   Photo:
     count: 1
     examples:
     - Peak + Photos
-updated_at: '2025-12-15T21:43:47+00:00'
+updated_at: '2025-12-15T22:07:15+00:00'
