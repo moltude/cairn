@@ -298,9 +298,9 @@ def _confirm_caltopo_migration(
     summary = get_file_summary(parsed_data)
     console.print(f"\n[bold cyan]Content:[/]")
     console.print(f"  Folders: {summary['folder_count']}")
-    console.print(f"  Waypoints: {summary['waypoint_count']}")
-    console.print(f"  Tracks: {summary['track_count']}")
-    console.print(f"  Shapes: {summary['shape_count']}")
+    console.print(f"  Waypoints: {summary['total_waypoints']}")
+    console.print(f"  Tracks: {summary['total_tracks']}")
+    console.print(f"  Shapes: {summary['total_shapes']}")
 
     # Output directory
     console.print(f"\n[bold cyan]Output Directory:[/]")

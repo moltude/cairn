@@ -145,26 +145,6 @@ Here are the blockers I ran into:
 | 10 | Brown        | `rgba(139,69,19,1)`  | RGB(139, 69, 19) | ![brand-8b4513](https://readme-swatches.vercel.app/8B4513?style=square&size=20) `#8B4513` | ✅ Yes |
 | 11 | Fuchsia      | `rgba(255,0,255,1)`  | RGB(255, 0, 255) | ![brand-ff00ff](https://readme-swatches.vercel.app/FF00FF?style=square&size=20) `#FF00FF` | ❌ No (track-only) |
 
-  ### Key Insight: Shared Color Palette
-
-  **All 10 waypoint colors are available in tracks with identical RGBA values!**
-
-  | # | Color Name | RGBA Value | Available in Waypoints? | Available in Tracks? |
-  |---|------------|------------|-------------------------|----------------------|
-  | 1 | Red-Orange | `rgba(255,51,0,1)` | ✅ Yes | ✅ Yes |
-  | 2 | Blue | `rgba(8,122,255,1)` | ✅ Yes | ✅ Yes |
-  | 3 | Cyan | `rgba(0,255,255,1)` | ✅ Yes | ✅ Yes |
-  | 4 | Lime | `rgba(132,212,0,1)` | ✅ Yes | ✅ Yes |
-  | 5 | Black | `rgba(0,0,0,1)` | ✅ Yes | ✅ Yes |
-  | 6 | White | `rgba(255,255,255,1)` | ✅ Yes | ✅ Yes |
-  | 7 | Purple | `rgba(128,0,128,1)` | ✅ Yes | ✅ Yes |
-  | 8 | Yellow | `rgba(255,255,0,1)` | ✅ Yes | ✅ Yes |
-  | 9 | Red | `rgba(255,0,0,1)` | ✅ Yes | ✅ Yes |
-  | 10 | Brown | `rgba(139,69,19,1)` | ✅ Yes | ✅ Yes |
-  | 11 | Fuchsia | `rgba(255,0,255,1)` | ❌ No | ✅ Yes (track-only) |
-
-  This means color mapping between CalTopo and onX is much simpler than previously documented - the same 10 colors work for both waypoints and tracks!
-
   ### Why Color Preservation Matters
 
   Color is a key filtering property in onX's "My Content" feature. When importing waypoints from CalTopo, having colors correctly mapped allows you to:
@@ -186,10 +166,8 @@ Here are the blockers I ran into:
   - Colors can be manually changed in OnX UI
   - Must use one of the 10 official RGBA values listed above
   - Cannot use Fuchsia (track-only color)
-  - OnX may assign default/automatic colors on import for non-matching values
+  - OnX will assign the default ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` blue color on import for non-matching values
   - After manual edit, OnX exports using the exact 10 waypoint colors
-
-  For complete details, see [`docs/color-mapping-reference.md`](docs/color-mapping-reference.md).
 
 - **KML round-trip fidelity is limited**: styles, structure, and metadata may be reduced when moving through onX import/export cycles.
 
