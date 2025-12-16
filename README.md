@@ -28,11 +28,11 @@ That GPX file contains details of an area and lots of information, hiking and ba
 This is what they built 😍
 ---
 <!-- ![good onx](demo/bitterroots/hd-onx.png) -->
-<img src="demo/bitterroots/hd-onx.png" alt="Alt text" style="width:75%; height:auto;">
+<img src="./docs/screenshots/hd-onx.png" alt="Alt text" style="width:75%; height:auto;">
 
 Or maybe this
 <!-- ![good caltopo](demo/bitterroots/hd-caltopo.png) -->
-<img src="demo/bitterroots/hd-caltopo.png" alt="Alt text" style="width:75%; height:auto;">
+<img src="./docs/screenshots/hd-caltopo.png" alt="Alt text" style="width:75%; height:auto;">
 
 
 🤬 **But this is what you got when you tried to use it** 🤬
@@ -40,11 +40,11 @@ Or maybe this
 Sure it will work but it lost a lot of value while passing through the pipes and there is some garbage thrown in as a nice cherry on top. The data isn't lost, it just didn't make it from the GPX file into the mapping software. That is where Cairn comes in, it takes as much of that data as possible and drops it into your map.
 
 <!-- ![bad onx](demo/bitterroots/export-from-caltopo-into-onx-poor.png) -->
-<img src="demo/bitterroots/export-from-caltopo-into-onx-poor.png" alt="Alt text" style="width:75%; height:auto;">
+<img src="./docs/screenshots/export-from-caltopo-into-onx-poor.png" alt="Alt text" style="width:75%; height:auto;">
 
 Be sure to swing by and checkout the awesome cool `Import track markup` after visiting the **Very cool tower** 🤘!
 <!-- ![bad caltopo](demo/bitterroots/export-from-onx-import-into-caltopo-poor.png) -->
-<img src="demo/bitterroots/export-from-onx-import-into-caltopo-poor.png" alt="Alt text" style="width:75%; height:auto;">
+<img src="./docs/screenshots/export-from-onx-import-into-caltopo-poor.png" alt="Alt text" style="width:75%; height:auto;">
 ---
 
 ## Installation
@@ -111,15 +111,16 @@ Color is a key filtering property in OnX's "My Content" feature. When importing 
 
 OnX only allows specific colors and icon terms to be used.
 
-See the tables below for the allowed OnX colors. "If the data you want to import provides color information, Cairn will convert it to the closest OnX color. If no color is provided then OnX will use the default blue.
+See the tables below for the allowed OnX colors. If the data you want to import provides color information, Cairn will convert it to the closest OnX color. If no color is provided then OnX will use the default blue.
 
-For icons and symbols, OnX accepts a set of ~40 icons but CalTopo exports a much larger set. Even when the icons are visually identical the text labels used may not match and the icon doesn't transfer.
+For icons and symbols, OnX accepts a set of ~40 icons but CalTopo exports a much larger set. Even when the icons are visually identical the text labels used may not match and the icon doesn't transfer. When the icon does not match in OnX the default <img src="./docs/screenshots/onx-logo.png" alt="Alt text" height=15px> will be used.
+
 
 Cairn maintains a default mapping of common CalTopo --> OnX icons, and it will warn you when it sees an icon it can't map.
 
 Example warning output:
 
-```text
+```shell
 ⚠️  Found 3 unmapped CalTopo symbol(s):
 
 Symbol      Count  Example Waypoint
