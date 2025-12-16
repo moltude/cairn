@@ -1,0 +1,69 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "aebe6f1e-f8e2-40c9-b1d3-93c7dca28e00",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          90.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "North Pole",
+        "description": "True North - 90°N",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "North Pole"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "064fb30a-4cf2-4e82-bbaf-be013a52b9fd",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          -90.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "South Pole",
+        "description": "True South - 90°S",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "South Pole"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "c67f5611-eae2-44ca-b02e-2a3b8d550010",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Camp 🏕️",
+        "description": "Great camping spot with views! 🌲⛰️",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Camp 🏕️"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "25dc26a6-3591-476b-8934-4c5e8ce7b511",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.1,
+          45.1
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Montaña del Oso",
+        "description": "Café au sommet ☕",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Montaña del Oso"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "fd3a6e2f-c4a9-4ac0-a737-9a7d4c46b1ee",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.2,
+          45.2
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "登山口",
+        "description": "Trailhead in Japanese/Chinese",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "登山口"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "5dd457dc-8348-4761-9197-93c2259ae81f",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.3,
+          45.3
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Вершина",
+        "description": "Peak in Russian",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Вершина"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "069012cd-7c21-4606-b0e6-a83ef4aaf382",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.4,
+          45.4
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "قمة الجبل",
+        "description": "Mountain peak in Arabic",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "قمة الجبل"
+        }
+      }
+    }
+  ]
+}

@@ -1,13 +1,11 @@
 """Unit tests for cairn.core.mapper module."""
 
 import pytest
-from pathlib import Path
 from cairn.core.mapper import (
     map_icon,
     map_color,
 )
-from cairn.core.config import get_icon_emoji
-from cairn.core.config import IconMappingConfig, load_config
+from cairn.core.config import load_config
 
 
 class TestMapIcon:
@@ -133,32 +131,6 @@ class TestMapColor:
         """CalTopo exports often include leading #."""
         result = map_color("#FF0000")
         assert result == "ff0000ff"
-
-
-class TestGetIconEmoji:
-    """Tests for get_icon_emoji function."""
-
-    def test_campsite_emoji(self):
-        assert get_icon_emoji("Campsite") == "⛺"
-
-    def test_water_source_emoji(self):
-        assert get_icon_emoji("Water Source") == "💧"
-
-    def test_parking_emoji(self):
-        assert get_icon_emoji("Parking") == "🅿️"
-
-    def test_summit_emoji(self):
-        assert get_icon_emoji("Summit") == "🏔️"
-
-    def test_hazard_emoji(self):
-        assert get_icon_emoji("Hazard") == "⚠️"
-
-    def test_location_emoji(self):
-        assert get_icon_emoji("Location") == "📍"
-
-    def test_unknown_icon(self):
-        """Unknown icons get default pin emoji."""
-        assert get_icon_emoji("Unknown Icon") == "📍"
 
 
 class TestSymbolMappingsWithConfig:
@@ -494,70 +466,14 @@ class TestKeywordMappingsWithConfig:
         assert map_icon("Water refill", "", "point", config) == "Water Source"
 
 
-class TestConfigEmojiMappings:
-    """Tests for emoji mappings from config."""
+class TestIconEmojiConfigRemoved:
+    """Regression tests: `icon_emojis` config is no longer supported."""
 
-    @pytest.fixture
-    def config(self):
-        """Load the actual config file."""
-        return load_config()
+    def test_icon_emojis_key_is_rejected(self, tmp_path):
+        cfg = tmp_path / "cairn_config.yaml"
+        cfg.write_text('icon_emojis:\n  Location: "📍"\n', encoding="utf-8")
 
-    def test_camping_emojis(self, config):
-        """Camping icons have tent emoji."""
-        assert config.get_icon_emoji("Campsite") == "⛺"
-        assert config.get_icon_emoji("Camp") == "⛺"
-        assert config.get_icon_emoji("Camp Backcountry") == "⛺"
-        assert config.get_icon_emoji("Campground") == "⛺"
+        with pytest.raises(ValueError) as e:
+            load_config(cfg)
 
-    def test_water_emojis(self, config):
-        """Water icons have water emoji."""
-        assert config.get_icon_emoji("Water Source") == "💧"
-        assert config.get_icon_emoji("Waterfall") == "💧"
-        assert config.get_icon_emoji("Hot Spring") == "♨️"
-
-    def test_parking_emoji(self, config):
-        """Parking has P emoji."""
-        assert config.get_icon_emoji("Parking") == "🅿️"
-
-    def test_hiking_emojis(self, config):
-        """Hiking icons have boot/backpack emoji."""
-        assert config.get_icon_emoji("Trailhead") == "🥾"
-        assert config.get_icon_emoji("Hike") == "🥾"
-        assert config.get_icon_emoji("Backpacker") == "🎒"
-
-    def test_winter_emojis(self, config):
-        """Winter icons have ski emoji."""
-        assert config.get_icon_emoji("XC Skiing") == "⛷️"
-        assert config.get_icon_emoji("Ski") == "⛷️"
-        assert config.get_icon_emoji("Ski Touring") == "⛷️"
-        assert config.get_icon_emoji("Snowboarder") == "🏂"
-
-    def test_hazard_emoji(self, config):
-        """Hazard has warning emoji."""
-        assert config.get_icon_emoji("Hazard") == "⚠️"
-        assert config.get_icon_emoji("Barrier") == "🚧"
-
-    def test_summit_emoji(self, config):
-        """Summit has mountain emoji."""
-        assert config.get_icon_emoji("Summit") == "🏔️"
-
-    def test_view_photo_emojis(self, config):
-        """View and photo icons have appropriate emojis."""
-        assert config.get_icon_emoji("Photo") == "📷"
-        assert config.get_icon_emoji("View") == "👁️"
-        assert config.get_icon_emoji("Lookout") == "🔭"
-
-    def test_facility_emojis(self, config):
-        """Facility icons have building emojis."""
-        assert config.get_icon_emoji("Cabin") == "🏠"
-        assert config.get_icon_emoji("Shelter") == "🏚️"
-        assert config.get_icon_emoji("House") == "🏠"
-
-    def test_location_emoji(self, config):
-        """Location has pin emoji."""
-        assert config.get_icon_emoji("Location") == "📍"
-
-    def test_unknown_icon_default(self, config):
-        """Unknown icons get default pin emoji."""
-        assert config.get_icon_emoji("Unknown Icon Type") == "📍"
-        assert config.get_icon_emoji("") == "📍"
+        assert "icon_emojis" in str(e.value)

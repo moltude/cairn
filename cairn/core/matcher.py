@@ -5,8 +5,10 @@ This module provides intelligent symbol matching using string similarity algorit
 and semantic keyword matching to suggest the best OnX icon for unmapped CalTopo symbols.
 """
 
+from __future__ import annotations
+
 from difflib import SequenceMatcher
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Dict
 import re
 
 
@@ -60,13 +62,15 @@ class FuzzyIconMatcher:
             Normalized symbol string
         """
         # Remove common prefixes
-        symbol = re.sub(r'^(marker-|icon-|symbol-|caltopo-)', '', symbol, flags=re.IGNORECASE)
+        symbol = re.sub(
+            r"^(marker-|icon-|symbol-|caltopo-)", "", symbol, flags=re.IGNORECASE
+        )
 
         # Remove trailing numbers (e.g., "climb-1" -> "climb")
-        symbol = re.sub(r'(-\d+|_\d+)$', '', symbol)
+        symbol = re.sub(r"(-\d+|_\d+)$", "", symbol)
 
         # Replace underscores and hyphens with spaces
-        symbol = symbol.replace('_', ' ').replace('-', ' ')
+        symbol = symbol.replace("_", " ").replace("-", " ")
 
         return symbol.lower().strip()
 
@@ -90,21 +94,29 @@ class FuzzyIconMatcher:
             return 1.0
 
         # 2. Substring match
+        # High confidence if one is contained within the other
+        # 0.95: symbol is substring of icon (e.g., "camp" in "campsite")
+        # 0.9: icon is substring of symbol (e.g., "camp" in "base camp")
         if symbol in icon_lower:
             return 0.95
         if icon_lower in symbol:
             return 0.9
 
         # 3. Sequence matching (Levenshtein-like)
+        # Uses difflib's SequenceMatcher for character-level similarity
         seq_score = SequenceMatcher(None, symbol, icon_lower).ratio()
 
         # 4. Keyword/synonym matching
+        # Semantic matching based on domain knowledge (e.g., "camp" matches "tent")
         keyword_score = self._keyword_match(symbol, icon)
 
         # 5. Word-level matching (for multi-word icons)
+        # Jaccard similarity for multi-word phrases (e.g., "base camp" vs "camp site")
         word_score = self._word_match(symbol, icon_lower)
 
-        # Weighted combination
+        # Weighted combination: prioritize sequence and keyword matching over word matching
+        # 0.4 sequence + 0.4 keyword + 0.2 word = 1.0
+        # This balances exact character similarity with semantic understanding
         return (seq_score * 0.4) + (keyword_score * 0.4) + (word_score * 0.2)
 
     def _keyword_match(self, symbol: str, icon: str) -> float:
@@ -124,12 +136,14 @@ class FuzzyIconMatcher:
         for key, related in self.synonyms.items():
             if key in symbol or symbol in key:
                 if any(term in icon_lower for term in related):
+                    # 0.85: Strong semantic match (e.g., symbol="camp", icon="tent")
                     return 0.85
 
         # Check if icon matches any synonym group that includes the symbol
         for key, related in self.synonyms.items():
             if key in icon_lower or icon_lower in key:
                 if any(term in symbol for term in related):
+                    # 0.8: Reverse semantic match (e.g., symbol="tent", icon="camp")
                     return 0.8
 
         return 0.0
@@ -169,65 +183,59 @@ class FuzzyIconMatcher:
         """
         return {
             # Climbing
-            'climb': ['climbing', 'rappel', 'caving', 'ascent'],
-
+            "climb": ["climbing", "rappel", "caving", "ascent"],
             # Camping
-            'camp': ['campsite', 'campground', 'camping', 'camp area', 'camp backcountry'],
-            'tent': ['campsite', 'camping', 'camp'],
-            'bivy': ['camp backcountry', 'bivouac'],
-
+            "camp": [
+                "campsite",
+                "campground",
+                "camping",
+                "camp area",
+                "camp backcountry",
+            ],
+            "tent": ["campsite", "camping", "camp"],
+            "bivy": ["camp backcountry", "bivouac"],
             # Water
-            'water': ['creek', 'stream', 'lake', 'river', 'spring', 'water source'],
-            'spring': ['water source', 'water'],
-            'falls': ['waterfall'],
-            'hot': ['hot spring', 'thermal', 'geyser'],
-
+            "water": ["creek", "stream", "lake", "river", "spring", "water source"],
+            "spring": ["water source", "water"],
+            "falls": ["waterfall"],
+            "hot": ["hot spring", "thermal", "geyser"],
             # Winter sports
-            'ski': ['skiing', 'xc skiing', 'ski touring', 'backcountry'],
-            'skin': ['ski touring', 'skin track', 'uptrack'],
-            'tour': ['ski touring', 'touring'],
-            'snowboard': ['snowboarder', 'boarding'],
-            'snow': ['snowmobile', 'snowpark', 'snow pit'],
-
+            "ski": ["skiing", "xc skiing", "ski touring", "backcountry"],
+            "skin": ["ski touring", "skin track", "uptrack"],
+            "tour": ["ski touring", "touring"],
+            "snowboard": ["snowboarder", "boarding"],
+            "snow": ["snowmobile", "snowpark", "snow pit"],
             # Hazards
-            'danger': ['hazard', 'caution', 'warning'],
-            'avy': ['avalanche', 'hazard', 'slide'],
-            'avalanche': ['hazard', 'avy', 'slide path'],
-
+            "danger": ["hazard", "caution", "warning"],
+            "avy": ["avalanche", "hazard", "slide"],
+            "avalanche": ["hazard", "avy", "slide path"],
             # Transportation
-            'car': ['parking', 'vehicle', 'lot'],
-            'parking': ['lot', 'trailhead'],
-            'bike': ['bicycle', 'mountain biking', 'dirt bike'],
-            'atv': ['quad', '4x4'],
-
+            "car": ["parking", "vehicle", "lot"],
+            "parking": ["lot", "trailhead"],
+            "bike": ["bicycle", "mountain biking", "dirt bike"],
+            "atv": ["quad", "4x4"],
             # Trails
-            'trail': ['trailhead', 'hike', 'path'],
-            'trailhead': ['trail head', 'th', 'parking'],
-            'hike': ['hiking', 'backpacker', 'mountaineer'],
-
+            "trail": ["trailhead", "hike", "path"],
+            "trailhead": ["trail head", "th", "parking"],
+            "hike": ["hiking", "backpacker", "mountaineer"],
             # Peaks
-            'peak': ['summit', 'mountain', 'top'],
-            'summit': ['peak', 'top', 'mountain'],
-
+            "peak": ["summit", "mountain", "top"],
+            "summit": ["peak", "top", "mountain"],
             # Observation
-            'view': ['viewpoint', 'vista', 'overlook', 'lookout'],
-            'camera': ['photo', 'picture'],
-            'lookout': ['observation', 'tower', 'view'],
-
+            "view": ["viewpoint", "vista", "overlook", "lookout"],
+            "camera": ["photo", "picture"],
+            "lookout": ["observation", "tower", "view"],
             # Shelters
-            'cabin': ['hut', 'yurt', 'shelter'],
-            'shelter': ['refuge', 'cabin', 'house'],
-
+            "cabin": ["hut", "yurt", "shelter"],
+            "shelter": ["refuge", "cabin", "house"],
             # Water activities
-            'boat': ['canoe', 'kayak', 'raft'],
-            'paddle': ['canoe', 'kayak'],
-            'raft': ['rafting', 'put in', 'take out'],
-
+            "boat": ["canoe", "kayak", "raft"],
+            "paddle": ["canoe", "kayak"],
+            "raft": ["rafting", "put in", "take out"],
             # Wildlife
-            'bird': ['eagle'],
-            'fish': ['fishing'],
-
+            "bird": ["eagle"],
+            "fish": ["fishing"],
             # Facilities
-            'food': ['restaurant', 'food source', 'aid station'],
-            'emergency': ['phone', 'sos', 'rescue'],
+            "food": ["restaurant", "food source", "aid station"],
+            "emergency": ["phone", "sos", "rescue"],
         }

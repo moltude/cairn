@@ -1,7 +1,7 @@
 version: 1
 observed_caltopo_symbols:
   campsite:
-    count: 38
+    count: 120
     examples:
     - Test Waypoint
   placemark2:
@@ -13,97 +13,240 @@ observed_caltopo_symbols:
     count: 15
     examples:
     - Peak + Photos
+  point:
+    count: 450
+    examples:
+    - Chute1
+    - Good looking skiing
+    - Sick bowl brah
+  circle-p:
+    count: 124
+    examples:
+    - Parking- Main Wall and Starlight Lounge
+    - North rim approach trail
+    - Gash trailhead
+  climbing-2:
+    count: 104
+    examples:
+    - Main Wall- Lost horse canyon
+    - Shoshone Spire
+    - HorseHead arch
+  hut:
+    count: 52
+    examples:
+    - Stateline Yurt
+    - Ridgeline Yurt
+    - Downing Mountain Lodge
+  camping:
+    count: 53
+    examples:
+    - Camp spot
+    - Camping
+    - Decent camp site
+  flag-1:
+    count: 39
+    examples:
+    - Sheafman West
+    - Sheafman East
+    - Sheafman Peak
+  danger:
+    count: 26
+    examples:
+    - Avy hazard area
+  peak:
+    count: 26
+    examples:
+    - Little St Joseph's
+    - Gash knob
+  automobile:
+    count: 13
+    examples:
+    - Parking
+  climbing-1:
+    count: 20
+    examples:
+    - Pullout boulders
+  repair-streamcrossing:
+    count: 13
+    examples:
+    - Car
+  scrambling:
+    count: 13
+    examples:
+    - Cool ridge line traverse
+  snowboarding:
+    count: 13
+    examples:
+    - Launching point
 observed_onx_icons:
   Location:
-    count: 5595
+    count: 7945
     examples:
     - Mill Creek TH?
     - Bass Creek TH
     - Little St Joseph's
   Cave:
-    count: 266
+    count: 384
     examples:
     - cairn-Mill Creek TH?
     - cairn-Cool ridge line traverse
     - Test1-DoubleTap
   Summit:
-    count: 114
+    count: 168
     examples:
     - Little St Joseph's
     - Gash knob
     - Cool pointy summit
   Water Source:
-    count: 148
+    count: 361
     examples:
     - Mill Creek TH?
     - Bass Creek TH
     - Bass Creek trailhead
   XC Skiing:
-    count: 190
+    count: 276
     examples:
     - cairn-Cool ridge line traverse
     - Waypoint 11/30/25 14:02
     - Waypoint 11/30/25 14:03
   Parking:
-    count: 76
+    count: 114
     examples:
     - Parking
     - Car
+    - Parking - Main Trailhead Lot (Red-Orange)
   Trailhead:
-    count: 114
+    count: 168
     examples:
     - Gash trailhead
     - Staring point
+    - 'Trailhead - Rattlesnake Trail #515 (Blue)'
   4x4:
-    count: 76
+    count: 114
     examples:
     - Waypoint 11/30/25 14:03
+    - 4x4 - High Clearance Access (Cyan)
   Access Point:
-    count: 76
+    count: 108
     examples:
     - Waypoint 11/30/25 14:03
   Barrier:
-    count: 76
+    count: 114
     examples:
     - Waypoint 11/30/25 14:03
+    - Barrier - Trail Closure (Lime)
   Camp Area:
-    count: 76
+    count: 114
     examples:
     - Waypoint 11/30/25 14:03
+    - Camp Area - Ridge Camping Zone (Lime)
   Campsite:
-    count: 76
+    count: 265
     examples:
     - Test2-ExtensionsOnly
+    - Campsite - Alpine Meadow (Red-Orange)
+    - Test Campsite
   Hazard:
-    count: 76
+    count: 114
     examples:
     - Waypoint 11/30/25 14:03
+    - Hazard - Avalanche Zone (Cyan)
   Horseback:
-    count: 38
+    count: 54
     examples:
     - cairn-Little St Joseph's
   Snowboarder:
-    count: 76
+    count: 114
     examples:
     - Waypoint 11/30/25 14:03
+    - Snowboarder - Powder Bowl (Red)
   Water Crossing:
-    count: 76
+    count: 114
     examples:
     - Waypoint 11/30/25 14:03
+    - Water Crossing - Rattlesnake Ford (Brown)
   Campground:
-    count: 34
+    count: 48
     examples:
     - Campsite
+    - Campground - Rattlesnake Rec Area (Black)
   Food Source:
-    count: 34
+    count: 48
     examples:
     - Lunch
+    - Food Source - Berry Patch (Purple)
   Shelter:
-    count: 34
+    count: 48
     examples:
     - Bathroom
+    - Shelter - Emergency Bivouac (Red-Orange)
   Photo:
-    count: 1
+    count: 7
     examples:
     - Peak + Photos
-updated_at: '2025-12-15T23:49:40+00:00'
+    - Photo - Iconic View (Purple)
+  ATV:
+    count: 6
+    examples:
+    - ATV - ORV Trail Junction (Lime)
+  Backpacker:
+    count: 6
+    examples:
+    - Backpacker - Multi-Day Route (White)
+  Cabin:
+    count: 6
+    examples:
+    - Cabin - Wilderness Shelter (Brown)
+  Camp:
+    count: 6
+    examples:
+    - Camp - Lakeside Spot (Blue)
+  Camp Backcountry:
+    count: 6
+    examples:
+    - Camp Backcountry - Remote Basin (Cyan)
+  Hike:
+    count: 6
+    examples:
+    - Hike - Scenic Vista Trail (Black)
+  Hot Spring:
+    count: 6
+    examples:
+    - Hot Spring - Wilderness Soak (Yellow)
+  House:
+    count: 6
+    examples:
+    - House - Ranger Station (Blue)
+  Lookout:
+    count: 6
+    examples:
+    - Lookout - Historic Fire Tower (Red)
+  Potable Water:
+    count: 6
+    examples:
+    - Potable Water - Trailhead Spigot (Red)
+  Ski:
+    count: 6
+    examples:
+    - Ski - Downhill Run Top (White)
+  Ski Touring:
+    count: 6
+    examples:
+    - Ski Touring - Alpine Route (Purple)
+  Skin Track:
+    count: 6
+    examples:
+    - Skin Track - Ridge Ascent (Yellow)
+  Snowmobile:
+    count: 6
+    examples:
+    - Snowmobile - Sled Parking Area (Brown)
+  View:
+    count: 6
+    examples:
+    - View - Valley Overlook (Yellow)
+  Waterfall:
+    count: 6
+    examples:
+    - Waterfall - Cascade Falls (Purple)
+updated_at: '2025-12-16T19:30:29+00:00'

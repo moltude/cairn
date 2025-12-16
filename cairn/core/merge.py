@@ -9,12 +9,14 @@ Primary use:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from cairn.model import MapDocument, Shape, Track, Waypoint
 
 
-def merge_onx_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = None) -> MapDocument:
+def merge_onx_gpx_and_kml(
+    gpx: MapDocument, kml: MapDocument, *, trace: Any = None
+) -> MapDocument:
     """
     Merge KML-derived items into a GPX-derived document.
 
@@ -32,26 +34,43 @@ def merge_onx_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = No
     out.ensure_folder("OnX_tracks", "Tracks", parent_id="OnX_import")
     out.ensure_folder("OnX_shapes", "Areas", parent_id="OnX_import")
 
-    by_OnX_id: Dict[str, object] = {}
+    by_onx_id: Dict[str, object] = {}
     for item in out.items:
-        oid = (getattr(item, "style", None) and getattr(item.style, "OnX_id", None)) or None
+        oid = (
+            getattr(item, "style", None) and getattr(item.style, "OnX_id", None)
+        ) or None
         if oid:
-            by_OnX_id[oid] = item
+            by_onx_id[oid] = item
 
     for item in kml.items:
-        oid = (getattr(item, "style", None) and getattr(item.style, "OnX_id", None)) or None
+        oid = (
+            getattr(item, "style", None) and getattr(item.style, "OnX_id", None)
+        ) or None
         if not oid:
             out.items.append(item)
             if trace is not None:
-                trace.emit({"event": "merge.add", "reason": "no_OnX_id", "type": type(item).__name__})
+                trace.emit(
+                    {
+                        "event": "merge.add",
+                        "reason": "no_OnX_id",
+                        "type": type(item).__name__,
+                    }
+                )
             continue
 
-        existing = by_OnX_id.get(oid)
+        existing = by_onx_id.get(oid)
         if existing is None:
             out.items.append(item)
-            by_OnX_id[oid] = item
+            by_onx_id[oid] = item
             if trace is not None:
-                trace.emit({"event": "merge.add", "reason": "new_OnX_id", "OnX_id": oid, "type": type(item).__name__})
+                trace.emit(
+                    {
+                        "event": "merge.add",
+                        "reason": "new_OnX_id",
+                        "OnX_id": oid,
+                        "type": type(item).__name__,
+                    }
+                )
             continue
 
         # If same OnX id but different geometry class:
@@ -72,19 +91,31 @@ def merge_onx_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = No
                 # Transfer useful metadata from dropped item onto the kept shape.
                 # (GPX Track often carries color/style/weight; keep it if polygon lacks it.)
                 if isinstance(drop_item, Track):
-                    if not (keep_shape.notes or "").strip() and (drop_item.notes or "").strip():
+                    if (
+                        not (keep_shape.notes or "").strip()
+                        and (drop_item.notes or "").strip()
+                    ):
                         keep_shape.notes = drop_item.notes
-                    if not (keep_shape.style.OnX_color_rgba or "").strip() and (drop_item.style.OnX_color_rgba or "").strip():
+                    if (
+                        not (keep_shape.style.OnX_color_rgba or "").strip()
+                        and (drop_item.style.OnX_color_rgba or "").strip()
+                    ):
                         keep_shape.style.OnX_color_rgba = drop_item.style.OnX_color_rgba
-                    if not (keep_shape.style.OnX_style or "").strip() and (drop_item.style.OnX_style or "").strip():
+                    if (
+                        not (keep_shape.style.OnX_style or "").strip()
+                        and (drop_item.style.OnX_style or "").strip()
+                    ):
                         keep_shape.style.OnX_style = drop_item.style.OnX_style
-                    if not (keep_shape.style.OnX_weight or "").strip() and (drop_item.style.OnX_weight or "").strip():
+                    if (
+                        not (keep_shape.style.OnX_weight or "").strip()
+                        and (drop_item.style.OnX_weight or "").strip()
+                    ):
                         keep_shape.style.OnX_weight = drop_item.style.OnX_weight
 
                 # Ensure kept shape is present in output items.
                 if keep_shape is item:
                     out.items.append(keep_shape)
-                    by_OnX_id[oid] = keep_shape
+                    by_onx_id[oid] = keep_shape
 
                 # Remove the dropped item from output if it was already present.
                 if drop_item in out.items:
@@ -92,7 +123,11 @@ def merge_onx_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = No
 
                 # Record decision in extras.
                 keep_shape.extra.setdefault("merge_decisions", []).append(
-                    {"OnX_id": oid, "action": "prefer_polygon", "dropped": type(drop_item).__name__}
+                    {
+                        "OnX_id": oid,
+                        "action": "prefer_polygon",
+                        "dropped": type(drop_item).__name__,
+                    }
                 )
 
                 if trace is not None:
@@ -126,16 +161,25 @@ def merge_onx_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = No
         if isinstance(item, Track) and isinstance(existing, Track):
             if not (existing.notes or "").strip() and (item.notes or "").strip():
                 existing.notes = item.notes
-            if not (existing.style.OnX_color_rgba or "").strip() and (item.style.OnX_color_rgba or "").strip():
+            if (
+                not (existing.style.OnX_color_rgba or "").strip()
+                and (item.style.OnX_color_rgba or "").strip()
+            ):
                 existing.style.OnX_color_rgba = item.style.OnX_color_rgba
             continue
 
         if isinstance(item, Waypoint) and isinstance(existing, Waypoint):
             if not (existing.notes or "").strip() and (item.notes or "").strip():
                 existing.notes = item.notes
-            if not (existing.style.OnX_icon or "").strip() and (item.style.OnX_icon or "").strip():
+            if (
+                not (existing.style.OnX_icon or "").strip()
+                and (item.style.OnX_icon or "").strip()
+            ):
                 existing.style.OnX_icon = item.style.OnX_icon
-            if not (existing.style.OnX_color_rgba or "").strip() and (item.style.OnX_color_rgba or "").strip():
+            if (
+                not (existing.style.OnX_color_rgba or "").strip()
+                and (item.style.OnX_color_rgba or "").strip()
+            ):
                 existing.style.OnX_color_rgba = item.style.OnX_color_rgba
             continue
 
@@ -153,4 +197,4 @@ def merge_onx_gpx_and_kml(gpx: MapDocument, kml: MapDocument, *, trace: Any = No
 
 
 # Backward-compatible alias (deprecated): keep to avoid breaking older callers/tests.
-merge_OnX_gpx_and_kml = merge_onx_gpx_and_kml
+merge_OnX_gpx_and_kml = merge_onx_gpx_and_kml  # noqa: N816

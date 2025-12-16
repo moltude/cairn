@@ -1,0 +1,51 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "2c445592-443d-4066-b65d-d08ed4fa8712",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -120.0,
+            45.0,
+            1000.0,
+            0.0
+          ]
+        ]
+      },
+      "properties": {
+        "class": "Shape",
+        "title": "Single Point Track",
+        "description": "",
+        "stroke-width": 2,
+        "pattern": "solid",
+        "folderId": "OnX_tracks",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Single Point Track"
+        },
+        "stroke": "#C659A9"
+      }
+    }
+  ]
+}

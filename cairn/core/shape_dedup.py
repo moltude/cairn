@@ -47,6 +47,24 @@ def _min_rotation(seq: List[Tuple[float, float]]) -> Tuple[Tuple[float, float], 
 
 
 def polygon_signature(shape: Shape) -> Optional[Tuple]:
+    """
+    Generate a normalized signature for polygon comparison.
+
+    The signature is rotation and direction invariant, meaning polygons with the same
+    vertices in different orders or directions will produce the same signature.
+
+    Args:
+        shape: Shape object to generate signature for
+
+    Returns:
+        Tuple of ("Polygon", forward_rotation, reverse_rotation) or None if invalid
+
+    Notes:
+        - Coordinates rounded to 6 decimals for tolerance
+        - Closing point removed (first == last)
+        - Minimal rotation found for both forward and reverse directions
+        - Requires at least 3 distinct vertices
+    """
     if not shape.rings:
         return None
     ring0 = [_norm_point2(p) for p in shape.rings[0]]
@@ -59,6 +77,23 @@ def polygon_signature(shape: Shape) -> Optional[Tuple]:
 
 
 def line_signature(track: Track) -> Optional[Tuple]:
+    """
+    Generate a normalized signature for line/track comparison.
+
+    The signature is direction invariant, meaning tracks with the same path
+    in forward or reverse direction will produce the same signature.
+
+    Args:
+        track: Track object to generate signature for
+
+    Returns:
+        Tuple of ("LineString", normalized_points) or None if invalid
+
+    Notes:
+        - Coordinates rounded to 6 decimals for tolerance
+        - Direction normalized (min of forward/reverse)
+        - Requires at least 2 points
+    """
     if not track.points:
         return None
     pts = [(_round6(p[0]), _round6(p[1])) for p in track.points]
@@ -95,11 +130,37 @@ def apply_shape_dedup(
     """
     Deduplicate polygons and lines by fuzzy geometry signature + title.
 
-    - Polygons: normalize to 6 decimals, ignore ring start index and direction.
-    - Lines: normalize to 6 decimals, treat reversed as equivalent.
+    Algorithm:
+    1. Generate normalized geometry signatures:
+       - Polygons: Round coords to 6 decimals, find minimal rotation (ignoring start point),
+         and check both forward/reverse directions (same polygon can be drawn either way)
+       - Lines: Round coords to 6 decimals, treat forward/reverse as equivalent
+    2. Group shapes/tracks by (signature, normalized_title)
+    3. For each group, select best item (prefer notes + OnX_id present)
+    4. Remove duplicates from document and track them in report
+
+    Tolerance:
+    - Coordinates rounded to 6 decimal places (~0.1 meter precision at equator)
+    - Polygon vertex order and ring direction are normalized (rotation-invariant)
+    - Line direction is normalized (forward/backward equivalent)
+
+    Args:
+        doc: MapDocument to deduplicate in-place
+        trace: Optional trace context for debugging
 
     Returns:
-      (report, dropped_items)
+        Tuple of (dedup_report, dropped_items_list)
+
+    Example:
+        >>> report, dropped = apply_shape_dedup(map_document)
+        >>> print(f"Removed {report.dropped_count} duplicate shapes/tracks")
+        >>> for group in report.groups:
+        ...     print(f"  {group.kind}: {group.title} - kept {group.kept_id}")
+
+    Notes:
+        - Document is modified in-place
+        - Dropped items are removed from doc.items but returned for separate handling
+        - Circular polygons are normalized to start at lexicographically smallest vertex
     """
     # Build groups
     groups: Dict[Tuple[str, str, Tuple], List[object]] = {}
@@ -124,8 +185,8 @@ def apply_shape_dedup(
         # Prefer richer notes, then stable OnX_id presence.
         notes = getattr(it, "notes", "") or ""
         style = getattr(it, "style", None)
-        OnX_id = getattr(style, "OnX_id", None) if style is not None else None
-        return (len(notes.strip()), 1 if OnX_id else 0)
+        onx_id = getattr(style, "OnX_id", None) if style is not None else None
+        return (len(notes.strip()), 1 if onx_id else 0)
 
     for (kind, title, sig), members in groups.items():
         if len(members) <= 1:
@@ -137,7 +198,6 @@ def apply_shape_dedup(
             dropped.append(m)
 
         # Remove dropped from doc.items
-        keep_ids = {id(kept)}
         drop_obj_ids = {id(m) for m in dropped_members}
         doc.items = [i for i in doc.items if id(i) not in drop_obj_ids]
 

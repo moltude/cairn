@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "ccf2747f-5370-4ca2-9438-ee1ca11f6380",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          51.4778
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Greenwich Observatory",
+        "description": "Prime Meridian - 0°",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Greenwich Observatory"
+        }
+      }
+    }
+  ]
+}

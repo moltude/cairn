@@ -1,0 +1,115 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "42cdf781-3790-494b-8667-99646978b460",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Duplicate Camp",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Duplicate Camp"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "487de45a-ae3b-456e-a41b-f09c1718e0ad",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Water Source",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Water Source"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "d1ea0fbb-6f11-40d7-a4e1-37a5de482878",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.1
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Water Source",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Water Source"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "4c2a8e13-eb1b-43ac-8525-c835981c3e98",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.2
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Water Source",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Water Source"
+        }
+      }
+    }
+  ]
+}

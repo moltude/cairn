@@ -47,7 +47,7 @@ def _stable_uuid_fallback() -> str:
     return str(uuid.uuid4())
 
 
-def parse_OnX_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
+def parse_onx_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
     """
     Parse an OnX <desc> key/value block.
 
@@ -71,7 +71,7 @@ def parse_OnX_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
     current_key: Optional[str] = None
     current_value_lines: List[str] = []
 
-    def flush():
+    def flush() -> None:
         nonlocal current_key, current_value_lines
         if current_key is None:
             return
@@ -105,7 +105,7 @@ def parse_OnX_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
     return kv, notes
 
 
-def _get_OnX_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
+def _get_onx_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
     """
     Read OnX extension element by local name from an <extensions> element.
     """
@@ -120,7 +120,7 @@ def _get_OnX_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
     return None
 
 
-def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
+def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     """
     Read an OnX GPX export.
 
@@ -148,7 +148,9 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
 
     # Validate it's actually a GPX file
     if not (root.tag.endswith("gpx") or "gpx" in root.tag.lower()):
-        raise ValueError(f"File does not appear to be a GPX file (root element: {root.tag})\nFile: {p}")
+        raise ValueError(
+            f"File does not appear to be a GPX file (root element: {root.tag})\nFile: {p}"
+        )
 
     doc = MapDocument(metadata={"source": "OnX_gpx", "path": str(p)})
 
@@ -165,25 +167,29 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
         except (ValueError, TypeError) as e:
             # Skip waypoint with invalid coordinates but continue processing
             if trace is not None:
-                trace.emit({
-                    "event": "input.wpt.error",
-                    "idx": idx,
-                    "error": f"Invalid coordinates: {e}",
-                    "lat_raw": wpt.attrib.get("lat"),
-                    "lon_raw": wpt.attrib.get("lon"),
-                })
+                trace.emit(
+                    {
+                        "event": "input.wpt.error",
+                        "idx": idx,
+                        "error": f"Invalid coordinates: {e}",
+                        "lat_raw": wpt.attrib.get("lat"),
+                        "lon_raw": wpt.attrib.get("lon"),
+                    }
+                )
             continue
 
         # Validate coordinate ranges
         if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
             if trace is not None:
-                trace.emit({
-                    "event": "input.wpt.warning",
-                    "idx": idx,
-                    "warning": "Coordinates out of valid range",
-                    "lat": lat,
-                    "lon": lon,
-                })
+                trace.emit(
+                    {
+                        "event": "input.wpt.warning",
+                        "idx": idx,
+                        "warning": "Coordinates out of valid range",
+                        "lat": lat,
+                        "lon": lon,
+                    }
+                )
             # Continue processing but log the warning
             continue
 
@@ -193,18 +199,18 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
 
         desc_elem = wpt.find("gpx:desc", _NS)
         desc_raw = desc_elem.text if desc_elem is not None and desc_elem.text else ""
-        kv, notes = parse_OnX_desc_kv(desc_raw)
+        kv, notes = parse_onx_desc_kv(desc_raw)
 
         ext = wpt.find("gpx:extensions", _NS)
-        OnX_color = _get_OnX_extension_text(ext, "color") or kv.get("color")
-        OnX_icon = _get_OnX_extension_text(ext, "icon") or kv.get("icon")
-        OnX_id = kv.get("id")
+        onx_color = _get_onx_extension_text(ext, "color") or kv.get("color")
+        onx_icon = _get_onx_extension_text(ext, "icon") or kv.get("icon")
+        onx_id = kv.get("id")
 
-        style = Style(OnX_icon=OnX_icon, OnX_color_rgba=OnX_color, OnX_id=OnX_id)
+        style = Style(OnX_icon=onx_icon, OnX_color_rgba=onx_color, OnX_id=onx_id)
         style.extra["desc_kv"] = kv
 
         wp = Waypoint(
-            id=OnX_id or _stable_uuid_fallback(),
+            id=onx_id or _stable_uuid_fallback(),
             folder_id="OnX_waypoints",
             name=name,
             lon=lon,
@@ -224,25 +230,27 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
                     "lon": lon,
                     "name_raw": name_raw,
                     "name_norm": name,
-                    "OnX": {"id": OnX_id, "icon": OnX_icon, "color": OnX_color},
+                    "OnX": {"id": onx_id, "icon": onx_icon, "color": onx_color},
                 }
             )
 
     # Tracks
-    def read_track_like(track_elem: ET.Element, *, gpx_type: str, idx: int) -> Optional[Track]:
+    def read_track_like(
+        track_elem: ET.Element, *, gpx_type: str, idx: int
+    ) -> Optional[Track]:
         name_elem = track_elem.find("gpx:name", _NS)
         name_raw = name_elem.text if name_elem is not None and name_elem.text else ""
         name = normalize_name(name_raw)
 
         desc_elem = track_elem.find("gpx:desc", _NS)
         desc_raw = desc_elem.text if desc_elem is not None and desc_elem.text else ""
-        kv, notes = parse_OnX_desc_kv(desc_raw)
+        kv, notes = parse_onx_desc_kv(desc_raw)
 
         ext = track_elem.find("gpx:extensions", _NS)
-        OnX_color = _get_OnX_extension_text(ext, "color") or kv.get("color")
-        OnX_style = _get_OnX_extension_text(ext, "style") or kv.get("style")
-        OnX_weight = _get_OnX_extension_text(ext, "weight") or kv.get("weight")
-        OnX_id = kv.get("id")
+        onx_color = _get_onx_extension_text(ext, "color") or kv.get("color")
+        onx_style = _get_onx_extension_text(ext, "style") or kv.get("style")
+        onx_weight = _get_onx_extension_text(ext, "weight") or kv.get("weight")
+        onx_id = kv.get("id")
 
         points: List[TrackPoint] = []
 
@@ -260,12 +268,20 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
 
                     ele_elem = pt.find("gpx:ele", _NS)
                     try:
-                        ele = float(ele_elem.text) if ele_elem is not None and ele_elem.text else None
+                        ele = (
+                            float(ele_elem.text)
+                            if ele_elem is not None and ele_elem.text
+                            else None
+                        )
                     except (ValueError, TypeError):
                         ele = None
 
                     time_elem = pt.find("gpx:time", _NS)
-                    t_ms = iso8601_to_epoch_ms(time_elem.text) if time_elem is not None and time_elem.text else None
+                    t_ms = (
+                        iso8601_to_epoch_ms(time_elem.text)
+                        if time_elem is not None and time_elem.text
+                        else None
+                    )
                     points.append((plon, plat, ele, t_ms))
         else:
             # Route: treat rtept as points (elevation often absent)
@@ -281,28 +297,36 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
 
                 ele_elem = pt.find("gpx:ele", _NS)
                 try:
-                    ele = float(ele_elem.text) if ele_elem is not None and ele_elem.text else None
+                    ele = (
+                        float(ele_elem.text)
+                        if ele_elem is not None and ele_elem.text
+                        else None
+                    )
                 except (ValueError, TypeError):
                     ele = None
 
                 time_elem = pt.find("gpx:time", _NS)
-                t_ms = iso8601_to_epoch_ms(time_elem.text) if time_elem is not None and time_elem.text else None
+                t_ms = (
+                    iso8601_to_epoch_ms(time_elem.text)
+                    if time_elem is not None and time_elem.text
+                    else None
+                )
                 points.append((plon, plat, ele, t_ms))
 
         if not points:
             return None
 
         style = Style(
-            OnX_color_rgba=OnX_color,
-            OnX_style=OnX_style,
-            OnX_weight=OnX_weight,
-            OnX_id=OnX_id,
+            OnX_color_rgba=onx_color,
+            OnX_style=onx_style,
+            OnX_weight=onx_weight,
+            OnX_id=onx_id,
         )
         style.extra["desc_kv"] = kv
         style.extra["gpx_type"] = gpx_type
 
         trk = Track(
-            id=OnX_id or _stable_uuid_fallback(),
+            id=onx_id or _stable_uuid_fallback(),
             folder_id="OnX_tracks",
             name=name,
             points=points,
@@ -320,10 +344,10 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
                     "name_norm": name,
                     "point_count": len(points),
                     "OnX": {
-                        "id": OnX_id,
-                        "color": OnX_color,
-                        "style": OnX_style,
-                        "weight": OnX_weight,
+                        "id": onx_id,
+                        "color": onx_color,
+                        "style": onx_style,
+                        "weight": onx_weight,
                     },
                 }
             )
@@ -347,6 +371,6 @@ def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     return doc
 
 
-# Backward-compatible alias: prefer snake_case in new code.
-def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
-    return read_OnX_gpx(path, trace=trace)
+# Backward-compatible alias (old name with PascalCase)
+def read_OnX_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:  # noqa: N802
+    return read_onx_gpx(path, trace=trace)

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>single marker</name>
+  </metadata>
+  <wpt lat="45.0" lon="-120.0">
+    <name>Solo Marker</name>
+    <desc>name=Solo Marker
+notes=
+id=44bd83a4-9b6b-4196-8cbf-bff9030b7766
+color=rgba(255,0,0,1)
+icon=Location</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+</gpx>

@@ -1,0 +1,4003 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="45.0" lon="-120.0">
+    <name>Waypoint 0001</name>
+    <ele>1000</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-120.0">
+    <name>Waypoint 0002</name>
+    <ele>1001</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-120.0">
+    <name>Waypoint 0003</name>
+    <ele>1002</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-120.0">
+    <name>Waypoint 0004</name>
+    <ele>1003</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-120.0">
+    <name>Waypoint 0005</name>
+    <ele>1004</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-120.0">
+    <name>Waypoint 0006</name>
+    <ele>1005</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-120.0">
+    <name>Waypoint 0007</name>
+    <ele>1006</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-120.0">
+    <name>Waypoint 0008</name>
+    <ele>1007</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-120.0">
+    <name>Waypoint 0009</name>
+    <ele>1008</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-120.0">
+    <name>Waypoint 0010</name>
+    <ele>1009</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-120.0">
+    <name>Waypoint 0011</name>
+    <ele>1010</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-120.0">
+    <name>Waypoint 0012</name>
+    <ele>1011</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-120.0">
+    <name>Waypoint 0013</name>
+    <ele>1012</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-120.0">
+    <name>Waypoint 0014</name>
+    <ele>1013</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-120.0">
+    <name>Waypoint 0015</name>
+    <ele>1014</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-120.0">
+    <name>Waypoint 0016</name>
+    <ele>1015</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-120.0">
+    <name>Waypoint 0017</name>
+    <ele>1016</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-120.0">
+    <name>Waypoint 0018</name>
+    <ele>1017</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-120.0">
+    <name>Waypoint 0019</name>
+    <ele>1018</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-120.0">
+    <name>Waypoint 0020</name>
+    <ele>1019</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-120.0">
+    <name>Waypoint 0021</name>
+    <ele>1020</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-120.0">
+    <name>Waypoint 0022</name>
+    <ele>1021</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-120.0">
+    <name>Waypoint 0023</name>
+    <ele>1022</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-120.0">
+    <name>Waypoint 0024</name>
+    <ele>1023</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-120.0">
+    <name>Waypoint 0025</name>
+    <ele>1024</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-120.0">
+    <name>Waypoint 0026</name>
+    <ele>1025</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-120.0">
+    <name>Waypoint 0027</name>
+    <ele>1026</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-120.0">
+    <name>Waypoint 0028</name>
+    <ele>1027</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-120.0">
+    <name>Waypoint 0029</name>
+    <ele>1028</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-120.0">
+    <name>Waypoint 0030</name>
+    <ele>1029</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-120.0">
+    <name>Waypoint 0031</name>
+    <ele>1030</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-120.0">
+    <name>Waypoint 0032</name>
+    <ele>1031</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-120.0">
+    <name>Waypoint 0033</name>
+    <ele>1032</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-120.0">
+    <name>Waypoint 0034</name>
+    <ele>1033</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-120.0">
+    <name>Waypoint 0035</name>
+    <ele>1034</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-120.0">
+    <name>Waypoint 0036</name>
+    <ele>1035</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-120.0">
+    <name>Waypoint 0037</name>
+    <ele>1036</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-120.0">
+    <name>Waypoint 0038</name>
+    <ele>1037</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-120.0">
+    <name>Waypoint 0039</name>
+    <ele>1038</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-120.0">
+    <name>Waypoint 0040</name>
+    <ele>1039</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-120.0">
+    <name>Waypoint 0041</name>
+    <ele>1040</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-120.0">
+    <name>Waypoint 0042</name>
+    <ele>1041</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-120.0">
+    <name>Waypoint 0043</name>
+    <ele>1042</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-120.0">
+    <name>Waypoint 0044</name>
+    <ele>1043</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-120.0">
+    <name>Waypoint 0045</name>
+    <ele>1044</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-120.0">
+    <name>Waypoint 0046</name>
+    <ele>1045</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-120.0">
+    <name>Waypoint 0047</name>
+    <ele>1046</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-120.0">
+    <name>Waypoint 0048</name>
+    <ele>1047</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-120.0">
+    <name>Waypoint 0049</name>
+    <ele>1048</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-120.0">
+    <name>Waypoint 0050</name>
+    <ele>1049</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-120.0">
+    <name>Waypoint 0051</name>
+    <ele>1050</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-120.0">
+    <name>Waypoint 0052</name>
+    <ele>1051</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-120.0">
+    <name>Waypoint 0053</name>
+    <ele>1052</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-120.0">
+    <name>Waypoint 0054</name>
+    <ele>1053</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-120.0">
+    <name>Waypoint 0055</name>
+    <ele>1054</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-120.0">
+    <name>Waypoint 0056</name>
+    <ele>1055</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-120.0">
+    <name>Waypoint 0057</name>
+    <ele>1056</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-120.0">
+    <name>Waypoint 0058</name>
+    <ele>1057</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-120.0">
+    <name>Waypoint 0059</name>
+    <ele>1058</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-120.0">
+    <name>Waypoint 0060</name>
+    <ele>1059</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-120.0">
+    <name>Waypoint 0061</name>
+    <ele>1060</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-120.0">
+    <name>Waypoint 0062</name>
+    <ele>1061</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-120.0">
+    <name>Waypoint 0063</name>
+    <ele>1062</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-120.0">
+    <name>Waypoint 0064</name>
+    <ele>1063</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-120.0">
+    <name>Waypoint 0065</name>
+    <ele>1064</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-120.0">
+    <name>Waypoint 0066</name>
+    <ele>1065</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-120.0">
+    <name>Waypoint 0067</name>
+    <ele>1066</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-120.0">
+    <name>Waypoint 0068</name>
+    <ele>1067</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-120.0">
+    <name>Waypoint 0069</name>
+    <ele>1068</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-120.0">
+    <name>Waypoint 0070</name>
+    <ele>1069</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-120.0">
+    <name>Waypoint 0071</name>
+    <ele>1070</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-120.0">
+    <name>Waypoint 0072</name>
+    <ele>1071</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-120.0">
+    <name>Waypoint 0073</name>
+    <ele>1072</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-120.0">
+    <name>Waypoint 0074</name>
+    <ele>1073</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-120.0">
+    <name>Waypoint 0075</name>
+    <ele>1074</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-120.0">
+    <name>Waypoint 0076</name>
+    <ele>1075</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-120.0">
+    <name>Waypoint 0077</name>
+    <ele>1076</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-120.0">
+    <name>Waypoint 0078</name>
+    <ele>1077</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-120.0">
+    <name>Waypoint 0079</name>
+    <ele>1078</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-120.0">
+    <name>Waypoint 0080</name>
+    <ele>1079</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-120.0">
+    <name>Waypoint 0081</name>
+    <ele>1080</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-120.0">
+    <name>Waypoint 0082</name>
+    <ele>1081</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-120.0">
+    <name>Waypoint 0083</name>
+    <ele>1082</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-120.0">
+    <name>Waypoint 0084</name>
+    <ele>1083</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-120.0">
+    <name>Waypoint 0085</name>
+    <ele>1084</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-120.0">
+    <name>Waypoint 0086</name>
+    <ele>1085</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-120.0">
+    <name>Waypoint 0087</name>
+    <ele>1086</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-120.0">
+    <name>Waypoint 0088</name>
+    <ele>1087</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-120.0">
+    <name>Waypoint 0089</name>
+    <ele>1088</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-120.0">
+    <name>Waypoint 0090</name>
+    <ele>1089</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-120.0">
+    <name>Waypoint 0091</name>
+    <ele>1090</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-120.0">
+    <name>Waypoint 0092</name>
+    <ele>1091</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-120.0">
+    <name>Waypoint 0093</name>
+    <ele>1092</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-120.0">
+    <name>Waypoint 0094</name>
+    <ele>1093</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-120.0">
+    <name>Waypoint 0095</name>
+    <ele>1094</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-120.0">
+    <name>Waypoint 0096</name>
+    <ele>1095</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-120.0">
+    <name>Waypoint 0097</name>
+    <ele>1096</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-120.0">
+    <name>Waypoint 0098</name>
+    <ele>1097</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-120.0">
+    <name>Waypoint 0099</name>
+    <ele>1098</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-120.0">
+    <name>Waypoint 0100</name>
+    <ele>1099</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.99">
+    <name>Waypoint 0101</name>
+    <ele>1100</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.99">
+    <name>Waypoint 0102</name>
+    <ele>1101</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.99">
+    <name>Waypoint 0103</name>
+    <ele>1102</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.99">
+    <name>Waypoint 0104</name>
+    <ele>1103</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.99">
+    <name>Waypoint 0105</name>
+    <ele>1104</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.99">
+    <name>Waypoint 0106</name>
+    <ele>1105</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.99">
+    <name>Waypoint 0107</name>
+    <ele>1106</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.99">
+    <name>Waypoint 0108</name>
+    <ele>1107</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.99">
+    <name>Waypoint 0109</name>
+    <ele>1108</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.99">
+    <name>Waypoint 0110</name>
+    <ele>1109</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.99">
+    <name>Waypoint 0111</name>
+    <ele>1110</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.99">
+    <name>Waypoint 0112</name>
+    <ele>1111</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.99">
+    <name>Waypoint 0113</name>
+    <ele>1112</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.99">
+    <name>Waypoint 0114</name>
+    <ele>1113</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.99">
+    <name>Waypoint 0115</name>
+    <ele>1114</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.99">
+    <name>Waypoint 0116</name>
+    <ele>1115</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.99">
+    <name>Waypoint 0117</name>
+    <ele>1116</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.99">
+    <name>Waypoint 0118</name>
+    <ele>1117</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.99">
+    <name>Waypoint 0119</name>
+    <ele>1118</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.99">
+    <name>Waypoint 0120</name>
+    <ele>1119</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.99">
+    <name>Waypoint 0121</name>
+    <ele>1120</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.99">
+    <name>Waypoint 0122</name>
+    <ele>1121</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.99">
+    <name>Waypoint 0123</name>
+    <ele>1122</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.99">
+    <name>Waypoint 0124</name>
+    <ele>1123</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.99">
+    <name>Waypoint 0125</name>
+    <ele>1124</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.99">
+    <name>Waypoint 0126</name>
+    <ele>1125</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.99">
+    <name>Waypoint 0127</name>
+    <ele>1126</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.99">
+    <name>Waypoint 0128</name>
+    <ele>1127</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.99">
+    <name>Waypoint 0129</name>
+    <ele>1128</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.99">
+    <name>Waypoint 0130</name>
+    <ele>1129</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.99">
+    <name>Waypoint 0131</name>
+    <ele>1130</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.99">
+    <name>Waypoint 0132</name>
+    <ele>1131</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.99">
+    <name>Waypoint 0133</name>
+    <ele>1132</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.99">
+    <name>Waypoint 0134</name>
+    <ele>1133</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.99">
+    <name>Waypoint 0135</name>
+    <ele>1134</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.99">
+    <name>Waypoint 0136</name>
+    <ele>1135</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.99">
+    <name>Waypoint 0137</name>
+    <ele>1136</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.99">
+    <name>Waypoint 0138</name>
+    <ele>1137</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.99">
+    <name>Waypoint 0139</name>
+    <ele>1138</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.99">
+    <name>Waypoint 0140</name>
+    <ele>1139</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.99">
+    <name>Waypoint 0141</name>
+    <ele>1140</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.99">
+    <name>Waypoint 0142</name>
+    <ele>1141</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.99">
+    <name>Waypoint 0143</name>
+    <ele>1142</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.99">
+    <name>Waypoint 0144</name>
+    <ele>1143</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.99">
+    <name>Waypoint 0145</name>
+    <ele>1144</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.99">
+    <name>Waypoint 0146</name>
+    <ele>1145</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.99">
+    <name>Waypoint 0147</name>
+    <ele>1146</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.99">
+    <name>Waypoint 0148</name>
+    <ele>1147</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.99">
+    <name>Waypoint 0149</name>
+    <ele>1148</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.99">
+    <name>Waypoint 0150</name>
+    <ele>1149</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.99">
+    <name>Waypoint 0151</name>
+    <ele>1150</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.99">
+    <name>Waypoint 0152</name>
+    <ele>1151</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.99">
+    <name>Waypoint 0153</name>
+    <ele>1152</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.99">
+    <name>Waypoint 0154</name>
+    <ele>1153</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.99">
+    <name>Waypoint 0155</name>
+    <ele>1154</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.99">
+    <name>Waypoint 0156</name>
+    <ele>1155</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.99">
+    <name>Waypoint 0157</name>
+    <ele>1156</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.99">
+    <name>Waypoint 0158</name>
+    <ele>1157</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.99">
+    <name>Waypoint 0159</name>
+    <ele>1158</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.99">
+    <name>Waypoint 0160</name>
+    <ele>1159</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.99">
+    <name>Waypoint 0161</name>
+    <ele>1160</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.99">
+    <name>Waypoint 0162</name>
+    <ele>1161</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.99">
+    <name>Waypoint 0163</name>
+    <ele>1162</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.99">
+    <name>Waypoint 0164</name>
+    <ele>1163</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.99">
+    <name>Waypoint 0165</name>
+    <ele>1164</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.99">
+    <name>Waypoint 0166</name>
+    <ele>1165</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.99">
+    <name>Waypoint 0167</name>
+    <ele>1166</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.99">
+    <name>Waypoint 0168</name>
+    <ele>1167</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.99">
+    <name>Waypoint 0169</name>
+    <ele>1168</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.99">
+    <name>Waypoint 0170</name>
+    <ele>1169</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.99">
+    <name>Waypoint 0171</name>
+    <ele>1170</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.99">
+    <name>Waypoint 0172</name>
+    <ele>1171</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.99">
+    <name>Waypoint 0173</name>
+    <ele>1172</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.99">
+    <name>Waypoint 0174</name>
+    <ele>1173</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.99">
+    <name>Waypoint 0175</name>
+    <ele>1174</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.99">
+    <name>Waypoint 0176</name>
+    <ele>1175</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.99">
+    <name>Waypoint 0177</name>
+    <ele>1176</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.99">
+    <name>Waypoint 0178</name>
+    <ele>1177</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.99">
+    <name>Waypoint 0179</name>
+    <ele>1178</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.99">
+    <name>Waypoint 0180</name>
+    <ele>1179</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.99">
+    <name>Waypoint 0181</name>
+    <ele>1180</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.99">
+    <name>Waypoint 0182</name>
+    <ele>1181</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.99">
+    <name>Waypoint 0183</name>
+    <ele>1182</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.99">
+    <name>Waypoint 0184</name>
+    <ele>1183</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.99">
+    <name>Waypoint 0185</name>
+    <ele>1184</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.99">
+    <name>Waypoint 0186</name>
+    <ele>1185</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.99">
+    <name>Waypoint 0187</name>
+    <ele>1186</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.99">
+    <name>Waypoint 0188</name>
+    <ele>1187</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.99">
+    <name>Waypoint 0189</name>
+    <ele>1188</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.99">
+    <name>Waypoint 0190</name>
+    <ele>1189</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.99">
+    <name>Waypoint 0191</name>
+    <ele>1190</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.99">
+    <name>Waypoint 0192</name>
+    <ele>1191</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.99">
+    <name>Waypoint 0193</name>
+    <ele>1192</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.99">
+    <name>Waypoint 0194</name>
+    <ele>1193</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.99">
+    <name>Waypoint 0195</name>
+    <ele>1194</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.99">
+    <name>Waypoint 0196</name>
+    <ele>1195</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.99">
+    <name>Waypoint 0197</name>
+    <ele>1196</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.99">
+    <name>Waypoint 0198</name>
+    <ele>1197</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.99">
+    <name>Waypoint 0199</name>
+    <ele>1198</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.99">
+    <name>Waypoint 0200</name>
+    <ele>1199</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.98">
+    <name>Waypoint 0201</name>
+    <ele>1200</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.98">
+    <name>Waypoint 0202</name>
+    <ele>1201</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.98">
+    <name>Waypoint 0203</name>
+    <ele>1202</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.98">
+    <name>Waypoint 0204</name>
+    <ele>1203</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.98">
+    <name>Waypoint 0205</name>
+    <ele>1204</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.98">
+    <name>Waypoint 0206</name>
+    <ele>1205</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.98">
+    <name>Waypoint 0207</name>
+    <ele>1206</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.98">
+    <name>Waypoint 0208</name>
+    <ele>1207</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.98">
+    <name>Waypoint 0209</name>
+    <ele>1208</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.98">
+    <name>Waypoint 0210</name>
+    <ele>1209</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.98">
+    <name>Waypoint 0211</name>
+    <ele>1210</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.98">
+    <name>Waypoint 0212</name>
+    <ele>1211</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.98">
+    <name>Waypoint 0213</name>
+    <ele>1212</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.98">
+    <name>Waypoint 0214</name>
+    <ele>1213</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.98">
+    <name>Waypoint 0215</name>
+    <ele>1214</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.98">
+    <name>Waypoint 0216</name>
+    <ele>1215</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.98">
+    <name>Waypoint 0217</name>
+    <ele>1216</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.98">
+    <name>Waypoint 0218</name>
+    <ele>1217</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.98">
+    <name>Waypoint 0219</name>
+    <ele>1218</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.98">
+    <name>Waypoint 0220</name>
+    <ele>1219</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.98">
+    <name>Waypoint 0221</name>
+    <ele>1220</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.98">
+    <name>Waypoint 0222</name>
+    <ele>1221</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.98">
+    <name>Waypoint 0223</name>
+    <ele>1222</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.98">
+    <name>Waypoint 0224</name>
+    <ele>1223</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.98">
+    <name>Waypoint 0225</name>
+    <ele>1224</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.98">
+    <name>Waypoint 0226</name>
+    <ele>1225</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.98">
+    <name>Waypoint 0227</name>
+    <ele>1226</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.98">
+    <name>Waypoint 0228</name>
+    <ele>1227</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.98">
+    <name>Waypoint 0229</name>
+    <ele>1228</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.98">
+    <name>Waypoint 0230</name>
+    <ele>1229</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.98">
+    <name>Waypoint 0231</name>
+    <ele>1230</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.98">
+    <name>Waypoint 0232</name>
+    <ele>1231</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.98">
+    <name>Waypoint 0233</name>
+    <ele>1232</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.98">
+    <name>Waypoint 0234</name>
+    <ele>1233</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.98">
+    <name>Waypoint 0235</name>
+    <ele>1234</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.98">
+    <name>Waypoint 0236</name>
+    <ele>1235</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.98">
+    <name>Waypoint 0237</name>
+    <ele>1236</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.98">
+    <name>Waypoint 0238</name>
+    <ele>1237</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.98">
+    <name>Waypoint 0239</name>
+    <ele>1238</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.98">
+    <name>Waypoint 0240</name>
+    <ele>1239</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.98">
+    <name>Waypoint 0241</name>
+    <ele>1240</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.98">
+    <name>Waypoint 0242</name>
+    <ele>1241</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.98">
+    <name>Waypoint 0243</name>
+    <ele>1242</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.98">
+    <name>Waypoint 0244</name>
+    <ele>1243</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.98">
+    <name>Waypoint 0245</name>
+    <ele>1244</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.98">
+    <name>Waypoint 0246</name>
+    <ele>1245</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.98">
+    <name>Waypoint 0247</name>
+    <ele>1246</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.98">
+    <name>Waypoint 0248</name>
+    <ele>1247</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.98">
+    <name>Waypoint 0249</name>
+    <ele>1248</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.98">
+    <name>Waypoint 0250</name>
+    <ele>1249</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.98">
+    <name>Waypoint 0251</name>
+    <ele>1250</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.98">
+    <name>Waypoint 0252</name>
+    <ele>1251</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.98">
+    <name>Waypoint 0253</name>
+    <ele>1252</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.98">
+    <name>Waypoint 0254</name>
+    <ele>1253</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.98">
+    <name>Waypoint 0255</name>
+    <ele>1254</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.98">
+    <name>Waypoint 0256</name>
+    <ele>1255</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.98">
+    <name>Waypoint 0257</name>
+    <ele>1256</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.98">
+    <name>Waypoint 0258</name>
+    <ele>1257</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.98">
+    <name>Waypoint 0259</name>
+    <ele>1258</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.98">
+    <name>Waypoint 0260</name>
+    <ele>1259</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.98">
+    <name>Waypoint 0261</name>
+    <ele>1260</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.98">
+    <name>Waypoint 0262</name>
+    <ele>1261</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.98">
+    <name>Waypoint 0263</name>
+    <ele>1262</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.98">
+    <name>Waypoint 0264</name>
+    <ele>1263</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.98">
+    <name>Waypoint 0265</name>
+    <ele>1264</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.98">
+    <name>Waypoint 0266</name>
+    <ele>1265</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.98">
+    <name>Waypoint 0267</name>
+    <ele>1266</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.98">
+    <name>Waypoint 0268</name>
+    <ele>1267</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.98">
+    <name>Waypoint 0269</name>
+    <ele>1268</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.98">
+    <name>Waypoint 0270</name>
+    <ele>1269</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.98">
+    <name>Waypoint 0271</name>
+    <ele>1270</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.98">
+    <name>Waypoint 0272</name>
+    <ele>1271</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.98">
+    <name>Waypoint 0273</name>
+    <ele>1272</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.98">
+    <name>Waypoint 0274</name>
+    <ele>1273</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.98">
+    <name>Waypoint 0275</name>
+    <ele>1274</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.98">
+    <name>Waypoint 0276</name>
+    <ele>1275</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.98">
+    <name>Waypoint 0277</name>
+    <ele>1276</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.98">
+    <name>Waypoint 0278</name>
+    <ele>1277</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.98">
+    <name>Waypoint 0279</name>
+    <ele>1278</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.98">
+    <name>Waypoint 0280</name>
+    <ele>1279</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.98">
+    <name>Waypoint 0281</name>
+    <ele>1280</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.98">
+    <name>Waypoint 0282</name>
+    <ele>1281</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.98">
+    <name>Waypoint 0283</name>
+    <ele>1282</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.98">
+    <name>Waypoint 0284</name>
+    <ele>1283</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.98">
+    <name>Waypoint 0285</name>
+    <ele>1284</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.98">
+    <name>Waypoint 0286</name>
+    <ele>1285</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.98">
+    <name>Waypoint 0287</name>
+    <ele>1286</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.98">
+    <name>Waypoint 0288</name>
+    <ele>1287</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.98">
+    <name>Waypoint 0289</name>
+    <ele>1288</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.98">
+    <name>Waypoint 0290</name>
+    <ele>1289</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.98">
+    <name>Waypoint 0291</name>
+    <ele>1290</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.98">
+    <name>Waypoint 0292</name>
+    <ele>1291</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.98">
+    <name>Waypoint 0293</name>
+    <ele>1292</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.98">
+    <name>Waypoint 0294</name>
+    <ele>1293</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.98">
+    <name>Waypoint 0295</name>
+    <ele>1294</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.98">
+    <name>Waypoint 0296</name>
+    <ele>1295</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.98">
+    <name>Waypoint 0297</name>
+    <ele>1296</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.98">
+    <name>Waypoint 0298</name>
+    <ele>1297</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.98">
+    <name>Waypoint 0299</name>
+    <ele>1298</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.98">
+    <name>Waypoint 0300</name>
+    <ele>1299</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.97">
+    <name>Waypoint 0301</name>
+    <ele>1300</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.97">
+    <name>Waypoint 0302</name>
+    <ele>1301</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.97">
+    <name>Waypoint 0303</name>
+    <ele>1302</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.97">
+    <name>Waypoint 0304</name>
+    <ele>1303</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.97">
+    <name>Waypoint 0305</name>
+    <ele>1304</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.97">
+    <name>Waypoint 0306</name>
+    <ele>1305</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.97">
+    <name>Waypoint 0307</name>
+    <ele>1306</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.97">
+    <name>Waypoint 0308</name>
+    <ele>1307</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.97">
+    <name>Waypoint 0309</name>
+    <ele>1308</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.97">
+    <name>Waypoint 0310</name>
+    <ele>1309</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.97">
+    <name>Waypoint 0311</name>
+    <ele>1310</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.97">
+    <name>Waypoint 0312</name>
+    <ele>1311</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.97">
+    <name>Waypoint 0313</name>
+    <ele>1312</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.97">
+    <name>Waypoint 0314</name>
+    <ele>1313</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.97">
+    <name>Waypoint 0315</name>
+    <ele>1314</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.97">
+    <name>Waypoint 0316</name>
+    <ele>1315</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.97">
+    <name>Waypoint 0317</name>
+    <ele>1316</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.97">
+    <name>Waypoint 0318</name>
+    <ele>1317</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.97">
+    <name>Waypoint 0319</name>
+    <ele>1318</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.97">
+    <name>Waypoint 0320</name>
+    <ele>1319</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.97">
+    <name>Waypoint 0321</name>
+    <ele>1320</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.97">
+    <name>Waypoint 0322</name>
+    <ele>1321</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.97">
+    <name>Waypoint 0323</name>
+    <ele>1322</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.97">
+    <name>Waypoint 0324</name>
+    <ele>1323</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.97">
+    <name>Waypoint 0325</name>
+    <ele>1324</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.97">
+    <name>Waypoint 0326</name>
+    <ele>1325</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.97">
+    <name>Waypoint 0327</name>
+    <ele>1326</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.97">
+    <name>Waypoint 0328</name>
+    <ele>1327</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.97">
+    <name>Waypoint 0329</name>
+    <ele>1328</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.97">
+    <name>Waypoint 0330</name>
+    <ele>1329</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.97">
+    <name>Waypoint 0331</name>
+    <ele>1330</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.97">
+    <name>Waypoint 0332</name>
+    <ele>1331</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.97">
+    <name>Waypoint 0333</name>
+    <ele>1332</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.97">
+    <name>Waypoint 0334</name>
+    <ele>1333</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.97">
+    <name>Waypoint 0335</name>
+    <ele>1334</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.97">
+    <name>Waypoint 0336</name>
+    <ele>1335</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.97">
+    <name>Waypoint 0337</name>
+    <ele>1336</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.97">
+    <name>Waypoint 0338</name>
+    <ele>1337</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.97">
+    <name>Waypoint 0339</name>
+    <ele>1338</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.97">
+    <name>Waypoint 0340</name>
+    <ele>1339</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.97">
+    <name>Waypoint 0341</name>
+    <ele>1340</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.97">
+    <name>Waypoint 0342</name>
+    <ele>1341</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.97">
+    <name>Waypoint 0343</name>
+    <ele>1342</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.97">
+    <name>Waypoint 0344</name>
+    <ele>1343</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.97">
+    <name>Waypoint 0345</name>
+    <ele>1344</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.97">
+    <name>Waypoint 0346</name>
+    <ele>1345</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.97">
+    <name>Waypoint 0347</name>
+    <ele>1346</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.97">
+    <name>Waypoint 0348</name>
+    <ele>1347</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.97">
+    <name>Waypoint 0349</name>
+    <ele>1348</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.97">
+    <name>Waypoint 0350</name>
+    <ele>1349</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.97">
+    <name>Waypoint 0351</name>
+    <ele>1350</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.97">
+    <name>Waypoint 0352</name>
+    <ele>1351</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.97">
+    <name>Waypoint 0353</name>
+    <ele>1352</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.97">
+    <name>Waypoint 0354</name>
+    <ele>1353</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.97">
+    <name>Waypoint 0355</name>
+    <ele>1354</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.97">
+    <name>Waypoint 0356</name>
+    <ele>1355</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.97">
+    <name>Waypoint 0357</name>
+    <ele>1356</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.97">
+    <name>Waypoint 0358</name>
+    <ele>1357</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.97">
+    <name>Waypoint 0359</name>
+    <ele>1358</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.97">
+    <name>Waypoint 0360</name>
+    <ele>1359</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.97">
+    <name>Waypoint 0361</name>
+    <ele>1360</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.97">
+    <name>Waypoint 0362</name>
+    <ele>1361</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.97">
+    <name>Waypoint 0363</name>
+    <ele>1362</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.97">
+    <name>Waypoint 0364</name>
+    <ele>1363</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.97">
+    <name>Waypoint 0365</name>
+    <ele>1364</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.97">
+    <name>Waypoint 0366</name>
+    <ele>1365</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.97">
+    <name>Waypoint 0367</name>
+    <ele>1366</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.97">
+    <name>Waypoint 0368</name>
+    <ele>1367</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.97">
+    <name>Waypoint 0369</name>
+    <ele>1368</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.97">
+    <name>Waypoint 0370</name>
+    <ele>1369</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.97">
+    <name>Waypoint 0371</name>
+    <ele>1370</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.97">
+    <name>Waypoint 0372</name>
+    <ele>1371</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.97">
+    <name>Waypoint 0373</name>
+    <ele>1372</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.97">
+    <name>Waypoint 0374</name>
+    <ele>1373</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.97">
+    <name>Waypoint 0375</name>
+    <ele>1374</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.97">
+    <name>Waypoint 0376</name>
+    <ele>1375</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.97">
+    <name>Waypoint 0377</name>
+    <ele>1376</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.97">
+    <name>Waypoint 0378</name>
+    <ele>1377</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.97">
+    <name>Waypoint 0379</name>
+    <ele>1378</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.97">
+    <name>Waypoint 0380</name>
+    <ele>1379</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.97">
+    <name>Waypoint 0381</name>
+    <ele>1380</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.97">
+    <name>Waypoint 0382</name>
+    <ele>1381</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.97">
+    <name>Waypoint 0383</name>
+    <ele>1382</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.97">
+    <name>Waypoint 0384</name>
+    <ele>1383</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.97">
+    <name>Waypoint 0385</name>
+    <ele>1384</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.97">
+    <name>Waypoint 0386</name>
+    <ele>1385</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.97">
+    <name>Waypoint 0387</name>
+    <ele>1386</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.97">
+    <name>Waypoint 0388</name>
+    <ele>1387</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.97">
+    <name>Waypoint 0389</name>
+    <ele>1388</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.97">
+    <name>Waypoint 0390</name>
+    <ele>1389</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.97">
+    <name>Waypoint 0391</name>
+    <ele>1390</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.97">
+    <name>Waypoint 0392</name>
+    <ele>1391</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.97">
+    <name>Waypoint 0393</name>
+    <ele>1392</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.97">
+    <name>Waypoint 0394</name>
+    <ele>1393</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.97">
+    <name>Waypoint 0395</name>
+    <ele>1394</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.97">
+    <name>Waypoint 0396</name>
+    <ele>1395</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.97">
+    <name>Waypoint 0397</name>
+    <ele>1396</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.97">
+    <name>Waypoint 0398</name>
+    <ele>1397</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.97">
+    <name>Waypoint 0399</name>
+    <ele>1398</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.97">
+    <name>Waypoint 0400</name>
+    <ele>1399</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.96">
+    <name>Waypoint 0401</name>
+    <ele>1400</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.96">
+    <name>Waypoint 0402</name>
+    <ele>1401</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.96">
+    <name>Waypoint 0403</name>
+    <ele>1402</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.96">
+    <name>Waypoint 0404</name>
+    <ele>1403</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.96">
+    <name>Waypoint 0405</name>
+    <ele>1404</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.96">
+    <name>Waypoint 0406</name>
+    <ele>1405</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.96">
+    <name>Waypoint 0407</name>
+    <ele>1406</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.96">
+    <name>Waypoint 0408</name>
+    <ele>1407</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.96">
+    <name>Waypoint 0409</name>
+    <ele>1408</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.96">
+    <name>Waypoint 0410</name>
+    <ele>1409</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.96">
+    <name>Waypoint 0411</name>
+    <ele>1410</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.96">
+    <name>Waypoint 0412</name>
+    <ele>1411</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.96">
+    <name>Waypoint 0413</name>
+    <ele>1412</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.96">
+    <name>Waypoint 0414</name>
+    <ele>1413</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.96">
+    <name>Waypoint 0415</name>
+    <ele>1414</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.96">
+    <name>Waypoint 0416</name>
+    <ele>1415</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.96">
+    <name>Waypoint 0417</name>
+    <ele>1416</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.96">
+    <name>Waypoint 0418</name>
+    <ele>1417</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.96">
+    <name>Waypoint 0419</name>
+    <ele>1418</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.96">
+    <name>Waypoint 0420</name>
+    <ele>1419</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.96">
+    <name>Waypoint 0421</name>
+    <ele>1420</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.96">
+    <name>Waypoint 0422</name>
+    <ele>1421</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.96">
+    <name>Waypoint 0423</name>
+    <ele>1422</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.96">
+    <name>Waypoint 0424</name>
+    <ele>1423</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.96">
+    <name>Waypoint 0425</name>
+    <ele>1424</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.96">
+    <name>Waypoint 0426</name>
+    <ele>1425</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.96">
+    <name>Waypoint 0427</name>
+    <ele>1426</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.96">
+    <name>Waypoint 0428</name>
+    <ele>1427</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.96">
+    <name>Waypoint 0429</name>
+    <ele>1428</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.96">
+    <name>Waypoint 0430</name>
+    <ele>1429</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.96">
+    <name>Waypoint 0431</name>
+    <ele>1430</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.96">
+    <name>Waypoint 0432</name>
+    <ele>1431</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.96">
+    <name>Waypoint 0433</name>
+    <ele>1432</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.96">
+    <name>Waypoint 0434</name>
+    <ele>1433</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.96">
+    <name>Waypoint 0435</name>
+    <ele>1434</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.96">
+    <name>Waypoint 0436</name>
+    <ele>1435</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.96">
+    <name>Waypoint 0437</name>
+    <ele>1436</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.96">
+    <name>Waypoint 0438</name>
+    <ele>1437</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.96">
+    <name>Waypoint 0439</name>
+    <ele>1438</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.96">
+    <name>Waypoint 0440</name>
+    <ele>1439</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.96">
+    <name>Waypoint 0441</name>
+    <ele>1440</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.96">
+    <name>Waypoint 0442</name>
+    <ele>1441</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.96">
+    <name>Waypoint 0443</name>
+    <ele>1442</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.96">
+    <name>Waypoint 0444</name>
+    <ele>1443</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.96">
+    <name>Waypoint 0445</name>
+    <ele>1444</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.96">
+    <name>Waypoint 0446</name>
+    <ele>1445</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.96">
+    <name>Waypoint 0447</name>
+    <ele>1446</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.96">
+    <name>Waypoint 0448</name>
+    <ele>1447</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.96">
+    <name>Waypoint 0449</name>
+    <ele>1448</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.96">
+    <name>Waypoint 0450</name>
+    <ele>1449</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.96">
+    <name>Waypoint 0451</name>
+    <ele>1450</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.96">
+    <name>Waypoint 0452</name>
+    <ele>1451</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.96">
+    <name>Waypoint 0453</name>
+    <ele>1452</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.96">
+    <name>Waypoint 0454</name>
+    <ele>1453</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.96">
+    <name>Waypoint 0455</name>
+    <ele>1454</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.96">
+    <name>Waypoint 0456</name>
+    <ele>1455</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.96">
+    <name>Waypoint 0457</name>
+    <ele>1456</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.96">
+    <name>Waypoint 0458</name>
+    <ele>1457</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.96">
+    <name>Waypoint 0459</name>
+    <ele>1458</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.96">
+    <name>Waypoint 0460</name>
+    <ele>1459</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.96">
+    <name>Waypoint 0461</name>
+    <ele>1460</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.96">
+    <name>Waypoint 0462</name>
+    <ele>1461</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.96">
+    <name>Waypoint 0463</name>
+    <ele>1462</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.96">
+    <name>Waypoint 0464</name>
+    <ele>1463</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.96">
+    <name>Waypoint 0465</name>
+    <ele>1464</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.96">
+    <name>Waypoint 0466</name>
+    <ele>1465</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.96">
+    <name>Waypoint 0467</name>
+    <ele>1466</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.96">
+    <name>Waypoint 0468</name>
+    <ele>1467</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.96">
+    <name>Waypoint 0469</name>
+    <ele>1468</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.96">
+    <name>Waypoint 0470</name>
+    <ele>1469</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.96">
+    <name>Waypoint 0471</name>
+    <ele>1470</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.96">
+    <name>Waypoint 0472</name>
+    <ele>1471</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.96">
+    <name>Waypoint 0473</name>
+    <ele>1472</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.96">
+    <name>Waypoint 0474</name>
+    <ele>1473</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.96">
+    <name>Waypoint 0475</name>
+    <ele>1474</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.96">
+    <name>Waypoint 0476</name>
+    <ele>1475</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.96">
+    <name>Waypoint 0477</name>
+    <ele>1476</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.96">
+    <name>Waypoint 0478</name>
+    <ele>1477</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.96">
+    <name>Waypoint 0479</name>
+    <ele>1478</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.96">
+    <name>Waypoint 0480</name>
+    <ele>1479</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.96">
+    <name>Waypoint 0481</name>
+    <ele>1480</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.96">
+    <name>Waypoint 0482</name>
+    <ele>1481</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.96">
+    <name>Waypoint 0483</name>
+    <ele>1482</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.96">
+    <name>Waypoint 0484</name>
+    <ele>1483</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.96">
+    <name>Waypoint 0485</name>
+    <ele>1484</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.96">
+    <name>Waypoint 0486</name>
+    <ele>1485</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.96">
+    <name>Waypoint 0487</name>
+    <ele>1486</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.96">
+    <name>Waypoint 0488</name>
+    <ele>1487</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.96">
+    <name>Waypoint 0489</name>
+    <ele>1488</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.96">
+    <name>Waypoint 0490</name>
+    <ele>1489</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.96">
+    <name>Waypoint 0491</name>
+    <ele>1490</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.96">
+    <name>Waypoint 0492</name>
+    <ele>1491</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.96">
+    <name>Waypoint 0493</name>
+    <ele>1492</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.96">
+    <name>Waypoint 0494</name>
+    <ele>1493</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.96">
+    <name>Waypoint 0495</name>
+    <ele>1494</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.96">
+    <name>Waypoint 0496</name>
+    <ele>1495</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.96">
+    <name>Waypoint 0497</name>
+    <ele>1496</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.96">
+    <name>Waypoint 0498</name>
+    <ele>1497</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.96">
+    <name>Waypoint 0499</name>
+    <ele>1498</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.96">
+    <name>Waypoint 0500</name>
+    <ele>1499</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.95">
+    <name>Waypoint 0501</name>
+    <ele>1500</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.95">
+    <name>Waypoint 0502</name>
+    <ele>1501</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.95">
+    <name>Waypoint 0503</name>
+    <ele>1502</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.95">
+    <name>Waypoint 0504</name>
+    <ele>1503</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.95">
+    <name>Waypoint 0505</name>
+    <ele>1504</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.95">
+    <name>Waypoint 0506</name>
+    <ele>1505</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.95">
+    <name>Waypoint 0507</name>
+    <ele>1506</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.95">
+    <name>Waypoint 0508</name>
+    <ele>1507</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.95">
+    <name>Waypoint 0509</name>
+    <ele>1508</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.95">
+    <name>Waypoint 0510</name>
+    <ele>1509</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.95">
+    <name>Waypoint 0511</name>
+    <ele>1510</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.95">
+    <name>Waypoint 0512</name>
+    <ele>1511</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.95">
+    <name>Waypoint 0513</name>
+    <ele>1512</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.95">
+    <name>Waypoint 0514</name>
+    <ele>1513</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.95">
+    <name>Waypoint 0515</name>
+    <ele>1514</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.95">
+    <name>Waypoint 0516</name>
+    <ele>1515</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.95">
+    <name>Waypoint 0517</name>
+    <ele>1516</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.95">
+    <name>Waypoint 0518</name>
+    <ele>1517</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.95">
+    <name>Waypoint 0519</name>
+    <ele>1518</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.95">
+    <name>Waypoint 0520</name>
+    <ele>1519</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.95">
+    <name>Waypoint 0521</name>
+    <ele>1520</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.95">
+    <name>Waypoint 0522</name>
+    <ele>1521</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.95">
+    <name>Waypoint 0523</name>
+    <ele>1522</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.95">
+    <name>Waypoint 0524</name>
+    <ele>1523</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.95">
+    <name>Waypoint 0525</name>
+    <ele>1524</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.95">
+    <name>Waypoint 0526</name>
+    <ele>1525</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.95">
+    <name>Waypoint 0527</name>
+    <ele>1526</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.95">
+    <name>Waypoint 0528</name>
+    <ele>1527</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.95">
+    <name>Waypoint 0529</name>
+    <ele>1528</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.95">
+    <name>Waypoint 0530</name>
+    <ele>1529</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.95">
+    <name>Waypoint 0531</name>
+    <ele>1530</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.95">
+    <name>Waypoint 0532</name>
+    <ele>1531</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.95">
+    <name>Waypoint 0533</name>
+    <ele>1532</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.95">
+    <name>Waypoint 0534</name>
+    <ele>1533</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.95">
+    <name>Waypoint 0535</name>
+    <ele>1534</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.95">
+    <name>Waypoint 0536</name>
+    <ele>1535</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.95">
+    <name>Waypoint 0537</name>
+    <ele>1536</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.95">
+    <name>Waypoint 0538</name>
+    <ele>1537</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.95">
+    <name>Waypoint 0539</name>
+    <ele>1538</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.95">
+    <name>Waypoint 0540</name>
+    <ele>1539</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.95">
+    <name>Waypoint 0541</name>
+    <ele>1540</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.95">
+    <name>Waypoint 0542</name>
+    <ele>1541</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.95">
+    <name>Waypoint 0543</name>
+    <ele>1542</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.95">
+    <name>Waypoint 0544</name>
+    <ele>1543</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.95">
+    <name>Waypoint 0545</name>
+    <ele>1544</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.95">
+    <name>Waypoint 0546</name>
+    <ele>1545</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.95">
+    <name>Waypoint 0547</name>
+    <ele>1546</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.95">
+    <name>Waypoint 0548</name>
+    <ele>1547</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.95">
+    <name>Waypoint 0549</name>
+    <ele>1548</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.95">
+    <name>Waypoint 0550</name>
+    <ele>1549</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.95">
+    <name>Waypoint 0551</name>
+    <ele>1550</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.95">
+    <name>Waypoint 0552</name>
+    <ele>1551</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.95">
+    <name>Waypoint 0553</name>
+    <ele>1552</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.95">
+    <name>Waypoint 0554</name>
+    <ele>1553</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.95">
+    <name>Waypoint 0555</name>
+    <ele>1554</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.95">
+    <name>Waypoint 0556</name>
+    <ele>1555</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.95">
+    <name>Waypoint 0557</name>
+    <ele>1556</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.95">
+    <name>Waypoint 0558</name>
+    <ele>1557</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.95">
+    <name>Waypoint 0559</name>
+    <ele>1558</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.95">
+    <name>Waypoint 0560</name>
+    <ele>1559</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.95">
+    <name>Waypoint 0561</name>
+    <ele>1560</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.95">
+    <name>Waypoint 0562</name>
+    <ele>1561</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.95">
+    <name>Waypoint 0563</name>
+    <ele>1562</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.95">
+    <name>Waypoint 0564</name>
+    <ele>1563</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.95">
+    <name>Waypoint 0565</name>
+    <ele>1564</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.95">
+    <name>Waypoint 0566</name>
+    <ele>1565</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.95">
+    <name>Waypoint 0567</name>
+    <ele>1566</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.95">
+    <name>Waypoint 0568</name>
+    <ele>1567</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.95">
+    <name>Waypoint 0569</name>
+    <ele>1568</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.95">
+    <name>Waypoint 0570</name>
+    <ele>1569</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.95">
+    <name>Waypoint 0571</name>
+    <ele>1570</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.95">
+    <name>Waypoint 0572</name>
+    <ele>1571</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.95">
+    <name>Waypoint 0573</name>
+    <ele>1572</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.95">
+    <name>Waypoint 0574</name>
+    <ele>1573</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.95">
+    <name>Waypoint 0575</name>
+    <ele>1574</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.95">
+    <name>Waypoint 0576</name>
+    <ele>1575</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.95">
+    <name>Waypoint 0577</name>
+    <ele>1576</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.95">
+    <name>Waypoint 0578</name>
+    <ele>1577</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.95">
+    <name>Waypoint 0579</name>
+    <ele>1578</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.95">
+    <name>Waypoint 0580</name>
+    <ele>1579</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.95">
+    <name>Waypoint 0581</name>
+    <ele>1580</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.95">
+    <name>Waypoint 0582</name>
+    <ele>1581</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.95">
+    <name>Waypoint 0583</name>
+    <ele>1582</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.95">
+    <name>Waypoint 0584</name>
+    <ele>1583</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.95">
+    <name>Waypoint 0585</name>
+    <ele>1584</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.95">
+    <name>Waypoint 0586</name>
+    <ele>1585</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.95">
+    <name>Waypoint 0587</name>
+    <ele>1586</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.95">
+    <name>Waypoint 0588</name>
+    <ele>1587</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.95">
+    <name>Waypoint 0589</name>
+    <ele>1588</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.95">
+    <name>Waypoint 0590</name>
+    <ele>1589</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.95">
+    <name>Waypoint 0591</name>
+    <ele>1590</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.95">
+    <name>Waypoint 0592</name>
+    <ele>1591</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.95">
+    <name>Waypoint 0593</name>
+    <ele>1592</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.95">
+    <name>Waypoint 0594</name>
+    <ele>1593</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.95">
+    <name>Waypoint 0595</name>
+    <ele>1594</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.95">
+    <name>Waypoint 0596</name>
+    <ele>1595</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.95">
+    <name>Waypoint 0597</name>
+    <ele>1596</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.95">
+    <name>Waypoint 0598</name>
+    <ele>1597</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.95">
+    <name>Waypoint 0599</name>
+    <ele>1598</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.95">
+    <name>Waypoint 0600</name>
+    <ele>1599</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.94">
+    <name>Waypoint 0601</name>
+    <ele>1600</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.94">
+    <name>Waypoint 0602</name>
+    <ele>1601</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.94">
+    <name>Waypoint 0603</name>
+    <ele>1602</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.94">
+    <name>Waypoint 0604</name>
+    <ele>1603</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.94">
+    <name>Waypoint 0605</name>
+    <ele>1604</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.94">
+    <name>Waypoint 0606</name>
+    <ele>1605</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.94">
+    <name>Waypoint 0607</name>
+    <ele>1606</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.94">
+    <name>Waypoint 0608</name>
+    <ele>1607</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.94">
+    <name>Waypoint 0609</name>
+    <ele>1608</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.94">
+    <name>Waypoint 0610</name>
+    <ele>1609</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.94">
+    <name>Waypoint 0611</name>
+    <ele>1610</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.94">
+    <name>Waypoint 0612</name>
+    <ele>1611</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.94">
+    <name>Waypoint 0613</name>
+    <ele>1612</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.94">
+    <name>Waypoint 0614</name>
+    <ele>1613</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.94">
+    <name>Waypoint 0615</name>
+    <ele>1614</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.94">
+    <name>Waypoint 0616</name>
+    <ele>1615</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.94">
+    <name>Waypoint 0617</name>
+    <ele>1616</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.94">
+    <name>Waypoint 0618</name>
+    <ele>1617</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.94">
+    <name>Waypoint 0619</name>
+    <ele>1618</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.94">
+    <name>Waypoint 0620</name>
+    <ele>1619</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.94">
+    <name>Waypoint 0621</name>
+    <ele>1620</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.94">
+    <name>Waypoint 0622</name>
+    <ele>1621</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.94">
+    <name>Waypoint 0623</name>
+    <ele>1622</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.94">
+    <name>Waypoint 0624</name>
+    <ele>1623</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.94">
+    <name>Waypoint 0625</name>
+    <ele>1624</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.94">
+    <name>Waypoint 0626</name>
+    <ele>1625</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.94">
+    <name>Waypoint 0627</name>
+    <ele>1626</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.94">
+    <name>Waypoint 0628</name>
+    <ele>1627</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.94">
+    <name>Waypoint 0629</name>
+    <ele>1628</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.94">
+    <name>Waypoint 0630</name>
+    <ele>1629</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.94">
+    <name>Waypoint 0631</name>
+    <ele>1630</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.94">
+    <name>Waypoint 0632</name>
+    <ele>1631</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.94">
+    <name>Waypoint 0633</name>
+    <ele>1632</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.94">
+    <name>Waypoint 0634</name>
+    <ele>1633</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.94">
+    <name>Waypoint 0635</name>
+    <ele>1634</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.94">
+    <name>Waypoint 0636</name>
+    <ele>1635</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.94">
+    <name>Waypoint 0637</name>
+    <ele>1636</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.94">
+    <name>Waypoint 0638</name>
+    <ele>1637</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.94">
+    <name>Waypoint 0639</name>
+    <ele>1638</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.94">
+    <name>Waypoint 0640</name>
+    <ele>1639</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.94">
+    <name>Waypoint 0641</name>
+    <ele>1640</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.94">
+    <name>Waypoint 0642</name>
+    <ele>1641</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.94">
+    <name>Waypoint 0643</name>
+    <ele>1642</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.94">
+    <name>Waypoint 0644</name>
+    <ele>1643</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.94">
+    <name>Waypoint 0645</name>
+    <ele>1644</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.94">
+    <name>Waypoint 0646</name>
+    <ele>1645</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.94">
+    <name>Waypoint 0647</name>
+    <ele>1646</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.94">
+    <name>Waypoint 0648</name>
+    <ele>1647</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.94">
+    <name>Waypoint 0649</name>
+    <ele>1648</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.94">
+    <name>Waypoint 0650</name>
+    <ele>1649</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.94">
+    <name>Waypoint 0651</name>
+    <ele>1650</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.94">
+    <name>Waypoint 0652</name>
+    <ele>1651</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.94">
+    <name>Waypoint 0653</name>
+    <ele>1652</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.94">
+    <name>Waypoint 0654</name>
+    <ele>1653</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.94">
+    <name>Waypoint 0655</name>
+    <ele>1654</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.94">
+    <name>Waypoint 0656</name>
+    <ele>1655</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.94">
+    <name>Waypoint 0657</name>
+    <ele>1656</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.94">
+    <name>Waypoint 0658</name>
+    <ele>1657</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.94">
+    <name>Waypoint 0659</name>
+    <ele>1658</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.94">
+    <name>Waypoint 0660</name>
+    <ele>1659</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.94">
+    <name>Waypoint 0661</name>
+    <ele>1660</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.94">
+    <name>Waypoint 0662</name>
+    <ele>1661</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.94">
+    <name>Waypoint 0663</name>
+    <ele>1662</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.94">
+    <name>Waypoint 0664</name>
+    <ele>1663</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.94">
+    <name>Waypoint 0665</name>
+    <ele>1664</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.94">
+    <name>Waypoint 0666</name>
+    <ele>1665</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.94">
+    <name>Waypoint 0667</name>
+    <ele>1666</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.94">
+    <name>Waypoint 0668</name>
+    <ele>1667</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.94">
+    <name>Waypoint 0669</name>
+    <ele>1668</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.94">
+    <name>Waypoint 0670</name>
+    <ele>1669</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.94">
+    <name>Waypoint 0671</name>
+    <ele>1670</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.94">
+    <name>Waypoint 0672</name>
+    <ele>1671</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.94">
+    <name>Waypoint 0673</name>
+    <ele>1672</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.94">
+    <name>Waypoint 0674</name>
+    <ele>1673</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.94">
+    <name>Waypoint 0675</name>
+    <ele>1674</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.94">
+    <name>Waypoint 0676</name>
+    <ele>1675</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.94">
+    <name>Waypoint 0677</name>
+    <ele>1676</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.94">
+    <name>Waypoint 0678</name>
+    <ele>1677</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.94">
+    <name>Waypoint 0679</name>
+    <ele>1678</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.94">
+    <name>Waypoint 0680</name>
+    <ele>1679</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.94">
+    <name>Waypoint 0681</name>
+    <ele>1680</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.94">
+    <name>Waypoint 0682</name>
+    <ele>1681</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.94">
+    <name>Waypoint 0683</name>
+    <ele>1682</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.94">
+    <name>Waypoint 0684</name>
+    <ele>1683</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.94">
+    <name>Waypoint 0685</name>
+    <ele>1684</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.94">
+    <name>Waypoint 0686</name>
+    <ele>1685</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.94">
+    <name>Waypoint 0687</name>
+    <ele>1686</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.94">
+    <name>Waypoint 0688</name>
+    <ele>1687</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.94">
+    <name>Waypoint 0689</name>
+    <ele>1688</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.94">
+    <name>Waypoint 0690</name>
+    <ele>1689</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.94">
+    <name>Waypoint 0691</name>
+    <ele>1690</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.94">
+    <name>Waypoint 0692</name>
+    <ele>1691</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.94">
+    <name>Waypoint 0693</name>
+    <ele>1692</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.94">
+    <name>Waypoint 0694</name>
+    <ele>1693</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.94">
+    <name>Waypoint 0695</name>
+    <ele>1694</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.94">
+    <name>Waypoint 0696</name>
+    <ele>1695</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.94">
+    <name>Waypoint 0697</name>
+    <ele>1696</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.94">
+    <name>Waypoint 0698</name>
+    <ele>1697</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.94">
+    <name>Waypoint 0699</name>
+    <ele>1698</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.94">
+    <name>Waypoint 0700</name>
+    <ele>1699</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.93">
+    <name>Waypoint 0701</name>
+    <ele>1700</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.93">
+    <name>Waypoint 0702</name>
+    <ele>1701</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.93">
+    <name>Waypoint 0703</name>
+    <ele>1702</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.93">
+    <name>Waypoint 0704</name>
+    <ele>1703</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.93">
+    <name>Waypoint 0705</name>
+    <ele>1704</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.93">
+    <name>Waypoint 0706</name>
+    <ele>1705</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.93">
+    <name>Waypoint 0707</name>
+    <ele>1706</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.93">
+    <name>Waypoint 0708</name>
+    <ele>1707</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.93">
+    <name>Waypoint 0709</name>
+    <ele>1708</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.93">
+    <name>Waypoint 0710</name>
+    <ele>1709</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.93">
+    <name>Waypoint 0711</name>
+    <ele>1710</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.93">
+    <name>Waypoint 0712</name>
+    <ele>1711</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.93">
+    <name>Waypoint 0713</name>
+    <ele>1712</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.93">
+    <name>Waypoint 0714</name>
+    <ele>1713</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.93">
+    <name>Waypoint 0715</name>
+    <ele>1714</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.93">
+    <name>Waypoint 0716</name>
+    <ele>1715</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.93">
+    <name>Waypoint 0717</name>
+    <ele>1716</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.93">
+    <name>Waypoint 0718</name>
+    <ele>1717</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.93">
+    <name>Waypoint 0719</name>
+    <ele>1718</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.93">
+    <name>Waypoint 0720</name>
+    <ele>1719</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.93">
+    <name>Waypoint 0721</name>
+    <ele>1720</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.93">
+    <name>Waypoint 0722</name>
+    <ele>1721</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.93">
+    <name>Waypoint 0723</name>
+    <ele>1722</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.93">
+    <name>Waypoint 0724</name>
+    <ele>1723</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.93">
+    <name>Waypoint 0725</name>
+    <ele>1724</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.93">
+    <name>Waypoint 0726</name>
+    <ele>1725</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.93">
+    <name>Waypoint 0727</name>
+    <ele>1726</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.93">
+    <name>Waypoint 0728</name>
+    <ele>1727</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.93">
+    <name>Waypoint 0729</name>
+    <ele>1728</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.93">
+    <name>Waypoint 0730</name>
+    <ele>1729</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.93">
+    <name>Waypoint 0731</name>
+    <ele>1730</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.93">
+    <name>Waypoint 0732</name>
+    <ele>1731</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.93">
+    <name>Waypoint 0733</name>
+    <ele>1732</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.93">
+    <name>Waypoint 0734</name>
+    <ele>1733</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.93">
+    <name>Waypoint 0735</name>
+    <ele>1734</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.93">
+    <name>Waypoint 0736</name>
+    <ele>1735</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.93">
+    <name>Waypoint 0737</name>
+    <ele>1736</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.93">
+    <name>Waypoint 0738</name>
+    <ele>1737</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.93">
+    <name>Waypoint 0739</name>
+    <ele>1738</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.93">
+    <name>Waypoint 0740</name>
+    <ele>1739</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.93">
+    <name>Waypoint 0741</name>
+    <ele>1740</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.93">
+    <name>Waypoint 0742</name>
+    <ele>1741</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.93">
+    <name>Waypoint 0743</name>
+    <ele>1742</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.93">
+    <name>Waypoint 0744</name>
+    <ele>1743</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.93">
+    <name>Waypoint 0745</name>
+    <ele>1744</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.93">
+    <name>Waypoint 0746</name>
+    <ele>1745</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.93">
+    <name>Waypoint 0747</name>
+    <ele>1746</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.93">
+    <name>Waypoint 0748</name>
+    <ele>1747</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.93">
+    <name>Waypoint 0749</name>
+    <ele>1748</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.93">
+    <name>Waypoint 0750</name>
+    <ele>1749</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.93">
+    <name>Waypoint 0751</name>
+    <ele>1750</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.93">
+    <name>Waypoint 0752</name>
+    <ele>1751</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.93">
+    <name>Waypoint 0753</name>
+    <ele>1752</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.93">
+    <name>Waypoint 0754</name>
+    <ele>1753</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.93">
+    <name>Waypoint 0755</name>
+    <ele>1754</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.93">
+    <name>Waypoint 0756</name>
+    <ele>1755</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.93">
+    <name>Waypoint 0757</name>
+    <ele>1756</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.93">
+    <name>Waypoint 0758</name>
+    <ele>1757</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.93">
+    <name>Waypoint 0759</name>
+    <ele>1758</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.93">
+    <name>Waypoint 0760</name>
+    <ele>1759</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.93">
+    <name>Waypoint 0761</name>
+    <ele>1760</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.93">
+    <name>Waypoint 0762</name>
+    <ele>1761</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.93">
+    <name>Waypoint 0763</name>
+    <ele>1762</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.93">
+    <name>Waypoint 0764</name>
+    <ele>1763</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.93">
+    <name>Waypoint 0765</name>
+    <ele>1764</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.93">
+    <name>Waypoint 0766</name>
+    <ele>1765</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.93">
+    <name>Waypoint 0767</name>
+    <ele>1766</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.93">
+    <name>Waypoint 0768</name>
+    <ele>1767</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.93">
+    <name>Waypoint 0769</name>
+    <ele>1768</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.93">
+    <name>Waypoint 0770</name>
+    <ele>1769</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.93">
+    <name>Waypoint 0771</name>
+    <ele>1770</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.93">
+    <name>Waypoint 0772</name>
+    <ele>1771</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.93">
+    <name>Waypoint 0773</name>
+    <ele>1772</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.93">
+    <name>Waypoint 0774</name>
+    <ele>1773</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.93">
+    <name>Waypoint 0775</name>
+    <ele>1774</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.93">
+    <name>Waypoint 0776</name>
+    <ele>1775</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.93">
+    <name>Waypoint 0777</name>
+    <ele>1776</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.93">
+    <name>Waypoint 0778</name>
+    <ele>1777</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.93">
+    <name>Waypoint 0779</name>
+    <ele>1778</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.93">
+    <name>Waypoint 0780</name>
+    <ele>1779</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.93">
+    <name>Waypoint 0781</name>
+    <ele>1780</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.93">
+    <name>Waypoint 0782</name>
+    <ele>1781</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.93">
+    <name>Waypoint 0783</name>
+    <ele>1782</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.93">
+    <name>Waypoint 0784</name>
+    <ele>1783</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.93">
+    <name>Waypoint 0785</name>
+    <ele>1784</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.93">
+    <name>Waypoint 0786</name>
+    <ele>1785</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.93">
+    <name>Waypoint 0787</name>
+    <ele>1786</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.93">
+    <name>Waypoint 0788</name>
+    <ele>1787</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.93">
+    <name>Waypoint 0789</name>
+    <ele>1788</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.93">
+    <name>Waypoint 0790</name>
+    <ele>1789</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.93">
+    <name>Waypoint 0791</name>
+    <ele>1790</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.93">
+    <name>Waypoint 0792</name>
+    <ele>1791</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.93">
+    <name>Waypoint 0793</name>
+    <ele>1792</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.93">
+    <name>Waypoint 0794</name>
+    <ele>1793</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.93">
+    <name>Waypoint 0795</name>
+    <ele>1794</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.93">
+    <name>Waypoint 0796</name>
+    <ele>1795</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.93">
+    <name>Waypoint 0797</name>
+    <ele>1796</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.93">
+    <name>Waypoint 0798</name>
+    <ele>1797</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.93">
+    <name>Waypoint 0799</name>
+    <ele>1798</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.93">
+    <name>Waypoint 0800</name>
+    <ele>1799</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.92">
+    <name>Waypoint 0801</name>
+    <ele>1800</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.92">
+    <name>Waypoint 0802</name>
+    <ele>1801</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.92">
+    <name>Waypoint 0803</name>
+    <ele>1802</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.92">
+    <name>Waypoint 0804</name>
+    <ele>1803</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.92">
+    <name>Waypoint 0805</name>
+    <ele>1804</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.92">
+    <name>Waypoint 0806</name>
+    <ele>1805</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.92">
+    <name>Waypoint 0807</name>
+    <ele>1806</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.92">
+    <name>Waypoint 0808</name>
+    <ele>1807</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.92">
+    <name>Waypoint 0809</name>
+    <ele>1808</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.92">
+    <name>Waypoint 0810</name>
+    <ele>1809</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.92">
+    <name>Waypoint 0811</name>
+    <ele>1810</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.92">
+    <name>Waypoint 0812</name>
+    <ele>1811</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.92">
+    <name>Waypoint 0813</name>
+    <ele>1812</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.92">
+    <name>Waypoint 0814</name>
+    <ele>1813</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.92">
+    <name>Waypoint 0815</name>
+    <ele>1814</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.92">
+    <name>Waypoint 0816</name>
+    <ele>1815</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.92">
+    <name>Waypoint 0817</name>
+    <ele>1816</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.92">
+    <name>Waypoint 0818</name>
+    <ele>1817</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.92">
+    <name>Waypoint 0819</name>
+    <ele>1818</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.92">
+    <name>Waypoint 0820</name>
+    <ele>1819</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.92">
+    <name>Waypoint 0821</name>
+    <ele>1820</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.92">
+    <name>Waypoint 0822</name>
+    <ele>1821</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.92">
+    <name>Waypoint 0823</name>
+    <ele>1822</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.92">
+    <name>Waypoint 0824</name>
+    <ele>1823</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.92">
+    <name>Waypoint 0825</name>
+    <ele>1824</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.92">
+    <name>Waypoint 0826</name>
+    <ele>1825</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.92">
+    <name>Waypoint 0827</name>
+    <ele>1826</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.92">
+    <name>Waypoint 0828</name>
+    <ele>1827</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.92">
+    <name>Waypoint 0829</name>
+    <ele>1828</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.92">
+    <name>Waypoint 0830</name>
+    <ele>1829</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.92">
+    <name>Waypoint 0831</name>
+    <ele>1830</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.92">
+    <name>Waypoint 0832</name>
+    <ele>1831</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.92">
+    <name>Waypoint 0833</name>
+    <ele>1832</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.92">
+    <name>Waypoint 0834</name>
+    <ele>1833</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.92">
+    <name>Waypoint 0835</name>
+    <ele>1834</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.92">
+    <name>Waypoint 0836</name>
+    <ele>1835</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.92">
+    <name>Waypoint 0837</name>
+    <ele>1836</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.92">
+    <name>Waypoint 0838</name>
+    <ele>1837</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.92">
+    <name>Waypoint 0839</name>
+    <ele>1838</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.92">
+    <name>Waypoint 0840</name>
+    <ele>1839</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.92">
+    <name>Waypoint 0841</name>
+    <ele>1840</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.92">
+    <name>Waypoint 0842</name>
+    <ele>1841</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.92">
+    <name>Waypoint 0843</name>
+    <ele>1842</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.92">
+    <name>Waypoint 0844</name>
+    <ele>1843</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.92">
+    <name>Waypoint 0845</name>
+    <ele>1844</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.92">
+    <name>Waypoint 0846</name>
+    <ele>1845</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.92">
+    <name>Waypoint 0847</name>
+    <ele>1846</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.92">
+    <name>Waypoint 0848</name>
+    <ele>1847</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.92">
+    <name>Waypoint 0849</name>
+    <ele>1848</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.92">
+    <name>Waypoint 0850</name>
+    <ele>1849</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.92">
+    <name>Waypoint 0851</name>
+    <ele>1850</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.92">
+    <name>Waypoint 0852</name>
+    <ele>1851</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.92">
+    <name>Waypoint 0853</name>
+    <ele>1852</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.92">
+    <name>Waypoint 0854</name>
+    <ele>1853</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.92">
+    <name>Waypoint 0855</name>
+    <ele>1854</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.92">
+    <name>Waypoint 0856</name>
+    <ele>1855</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.92">
+    <name>Waypoint 0857</name>
+    <ele>1856</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.92">
+    <name>Waypoint 0858</name>
+    <ele>1857</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.92">
+    <name>Waypoint 0859</name>
+    <ele>1858</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.92">
+    <name>Waypoint 0860</name>
+    <ele>1859</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.92">
+    <name>Waypoint 0861</name>
+    <ele>1860</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.92">
+    <name>Waypoint 0862</name>
+    <ele>1861</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.92">
+    <name>Waypoint 0863</name>
+    <ele>1862</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.92">
+    <name>Waypoint 0864</name>
+    <ele>1863</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.92">
+    <name>Waypoint 0865</name>
+    <ele>1864</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.92">
+    <name>Waypoint 0866</name>
+    <ele>1865</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.92">
+    <name>Waypoint 0867</name>
+    <ele>1866</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.92">
+    <name>Waypoint 0868</name>
+    <ele>1867</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.92">
+    <name>Waypoint 0869</name>
+    <ele>1868</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.92">
+    <name>Waypoint 0870</name>
+    <ele>1869</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.92">
+    <name>Waypoint 0871</name>
+    <ele>1870</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.92">
+    <name>Waypoint 0872</name>
+    <ele>1871</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.92">
+    <name>Waypoint 0873</name>
+    <ele>1872</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.92">
+    <name>Waypoint 0874</name>
+    <ele>1873</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.92">
+    <name>Waypoint 0875</name>
+    <ele>1874</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.92">
+    <name>Waypoint 0876</name>
+    <ele>1875</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.92">
+    <name>Waypoint 0877</name>
+    <ele>1876</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.92">
+    <name>Waypoint 0878</name>
+    <ele>1877</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.92">
+    <name>Waypoint 0879</name>
+    <ele>1878</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.92">
+    <name>Waypoint 0880</name>
+    <ele>1879</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.92">
+    <name>Waypoint 0881</name>
+    <ele>1880</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.92">
+    <name>Waypoint 0882</name>
+    <ele>1881</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.92">
+    <name>Waypoint 0883</name>
+    <ele>1882</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.92">
+    <name>Waypoint 0884</name>
+    <ele>1883</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.92">
+    <name>Waypoint 0885</name>
+    <ele>1884</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.92">
+    <name>Waypoint 0886</name>
+    <ele>1885</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.92">
+    <name>Waypoint 0887</name>
+    <ele>1886</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.92">
+    <name>Waypoint 0888</name>
+    <ele>1887</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.92">
+    <name>Waypoint 0889</name>
+    <ele>1888</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.92">
+    <name>Waypoint 0890</name>
+    <ele>1889</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.92">
+    <name>Waypoint 0891</name>
+    <ele>1890</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.92">
+    <name>Waypoint 0892</name>
+    <ele>1891</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.92">
+    <name>Waypoint 0893</name>
+    <ele>1892</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.92">
+    <name>Waypoint 0894</name>
+    <ele>1893</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.92">
+    <name>Waypoint 0895</name>
+    <ele>1894</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.92">
+    <name>Waypoint 0896</name>
+    <ele>1895</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.92">
+    <name>Waypoint 0897</name>
+    <ele>1896</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.92">
+    <name>Waypoint 0898</name>
+    <ele>1897</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.92">
+    <name>Waypoint 0899</name>
+    <ele>1898</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.92">
+    <name>Waypoint 0900</name>
+    <ele>1899</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-119.91">
+    <name>Waypoint 0901</name>
+    <ele>1900</ele>
+  </wpt>
+  <wpt lat="45.01" lon="-119.91">
+    <name>Waypoint 0902</name>
+    <ele>1901</ele>
+  </wpt>
+  <wpt lat="45.02" lon="-119.91">
+    <name>Waypoint 0903</name>
+    <ele>1902</ele>
+  </wpt>
+  <wpt lat="45.03" lon="-119.91">
+    <name>Waypoint 0904</name>
+    <ele>1903</ele>
+  </wpt>
+  <wpt lat="45.04" lon="-119.91">
+    <name>Waypoint 0905</name>
+    <ele>1904</ele>
+  </wpt>
+  <wpt lat="45.05" lon="-119.91">
+    <name>Waypoint 0906</name>
+    <ele>1905</ele>
+  </wpt>
+  <wpt lat="45.06" lon="-119.91">
+    <name>Waypoint 0907</name>
+    <ele>1906</ele>
+  </wpt>
+  <wpt lat="45.07" lon="-119.91">
+    <name>Waypoint 0908</name>
+    <ele>1907</ele>
+  </wpt>
+  <wpt lat="45.08" lon="-119.91">
+    <name>Waypoint 0909</name>
+    <ele>1908</ele>
+  </wpt>
+  <wpt lat="45.09" lon="-119.91">
+    <name>Waypoint 0910</name>
+    <ele>1909</ele>
+  </wpt>
+  <wpt lat="45.1" lon="-119.91">
+    <name>Waypoint 0911</name>
+    <ele>1910</ele>
+  </wpt>
+  <wpt lat="45.11" lon="-119.91">
+    <name>Waypoint 0912</name>
+    <ele>1911</ele>
+  </wpt>
+  <wpt lat="45.12" lon="-119.91">
+    <name>Waypoint 0913</name>
+    <ele>1912</ele>
+  </wpt>
+  <wpt lat="45.13" lon="-119.91">
+    <name>Waypoint 0914</name>
+    <ele>1913</ele>
+  </wpt>
+  <wpt lat="45.14" lon="-119.91">
+    <name>Waypoint 0915</name>
+    <ele>1914</ele>
+  </wpt>
+  <wpt lat="45.15" lon="-119.91">
+    <name>Waypoint 0916</name>
+    <ele>1915</ele>
+  </wpt>
+  <wpt lat="45.16" lon="-119.91">
+    <name>Waypoint 0917</name>
+    <ele>1916</ele>
+  </wpt>
+  <wpt lat="45.17" lon="-119.91">
+    <name>Waypoint 0918</name>
+    <ele>1917</ele>
+  </wpt>
+  <wpt lat="45.18" lon="-119.91">
+    <name>Waypoint 0919</name>
+    <ele>1918</ele>
+  </wpt>
+  <wpt lat="45.19" lon="-119.91">
+    <name>Waypoint 0920</name>
+    <ele>1919</ele>
+  </wpt>
+  <wpt lat="45.2" lon="-119.91">
+    <name>Waypoint 0921</name>
+    <ele>1920</ele>
+  </wpt>
+  <wpt lat="45.21" lon="-119.91">
+    <name>Waypoint 0922</name>
+    <ele>1921</ele>
+  </wpt>
+  <wpt lat="45.22" lon="-119.91">
+    <name>Waypoint 0923</name>
+    <ele>1922</ele>
+  </wpt>
+  <wpt lat="45.23" lon="-119.91">
+    <name>Waypoint 0924</name>
+    <ele>1923</ele>
+  </wpt>
+  <wpt lat="45.24" lon="-119.91">
+    <name>Waypoint 0925</name>
+    <ele>1924</ele>
+  </wpt>
+  <wpt lat="45.25" lon="-119.91">
+    <name>Waypoint 0926</name>
+    <ele>1925</ele>
+  </wpt>
+  <wpt lat="45.26" lon="-119.91">
+    <name>Waypoint 0927</name>
+    <ele>1926</ele>
+  </wpt>
+  <wpt lat="45.27" lon="-119.91">
+    <name>Waypoint 0928</name>
+    <ele>1927</ele>
+  </wpt>
+  <wpt lat="45.28" lon="-119.91">
+    <name>Waypoint 0929</name>
+    <ele>1928</ele>
+  </wpt>
+  <wpt lat="45.29" lon="-119.91">
+    <name>Waypoint 0930</name>
+    <ele>1929</ele>
+  </wpt>
+  <wpt lat="45.3" lon="-119.91">
+    <name>Waypoint 0931</name>
+    <ele>1930</ele>
+  </wpt>
+  <wpt lat="45.31" lon="-119.91">
+    <name>Waypoint 0932</name>
+    <ele>1931</ele>
+  </wpt>
+  <wpt lat="45.32" lon="-119.91">
+    <name>Waypoint 0933</name>
+    <ele>1932</ele>
+  </wpt>
+  <wpt lat="45.33" lon="-119.91">
+    <name>Waypoint 0934</name>
+    <ele>1933</ele>
+  </wpt>
+  <wpt lat="45.34" lon="-119.91">
+    <name>Waypoint 0935</name>
+    <ele>1934</ele>
+  </wpt>
+  <wpt lat="45.35" lon="-119.91">
+    <name>Waypoint 0936</name>
+    <ele>1935</ele>
+  </wpt>
+  <wpt lat="45.36" lon="-119.91">
+    <name>Waypoint 0937</name>
+    <ele>1936</ele>
+  </wpt>
+  <wpt lat="45.37" lon="-119.91">
+    <name>Waypoint 0938</name>
+    <ele>1937</ele>
+  </wpt>
+  <wpt lat="45.38" lon="-119.91">
+    <name>Waypoint 0939</name>
+    <ele>1938</ele>
+  </wpt>
+  <wpt lat="45.39" lon="-119.91">
+    <name>Waypoint 0940</name>
+    <ele>1939</ele>
+  </wpt>
+  <wpt lat="45.4" lon="-119.91">
+    <name>Waypoint 0941</name>
+    <ele>1940</ele>
+  </wpt>
+  <wpt lat="45.41" lon="-119.91">
+    <name>Waypoint 0942</name>
+    <ele>1941</ele>
+  </wpt>
+  <wpt lat="45.42" lon="-119.91">
+    <name>Waypoint 0943</name>
+    <ele>1942</ele>
+  </wpt>
+  <wpt lat="45.43" lon="-119.91">
+    <name>Waypoint 0944</name>
+    <ele>1943</ele>
+  </wpt>
+  <wpt lat="45.44" lon="-119.91">
+    <name>Waypoint 0945</name>
+    <ele>1944</ele>
+  </wpt>
+  <wpt lat="45.45" lon="-119.91">
+    <name>Waypoint 0946</name>
+    <ele>1945</ele>
+  </wpt>
+  <wpt lat="45.46" lon="-119.91">
+    <name>Waypoint 0947</name>
+    <ele>1946</ele>
+  </wpt>
+  <wpt lat="45.47" lon="-119.91">
+    <name>Waypoint 0948</name>
+    <ele>1947</ele>
+  </wpt>
+  <wpt lat="45.48" lon="-119.91">
+    <name>Waypoint 0949</name>
+    <ele>1948</ele>
+  </wpt>
+  <wpt lat="45.49" lon="-119.91">
+    <name>Waypoint 0950</name>
+    <ele>1949</ele>
+  </wpt>
+  <wpt lat="45.5" lon="-119.91">
+    <name>Waypoint 0951</name>
+    <ele>1950</ele>
+  </wpt>
+  <wpt lat="45.51" lon="-119.91">
+    <name>Waypoint 0952</name>
+    <ele>1951</ele>
+  </wpt>
+  <wpt lat="45.52" lon="-119.91">
+    <name>Waypoint 0953</name>
+    <ele>1952</ele>
+  </wpt>
+  <wpt lat="45.53" lon="-119.91">
+    <name>Waypoint 0954</name>
+    <ele>1953</ele>
+  </wpt>
+  <wpt lat="45.54" lon="-119.91">
+    <name>Waypoint 0955</name>
+    <ele>1954</ele>
+  </wpt>
+  <wpt lat="45.55" lon="-119.91">
+    <name>Waypoint 0956</name>
+    <ele>1955</ele>
+  </wpt>
+  <wpt lat="45.56" lon="-119.91">
+    <name>Waypoint 0957</name>
+    <ele>1956</ele>
+  </wpt>
+  <wpt lat="45.57" lon="-119.91">
+    <name>Waypoint 0958</name>
+    <ele>1957</ele>
+  </wpt>
+  <wpt lat="45.58" lon="-119.91">
+    <name>Waypoint 0959</name>
+    <ele>1958</ele>
+  </wpt>
+  <wpt lat="45.59" lon="-119.91">
+    <name>Waypoint 0960</name>
+    <ele>1959</ele>
+  </wpt>
+  <wpt lat="45.6" lon="-119.91">
+    <name>Waypoint 0961</name>
+    <ele>1960</ele>
+  </wpt>
+  <wpt lat="45.61" lon="-119.91">
+    <name>Waypoint 0962</name>
+    <ele>1961</ele>
+  </wpt>
+  <wpt lat="45.62" lon="-119.91">
+    <name>Waypoint 0963</name>
+    <ele>1962</ele>
+  </wpt>
+  <wpt lat="45.63" lon="-119.91">
+    <name>Waypoint 0964</name>
+    <ele>1963</ele>
+  </wpt>
+  <wpt lat="45.64" lon="-119.91">
+    <name>Waypoint 0965</name>
+    <ele>1964</ele>
+  </wpt>
+  <wpt lat="45.65" lon="-119.91">
+    <name>Waypoint 0966</name>
+    <ele>1965</ele>
+  </wpt>
+  <wpt lat="45.66" lon="-119.91">
+    <name>Waypoint 0967</name>
+    <ele>1966</ele>
+  </wpt>
+  <wpt lat="45.67" lon="-119.91">
+    <name>Waypoint 0968</name>
+    <ele>1967</ele>
+  </wpt>
+  <wpt lat="45.68" lon="-119.91">
+    <name>Waypoint 0969</name>
+    <ele>1968</ele>
+  </wpt>
+  <wpt lat="45.69" lon="-119.91">
+    <name>Waypoint 0970</name>
+    <ele>1969</ele>
+  </wpt>
+  <wpt lat="45.7" lon="-119.91">
+    <name>Waypoint 0971</name>
+    <ele>1970</ele>
+  </wpt>
+  <wpt lat="45.71" lon="-119.91">
+    <name>Waypoint 0972</name>
+    <ele>1971</ele>
+  </wpt>
+  <wpt lat="45.72" lon="-119.91">
+    <name>Waypoint 0973</name>
+    <ele>1972</ele>
+  </wpt>
+  <wpt lat="45.73" lon="-119.91">
+    <name>Waypoint 0974</name>
+    <ele>1973</ele>
+  </wpt>
+  <wpt lat="45.74" lon="-119.91">
+    <name>Waypoint 0975</name>
+    <ele>1974</ele>
+  </wpt>
+  <wpt lat="45.75" lon="-119.91">
+    <name>Waypoint 0976</name>
+    <ele>1975</ele>
+  </wpt>
+  <wpt lat="45.76" lon="-119.91">
+    <name>Waypoint 0977</name>
+    <ele>1976</ele>
+  </wpt>
+  <wpt lat="45.77" lon="-119.91">
+    <name>Waypoint 0978</name>
+    <ele>1977</ele>
+  </wpt>
+  <wpt lat="45.78" lon="-119.91">
+    <name>Waypoint 0979</name>
+    <ele>1978</ele>
+  </wpt>
+  <wpt lat="45.79" lon="-119.91">
+    <name>Waypoint 0980</name>
+    <ele>1979</ele>
+  </wpt>
+  <wpt lat="45.8" lon="-119.91">
+    <name>Waypoint 0981</name>
+    <ele>1980</ele>
+  </wpt>
+  <wpt lat="45.81" lon="-119.91">
+    <name>Waypoint 0982</name>
+    <ele>1981</ele>
+  </wpt>
+  <wpt lat="45.82" lon="-119.91">
+    <name>Waypoint 0983</name>
+    <ele>1982</ele>
+  </wpt>
+  <wpt lat="45.83" lon="-119.91">
+    <name>Waypoint 0984</name>
+    <ele>1983</ele>
+  </wpt>
+  <wpt lat="45.84" lon="-119.91">
+    <name>Waypoint 0985</name>
+    <ele>1984</ele>
+  </wpt>
+  <wpt lat="45.85" lon="-119.91">
+    <name>Waypoint 0986</name>
+    <ele>1985</ele>
+  </wpt>
+  <wpt lat="45.86" lon="-119.91">
+    <name>Waypoint 0987</name>
+    <ele>1986</ele>
+  </wpt>
+  <wpt lat="45.87" lon="-119.91">
+    <name>Waypoint 0988</name>
+    <ele>1987</ele>
+  </wpt>
+  <wpt lat="45.88" lon="-119.91">
+    <name>Waypoint 0989</name>
+    <ele>1988</ele>
+  </wpt>
+  <wpt lat="45.89" lon="-119.91">
+    <name>Waypoint 0990</name>
+    <ele>1989</ele>
+  </wpt>
+  <wpt lat="45.9" lon="-119.91">
+    <name>Waypoint 0991</name>
+    <ele>1990</ele>
+  </wpt>
+  <wpt lat="45.91" lon="-119.91">
+    <name>Waypoint 0992</name>
+    <ele>1991</ele>
+  </wpt>
+  <wpt lat="45.92" lon="-119.91">
+    <name>Waypoint 0993</name>
+    <ele>1992</ele>
+  </wpt>
+  <wpt lat="45.93" lon="-119.91">
+    <name>Waypoint 0994</name>
+    <ele>1993</ele>
+  </wpt>
+  <wpt lat="45.94" lon="-119.91">
+    <name>Waypoint 0995</name>
+    <ele>1994</ele>
+  </wpt>
+  <wpt lat="45.95" lon="-119.91">
+    <name>Waypoint 0996</name>
+    <ele>1995</ele>
+  </wpt>
+  <wpt lat="45.96" lon="-119.91">
+    <name>Waypoint 0997</name>
+    <ele>1996</ele>
+  </wpt>
+  <wpt lat="45.97" lon="-119.91">
+    <name>Waypoint 0998</name>
+    <ele>1997</ele>
+  </wpt>
+  <wpt lat="45.98" lon="-119.91">
+    <name>Waypoint 0999</name>
+    <ele>1998</ele>
+  </wpt>
+  <wpt lat="45.99" lon="-119.91">
+    <name>Waypoint 1000</name>
+    <ele>1999</ele>
+  </wpt>
+</gpx>

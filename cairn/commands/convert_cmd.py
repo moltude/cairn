@@ -1,5 +1,7 @@
 """Convert command for Cairn CLI."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Optional, List, Tuple
 import typer
@@ -12,16 +14,22 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 from cairn.core.parser import parse_geojson, get_file_summary, ParsedData
-from cairn.core.writers import write_gpx_waypoints, write_gpx_tracks, write_kml_shapes, verify_gpx_waypoint_order, get_name_changes, clear_name_changes
+from cairn.core.writers import write_kml_shapes, get_name_changes, clear_name_changes
 from cairn.utils.utils import (
-    chunk_data, sanitize_filename, format_file_size,
-    ensure_output_dir, should_split, natural_sort_key
+    chunk_data,
+    sanitize_filename,
+    format_file_size,
+    ensure_output_dir,
+    natural_sort_key,
 )
 from cairn.core.mapper import map_icon
-from cairn.core.config import get_icon_emoji
-from cairn.core.config import load_config, IconMappingConfig, get_all_OnX_icons, save_user_mapping
+from cairn.core.config import (
+    load_config,
+    IconMappingConfig,
+    get_all_onx_icons,
+    save_user_mapping,
+)
 from cairn.core.matcher import FuzzyIconMatcher
-from cairn.core.color_mapper import ColorMapper
 from cairn.core.preview import (
     generate_dry_run_report,
     display_dry_run_report,
@@ -32,7 +40,7 @@ from cairn.core.preview import (
 from cairn.core.icon_registry import IconRegistry, write_icon_report_markdown
 
 # New bidirectional adapters (OnX → CalTopo)
-from cairn.io.onx_gpx import read_OnX_gpx
+from cairn.io.onx_gpx import read_onx_gpx
 from cairn.io.onx_kml import read_onx_kml
 from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.dedup import apply_waypoint_dedup
@@ -57,16 +65,18 @@ class ToFormat(str, Enum):
     caltopo_geojson = "caltopo_geojson"
 
 
-def print_header():
+def print_header() -> None:
     """Print the Cairn header."""
-    console.print(Panel.fit(
-        f"[bold yellow]CAIRN[/] v{VERSION}\n[italic]The CalTopo → OnX Bridge[/]",
-        border_style="yellow",
-        padding=(0, 4)
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold yellow]CAIRN[/] v{VERSION}\n[italic]The CalTopo → OnX Bridge[/]",
+            border_style="yellow",
+            padding=(0, 4),
+        )
+    )
 
 
-def print_file_detection(input_file: Path):
+def print_file_detection(input_file: Path) -> None:
     """Print file detection message."""
     console.print(f"\n[bold cyan]📂[/] Input file: [green]{input_file.name}[/]")
     file_size = input_file.stat().st_size
@@ -81,7 +91,7 @@ def parse_with_progress(input_file: Path) -> ParsedData:
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
-        console=console
+        console=console,
     ) as progress:
         progress.add_task("[cyan]Parsing GeoJSON and mapping icons...", total=None)
         # Actually parse the file
@@ -90,7 +100,7 @@ def parse_with_progress(input_file: Path) -> ParsedData:
     return parsed_data
 
 
-def display_folder_tree(parsed_data: ParsedData, config: IconMappingConfig):
+def display_folder_tree(parsed_data: ParsedData, config: IconMappingConfig) -> None:
     """Display a tree view of found folders and features."""
     summary = get_file_summary(parsed_data)
 
@@ -107,11 +117,17 @@ def display_folder_tree(parsed_data: ParsedData, config: IconMappingConfig):
         if stats["total"] > 0:
             parts = []
             if stats["waypoints"] > 0:
-                parts.append(f"📍 {stats['waypoints']} Waypoint{'s' if stats['waypoints'] != 1 else ''}")
+                parts.append(
+                    f"📍 {stats['waypoints']} Waypoint{'s' if stats['waypoints'] != 1 else ''}"
+                )
             if stats["tracks"] > 0:
-                parts.append(f"〰️  {stats['tracks']} Track{'s' if stats['tracks'] != 1 else ''}")
+                parts.append(
+                    f"〰️  {stats['tracks']} Track{'s' if stats['tracks'] != 1 else ''}"
+                )
             if stats["shapes"] > 0:
-                parts.append(f"⬠ {stats['shapes']} Shape{'s' if stats['shapes'] != 1 else ''}")
+                parts.append(
+                    f"⬠ {stats['shapes']} Shape{'s' if stats['shapes'] != 1 else ''}"
+                )
             folder_label += f" ({', '.join(parts)})"
 
         folder_node = tree.add(folder_label)
@@ -120,12 +136,15 @@ def display_folder_tree(parsed_data: ParsedData, config: IconMappingConfig):
         if folder_data["waypoints"]:
             sample_count = min(3, len(folder_data["waypoints"]))
             for waypoint in folder_data["waypoints"][:sample_count]:
-                mapped = map_icon(waypoint.title, waypoint.description, waypoint.symbol, config)
-                emoji = config.get_icon_emoji(mapped)
-                folder_node.add(f"{emoji} [blue]{waypoint.title}[/] → [green]'{mapped}'[/]")
+                mapped = map_icon(
+                    waypoint.title, waypoint.description, waypoint.symbol, config
+                )
+                folder_node.add(f"[blue]{waypoint.title}[/] → [green]'{mapped}'[/]")
 
             if len(folder_data["waypoints"]) > sample_count:
-                folder_node.add(f"[dim]... and {len(folder_data['waypoints']) - sample_count} more waypoints[/]")
+                folder_node.add(
+                    f"[dim]... and {len(folder_data['waypoints']) - sample_count} more waypoints[/]"
+                )
 
         # Show tracks
         if folder_data["tracks"]:
@@ -133,7 +152,9 @@ def display_folder_tree(parsed_data: ParsedData, config: IconMappingConfig):
                 folder_node.add(f"〰️  [blue]{track.title}[/] → [italic]GPX Track[/]")
 
             if len(folder_data["tracks"]) > 2:
-                folder_node.add(f"[dim]... and {len(folder_data['tracks']) - 2} more tracks[/]")
+                folder_node.add(
+                    f"[dim]... and {len(folder_data['tracks']) - 2} more tracks[/]"
+                )
 
         # Show shapes
         if folder_data["shapes"]:
@@ -141,14 +162,17 @@ def display_folder_tree(parsed_data: ParsedData, config: IconMappingConfig):
                 folder_node.add(f"⬠ [magenta]{shape.title}[/] → [italic]KML Polygon[/]")
 
             if len(folder_data["shapes"]) > 2:
-                folder_node.add(f"[dim]... and {len(folder_data['shapes']) - 2} more shapes[/]")
+                folder_node.add(
+                    f"[dim]... and {len(folder_data['shapes']) - 2} more shapes[/]"
+                )
 
     console.print(tree)
     console.print()
 
 
-def prompt_for_icon_mapping(symbol: str, waypoint_title: str,
-                           suggestions: List[Tuple[str, float]]) -> Optional[str]:
+def prompt_for_icon_mapping(
+    symbol: str, waypoint_title: str, suggestions: List[Tuple[str, float]]
+) -> Optional[str]:
     """Prompt user to manually map an unmapped symbol."""
     console.print(f"\n[yellow]⚠️  Unmapped symbol:[/] [cyan]{symbol}[/]")
     console.print(f"[dim]   Example: {waypoint_title}[/]")
@@ -156,8 +180,7 @@ def prompt_for_icon_mapping(symbol: str, waypoint_title: str,
 
     for i, (icon, confidence) in enumerate(suggestions, 1):
         confidence_pct = int(confidence * 100)
-        emoji = get_icon_emoji(icon)
-        console.print(f"  {i}. {emoji} {icon} [dim]({confidence_pct}% match)[/]")
+        console.print(f"  {i}. {icon} [dim]({confidence_pct}% match)[/]")
 
     console.print(f"  {len(suggestions) + 1}. [dim]Browse all icons[/]")
     console.print(f"  {len(suggestions) + 2}. [dim]Skip (use default 'Location')[/]")
@@ -166,7 +189,7 @@ def prompt_for_icon_mapping(symbol: str, waypoint_title: str,
         choice = Prompt.ask(
             "\nSelect an option",
             choices=[str(i) for i in range(1, len(suggestions) + 3)],
-            default=str(len(suggestions) + 2)
+            default=str(len(suggestions) + 2),
         )
 
         choice_num = int(choice)
@@ -175,6 +198,7 @@ def prompt_for_icon_mapping(symbol: str, waypoint_title: str,
             return suggestions[choice_num - 1][0]
         elif choice_num == len(suggestions) + 1:
             from cairn.core.icon_picker import browse_all_icons
+
             return browse_all_icons()
         else:
             return None
@@ -188,6 +212,7 @@ def handle_unmapped_symbols(
     *,
     unmapped_report: Optional[dict[str, dict]] = None,
     interactive: bool = True,
+    config_path: Optional[Path] = None,
 ) -> bool:
     """Handle unmapped symbols with interactive prompts or reporting."""
     unmapped = unmapped_report or config.get_unmapped_report()
@@ -198,19 +223,28 @@ def handle_unmapped_symbols(
     if not interactive:
         return False
 
-    console.print("\n[yellow]⚠️  Found unmapped symbols. Let's map them![/]")
-    console.print("[dim]You can map these now or skip to use the default 'Location' icon.[/]\n")
+    if config_path is None:
+        config_path = Path("cairn_config.yaml")
 
-    matcher = FuzzyIconMatcher(get_all_OnX_icons())
+    console.print("\n[yellow]⚠️  Found unmapped symbols. Let's map them![/]")
+    console.print(
+        "[dim]You can map these now or skip to use the default 'Location' icon.[/]\n"
+    )
+
+    matcher = FuzzyIconMatcher(get_all_onx_icons())
     mappings_added = False
 
     for symbol, info in unmapped.items():
         suggestions = matcher.find_best_matches(symbol, top_n=3)
-        selected_icon = prompt_for_icon_mapping(symbol, info['examples'][0], suggestions)
+        selected_icon = prompt_for_icon_mapping(
+            symbol, info["examples"][0], suggestions
+        )
 
         if selected_icon:
-            save_user_mapping(symbol, selected_icon)
-            console.print(f"[green]✓[/] Mapped '[cyan]{symbol}[/]' → '[green]{selected_icon}[/]'")
+            save_user_mapping(symbol, selected_icon, config_path=config_path)
+            console.print(
+                f"[green]✓[/] Mapped '[cyan]{symbol}[/]' → '[green]{selected_icon}[/]'"
+            )
             mappings_added = True
         else:
             console.print(f"[dim]Skipped '{symbol}' (will use 'Location')[/]")
@@ -247,7 +281,10 @@ def process_and_write_files(
     clear_name_changes()
 
     from cairn.core.writers import DEFAULT_MAX_GPX_BYTES as _DEFAULT_MAX_GPX_BYTES
-    from cairn.core.writers import write_gpx_waypoints_maybe_split, write_gpx_tracks_maybe_split
+    from cairn.core.writers import (
+        write_gpx_waypoints_maybe_split,
+        write_gpx_tracks_maybe_split,
+    )
 
     # Defensive: keep defaults even if caller didn't pass new args (older call sites).
     if max_gpx_bytes is None:
@@ -267,12 +304,16 @@ def process_and_write_files(
 
             # Sort waypoints for preview if sorting is enabled
             if sort:
-                sorted_waypoints = sorted(waypoints, key=lambda f: natural_sort_key(f.title))
+                sorted_waypoints = sorted(
+                    waypoints, key=lambda f: natural_sort_key(f.title)
+                )
             else:
                 sorted_waypoints = waypoints
 
             # Show preview and get confirmation
-            if not preview_sorted_order(sorted_waypoints, "waypoints", folder_name, skip_confirmation, config):
+            if not preview_sorted_order(
+                sorted_waypoints, "waypoints", folder_name, skip_confirmation, config
+            ):
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
@@ -288,9 +329,11 @@ def process_and_write_files(
             #         logger.debug(f"  ... and {len(write_order_waypoints) - 20} more waypoints")
 
             if total_waypoints > 2500:
-                console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_waypoints} waypoints)...")
-                console.print(f"   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
-                console.print(f"   [yellow]✨  Auto-split into:[/]")
+                console.print(
+                    f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_waypoints} waypoints)..."
+                )
+                console.print("   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
+                console.print("   [yellow]✨  Auto-split into:[/]")
 
                 chunks = list(chunk_data(write_order_waypoints, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
@@ -308,7 +351,9 @@ def process_and_write_files(
                     )
                     for pth, sz, cnt in written_parts:
                         output_files.append((pth.name, "GPX (Waypoints)", cnt, sz))
-                    console.print(f"       ├── 📄 [green]{output_path.name}[/] ({len(chunk)} items)")
+                    console.print(
+                        f"       ├── 📄 [green]{output_path.name}[/] ({len(chunk)} items)"
+                    )
             else:
                 output_path = output_dir / f"{safe_name}_Waypoints.gpx"
                 # Pass sort=False since we already sorted and reversed
@@ -335,7 +380,9 @@ def process_and_write_files(
                 sorted_tracks = tracks
 
             # Show preview and get confirmation
-            if not preview_sorted_order(sorted_tracks, "tracks", folder_name, skip_confirmation):
+            if not preview_sorted_order(
+                sorted_tracks, "tracks", folder_name, skip_confirmation
+            ):
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
@@ -343,9 +390,11 @@ def process_and_write_files(
             write_order_tracks = sorted_tracks
 
             if total_tracks > 2500:
-                console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_tracks} tracks)...")
-                console.print(f"   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
-                console.print(f"   [yellow]✨  Auto-split into:[/]")
+                console.print(
+                    f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_tracks} tracks)..."
+                )
+                console.print("   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
+                console.print("   [yellow]✨  Auto-split into:[/]")
 
                 chunks = list(chunk_data(write_order_tracks, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
@@ -362,7 +411,9 @@ def process_and_write_files(
                     )
                     for pth, sz, cnt in written_parts:
                         output_files.append((pth.name, "GPX (Tracks)", cnt, sz))
-                    console.print(f"       ├── 📄 [green]{output_path.name}[/] ({len(chunk)} items)")
+                    console.print(
+                        f"       ├── 📄 [green]{output_path.name}[/] ({len(chunk)} items)"
+                    )
             else:
                 output_path = output_dir / f"{safe_name}_Tracks.gpx"
                 # Pass sort=False since we already sorted and reversed
@@ -388,7 +439,9 @@ def process_and_write_files(
                 sorted_shapes = shapes
 
             # Show preview and get confirmation for shapes
-            if not preview_sorted_order(sorted_shapes, "shapes", folder_name, skip_confirmation):
+            if not preview_sorted_order(
+                sorted_shapes, "shapes", folder_name, skip_confirmation
+            ):
                 console.print("[yellow]Export cancelled by user.[/]")
                 return output_files
 
@@ -396,26 +449,43 @@ def process_and_write_files(
             write_order_shapes = sorted_shapes
 
             if total_shapes > 2500:
-                console.print(f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_shapes} shapes)...")
-                console.print(f"   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
-                console.print(f"   [yellow]✨  Auto-split into:[/]")
+                console.print(
+                    f"\n📂 Processing '[cyan]{folder_name}[/]' ({total_shapes} shapes)..."
+                )
+                console.print("   [yellow]⚠️  Exceeds OnX limit (3,000).[/]")
+                console.print("   [yellow]✨  Auto-split into:[/]")
 
                 chunks = list(chunk_data(write_order_shapes, limit=2500))
                 for i, chunk in enumerate(chunks, 1):
                     part_name = f"{safe_name}_Shapes_Part{i}"
                     output_path = output_dir / f"{part_name}.kml"
-                    file_size = write_kml_shapes(chunk, output_path, f"{folder_name} - Part {i}")
-                    output_files.append((f"{part_name}.kml", "KML (Shapes)", len(chunk), file_size))
-                    console.print(f"       ├── 📄 [green]{part_name}.kml[/] ({len(chunk)} items)")
+                    file_size = write_kml_shapes(
+                        chunk, output_path, f"{folder_name} - Part {i}"
+                    )
+                    output_files.append(
+                        (f"{part_name}.kml", "KML (Shapes)", len(chunk), file_size)
+                    )
+                    console.print(
+                        f"       ├── 📄 [green]{part_name}.kml[/] ({len(chunk)} items)"
+                    )
             else:
                 output_path = output_dir / f"{safe_name}_Shapes.kml"
-                file_size = write_kml_shapes(write_order_shapes, output_path, folder_name)
-                output_files.append((f"{safe_name}_Shapes.kml", "KML (Shapes)", len(write_order_shapes), file_size))
+                file_size = write_kml_shapes(
+                    write_order_shapes, output_path, folder_name
+                )
+                output_files.append(
+                    (
+                        f"{safe_name}_Shapes.kml",
+                        "KML (Shapes)",
+                        len(write_order_shapes),
+                        file_size,
+                    )
+                )
 
     return output_files
 
 
-def display_manifest(output_files: list):
+def display_manifest(output_files: list) -> None:
     """Display a table of created files."""
     table = Table(title="Export Manifest", border_style="green")
     table.add_column("Filename", style="yellow")
@@ -425,16 +495,15 @@ def display_manifest(output_files: list):
 
     for filename, format_type, item_count, file_size in output_files:
         table.add_row(
-            filename,
-            format_type,
-            str(item_count),
-            format_file_size(file_size)
+            filename, format_type, str(item_count), format_file_size(file_size)
         )
 
     console.print(table)
 
 
-def collect_unmapped_caltopo_symbols(parsed_data: ParsedData, config: IconMappingConfig) -> dict[str, dict]:
+def collect_unmapped_caltopo_symbols(
+    parsed_data: ParsedData, config: IconMappingConfig
+) -> dict[str, dict]:
     """
     Collect unmapped CalTopo marker-symbol values from the parsed dataset.
 
@@ -467,9 +536,13 @@ def collect_unmapped_caltopo_symbols(parsed_data: ParsedData, config: IconMappin
     return by_symbol
 
 
-def display_unmapped_symbols(config: IconMappingConfig, unmapped_report: Optional[dict[str, dict]] = None):
+def display_unmapped_symbols(
+    config: IconMappingConfig, unmapped_report: Optional[dict[str, dict]] = None
+) -> None:
     """Display a report of unmapped CalTopo symbols found."""
-    report = unmapped_report or (config.get_unmapped_report() if config.has_unmapped_symbols() else {})
+    report = unmapped_report or (
+        config.get_unmapped_report() if config.has_unmapped_symbols() else {}
+    )
     if not report:
         return
 
@@ -480,36 +553,45 @@ def display_unmapped_symbols(config: IconMappingConfig, unmapped_report: Optiona
     table.add_column("Count", justify="right", style="white")
     table.add_column("Example Waypoint", style="dim")
 
-    for symbol, stats in sorted(report.items(), key=lambda x: x[1]["count"], reverse=True):
+    for symbol, stats in sorted(
+        report.items(), key=lambda x: x[1]["count"], reverse=True
+    ):
         example = stats["examples"][0] if stats["examples"] else "N/A"
         table.add_row(
             symbol,
             str(stats["count"]),
-            example[:40] + "..." if len(example) > 40 else example
+            example[:40] + "..." if len(example) > 40 else example,
         )
 
     console.print(table)
-    console.print("\n[dim]💡 Add these to cairn_config.yaml to map them to OnX icons[/]")
-    console.print("[dim]   Run 'cairn config --export' to create a template[/]")
+    console.print(
+        "\n[dim]💡 Add these to your config (default: cairn_config.yaml) to map them to OnX icons[/]"
+    )
+    console.print("[dim]   Run 'cairn config export' to create a template[/]")
+    console.print(
+        "[dim]   Run 'cairn config show' to see valid OnX icons already used in your mappings[/]"
+    )
 
 
-def display_name_sanitization_warnings():
+def display_name_sanitization_warnings() -> None:
     """Display warnings about name sanitization for OnX sorting compatibility."""
     name_changes = get_name_changes()
 
-    total_changes = len(name_changes.get('waypoints', [])) + len(name_changes.get('tracks', []))
+    total_changes = len(name_changes.get("waypoints", [])) + len(
+        name_changes.get("tracks", [])
+    )
 
     if total_changes == 0:
         return
 
-    console.print(f"\n[yellow]⚠️  Name Sanitization Applied[/]")
+    console.print("\n[yellow]⚠️  Name Sanitization Applied[/]")
     console.print("─" * 70)
     console.print("To improve OnX sorting compatibility, the following characters")
     console.print("were removed from names: [cyan]! @ # $ % ^ * &[/]")
     console.print()
 
-    waypoint_changes = name_changes.get('waypoints', [])
-    track_changes = name_changes.get('tracks', [])
+    waypoint_changes = name_changes.get("waypoints", [])
+    track_changes = name_changes.get("tracks", [])
 
     if waypoint_changes:
         console.print(f"[bold]Waypoints Modified:[/] [cyan]{len(waypoint_changes)}[/]")
@@ -529,7 +611,9 @@ def display_name_sanitization_warnings():
             console.print(f"  [dim]{original[:35]:<35}[/] → [green]{sanitized[:35]}[/]")
             examples_shown += 1
         if len(waypoint_changes) > max_examples:
-            console.print(f"  [dim]... and {len(waypoint_changes) - max_examples} more waypoint changes[/]")
+            console.print(
+                f"  [dim]... and {len(waypoint_changes) - max_examples} more waypoint changes[/]"
+            )
 
     if track_changes:
         console.print("\n[cyan]Tracks:[/]")
@@ -537,15 +621,21 @@ def display_name_sanitization_warnings():
             console.print(f"  [dim]{original[:35]:<35}[/] → [green]{sanitized[:35]}[/]")
             examples_shown += 1
         if len(track_changes) > max_examples:
-            console.print(f"  [dim]... and {len(track_changes) - max_examples} more track changes[/]")
+            console.print(
+                f"  [dim]... and {len(track_changes) - max_examples} more track changes[/]"
+            )
 
     console.print()
-    console.print("[dim]Note: Natural sort order is preserved. This is a test feature.[/]")
+    console.print(
+        "[dim]Note: Natural sort order is preserved. This is a test feature.[/]"
+    )
     console.print("─" * 70)
 
 
 def convert(
-    input_file: Path = typer.Argument(..., help="Input file (default: CalTopo GeoJSON)"),
+    input_file: Path = typer.Argument(
+        ..., help="Input file (default: CalTopo GeoJSON)"
+    ),
     from_format: FromFormat = typer.Option(
         FromFormat.caltopo_geojson,
         "--from",
@@ -558,23 +648,18 @@ def convert(
     ),
     output: Optional[Path] = typer.Option(
         "./onx_ready",
-        "--output", "-o",
-        help="Output directory (OnX) or output GeoJSON file/dir (caltopo_geojson)"
+        "--output",
+        "-o",
+        help="Output directory (OnX) or output GeoJSON file/dir (caltopo_geojson)",
     ),
     config_file: Optional[Path] = typer.Option(
-        None,
-        "--config", "-c",
-        help="Custom icon mapping configuration file"
+        None, "--config", "-c", help="Custom icon mapping configuration file"
     ),
     dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview conversion without creating files"
+        False, "--dry-run", help="Preview conversion without creating files"
     ),
     review: bool = typer.Option(
-        False,
-        "--review",
-        help="Interactive review of icon mappings before conversion"
+        False, "--review", help="Interactive review of icon mappings before conversion"
     ),
     edit: Optional[bool] = typer.Option(
         None,
@@ -582,9 +667,7 @@ def convert(
         help="Interactive global edit of tracks/waypoints (names/descriptions/icons/colors) before writing files (CalTopo → OnX only)",
     ),
     no_sort: bool = typer.Option(
-        False,
-        "--no-sort",
-        help="Preserve original order instead of sorting items"
+        False, "--no-sort", help="Preserve original order instead of sorting items"
     ),
     max_gpx_mb: float = typer.Option(
         3.75,
@@ -598,8 +681,9 @@ def convert(
     ),
     yes: bool = typer.Option(
         False,
-        "--yes", "-y",
-        help="Skip confirmation prompts (auto-confirm sorted order)"
+        "--yes",
+        "-y",
+        help="Skip confirmation prompts (auto-confirm sorted order)",
     ),
     kml_file: Optional[Path] = typer.Option(
         None,
@@ -630,7 +714,7 @@ def convert(
         None,
         "--trace",
         help="Write JSONL trace log of transformation steps",
-    )
+    ),
 ):
     """
     Convert between supported formats.
@@ -689,44 +773,55 @@ def convert(
         trace_ctx = TraceWriter(trace_path) if trace_path else None
         try:
             if trace_ctx:
-                trace_ctx.emit({"event": "run.start", "from": from_format.value, "to": to_format.value})
+                trace_ctx.emit(
+                    {
+                        "event": "run.start",
+                        "from": from_format.value,
+                        "to": to_format.value,
+                    }
+                )
 
             try:
-                gpx_doc = read_OnX_gpx(input_file, trace=trace_ctx)
+                gpx_doc = read_onx_gpx(input_file, trace=trace_ctx)
                 doc = gpx_doc
             except ValueError as e:
-                console.print(f"\n[bold red]❌ Error reading GPX file:[/]")
+                console.print("\n[bold red]❌ Error reading GPX file:[/]")
                 console.print(f"[red]{e}[/]")
                 raise typer.Exit(1)
 
             if kml_file is not None:
                 if not kml_file.exists():
-                    console.print(f"\n[bold red]❌ Error:[/] KML file not found: {kml_file}")
+                    console.print(
+                        f"\n[bold red]❌ Error:[/] KML file not found: {kml_file}"
+                    )
                     raise typer.Exit(1)
                 try:
                     kml_doc = read_onx_kml(kml_file, trace=trace_ctx)
                     doc = merge_onx_gpx_and_kml(doc, kml_doc, trace=trace_ctx)
                 except ValueError as e:
-                    console.print(f"\n[bold red]❌ Error reading KML file:[/]")
+                    console.print("\n[bold red]❌ Error reading KML file:[/]")
                     console.print(f"[red]{e}[/]")
                     raise typer.Exit(1)
 
             if trace_ctx:
-                trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})
+                trace_ctx.emit(
+                    {"event": "inventory.before_dedup", **document_inventory(doc)}
+                )
 
             report = None
             if dedupe:
                 report = apply_waypoint_dedup(doc, trace=trace_ctx)
 
             if trace_ctx:
-                trace_ctx.emit({"event": "inventory.after_dedup", **document_inventory(doc)})
+                trace_ctx.emit(
+                    {"event": "inventory.after_dedup", **document_inventory(doc)}
+                )
                 if report is not None:
                     trace_ctx.emit({"event": "dedup.report", **dedup_inventory(report)})
 
             # Shape dedup (default on): produce a primary usable dataset and preserve dropped duplicates separately.
             shape_report = None
             dropped_shapes_doc_path: Optional[Path] = None
-            summary_path: Optional[Path] = None
 
             dropped_items: list = []
             if dedupe_shapes:
@@ -737,13 +832,19 @@ def convert(
             if desc_mode_norm in ("notes_only", "notes"):
                 desc_mode_norm = "notes_only"
             elif desc_mode_norm != "debug":
-                raise typer.BadParameter("--description-mode must be one of: notes-only, debug")
+                raise typer.BadParameter(
+                    "--description-mode must be one of: notes-only, debug"
+                )
 
-            route_color_norm = (route_color_strategy or "").strip().lower().replace("-", "_")
+            route_color_norm = (
+                (route_color_strategy or "").strip().lower().replace("-", "_")
+            )
             if route_color_norm == "defaultblue":
                 route_color_norm = "default_blue"
             if route_color_norm not in ("palette", "default_blue", "none"):
-                raise typer.BadParameter("--route-color-strategy must be one of: palette, default-blue, none")
+                raise typer.BadParameter(
+                    "--route-color-strategy must be one of: palette, default-blue, none"
+                )
 
             write_caltopo_geojson(
                 doc,
@@ -764,7 +865,10 @@ def convert(
                     title="OnX → CalTopo icon mapping report",
                     inventories=inv,
                     rows=rows,
-                    notes=([f"Input GPX: `{input_file.name}`"] + ([f"Input KML: `{kml_file.name}`"] if kml_file else [])),
+                    notes=(
+                        [f"Input GPX: `{input_file.name}`"]
+                        + ([f"Input KML: `{kml_file.name}`"] if kml_file else [])
+                    ),
                 )
                 reg.append_onx_icon_inventory_to_catalog(inv)
             except Exception:
@@ -772,7 +876,9 @@ def convert(
 
             # If shape dedup ran, write the dropped features to a secondary GeoJSON file.
             if dedupe_shapes and shape_report is not None:
-                dropped_shapes_doc_path = out_path.with_name(out_path.stem + "_dropped_shapes.json")
+                dropped_shapes_doc_path = out_path.with_name(
+                    out_path.stem + "_dropped_shapes.json"
+                )
                 from cairn.model import MapDocument as _MapDocument
 
                 dropped_doc = _MapDocument(
@@ -791,14 +897,24 @@ def convert(
                     route_color_strategy=route_color_norm,  # type: ignore[arg-type]
                 )
 
-            console.print(f"\n[bold green]✔ SUCCESS[/] Wrote CalTopo GeoJSON: [underline]{out_path}[/]")
+            console.print(
+                f"\n[bold green]✔ SUCCESS[/] Wrote CalTopo GeoJSON: [underline]{out_path}[/]"
+            )
             console.print(
                 f"[dim]Items:[/] {len(doc.waypoints())} waypoints, {len(doc.tracks())} lines, {len(doc.shapes())} areas"
             )
             if report is not None and report.dropped_count:
-                console.print(f"[yellow]⚠️  Dedup dropped {report.dropped_count} duplicate waypoint(s).[/]")
-            if dedupe_shapes and shape_report is not None and shape_report.dropped_count:
-                console.print(f"[yellow]⚠️  Shape dedup dropped {shape_report.dropped_count} duplicate shape(s).[/]")
+                console.print(
+                    f"[yellow]⚠️  Dedup dropped {report.dropped_count} duplicate waypoint(s).[/]"
+                )
+            if (
+                dedupe_shapes
+                and shape_report is not None
+                and shape_report.dropped_count
+            ):
+                console.print(
+                    f"[yellow]⚠️  Shape dedup dropped {shape_report.dropped_count} duplicate shape(s).[/]"
+                )
                 console.print(f"[dim]Dropped shapes:[/] {dropped_shapes_doc_path}")
             if trace_path:
                 console.print(f"[dim]Trace log:[/] {trace_path}")
@@ -849,18 +965,27 @@ def convert(
 
         if changes_made:
             # Reload config with new mappings
-            console.print("\n[green]✓[/] Reloading configuration with new mappings...\n")
+            console.print(
+                "\n[green]✓[/] Reloading configuration with new mappings...\n"
+            )
             config = load_config(config_file)
             # Re-parse to apply new mappings
             parsed_data = parse_geojson(input_file)
 
     # Handle unmapped symbols interactively (if not in review mode)
     if not review and unmapped_report:
-        mappings_added = handle_unmapped_symbols(config, unmapped_report=unmapped_report, interactive=True)
+        mappings_added = handle_unmapped_symbols(
+            config,
+            unmapped_report=unmapped_report,
+            interactive=True,
+            config_path=(config_file or Path("cairn_config.yaml")),
+        )
 
         if mappings_added:
             # Reload config with new mappings
-            console.print("\n[green]✓[/] Reloading configuration with new mappings...\n")
+            console.print(
+                "\n[green]✓[/] Reloading configuration with new mappings...\n"
+            )
             config = load_config(config_file)
 
             # Re-parse to apply new mappings
@@ -874,7 +999,9 @@ def convert(
     # Default behavior: if edit is not specified, enable edit when interactive and disable when --yes is used.
     edit_enabled = (not yes) if edit is None else bool(edit)
     if edit_enabled:
-        interactive_edit_before_export(parsed_data, config, edit_tracks=True, edit_waypoints=True)
+        interactive_edit_before_export(
+            parsed_data, config, edit_tracks=True, edit_waypoints=True
+        )
 
     # Icon report + catalog for CalTopo → OnX (best-effort; never fails conversion)
     try:
@@ -886,7 +1013,10 @@ def convert(
         from cairn.core.icon_registry import IconReportRow
 
         resolver = IconResolver(
-            symbol_map={str(k).strip().lower(): str(v).strip() for k, v in (config.symbol_map or {}).items()},
+            symbol_map={
+                str(k).strip().lower(): str(v).strip()
+                for k, v in (config.symbol_map or {}).items()
+            },
             keyword_map=config.keyword_map or {},
             default_icon=config.default_icon,
             generic_symbols=set(GENERIC_SYMBOLS),
@@ -900,7 +1030,9 @@ def convert(
                 title = getattr(feat, "title", "") or ""
                 desc = getattr(feat, "description", "") or ""
                 sym = (getattr(feat, "symbol", "") or "").strip().lower() or "(missing)"
-                decision = resolver.resolve(title, desc, "" if sym == "(missing)" else sym)
+                decision = resolver.resolve(
+                    title, desc, "" if sym == "(missing)" else sym
+                )
                 key = (sym, decision.icon, decision.source)
                 mapping_counts[key] = mapping_counts.get(key, 0) + 1
                 if title and len(mapping_examples.get(key, [])) < 3:
@@ -912,7 +1044,10 @@ def convert(
                         cur.append(c)
 
         rows = []
-        for (sym, icon, src), n in sorted(mapping_counts.items(), key=lambda kv: (-kv[1], kv[0][0], kv[0][1], kv[0][2])):
+        for (sym, icon, src), n in sorted(
+            mapping_counts.items(),
+            key=lambda kv: (-kv[1], kv[0][0], kv[0][1], kv[0][2]),
+        ):
             rows.append(
                 IconReportRow(
                     incoming=sym,
@@ -930,7 +1065,10 @@ def convert(
             title="CalTopo → OnX icon mapping report",
             inventories=inventory,
             rows=rows,
-            notes=([f"Input GeoJSON: `{input_file.name}`"] + ([f"Config: `{config_file}`"] if config_file else [])),
+            notes=(
+                [f"Input GeoJSON: `{input_file.name}`"]
+                + ([f"Config: `{config_file}`"] if config_file else [])
+            ),
         )
         reg.append_symbol_inventory_to_catalog(inventory)
     except Exception:
@@ -957,5 +1095,7 @@ def convert(
     display_name_sanitization_warnings()
 
     # Success footer
-    console.print(f"\n[bold green]✔ SUCCESS[/] {len(output_files)} file(s) written to [underline]{output_dir}[/]")
+    console.print(
+        f"\n[bold green]✔ SUCCESS[/] {len(output_files)} file(s) written to [underline]{output_dir}[/]"
+    )
     console.print("[dim]Next: Drag these files into OnX Web Map → Import[/]\n")

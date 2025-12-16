@@ -13,7 +13,7 @@ deterministic and explainable by producing a structured decision.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Literal, Sequence, Set, Tuple
+from typing import Dict, List, Literal, Set, Tuple
 
 import re
 
@@ -74,7 +74,9 @@ class IconResolver:
             normalized[icon] = tuple(cleaned)
         self._normalized_keywords = normalized
 
-    def resolve(self, title: str, description: str = "", symbol: str = "") -> IconDecision:
+    def resolve(
+        self, title: str, description: str = "", symbol: str = ""
+    ) -> IconDecision:
         title = title or ""
         description = description or ""
         symbol = symbol or ""
@@ -106,7 +108,9 @@ class IconResolver:
                     icon=icon,
                     score=0.9,
                     source="symbol",
-                    reasons=(f"symbol substring match '{key}' in '{symbol_norm}' → '{icon}'",),
+                    reasons=(
+                        f"symbol substring match '{key}' in '{symbol_norm}' → '{icon}'",
+                    ),
                     matched_terms=(key,),
                 )
 
@@ -175,4 +179,3 @@ class IconResolver:
             source="default",
             reasons=(f"default icon '{self._default_icon}'",),
         )
-

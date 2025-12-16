@@ -102,7 +102,9 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
 
     # Validate it's actually a KML file
     if not (root.tag.endswith("kml") or "kml" in root.tag.lower()):
-        raise ValueError(f"File does not appear to be a KML file (root element: {root.tag})\nFile: {p}")
+        raise ValueError(
+            f"File does not appear to be a KML file (root element: {root.tag})\nFile: {p}"
+        )
 
     doc = MapDocument(metadata={"source": "OnX_kml", "path": str(p)})
     doc.ensure_folder("OnX_import", "OnX Import")
@@ -116,12 +118,12 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
         name = normalize_name(name_raw)
 
         kv = _parse_extended_data(pm)
-        OnX_id = kv.get("id") or kv.get("OnX:id")
-        OnX_icon = kv.get("icon")
-        OnX_color = kv.get("color")
+        onx_id = kv.get("id") or kv.get("OnX:id")
+        onx_icon = kv.get("icon")
+        onx_color = kv.get("color")
         notes = kv.get("notes", "")
 
-        style = Style(OnX_id=OnX_id, OnX_icon=OnX_icon, OnX_color_rgba=OnX_color)
+        style = Style(OnX_id=onx_id, OnX_icon=onx_icon, OnX_color_rgba=onx_color)
         style.extra["extended_data"] = dict(kv)
 
         # Geometry dispatch
@@ -132,7 +134,7 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
                 continue
             lon, lat, _alt = pts[0]
             wp = Waypoint(
-                id=OnX_id or _uuid_fallback(),
+                id=onx_id or _uuid_fallback(),
                 folder_id="OnX_waypoints",
                 name=name or normalize_name(kv.get("name", "")),
                 lon=lon,
@@ -150,7 +152,7 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
                         "geom": "Point",
                         "name_raw": name_raw,
                         "name_norm": wp.name,
-                        "OnX": {"id": OnX_id, "icon": OnX_icon, "color": OnX_color},
+                        "OnX": {"id": onx_id, "icon": onx_icon, "color": onx_color},
                     }
                 )
             continue
@@ -160,9 +162,11 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
             pts = _parse_kml_coords_list(coord_text)
             if not pts:
                 continue
-            points: List[TrackPoint] = [(lon, lat, alt, None) for (lon, lat, alt) in pts]
+            points: List[TrackPoint] = [
+                (lon, lat, alt, None) for (lon, lat, alt) in pts
+            ]
             trk = Track(
-                id=OnX_id or _uuid_fallback(),
+                id=onx_id or _uuid_fallback(),
                 folder_id="OnX_tracks",
                 name=name or normalize_name(kv.get("name", "")),
                 points=points,
@@ -180,7 +184,7 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
                         "name_raw": name_raw,
                         "name_norm": trk.name,
                         "point_count": len(points),
-                        "OnX": {"id": OnX_id, "color": OnX_color},
+                        "OnX": {"id": onx_id, "color": onx_color},
                     }
                 )
             continue
@@ -198,7 +202,7 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
                 continue
             ring = [(lon, lat) for (lon, lat, _alt) in ring_pts]
             shp = Shape(
-                id=OnX_id or _uuid_fallback(),
+                id=onx_id or _uuid_fallback(),
                 folder_id="OnX_shapes",
                 name=name or normalize_name(kv.get("name", "")),
                 rings=[ring],
@@ -216,7 +220,7 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
                         "name_raw": name_raw,
                         "name_norm": shp.name,
                         "ring_len": len(ring),
-                        "OnX": {"id": OnX_id, "color": OnX_color},
+                        "OnX": {"id": onx_id, "color": onx_color},
                     }
                 )
             continue
@@ -225,4 +229,4 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
 
 
 # Backward-compatible alias (deprecated): keep to avoid breaking older callers/tests.
-read_OnX_kml = read_onx_kml
+read_OnX_kml = read_onx_kml  # noqa: N816

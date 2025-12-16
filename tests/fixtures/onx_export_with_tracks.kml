@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>OnX Export Test KML</name>
+<Folder>
+<name>Test Areas</name>
+<Placemark>
+<name>Test Polygon Area</name>
+<description>Test polygon shape</description>
+<Polygon>
+<outerBoundaryIs>
+<LinearRing>
+<coordinates>
+-113.500000,47.020000,0
+-113.505000,47.020000,0
+-113.505000,47.025000,0
+-113.500000,47.025000,0
+-113.500000,47.020000,0
+</coordinates>
+</LinearRing>
+</outerBoundaryIs>
+</Polygon>
+</Placemark>
+</Folder>
+</Document>
+</kml>

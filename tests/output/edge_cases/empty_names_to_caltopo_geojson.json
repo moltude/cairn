@@ -1,0 +1,92 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "7077f4eb-7d8a-4381-909f-6b462ce409e0",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": ""
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "1ce826ef-b0f1-4346-b307-e565a3433cb4",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.1,
+          45.1
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "",
+        "description": "No name tag",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": ""
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "e3ad51a6-9fa1-430d-9153-90a1decfcf6a",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.2,
+          45.2
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": ""
+        }
+      }
+    }
+  ]
+}

@@ -4,6 +4,8 @@ Cairn - OnX ↔ CalTopo migration tool
 Main CLI entry point
 """
 
+from __future__ import annotations
+
 import typer
 
 # Import command modules
@@ -13,18 +15,21 @@ app = typer.Typer(
     name="cairn",
     help="Migrate map data between OnX Backcountry and CalTopo",
     no_args_is_help=True,
-    add_completion=True
+    add_completion=True,
 )
 
 # Register the convert command directly (not as a sub-app)
-app.command(name="convert", help="Convert between supported formats (advanced)", hidden=True)(convert_cmd.convert)
+app.command(
+    name="convert", help="Convert between supported formats (advanced)", hidden=True
+)(convert_cmd.convert)
 
 # Register command groups
 app.add_typer(config_cmd.app, name="config", help="Manage configuration settings")
 app.add_typer(migrate_cmd.app, name="migrate", help="Migration helpers (OnX ↔ CalTopo)")
 
+
 @app.callback()
-def callback():
+def callback() -> None:
     """
     Cairn - OnX ↔ CalTopo migration tool
 
@@ -39,9 +44,11 @@ def callback():
     """
     pass
 
-def main():
+
+def main() -> None:
     """Entry point for the CLI."""
     app()
+
 
 if __name__ == "__main__":
     main()

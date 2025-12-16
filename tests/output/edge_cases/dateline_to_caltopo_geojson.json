@@ -1,0 +1,69 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "f39fcc3e-094c-417f-9a1c-cf737b39b7d6",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          180.0,
+          0.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Dateline East",
+        "description": "180°E",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Dateline East"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "38278afd-e8d0-48ef-bac8-3c427bab3dd0",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -180.0,
+          0.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Dateline West",
+        "description": "180°W (same meridian)",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Dateline West"
+        }
+      }
+    }
+  ]
+}

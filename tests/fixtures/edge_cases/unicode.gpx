@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="45.0" lon="-120.0">
+    <name>Camp 🏕️</name>
+    <desc>Great camping spot with views! 🌲⛰️</desc>
+  </wpt>
+  <wpt lat="45.1" lon="-120.1">
+    <name>Montaña del Oso</name>
+    <desc>Café au sommet ☕</desc>
+  </wpt>
+  <wpt lat="45.2" lon="-120.2">
+    <name>登山口</name>
+    <desc>Trailhead in Japanese/Chinese</desc>
+  </wpt>
+  <wpt lat="45.3" lon="-120.3">
+    <name>Вершина</name>
+    <desc>Peak in Russian</desc>
+  </wpt>
+  <wpt lat="45.4" lon="-120.4">
+    <name>قمة الجبل</name>
+    <desc>Mountain peak in Arabic</desc>
+  </wpt>
+</gpx>

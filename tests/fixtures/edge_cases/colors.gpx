@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns:onx="http://www.onxmaps.com/gpx/1/0" xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="45.0" lon="-120.0">
+    <name>White Waypoint</name>
+    <extensions>
+      <onx:onx_waypoint_ext>
+        <onx:color>White</onx:color>
+      </onx:onx_waypoint_ext>
+    </extensions>
+  </wpt>
+  <wpt lat="45.1" lon="-120.0">
+    <name>Black Waypoint</name>
+    <extensions>
+      <onx:onx_waypoint_ext>
+        <onx:color>Black</onx:color>
+      </onx:onx_waypoint_ext>
+    </extensions>
+  </wpt>
+  <wpt lat="45.2" lon="-120.0">
+    <name>Red Waypoint</name>
+    <extensions>
+      <onx:onx_waypoint_ext>
+        <onx:color>Red</onx:color>
+      </onx:onx_waypoint_ext>
+    </extensions>
+  </wpt>
+  <wpt lat="45.3" lon="-120.0">
+    <name>No Color</name>
+  </wpt>
+</gpx>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="45.0" lon="-120.0">
+    <name>&lt;Trail&gt; &amp; "Path"</name>
+    <desc>Use &gt; or &lt; signs, plus "quotes" &amp; ampersands</desc>
+  </wpt>
+</gpx>

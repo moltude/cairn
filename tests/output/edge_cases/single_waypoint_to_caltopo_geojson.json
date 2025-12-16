@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "7429b88b-c006-4a84-8632-d65ff8864421",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Solo Waypoint",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Solo Waypoint"
+        }
+      }
+    }
+  ]
+}

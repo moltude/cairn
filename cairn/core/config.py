@@ -5,6 +5,8 @@ This module handles loading and managing user-customizable icon mappings,
 allowing users to override defaults and extend mappings as needed.
 """
 
+from __future__ import annotations
+
 from typing import Dict, List, Optional
 from pathlib import Path
 import yaml
@@ -14,13 +16,15 @@ from collections import defaultdict
 # Generic CalTopo symbols that should NOT be mapped to specific icons.
 # These are default markers that don't convey semantic meaning.
 # Mapping them would bypass keyword matching for all waypoints using them.
-GENERIC_SYMBOLS = frozenset([
-    "point",
-    "marker",
-    "pin",
-    "dot",
-    "circle",
-])
+GENERIC_SYMBOLS = frozenset(
+    [
+        "point",
+        "marker",
+        "pin",
+        "dot",
+        "circle",
+    ]
+)
 
 # Canonical OnX Backcountry icon names (from user-provided screenshots).
 # This is the single source of truth for what Cairn considers "valid OnX icons".
@@ -135,8 +139,12 @@ def _norm_onx_icon_key(value: str) -> str:
     return s
 
 
-_ONX_ICON_BY_NORM: Dict[str, str] = { _norm_onx_icon_key(n): n for n in ONX_ICON_NAMES_CANONICAL }
-_ONX_ICON_BY_COMPACT: Dict[str, str] = { _norm_onx_icon_key(n).replace(" ", ""): n for n in ONX_ICON_NAMES_CANONICAL }
+_ONX_ICON_BY_NORM: Dict[str, str] = {
+    _norm_onx_icon_key(n): n for n in ONX_ICON_NAMES_CANONICAL
+}
+_ONX_ICON_BY_COMPACT: Dict[str, str] = {
+    _norm_onx_icon_key(n).replace(" ", ""): n for n in ONX_ICON_NAMES_CANONICAL
+}
 
 
 def normalize_onx_icon_name(value: str) -> Optional[str]:
@@ -161,48 +169,43 @@ def normalize_onx_icon_name(value: str) -> Optional[str]:
 # - See docs/OnX-waypoint-colors-definitive.md for the canonical list.
 ICON_COLOR_MAP = {
     # Official waypoint palette colors (10 total)
-    "Location": "rgba(8,122,255,1)",          # Blue
-    "Hazard": "rgba(255,51,0,1)",             # Red-Orange
-    "Barrier": "rgba(255,0,0,1)",             # Red
-
+    "Location": "rgba(8,122,255,1)",  # Blue
+    "Hazard": "rgba(255,51,0,1)",  # Red-Orange
+    "Barrier": "rgba(255,0,0,1)",  # Red
     # Camping (no true "orange" in waypoint palette; closest is Red-Orange)
-    "Campsite": "rgba(255,51,0,1)",           # Red-Orange
-    "Camp": "rgba(255,51,0,1)",               # Red-Orange
-    "Camp Area": "rgba(255,51,0,1)",          # Red-Orange
-    "Camp Backcountry": "rgba(255,51,0,1)",   # Red-Orange
-    "Campground": "rgba(0,0,0,1)",            # Black
-
+    "Campsite": "rgba(255,51,0,1)",  # Red-Orange
+    "Camp": "rgba(255,51,0,1)",  # Red-Orange
+    "Camp Area": "rgba(255,51,0,1)",  # Red-Orange
+    "Camp Backcountry": "rgba(255,51,0,1)",  # Red-Orange
+    "Campground": "rgba(0,0,0,1)",  # Black
     # Water
-    "Water Source": "rgba(0,255,255,1)",      # Cyan
-    "Waterfall": "rgba(0,255,255,1)",         # Cyan
-    "Hot Spring": "rgba(255,255,0,1)",        # Yellow
-    "Potable Water": "rgba(0,255,255,1)",     # Cyan
-    "Water Crossing": "rgba(139,69,19,1)",    # Brown
-
+    "Water Source": "rgba(0,255,255,1)",  # Cyan
+    "Waterfall": "rgba(0,255,255,1)",  # Cyan
+    "Hot Spring": "rgba(255,255,0,1)",  # Yellow
+    "Potable Water": "rgba(0,255,255,1)",  # Cyan
+    "Water Crossing": "rgba(139,69,19,1)",  # Brown
     # Transportation (no gray; use black)
-    "Parking": "rgba(0,0,0,1)",               # Black
-    "Trailhead": "rgba(132,212,0,1)",         # Lime
-    "4x4": "rgba(132,212,0,1)",               # Lime
-    "ATV": "rgba(132,212,0,1)",               # Lime
-
+    "Parking": "rgba(0,0,0,1)",  # Black
+    "Trailhead": "rgba(132,212,0,1)",  # Lime
+    "4x4": "rgba(132,212,0,1)",  # Lime
+    "ATV": "rgba(132,212,0,1)",  # Lime
     # Winter
-    "XC Skiing": "rgba(255,255,255,1)",       # White
-    "Ski Touring": "rgba(255,255,255,1)",     # White
-    "Ski": "rgba(255,255,255,1)",             # White
-    "Skin Track": "rgba(255,255,255,1)",      # White
-    "Snowboarder": "rgba(255,255,255,1)",     # White
-    "Snowmobile": "rgba(255,255,255,1)",      # White
-
+    "XC Skiing": "rgba(255,255,255,1)",  # White
+    "Ski Touring": "rgba(255,255,255,1)",  # White
+    "Ski": "rgba(255,255,255,1)",  # White
+    "Skin Track": "rgba(255,255,255,1)",  # White
+    "Snowboarder": "rgba(255,255,255,1)",  # White
+    "Snowmobile": "rgba(255,255,255,1)",  # White
     # Terrain / observation / facilities
-    "Summit": "rgba(255,0,0,1)",              # Red
-    "Cave": "rgba(8,122,255,1)",              # Blue
-    "Photo": "rgba(255,255,0,1)",             # Yellow
-    "View": "rgba(255,255,0,1)",              # Yellow
-    "Lookout": "rgba(255,255,0,1)",           # Yellow
-    "Cabin": "rgba(139,69,19,1)",             # Brown
-    "Shelter": "rgba(139,69,19,1)",           # Brown
-    "House": "rgba(139,69,19,1)",             # Brown
-    "Food Source": "rgba(139,69,19,1)",       # Brown
+    "Summit": "rgba(255,0,0,1)",  # Red
+    "Cave": "rgba(8,122,255,1)",  # Blue
+    "Photo": "rgba(255,255,0,1)",  # Yellow
+    "View": "rgba(255,255,0,1)",  # Yellow
+    "Lookout": "rgba(255,255,0,1)",  # Yellow
+    "Cabin": "rgba(139,69,19,1)",  # Brown
+    "Shelter": "rgba(139,69,19,1)",  # Brown
+    "House": "rgba(139,69,19,1)",  # Brown
+    "Food Source": "rgba(139,69,19,1)",  # Brown
 }
 
 
@@ -219,17 +222,6 @@ def get_icon_color(icon_name: str, *, default: str = "rgba(8,122,255,1)") -> str
     return ICON_COLOR_MAP.get(icon_name, default)
 
 
-def get_icon_emoji(icon_id: str) -> str:
-    """
-    Get emoji representation for an icon (for preview display).
-
-    This is a small convenience wrapper used by CLI/preview code when a full
-    `IconMappingConfig` instance is not available.
-    """
-    icon_id = (icon_id or "").strip()
-    return IconMappingConfig.DEFAULT_ICON_EMOJIS.get(icon_id, "📍")
-
-
 # Default CalTopo marker-symbol to OnX Backcountry icon mappings
 # Based on actual OnX GPX analysis and icon screenshots (100+ icons)
 DEFAULT_SYMBOL_MAP = {
@@ -240,7 +232,6 @@ DEFAULT_SYMBOL_MAP = {
     "caution": "Hazard",
     "hazard": "Hazard",
     "alert": "Hazard",
-
     # Camping - Multiple OnX camp icons
     "campsite": "Campsite",
     "tent": "Campsite",
@@ -249,7 +240,6 @@ DEFAULT_SYMBOL_MAP = {
     "bivy": "Camp Backcountry",
     "campground": "Campground",
     "camp-area": "Camp Area",
-
     # Water sources and features
     "water": "Water Source",
     "droplet": "Water Source",
@@ -264,7 +254,6 @@ DEFAULT_SYMBOL_MAP = {
     "wetland": "Wetland",
     "potable": "Potable Water",
     "water-crossing": "Water Crossing",
-
     # Vehicles and transportation
     "car": "Parking",
     "parking": "Parking",
@@ -280,7 +269,6 @@ DEFAULT_SYMBOL_MAP = {
     "rv": "RV",
     "suv": "SUV",
     "truck": "Truck",
-
     # Winter sports - OnX uses "XC Skiing" (confirmed from GPX)
     "skiing": "XC Skiing",
     "ski": "Ski",
@@ -294,7 +282,6 @@ DEFAULT_SYMBOL_MAP = {
     "snowmobile": "Snowmobile",
     "snowpark": "Snowpark",
     "snow-pit": "Snow Pit",
-
     # Hiking and trails
     "trailhead": "Trailhead",
     "trail": "Trailhead",
@@ -303,14 +290,12 @@ DEFAULT_SYMBOL_MAP = {
     "backpack": "Backpacker",
     "backpacker": "Backpacker",
     "mountaineer": "Mountaineer",
-
     # Climbing
     "climbing": "Climbing",
     "climb": "Climbing",
     "rappel": "Rappel",
     "cave": "Cave",
     "caving": "Caving",
-
     # Summits and terrain
     "summit": "Summit",
     "peak": "Summit",
@@ -322,7 +307,6 @@ DEFAULT_SYMBOL_MAP = {
     "slide-path": "Slide Path",
     "steep": "Steep Trail",
     "log": "Log Obstacle",
-
     # Infrastructure and barriers
     "barrier": "Barrier",
     "road-barrier": "Road Barrier",
@@ -332,7 +316,6 @@ DEFAULT_SYMBOL_MAP = {
     "footbridge": "Footbridge",
     "bridge": "Footbridge",
     "crossing": "Crossing",
-
     # Facilities and amenities
     "fuel": "Fuel",
     "gas": "Fuel",
@@ -348,7 +331,6 @@ DEFAULT_SYMBOL_MAP = {
     "kennels": "Kennels",
     "visitor": "Visitor Center",
     "gear": "Gear",
-
     # Water activities
     "canoe": "Canoe",
     "kayak": "Kayak",
@@ -361,7 +343,6 @@ DEFAULT_SYMBOL_MAP = {
     "put-in": "Put In",
     "take-out": "Take Out",
     "marina": "Marina",
-
     # Observation and views
     "camera": "Photo",
     "photo": "Photo",
@@ -374,7 +355,6 @@ DEFAULT_SYMBOL_MAP = {
     "tower": "Observation Towers",
     "webcam": "Webcam",
     "lighthouse": "Lighthouses",
-
     # Wildlife and nature
     "eagle": "Eagle",
     "bird": "Eagle",
@@ -385,7 +365,6 @@ DEFAULT_SYMBOL_MAP = {
     "flower": "Wildflower",
     "feeding": "Feeding Area",
     "dog-sled": "Dog Sledding",
-
     # Activities
     "horse": "Horseback",
     "horseback": "Horseback",
@@ -395,7 +374,6 @@ DEFAULT_SYMBOL_MAP = {
     "surfing": "Surfing Area",
     "surf": "Surfing Area",
     "hang-gliding": "Hang Gliding",
-
     # Miscellaneous
     "access": "Access Point",
     "access-point": "Access Point",
@@ -418,44 +396,36 @@ DEFAULT_KEYWORD_MAP = {
     "Camp Area": ["camp area", "camping area"],
     "Camp Backcountry": ["backcountry camp", "bivy", "bivouac"],
     "Campground": ["campground", "established camp"],
-
     # Water
     "Water Source": ["water", "spring", "refill", "creek", "stream"],
     "Waterfall": ["waterfall", "falls"],
     "Hot Spring": ["hot spring", "thermal"],
     "Potable Water": ["potable", "drinking water"],
     "Water Crossing": ["water crossing", "ford"],
-
     # Transportation
     "Parking": ["car", "parking", "lot", "vehicle"],
     "Trailhead": ["trailhead", "trail head", "th"],
     "4x4": ["4x4", "four wheel"],
     "ATV": ["atv", "quad"],
-
     # Winter
     "XC Skiing": ["ski", "skin", "tour", "uptrack", "skiing", "xc"],
     "Ski Touring": ["ski touring", "backcountry ski"],
     "Ski": ["ski", "skiing"],
     "Snowboarder": ["snowboard", "boarding"],
-
     # Hiking
     "Hike": ["hike", "hiking"],
     "Backpacker": ["backpack", "backpacking"],
     "Mountaineer": ["mountaineer", "alpinist"],
-
     # Terrain
     "Summit": ["summit", "peak", "top", "mt"],
     "Cave": ["cave", "cavern"],
-
     # Hazards
     "Hazard": ["danger", "avy", "avalanche", "slide", "caution", "warning"],
     "Barrier": ["barrier", "closed"],
-
     # Observation
     "Photo": ["camera", "photo"],
     "View": ["view", "viewpoint", "vista", "overlook", "scenic"],
     "Lookout": ["lookout", "observation"],
-
     # Facilities
     "Cabin": ["cabin", "hut", "yurt"],
     "Shelter": ["shelter", "refuge"],
@@ -464,7 +434,9 @@ DEFAULT_KEYWORD_MAP = {
 }
 
 
-def _try_load_repo_icon_mapping_defaults() -> Optional[tuple[Dict[str, str], Dict[str, List[str]]]]:
+def _try_load_repo_icon_mapping_defaults() -> Optional[
+    tuple[Dict[str, str], Dict[str, List[str]]]
+]:
     """
     Best-effort load of repo-versioned defaults from `cairn/data/icon_mappings.yaml`.
 
@@ -519,20 +491,6 @@ if _loaded_defaults is not None:
 class IconMappingConfig:
     """Manages icon mapping configuration with user overrides."""
 
-    # Default emoji map for preview display
-    DEFAULT_ICON_EMOJIS = {
-        "Campsite": "⛺", "Camp": "⛺", "Camp Backcountry": "⛺", "Camp Area": "⛺", "Campground": "⛺",
-        "Water Source": "💧", "Waterfall": "💧", "Hot Spring": "♨️", "Potable Water": "💧",
-        "Parking": "🅿️", "Trailhead": "🥾", "4x4": "🚙", "ATV": "🏍️",
-        "XC Skiing": "⛷️", "Ski": "⛷️", "Ski Touring": "⛷️", "Skin Track": "⛷️", "Snowboarder": "🏂", "Snowmobile": "🛷",
-        "Summit": "🏔️", "Cave": "🕳️",
-        "Hazard": "⚠️", "Barrier": "🚧",
-        "Hike": "🥾", "Backpacker": "🎒",
-        "Photo": "📷", "View": "👁️", "Lookout": "🔭",
-        "Cabin": "🏠", "Shelter": "🏚️", "House": "🏠", "Food Source": "🍎",
-        "Location": "📍",
-    }
-
     def __init__(self, config_file: Optional[Path] = None):
         """
         Initialize configuration.
@@ -542,7 +500,6 @@ class IconMappingConfig:
         """
         self.symbol_map = DEFAULT_SYMBOL_MAP.copy()
         self.keyword_map = DEFAULT_KEYWORD_MAP.copy()
-        self.icon_emojis = self.DEFAULT_ICON_EMOJIS.copy()
         self.unmapped_symbols: Dict[str, List[str]] = defaultdict(list)
         self.enable_unmapped_detection = True
         self.use_icon_name_prefix = False
@@ -553,7 +510,7 @@ class IconMappingConfig:
         if config_file and config_file.exists():
             self.load_user_config(config_file)
 
-    def load_user_config(self, config_file: Path):
+    def load_user_config(self, config_file: Path) -> None:
         """
         Load user configuration from YAML file.
 
@@ -568,25 +525,30 @@ class IconMappingConfig:
             config_file: Path to YAML config file (.yaml or .yml)
         """
         try:
-            with open(config_file, 'r', encoding='utf-8') as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 user_config = yaml.safe_load(f)
 
             # Handle empty config file
             if user_config is None:
                 user_config = {}
 
+            # Fail fast: emoji configuration has been removed.
+            if "icon_emojis" in user_config:
+                raise ValueError(
+                    "`icon_emojis` is no longer supported. Remove the `icon_emojis` section from your config file."
+                )
+
             # Override symbol mappings
             if "symbol_mappings" in user_config:
-                normalized = {str(k).lower(): v for k, v in (user_config["symbol_mappings"] or {}).items()}
+                normalized = {
+                    str(k).lower(): v
+                    for k, v in (user_config["symbol_mappings"] or {}).items()
+                }
                 self.symbol_map.update(normalized)
 
             # Override keyword mappings
             if "keyword_mappings" in user_config:
                 self.keyword_map.update(user_config["keyword_mappings"])
-
-            # Override icon emojis for preview
-            if "icon_emojis" in user_config:
-                self.icon_emojis.update(user_config["icon_emojis"])
 
             # Set icon name prefix behavior
             if "use_icon_name_prefix" in user_config:
@@ -597,24 +559,31 @@ class IconMappingConfig:
                 default_icon_raw = str(user_config["default_icon"])
                 default_icon = normalize_onx_icon_name(default_icon_raw)
                 if default_icon is None:
-                    raise ValueError(f"Invalid default_icon '{default_icon_raw}' (not a valid OnX icon)")
+                    raise ValueError(
+                        f"Invalid default_icon '{default_icon_raw}' (not a valid OnX icon)"
+                    )
                 self.default_icon = default_icon
 
             if "default_color" in user_config and user_config["default_color"]:
                 # Quantize to official waypoint palette for safety.
                 from cairn.core.color_mapper import ColorMapper
-                self.default_color = ColorMapper.map_waypoint_color(str(user_config["default_color"]))
+
+                self.default_color = ColorMapper.map_waypoint_color(
+                    str(user_config["default_color"])
+                )
 
             # Set detection flag
             if "enable_unmapped_detection" in user_config:
-                self.enable_unmapped_detection = user_config["enable_unmapped_detection"]
+                self.enable_unmapped_detection = user_config[
+                    "enable_unmapped_detection"
+                ]
 
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML in config file: {e}")
         except Exception as e:
             raise ValueError(f"Error loading config file: {e}")
 
-    def track_unmapped(self, symbol: str, waypoint_title: str = ""):
+    def track_unmapped(self, symbol: str, waypoint_title: str = "") -> None:
         """
         Track a CalTopo symbol that has no mapping.
 
@@ -635,18 +604,6 @@ class IconMappingConfig:
         if symbol and symbol not in self.symbol_map:
             self.unmapped_symbols[symbol].append(waypoint_title)
 
-    def get_icon_emoji(self, icon_id: str) -> str:
-        """
-        Get emoji representation for an icon (for preview display).
-
-        Args:
-            icon_id: The OnX icon ID
-
-        Returns:
-            Emoji string (defaults to 📍 if not found)
-        """
-        return self.icon_emojis.get(icon_id, "📍")
-
     def get_unmapped_report(self) -> Dict[str, Dict]:
         """
         Get a report of unmapped symbols found during processing.
@@ -659,7 +616,7 @@ class IconMappingConfig:
         for symbol, titles in self.unmapped_symbols.items():
             report[symbol] = {
                 "count": len(titles),
-                "examples": titles[:3]  # First 3 examples
+                "examples": titles[:3],  # First 3 examples
             }
         return report
 
@@ -667,7 +624,7 @@ class IconMappingConfig:
         """Check if any unmapped symbols were found."""
         return len(self.unmapped_symbols) > 0
 
-    def export_template(self, output_path: Path):
+    def export_template(self, output_path: Path) -> None:
         """
         Export a configuration template file for user customization.
 
@@ -676,7 +633,7 @@ class IconMappingConfig:
         Args:
             output_path: Path to write the template file (.yaml)
         """
-        yaml_content = '''# =============================================================================
+        yaml_content = """# =============================================================================
 # Cairn Icon Mapping Configuration
 # =============================================================================
 # This file maps CalTopo symbols to OnX Backcountry icons.
@@ -881,8 +838,8 @@ keyword_mappings:
     - cabin
     - hut
     - yurt
-'''
-        with open(output_path, 'w', encoding='utf-8') as f:
+"""
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(yaml_content)
 
     def get_config_summary(self) -> Dict:
@@ -919,11 +876,11 @@ def get_use_icon_name_prefix() -> bool:
     for config_file in config_files:
         if config_file.exists():
             try:
-                with open(config_file, 'r', encoding='utf-8') as f:
+                with open(config_file, "r", encoding="utf-8") as f:
                     user_config = yaml.safe_load(f)
                     if user_config:
                         return user_config.get("use_icon_name_prefix", False)
-            except:
+            except Exception:
                 pass
     return False
 
@@ -952,7 +909,7 @@ def load_config(config_file: Optional[Path] = None) -> IconMappingConfig:
     return IconMappingConfig(config_file)
 
 
-def get_all_OnX_icons() -> List[str]:
+def get_all_onx_icons() -> List[str]:
     """
     Get complete list of all OnX Backcountry icon names.
 
@@ -962,7 +919,9 @@ def get_all_OnX_icons() -> List[str]:
     return list(ONX_ICON_NAMES_CANONICAL)
 
 
-def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_config.yaml")):
+def save_user_mapping(
+    symbol: str, icon: str, config_path: Path = Path("cairn_config.yaml")
+):
     """
     Save user's manual mapping to config file.
 
@@ -972,7 +931,7 @@ def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_co
         config_path: Path to YAML config file
     """
     if config_path.exists():
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
     else:
         config = {
@@ -991,11 +950,13 @@ def save_user_mapping(symbol: str, icon: str, config_path: Path = Path("cairn_co
         raise ValueError(f"Invalid OnX icon '{icon}' (must match canonical icon list)")
     config["symbol_mappings"][symbol_key] = icon_canon
 
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
 
-def remove_user_mapping(symbol: str, config_path: Path = Path("cairn_config.yaml")) -> bool:
+def remove_user_mapping(
+    symbol: str, config_path: Path = Path("cairn_config.yaml")
+) -> bool:
     """
     Remove a user's manual mapping from the YAML config file.
 
@@ -1009,7 +970,7 @@ def remove_user_mapping(symbol: str, config_path: Path = Path("cairn_config.yaml
     if not config_path.exists():
         return False
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
 
     symbol_key = (symbol or "").strip().lower()
@@ -1020,7 +981,7 @@ def remove_user_mapping(symbol: str, config_path: Path = Path("cairn_config.yaml
     del symbol_mappings[symbol_key]
     config["symbol_mappings"] = symbol_mappings
 
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     return True

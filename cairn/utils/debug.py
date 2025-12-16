@@ -14,7 +14,9 @@ from rich.table import Table
 console = Console()
 
 
-def read_gpx_waypoint_order(gpx_path: Path, *, console: Optional[Console] = None) -> List[str]:
+def read_gpx_waypoint_order(
+    gpx_path: Path, *, console: Optional[Console] = None
+) -> List[str]:
     """
     Read waypoint names from a GPX file in the order they appear.
 
@@ -30,11 +32,11 @@ def read_gpx_waypoint_order(gpx_path: Path, *, console: Optional[Console] = None
         root = tree.getroot()
 
         # Handle namespace
-        ns = {'gpx': 'http://www.topografix.com/GPX/1/1'}
+        ns = {"gpx": "http://www.topografix.com/GPX/1/1"}
 
         waypoint_names = []
-        for wpt in root.findall('.//gpx:wpt', ns):
-            name_elem = wpt.find('gpx:name', ns)
+        for wpt in root.findall(".//gpx:wpt", ns):
+            name_elem = wpt.find("gpx:name", ns)
             if name_elem is not None and name_elem.text:
                 waypoint_names.append(name_elem.text)
 
@@ -44,10 +46,13 @@ def read_gpx_waypoint_order(gpx_path: Path, *, console: Optional[Console] = None
         return []
 
 
-def compare_orders(expected: List[str], actual: List[str],
-                   max_display: int = 20,
-                   *,
-                   console: Optional[Console] = None) -> Tuple[bool, List[Tuple[int, str, Optional[str]]]]:
+def compare_orders(
+    expected: List[str],
+    actual: List[str],
+    max_display: int = 20,
+    *,
+    console: Optional[Console] = None,
+) -> Tuple[bool, List[Tuple[int, str, Optional[str]]]]:
     """
     Compare expected order with actual order and identify differences.
 
@@ -66,7 +71,9 @@ def compare_orders(expected: List[str], actual: List[str],
     if len(expected) != len(actual):
         is_match = False
         c = console or globals()["console"]
-        c.print(f"[yellow]Warning: Length mismatch - Expected {len(expected)}, got {len(actual)}[/]")
+        c.print(
+            f"[yellow]Warning: Length mismatch - Expected {len(expected)}, got {len(actual)}[/]"
+        )
 
     # Compare up to the minimum length
     max_len = min(len(expected), len(actual), max_display)
@@ -82,10 +89,13 @@ def compare_orders(expected: List[str], actual: List[str],
     return is_match, differences
 
 
-def display_order_comparison(expected: List[str], actual: List[str],
-                             title: str = "Order Comparison",
-                             *,
-                             console: Optional[Console] = None) -> None:
+def display_order_comparison(
+    expected: List[str],
+    actual: List[str],
+    title: str = "Order Comparison",
+    *,
+    console: Optional[Console] = None,
+) -> None:
     """
     Display a formatted comparison of expected vs actual waypoint order.
 
@@ -125,7 +135,7 @@ def display_order_comparison(expected: List[str], actual: List[str],
             str(i + 1),
             str(expected_name),
             str(actual_name),
-            f"[{match_style}]{match_symbol}[/]"
+            f"[{match_style}]{match_symbol}[/]",
         )
 
     c.print(table)
@@ -134,7 +144,12 @@ def display_order_comparison(expected: List[str], actual: List[str],
         c.print(f"\n[dim]... showing first {max_display} of {max_len} waypoints[/]")
 
 
-def analyze_gpx_order(gpx_path: Path, expected_order: Optional[List[str]] = None, *, console: Optional[Console] = None) -> None:
+def analyze_gpx_order(
+    gpx_path: Path,
+    expected_order: Optional[List[str]] = None,
+    *,
+    console: Optional[Console] = None,
+) -> None:
     """
     Analyze and display the order of waypoints in a GPX file.
 

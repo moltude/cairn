@@ -5,12 +5,14 @@ This module provides helper functions for handling OnX import limits,
 cleaning data, natural sorting, and managing file operations.
 """
 
-from typing import List, Iterator, Any, Union, Tuple
+from __future__ import annotations
+
+from typing import List, Iterator, Any, Tuple
 import re
 from pathlib import Path
 
 
-def natural_sort_key(text: str) -> List[Union[str, int]]:
+def natural_sort_key(text: str) -> list[str | int]:
     """
     Generate a sort key for natural/human sorting.
 
@@ -40,15 +42,15 @@ def natural_sort_key(text: str) -> List[Union[str, int]]:
         ['01 - A', '02 - B', '10 - C']
     """
     if not text:
-        return ['']
+        return [""]
 
-    def convert(part: str) -> Union[str, int]:
+    def convert(part: str) -> str | int:
         """Convert numeric strings to int, lowercase text otherwise."""
         return int(part) if part.isdigit() else part.lower()
 
     # Split on digit boundaries, keeping the digits
     # e.g., "Item 10" -> ['Item ', '10', '']
-    parts = re.split(r'(\d+)', text)
+    parts = re.split(r"(\d+)", text)
 
     return [convert(part) for part in parts]
 
@@ -78,7 +80,7 @@ def chunk_data(items: List[Any], limit: int = 2500) -> Iterator[List[Any]]:
         2500
     """
     for i in range(0, len(items), limit):
-        yield items[i:i + limit]
+        yield items[i : i + limit]
 
 
 def strip_html(text: str) -> str:
@@ -102,29 +104,29 @@ def strip_html(text: str) -> str:
         return ""
 
     # Remove HTML tags
-    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r"<[^>]+>", "", text)
 
     # Decode common HTML entities
     html_entities = {
-        '&nbsp;': ' ',
-        '&amp;': '&',
-        '&lt;': '<',
-        '&gt;': '>',
-        '&quot;': '"',
-        '&#39;': "'",
-        '&apos;': "'",
+        "&nbsp;": " ",
+        "&amp;": "&",
+        "&lt;": "<",
+        "&gt;": ">",
+        "&quot;": '"',
+        "&#39;": "'",
+        "&apos;": "'",
     }
 
     for entity, char in html_entities.items():
         text = text.replace(entity, char)
 
     # Clean up extra whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"\s+", " ", text).strip()
 
     return text
 
 
-def sanitize_name_for_OnX(name: str) -> Tuple[str, bool]:
+def sanitize_name_for_onx(name: str) -> Tuple[str, bool]:
     """
     Sanitize waypoint/track names by removing problematic non-alphanumeric characters
     that can cause OnX sorting issues, while preserving natural sort order.
@@ -141,7 +143,7 @@ def sanitize_name_for_OnX(name: str) -> Tuple[str, bool]:
         - was_changed: True if any characters were removed, False otherwise
 
     Examples:
-        >>> sanitize_name_for_OnX("#01 Porcupine Mile 6.1")
+        >>> sanitize_name_for_onx("#01 Porcupine Mile 6.1")
         ('01 Porcupine Mile 6.1', True)
         >>> sanitize_name_for_OnX("#03 & #05 Cow Camp")
         ('03  05 Cow Camp', True)
@@ -160,17 +162,17 @@ def sanitize_name_for_OnX(name: str) -> Tuple[str, bool]:
     # Note: We keep colon for time formats like "12:45 AM"
 
     # Remove specific problematic characters that cause sorting issues
-    problematic_chars = r'[!@#$%^*&]'
-    sanitized = re.sub(problematic_chars, '', name)
+    problematic_chars = r"[!@#$%^*&]"
+    sanitized = re.sub(problematic_chars, "", name)
 
     # Clean up multiple spaces that might result from removals
-    sanitized = re.sub(r'\s+', ' ', sanitized).strip()
+    sanitized = re.sub(r"\s+", " ", sanitized).strip()
 
     # If name became empty, return original
     if not sanitized:
         return original, False
 
-    was_changed = (sanitized != original)
+    was_changed = sanitized != original
     return sanitized, was_changed
 
 
@@ -195,16 +197,16 @@ def sanitize_filename(name: str) -> str:
         return "Untitled"
 
     # Replace problematic characters with underscores
-    name = re.sub(r'[<>:"/\\|?*]', '_', name)
+    name = re.sub(r'[<>:"/\\|?*]', "_", name)
 
     # Replace spaces with underscores
-    name = name.replace(' ', '_')
+    name = name.replace(" ", "_")
 
     # Remove multiple consecutive underscores
-    name = re.sub(r'_+', '_', name)
+    name = re.sub(r"_+", "_", name)
 
     # Remove leading/trailing underscores
-    name = name.strip('_')
+    name = name.strip("_")
 
     # Limit length (255 is common filesystem limit, leave room for extensions)
     if len(name) > 200:
@@ -223,7 +225,7 @@ def estimate_file_size(content: str) -> int:
     Returns:
         Estimated size in bytes
     """
-    return len(content.encode('utf-8'))
+    return len(content.encode("utf-8"))
 
 
 def format_file_size(size_bytes: int) -> str:
@@ -280,8 +282,12 @@ def get_geometry_type_name(geometry_type: str) -> str:
     return type_map.get(geometry_type, geometry_type)
 
 
-def should_split(item_count: int, estimated_size: int,
-                 max_items: int = 3000, max_size: int = 4 * 1024 * 1024) -> bool:
+def should_split(
+    item_count: int,
+    estimated_size: int,
+    max_items: int = 3000,
+    max_size: int = 4 * 1024 * 1024,
+) -> bool:
     """
     Determine if a dataset should be split based on OnX limits.
 

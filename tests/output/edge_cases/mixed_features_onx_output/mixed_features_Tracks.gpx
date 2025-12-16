@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>mixed features</name>
+  </metadata>
+  <trk>
+    <name>Test Track</name>
+    <desc>name=Test Track
+notes=
+id=ac422d0c-700f-4d19-b35f-199e8e268faa
+color=rgba(8,122,255,1)
+style=solid
+weight=4.0</desc>
+    <extensions>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:style>solid</onx:style>
+      <onx:weight>4.0</onx:weight>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.0" lon="-120.0">
+      </trkpt>
+      <trkpt lat="45.1" lon="-120.1">
+      </trkpt>
+      <trkpt lat="45.2" lon="-120.2">
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

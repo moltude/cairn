@@ -5,9 +5,11 @@ This module handles the translation of CalTopo's generic marker symbols
 to OnX Backcountry's specific icon IDs for better visual representation.
 """
 
+from __future__ import annotations
+
 from typing import Optional
 
-from cairn.core.config import GENERIC_SYMBOLS, IconMappingConfig, get_icon_emoji as _get_icon_emoji
+from cairn.core.config import GENERIC_SYMBOLS, IconMappingConfig
 from cairn.core.icon_resolver import IconResolver
 
 
@@ -20,7 +22,16 @@ ICON_MAP = {
     "Trailhead": ["trailhead", "trail head", "th"],
     "XC Skiing": ["ski", "skin", "tour", "uptrack", "skiing", "xc"],
     "Summit": ["summit", "peak", "top", "mt"],
-    "Hazard": ["danger", "avy", "avalanche", "slide", "caution", "warning", "deadfall", "dead fall"],
+    "Hazard": [
+        "danger",
+        "avy",
+        "avalanche",
+        "slide",
+        "caution",
+        "warning",
+        "deadfall",
+        "dead fall",
+    ],
     "Photo": ["camera", "photo"],
     "View": ["view", "viewpoint", "vista", "overlook", "scenic"],
     "Cabin": ["cabin", "hut", "yurt"],
@@ -34,8 +45,12 @@ _LEGACY_RESOLVER = IconResolver(
 )
 
 
-def map_icon(title: str, description: str = "", caltopo_symbol: str = "",
-             config: Optional[IconMappingConfig] = None) -> str:
+def map_icon(
+    title: str,
+    description: str = "",
+    caltopo_symbol: str = "",
+    config: Optional[IconMappingConfig] = None,
+) -> str:
     """
     Map a CalTopo marker to an OnX Backcountry icon ID.
 
@@ -70,7 +85,11 @@ def map_icon(title: str, description: str = "", caltopo_symbol: str = "",
 
         # Track unmapped symbols for reporting (even if keywords matched).
         symbol_norm = (caltopo_symbol or "").strip().lower()
-        if symbol_norm and symbol_norm not in GENERIC_SYMBOLS and symbol_norm not in config.symbol_map:
+        if (
+            symbol_norm
+            and symbol_norm not in GENERIC_SYMBOLS
+            and symbol_norm not in config.symbol_map
+        ):
             config.track_unmapped(symbol_norm, title)
 
         return decision.icon
@@ -112,18 +131,3 @@ def map_color(caltopo_color: str) -> str:
         return f"ff{b}{g}{r}".lower()
     except (ValueError, IndexError):
         return "ffffffff"
-
-
-def get_icon_emoji(icon_id: str) -> str:
-    """
-    Get an emoji representation for an icon ID (for Rich UI display).
-
-    Args:
-        icon_id: The OnX icon ID
-
-    Returns:
-        An emoji string representing the icon
-    """
-    # Deprecated: prefer `IconMappingConfig.get_icon_emoji()` (config-aware) or
-    # `cairn.core.config.get_icon_emoji()` (config-less).
-    return _get_icon_emoji(icon_id)

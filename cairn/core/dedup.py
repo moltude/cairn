@@ -9,7 +9,7 @@ same location/name.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from cairn.core.normalization import normalize_key
 from cairn.model import MapDocument, Waypoint
@@ -54,12 +54,18 @@ def waypoint_dedup_key(wp: Waypoint) -> DedupKey:
 
 def _waypoint_score(wp: Waypoint) -> Tuple[int, int, int]:
     """
-    Higher is better.
+    Calculate a score for waypoint quality to determine which duplicate to keep.
 
-    Criteria:
-    - has OnX icon
-    - has OnX color
-    - longer notes
+    Higher scores are better. Scoring criteria (in order of importance):
+    1. Total metadata presence (icon + color): Prefer waypoints with both
+    2. Icon presence: Prefer waypoints with an OnX icon
+    3. Notes length: Prefer waypoints with longer descriptions
+
+    Args:
+        wp: Waypoint to score
+
+    Returns:
+        Tuple of (total_metadata, has_icon, notes_length) for comparison
     """
     has_icon = 1 if (wp.style.OnX_icon or "").strip() else 0
     has_color = 1 if (wp.style.OnX_color_rgba or "").strip() else 0
@@ -75,8 +81,30 @@ def dedupe_waypoints(
     """
     Deduplicate waypoints by (rounded lat/lon + normalized name).
 
+    Algorithm:
+    1. Group waypoints by normalized name + lat/lon rounded to 6 decimals (~0.1m precision)
+    2. For each group with duplicates, select the "best" waypoint using scoring:
+       - Prefer waypoints with OnX icon + color (more complete metadata)
+       - Prefer waypoints with longer notes
+    3. Merge source IDs from dropped waypoints into kept waypoint for traceability
+    4. Track conflicts (different icons/colors within a group) in waypoint.extra
+
+    Args:
+        waypoints: List of waypoints to deduplicate
+        trace: Optional trace context for debugging
+
     Returns:
-      kept, dropped, report
+        Tuple of (kept_waypoints, dropped_waypoints, dedup_report)
+
+    Example:
+        >>> kept, dropped, report = dedupe_waypoints(all_waypoints)
+        >>> print(f"Kept {len(kept)}, dropped {len(dropped)} duplicates")
+        >>> print(f"Found {report.group_count} duplicate groups")
+
+    Notes:
+        - Coordinates are rounded to 6 decimal places (~0.1 meter precision)
+        - Name matching is case-insensitive and removes special characters
+        - Source IDs are preserved for forensic analysis
     """
     groups: Dict[DedupKey, List[Waypoint]] = {}
     for wp in waypoints:
@@ -102,8 +130,20 @@ def dedupe_waypoints(
                 best_score = sc
 
         conflicts: Dict[str, Any] = {}
-        icons = sorted({(m.style.OnX_icon or "").strip() for m in members if (m.style.OnX_icon or "").strip()})
-        colors = sorted({(m.style.OnX_color_rgba or "").strip() for m in members if (m.style.OnX_color_rgba or "").strip()})
+        icons = sorted(
+            {
+                (m.style.OnX_icon or "").strip()
+                for m in members
+                if (m.style.OnX_icon or "").strip()
+            }
+        )
+        colors = sorted(
+            {
+                (m.style.OnX_color_rgba or "").strip()
+                for m in members
+                if (m.style.OnX_color_rgba or "").strip()
+            }
+        )
         if len(icons) > 1:
             conflicts["OnX_icons"] = icons
         if len(colors) > 1:
@@ -157,7 +197,9 @@ def apply_waypoint_dedup(doc: MapDocument, *, trace: Any = None) -> DedupReport:
     wps = doc.waypoints()
     kept, dropped, report = dedupe_waypoints(wps, trace=trace)
     dropped_ids = {w.id for w in dropped}
-    doc.items = [i for i in doc.items if not (isinstance(i, Waypoint) and i.id in dropped_ids)]
+    doc.items = [
+        i for i in doc.items if not (isinstance(i, Waypoint) and i.id in dropped_ids)
+    ]
     # Replace kept versions (which may now have merged source_ids)
     # Ensure stable order: keep original order of appearance.
     kept_map = {w.id: w for w in kept}

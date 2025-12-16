@@ -1,0 +1,11 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature"
+            "geometry": {
+                "type": "Point"
+            }
+        }
+    ]
+    # Missing closing brace

@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="0.0" lon="0.0">
+    <name>Sea Level</name>
+    <ele>0.0</ele>
+  </wpt>
+  <wpt lat="31.5" lon="35.5">
+    <name>Dead Sea Shore</name>
+    <ele>-430</ele>
+  </wpt>
+  <wpt lat="27.9881" lon="86.9250">
+    <name>Mount Everest Summit</name>
+    <ele>8849</ele>
+  </wpt>
+  <wpt lat="45.0" lon="-120.0">
+    <name>No Elevation Data</name>
+  </wpt>
+</gpx>

@@ -50,24 +50,19 @@ def test_migrate_onx_accepts_geojson_file(tmp_path: Path):
 
 def test_migrate_caltopo_accepts_gpx_file(tmp_path: Path):
     repo_root = Path(__file__).resolve().parents[1]
-    demo_dir = repo_root / "demo" / "onx-to-caltopo" / "onx-export"
-    gpx_src = demo_dir / "onx-export.gpx"
-    kml_src = demo_dir / "onx-to-caltopo" / "onx-export" / "onx-export.kml"
-    # Some repos name the KML alongside; tolerate missing KML.
-    if not kml_src.exists():
-        kml_src = demo_dir / "onx-export.kml"
+    fixtures_dir = repo_root / "tests" / "fixtures"
+    gpx_src = fixtures_dir / "onx_export_with_tracks.gpx"
+    kml_src = fixtures_dir / "onx_export_with_tracks.kml"
 
     in_file = tmp_path / gpx_src.name
     in_file.write_text(gpx_src.read_text(encoding="utf-8"), encoding="utf-8")
-    if kml_src.exists():
-        (tmp_path / kml_src.name).write_text(kml_src.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / kml_src.name).write_text(kml_src.read_text(encoding="utf-8"), encoding="utf-8")
 
     # Prompts:
     # - Select GPX (default 1) -> blank
-    # - Select KML (default 1) -> blank (if present)
+    # - Select KML (default 1) -> blank
     # - Ready to generate new map? (default yes) -> blank
-    inputs = "\n\n\n" if kml_src.exists() else "\n\n"
-    result = runner.invoke(app, ["migrate", "caltopo", str(in_file)], input=inputs)
+    result = runner.invoke(app, ["migrate", "caltopo", str(in_file)], input="\n\n\n")
     assert result.exit_code == 0, result.stdout
 
     out_dir = tmp_path / "caltopo_ready"

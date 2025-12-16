@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="0.0" lon="180.0">
+    <name>Dateline East</name>
+    <desc>180°E</desc>
+  </wpt>
+  <wpt lat="0.0" lon="-180.0">
+    <name>Dateline West</name>
+    <desc>180°W (same meridian)</desc>
+  </wpt>
+</gpx>

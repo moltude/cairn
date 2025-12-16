@@ -11,7 +11,7 @@ import json
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, Optional
+from typing import Any, Dict, Iterator
 
 
 class TraceWriter:
@@ -61,4 +61,3 @@ class TraceReader:
                 if not line:
                     continue
                 yield json.loads(line)
-

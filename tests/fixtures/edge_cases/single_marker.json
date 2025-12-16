@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "title": "Solo Marker",
+        "class": "Marker",
+        "marker-symbol": "circle",
+        "marker-color": "#FF0000"
+      }
+    }
+  ]
+}

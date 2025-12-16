@@ -12,7 +12,7 @@ some fields. We preserve source-specific metadata in `Style` and `metadata`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 
 GeometryType = Literal["Point", "LineString", "Polygon"]
@@ -62,7 +62,9 @@ class Waypoint:
     lat: float
     notes: str = ""
     style: Style = field(default_factory=Style)
-    source_ids: List[str] = field(default_factory=list)  # additional ids merged via dedup
+    source_ids: List[str] = field(
+        default_factory=list
+    )  # additional ids merged via dedup
     extra: Dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -114,7 +116,7 @@ class Shape:
         return "Polygon"
 
 
-Item = Union[Waypoint, Track, Shape]
+Item = Waypoint | Track | Shape
 
 
 @dataclass
@@ -133,7 +135,9 @@ class MapDocument:
                 return f
         return None
 
-    def ensure_folder(self, folder_id: str, name: str, parent_id: Optional[str] = None) -> Folder:
+    def ensure_folder(
+        self, folder_id: str, name: str, parent_id: Optional[str] = None
+    ) -> Folder:
         existing = self.get_folder(folder_id)
         if existing is not None:
             return existing

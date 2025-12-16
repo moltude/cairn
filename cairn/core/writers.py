@@ -5,7 +5,9 @@ This module generates valid GPX 1.1 files with OnX custom namespace extensions
 for waypoints and tracks, and KML 2.2 files for shapes (polygons).
 """
 
-from typing import List, Optional, Callable, Iterable, Tuple
+from __future__ import annotations
+
+from typing import List, Optional
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from pathlib import Path
@@ -16,9 +18,13 @@ import math
 
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon, map_color
-from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_OnX
+from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_onx
 from cairn.core.config import IconMappingConfig, get_icon_color
-from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_to_weight
+from cairn.core.color_mapper import (
+    ColorMapper,
+    pattern_to_style,
+    stroke_width_to_weight,
+)
 
 # Register the OnX namespace (note: 4 'w's is required)
 # IMPORTANT: OnX exports use **lowercase prefix** `onx:` and lowercase domain in the namespace URI.
@@ -28,6 +34,7 @@ ET.register_namespace("onx", "https://wwww.onxmaps.com/")
 # Set up logger for debug output
 logger = logging.getLogger(__name__)
 
+
 # region agent log
 def _agent_ndjson_log(payload: dict) -> None:
     """
@@ -36,14 +43,20 @@ def _agent_ndjson_log(payload: dict) -> None:
     """
     try:
         import json, os  # noqa: E401
+
         payload = dict(payload or {})
+        # Convert Python timestamp (seconds) to JavaScript timestamp (milliseconds)
         payload.setdefault("timestamp", int(datetime.utcnow().timestamp() * 1000))
         payload.setdefault("sessionId", "debug-session")
         payload.setdefault("runId", os.environ.get("CAIRN_RUN_ID", "pre-fix"))
-        with open("/Users/scott/_code/cairn/.cursor/debug.log", "a", encoding="utf-8") as f:
+        with open(
+            "/Users/scott/_code/cairn/.cursor/debug.log", "a", encoding="utf-8"
+        ) as f:
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception:
         pass
+
+
 # endregion
 
 # OnX import max GPX size is 4MB. Use a slightly lower default to avoid edge cases.
@@ -51,10 +64,7 @@ DEFAULT_MAX_GPX_BYTES = int(math.floor(3.75 * 1024 * 1024))
 
 # Global change tracker for name sanitization
 # Format: {feature_type: [(original_name, sanitized_name), ...]}
-_name_changes: dict[str, list[tuple[str, str]]] = {
-    'waypoints': [],
-    'tracks': []
-}
+_name_changes: dict[str, list[tuple[str, str]]] = {"waypoints": [], "tracks": []}
 
 
 def get_name_changes() -> dict[str, list[tuple[str, str]]]:
@@ -62,13 +72,13 @@ def get_name_changes() -> dict[str, list[tuple[str, str]]]:
     return _name_changes.copy()
 
 
-def clear_name_changes():
+def clear_name_changes() -> None:
     """Clear tracked name changes (call before processing new folder)."""
-    _name_changes['waypoints'] = []
-    _name_changes['tracks'] = []
+    _name_changes["waypoints"] = []
+    _name_changes["tracks"] = []
 
 
-def track_name_change(feature_type: str, original: str, sanitized: str):
+def track_name_change(feature_type: str, original: str, sanitized: str) -> None:
     """Track a name change for reporting."""
     if original != sanitized:
         _name_changes[feature_type].append((original, sanitized))
@@ -90,11 +100,11 @@ def verify_gpx_waypoint_order(gpx_path: Path, max_items: int = 20) -> List[str]:
         root = tree.getroot()
 
         # Handle namespace
-        ns = {'gpx': 'http://www.topografix.com/GPX/1/1'}
+        ns = {"gpx": "http://www.topografix.com/GPX/1/1"}
 
         waypoint_names = []
-        for wpt in root.findall('.//gpx:wpt', ns):
-            name_elem = wpt.find('gpx:name', ns)
+        for wpt in root.findall(".//gpx:wpt", ns):
+            name_elem = wpt.find("gpx:name", ns)
             if name_elem is not None and name_elem.text:
                 waypoint_names.append(name_elem.text)
 
@@ -104,7 +114,9 @@ def verify_gpx_waypoint_order(gpx_path: Path, max_items: int = 20) -> List[str]:
         return []
 
 
-def log_waypoint_order(features: List[ParsedFeature], label: str = "Waypoint order", max_items: int = 20) -> None:
+def log_waypoint_order(
+    features: List[ParsedFeature], label: str = "Waypoint order", max_items: int = 20
+) -> None:
     """
     Log the order of waypoints for debugging purposes.
 
@@ -151,11 +163,11 @@ def format_waypoint_name(
         name_with_prefix = original_name
 
     # Sanitize name for OnX sorting compatibility
-    sanitized_name, was_changed = sanitize_name_for_OnX(name_with_prefix)
+    sanitized_name, was_changed = sanitize_name_for_onx(name_with_prefix)
 
     # Track changes for reporting
     if was_changed:
-        track_name_change('waypoints', name_with_prefix, sanitized_name)
+        track_name_change("waypoints", name_with_prefix, sanitized_name)
 
     return sanitized_name
 
@@ -170,7 +182,7 @@ def prettify_xml(elem: ET.Element) -> str:
     Returns:
         Formatted XML string
     """
-    rough_string = ET.tostring(elem, encoding='unicode')
+    rough_string = ET.tostring(elem, encoding="unicode")
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="  ")
 
@@ -185,7 +197,7 @@ def _utf8_joined_size(lines: List[str]) -> int:
     for s in lines:
         total += len((s or "").encode("utf-8"))
     # newline between each adjacent pair
-    total += (len(lines) - 1)
+    total += len(lines) - 1
     return total
 
 
@@ -208,7 +220,7 @@ def _split_gpx_lines_by_bytes(
     cur_size = header_size  # bytes of '\\n'.join(cur_lines)
     cur_items = 0
 
-    def finalize_current():
+    def finalize_current() -> None:
         nonlocal cur_lines, cur_size, cur_items
         if not cur_lines:
             cur_lines = list(header_lines)
@@ -230,7 +242,7 @@ def _split_gpx_lines_by_bytes(
         return new_body_size + 1 + footer_bytes
 
     # If header+footer already exceeds max, we still write at least one part.
-    header_footer_total = (header_size + (1 if header_lines else 0) + footer_bytes)
+    header_footer_total = header_size + (1 if header_lines else 0) + footer_bytes
     if header_footer_total > max_bytes:
         logger.warning(
             f"GPX header/footer alone exceeds max_bytes={max_bytes} ({header_footer_total} bytes). "
@@ -317,9 +329,9 @@ def write_gpx_waypoints_maybe_split(
     header_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
-        '  <metadata>',
-        f'    <name>{escape(folder_name)}</name>',
-        '  </metadata>',
+        "  <metadata>",
+        f"    <name>{escape(folder_name)}</name>",
+        "  </metadata>",
     ]
     footer_line = "</gpx>"
 
@@ -351,28 +363,38 @@ def write_gpx_waypoints_maybe_split(
         mapped_icon = None
         try:
             if isinstance(getattr(feature, "properties", None), dict):
-                mapped_icon = (feature.properties.get("cairn_onx_icon_override") or "").strip() or None
+                mapped_icon = (
+                    feature.properties.get("cairn_onx_icon_override") or ""
+                ).strip() or None
         except Exception:
             mapped_icon = None
         if not mapped_icon:
-            mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol, config)
+            mapped_icon = map_icon(
+                feature.title, feature.description or "", feature.symbol, config
+            )
 
         # Format the name (optional icon prefix + sanitization)
         formatted_name = format_waypoint_name(
             feature.title,
             mapped_icon,
             use_prefix=bool(getattr(config, "use_icon_name_prefix", False)),
-            default_icon=(getattr(config, "default_icon", "Location") if config else "Location"),
+            default_icon=(
+                getattr(config, "default_icon", "Location") if config else "Location"
+            ),
         )
         formatted_name = escape(formatted_name)
 
         # Waypoint color policy (unchanged)
         if feature.color:
-            OnX_color = ColorMapper.map_waypoint_color(feature.color)
+            onx_color = ColorMapper.map_waypoint_color(feature.color)
         else:
-            OnX_color = get_icon_color(
+            onx_color = get_icon_color(
                 mapped_icon,
-                default=(config.default_color if config else ColorMapper.DEFAULT_WAYPOINT_COLOR),
+                default=(
+                    config.default_color
+                    if config
+                    else ColorMapper.DEFAULT_WAYPOINT_COLOR
+                ),
             )
 
         # region agent log
@@ -388,7 +410,7 @@ def write_gpx_waypoints_maybe_split(
                         "symbol": getattr(feature, "symbol", None),
                         "feature_color_raw": getattr(feature, "color", None),
                         "mapped_icon": mapped_icon,
-                        "onx_color": OnX_color,
+                        "onx_color": onx_color,
                         "used_feature_color": bool(feature.color),
                         "extensions_tag_sample": "<onx:icon>/<onx:color>",
                     },
@@ -403,23 +425,23 @@ def write_gpx_waypoints_maybe_split(
                 f"name={feature.title}",
                 f"notes={notes_clean}",
                 f"id={wp_id}",
-                f"color={OnX_color}",
+                f"color={onx_color}",
                 f"icon={mapped_icon}",
             ]
         )
 
         block: List[str] = []
         block.append(f'  <wpt lat="{lat}" lon="{lon}">')
-        block.append(f'    <name>{formatted_name}</name>')
+        block.append(f"    <name>{formatted_name}</name>")
         if add_timestamps:
-            timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-            block.append(f'    <time>{timestamp}</time>')
-        block.append(f'    <desc>{escape(desc_kv)}</desc>')
-        block.append('    <extensions>')
-        block.append(f'      <onx:icon>{mapped_icon}</onx:icon>')
-        block.append(f'      <onx:color>{OnX_color}</onx:color>')
-        block.append('    </extensions>')
-        block.append('  </wpt>')
+            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            block.append(f"    <time>{timestamp}</time>")
+        block.append(f"    <desc>{escape(desc_kv)}</desc>")
+        block.append("    <extensions>")
+        block.append(f"      <onx:icon>{mapped_icon}</onx:icon>")
+        block.append(f"      <onx:color>{onx_color}</onx:color>")
+        block.append("    </extensions>")
+        block.append("  </wpt>")
 
         # region agent log
         if written_count < 2:
@@ -432,7 +454,7 @@ def write_gpx_waypoints_maybe_split(
                         "title": feature.title,
                         "extensions_lines": [
                             f"<onx:icon>{mapped_icon}</onx:icon>",
-                            f"<onx:color>{OnX_color}</onx:color>",
+                            f"<onx:color>{onx_color}</onx:color>",
                         ],
                         "xmlns_decl": header_lines[1],
                     },
@@ -445,7 +467,9 @@ def write_gpx_waypoints_maybe_split(
 
     # If splitting disabled, keep legacy single-file behavior
     if not split:
-        payload = header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+        payload = (
+            header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+        )
         output_path.write_text("\n".join(payload), encoding="utf-8")
         # region agent log
         _agent_ndjson_log(
@@ -464,7 +488,9 @@ def write_gpx_waypoints_maybe_split(
         return [(output_path, output_path.stat().st_size, written_count)]
 
     # First check: would a single file exceed threshold?
-    full_payload = header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+    full_payload = (
+        header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+    )
     if _utf8_joined_size(full_payload) <= max_bytes:
         output_path.write_text("\n".join(full_payload), encoding="utf-8")
         # region agent log
@@ -510,7 +536,10 @@ def write_gpx_waypoints_maybe_split(
             "message": "Waypoints GPX written (split parts)",
             "data": {
                 "base_output_path": str(output_path),
-                "parts": [{"path": str(p), "size_bytes": int(s), "wpt_count": int(c)} for (p, s, c) in out],
+                "parts": [
+                    {"path": str(p), "size_bytes": int(s), "wpt_count": int(c)}
+                    for (p, s, c) in out
+                ],
                 "total_written_count": written_count,
                 "max_bytes": int(max_bytes),
             },
@@ -543,9 +572,9 @@ def write_gpx_tracks_maybe_split(
     header_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
-        '  <metadata>',
-        f'    <name>{escape(folder_name)}</name>',
-        '  </metadata>',
+        "  <metadata>",
+        f"    <name>{escape(folder_name)}</name>",
+        "  </metadata>",
     ]
     footer_line = "</gpx>"
 
@@ -572,13 +601,17 @@ def write_gpx_tracks_maybe_split(
         if not feature.coordinates:
             continue
 
-        sanitized_track_name, was_changed = sanitize_name_for_OnX(feature.title)
+        sanitized_track_name, was_changed = sanitize_name_for_onx(feature.title)
         if was_changed:
-            track_name_change('tracks', feature.title, sanitized_track_name)
+            track_name_change("tracks", feature.title, sanitized_track_name)
 
-        OnX_color = ColorMapper.transform_color(feature.stroke) if feature.stroke else ColorMapper.DEFAULT_COLOR
-        OnX_style = pattern_to_style(feature.pattern)
-        OnX_weight = stroke_width_to_weight(feature.stroke_width)
+        onx_color = (
+            ColorMapper.transform_color(feature.stroke)
+            if feature.stroke
+            else ColorMapper.DEFAULT_COLOR
+        )
+        onx_style = pattern_to_style(feature.pattern)
+        onx_weight = stroke_width_to_weight(feature.stroke_width)
 
         # region agent log
         if written_count < 3:
@@ -593,7 +626,11 @@ def write_gpx_tracks_maybe_split(
                         "stroke_raw": getattr(feature, "stroke", None),
                         "pattern_raw": getattr(feature, "pattern", None),
                         "stroke_width_raw": getattr(feature, "stroke_width", None),
-                        "onx": {"color": OnX_color, "style": OnX_style, "weight": OnX_weight},
+                        "onx": {
+                            "color": onx_color,
+                            "style": onx_style,
+                            "weight": onx_weight,
+                        },
                         "extensions_tag_sample": "<onx:color>/<onx:style>/<onx:weight>",
                     },
                 }
@@ -607,43 +644,47 @@ def write_gpx_tracks_maybe_split(
                 f"name={feature.title}",
                 f"notes={notes_clean}",
                 f"id={trk_id}",
-                f"color={OnX_color}",
-                f"style={OnX_style}",
-                f"weight={OnX_weight}",
+                f"color={onx_color}",
+                f"style={onx_style}",
+                f"weight={onx_weight}",
             ]
         )
 
         block: List[str] = []
-        block.append('  <trk>')
-        block.append(f'    <name>{escape(sanitized_track_name)}</name>')
-        block.append(f'    <desc>{escape(desc_kv)}</desc>')
-        block.append('    <extensions>')
-        block.append(f'      <onx:color>{OnX_color}</onx:color>')
-        block.append(f'      <onx:style>{OnX_style}</onx:style>')
-        block.append(f'      <onx:weight>{OnX_weight}</onx:weight>')
-        block.append('    </extensions>')
-        block.append('    <trkseg>')
+        block.append("  <trk>")
+        block.append(f"    <name>{escape(sanitized_track_name)}</name>")
+        block.append(f"    <desc>{escape(desc_kv)}</desc>")
+        block.append("    <extensions>")
+        block.append(f"      <onx:color>{onx_color}</onx:color>")
+        block.append(f"      <onx:style>{onx_style}</onx:style>")
+        block.append(f"      <onx:weight>{onx_weight}</onx:weight>")
+        block.append("    </extensions>")
+        block.append("    <trkseg>")
 
         for coord in feature.coordinates:
             if len(coord) >= 2:
                 lat, lon = coord[1], coord[0]
                 block.append(f'      <trkpt lat="{lat}" lon="{lon}">')
                 if len(coord) > 2:
-                    block.append(f'        <ele>{coord[2]}</ele>')
-                block.append('      </trkpt>')
+                    block.append(f"        <ele>{coord[2]}</ele>")
+                block.append("      </trkpt>")
 
-        block.append('    </trkseg>')
-        block.append('  </trk>')
+        block.append("    </trkseg>")
+        block.append("  </trk>")
 
         item_blocks.append(block)
         written_count += 1
 
     if not split:
-        payload = header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+        payload = (
+            header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+        )
         output_path.write_text("\n".join(payload), encoding="utf-8")
         return [(output_path, output_path.stat().st_size, written_count)]
 
-    full_payload = header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+    full_payload = (
+        header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+    )
     if _utf8_joined_size(full_payload) <= max_bytes:
         output_path.write_text("\n".join(full_payload), encoding="utf-8")
         return [(output_path, output_path.stat().st_size, written_count)]
@@ -667,7 +708,9 @@ def write_gpx_tracks_maybe_split(
     return out
 
 
-def verify_sanitization_preserves_sort_order(original_names: List[str], sanitized_names: List[str]) -> bool:
+def verify_sanitization_preserves_sort_order(
+    original_names: List[str], sanitized_names: List[str]
+) -> bool:
     """
     Verify that sanitization preserves natural sort order.
 
@@ -689,9 +732,13 @@ def verify_sanitization_preserves_sort_order(original_names: List[str], sanitize
     pairs_sorted_by_sanitized = sorted(pairs, key=lambda p: natural_sort_key(p[1]))
 
     # Check if the pairs are in the same order when sorted by original vs sanitized
-    for i, (orig_pair, sanit_pair) in enumerate(zip(pairs_sorted_by_original, pairs_sorted_by_sanitized)):
+    for i, (orig_pair, sanit_pair) in enumerate(
+        zip(pairs_sorted_by_original, pairs_sorted_by_sanitized)
+    ):
         if orig_pair[0] != sanit_pair[0] or orig_pair[1] != sanit_pair[1]:
-            logger.warning(f"Sort order mismatch at position {i}: original order differs from sanitized order")
+            logger.warning(
+                f"Sort order mismatch at position {i}: original order differs from sanitized order"
+            )
             return False
 
     return True
@@ -736,9 +783,9 @@ def write_gpx_waypoints(
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
-        f'  <metadata>',
-        f'    <name>{folder_name}</name>',
-        f'  </metadata>',
+        "  <metadata>",
+        f"    <name>{folder_name}</name>",
+        "  </metadata>",
     ]
 
     # Process waypoints
@@ -752,11 +799,15 @@ def write_gpx_waypoints(
         mapped_icon = None
         try:
             if isinstance(getattr(feature, "properties", None), dict):
-                mapped_icon = (feature.properties.get("cairn_onx_icon_override") or "").strip() or None
+                mapped_icon = (
+                    feature.properties.get("cairn_onx_icon_override") or ""
+                ).strip() or None
         except Exception:
             mapped_icon = None
         if not mapped_icon:
-            mapped_icon = map_icon(feature.title, feature.description or "", feature.symbol, config)
+            mapped_icon = map_icon(
+                feature.title, feature.description or "", feature.symbol, config
+            )
 
         # Track original title for verification
         original_titles.append(feature.title)
@@ -766,16 +817,19 @@ def write_gpx_waypoints(
             feature.title,
             mapped_icon,
             use_prefix=bool(getattr(config, "use_icon_name_prefix", False)),
-            default_icon=(getattr(config, "default_icon", "Location") if config else "Location"),
+            default_icon=(
+                getattr(config, "default_icon", "Location") if config else "Location"
+            ),
         )
         sanitized_titles.append(formatted_name)
 
         # Escape XML special characters
         from xml.sax.saxutils import escape
+
         formatted_name = escape(formatted_name)
 
         lines.append(f'  <wpt lat="{lat}" lon="{lon}">')
-        lines.append(f'    <name>{formatted_name}</name>')
+        lines.append(f"    <name>{formatted_name}</name>")
 
         # Add timestamp if requested (for testing OnX sorting behavior)
         # Note: GPX 1.1 spec allows <time> element in waypoints
@@ -783,19 +837,23 @@ def write_gpx_waypoints(
         if add_timestamps:
             # Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
             # Sequential timestamps to preserve order
-            timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-            lines.append(f'    <time>{timestamp}</time>')
+            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            lines.append(f"    <time>{timestamp}</time>")
 
         # Waypoint color policy:
         # - If CalTopo provided a marker color, preserve intent but quantize to one of
         #   OnX's official 10 waypoint colors (OnX ignores unsupported values).
         # - Otherwise, fall back to a default color per icon type.
         if feature.color:
-            OnX_color = ColorMapper.map_waypoint_color(feature.color)
+            onx_color = ColorMapper.map_waypoint_color(feature.color)
         else:
-            OnX_color = get_icon_color(
+            onx_color = get_icon_color(
                 mapped_icon,
-                default=(config.default_color if config else ColorMapper.DEFAULT_WAYPOINT_COLOR),
+                default=(
+                    config.default_color
+                    if config
+                    else ColorMapper.DEFAULT_WAYPOINT_COLOR
+                ),
             )
 
         # Match OnX-exported GPX behavior: include a key/value block in <desc>.
@@ -807,32 +865,37 @@ def write_gpx_waypoints(
                 f"name={feature.title}",
                 f"notes={notes_clean}",
                 f"id={wp_id}",
-                f"color={OnX_color}",
+                f"color={onx_color}",
                 f"icon={mapped_icon}",
             ]
         )
-        lines.append(f'    <desc>{escape(desc_kv)}</desc>')
+        lines.append(f"    <desc>{escape(desc_kv)}</desc>")
 
         # Add OnX extensions (use lowercase `onx:` prefix to match OnX exports)
-        lines.append('    <extensions>')
-        lines.append(f'      <onx:icon>{mapped_icon}</onx:icon>')
-        lines.append(f'      <onx:color>{OnX_color}</onx:color>')
-        lines.append('    </extensions>')
-        lines.append(f'  </wpt>')
+        lines.append("    <extensions>")
+        lines.append(f"      <onx:icon>{mapped_icon}</onx:icon>")
+        lines.append(f"      <onx:color>{onx_color}</onx:color>")
+        lines.append("    </extensions>")
+        lines.append("  </wpt>")
 
-    lines.append('</gpx>')
+    lines.append("</gpx>")
 
     # Write to file
-    output_path.write_text('\n'.join(lines), encoding='utf-8')
+    output_path.write_text("\n".join(lines), encoding="utf-8")
 
     # Verify that sanitization preserved sort order
     if sort and len(original_titles) == len(sanitized_titles):
         order_preserved = verify_sanitization_preserves_sort_order(
-            [f.title for f in sorted(features, key=lambda f: natural_sort_key(f.title))],
-            sanitized_titles
+            [
+                f.title
+                for f in sorted(features, key=lambda f: natural_sort_key(f.title))
+            ],
+            sanitized_titles,
         )
         if not order_preserved:
-            logger.warning("Sanitization may have affected sort order - this should not happen")
+            logger.warning(
+                "Sanitization may have affected sort order - this should not happen"
+            )
 
     # Verify order after write (debug only)
     if logger.isEnabledFor(logging.DEBUG):
@@ -845,8 +908,12 @@ def write_gpx_waypoints(
     return output_path.stat().st_size
 
 
-def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
-                     folder_name: str, sort: bool = True) -> int:
+def write_gpx_tracks(
+    features: List[ParsedFeature],
+    output_path: Path,
+    folder_name: str,
+    sort: bool = True,
+) -> int:
     """
     Write tracks to a GPX file with OnX namespace extensions for color, style, and weight.
 
@@ -872,9 +939,9 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
-        f'  <metadata>',
-        f'    <name>{escape(folder_name)}</name>',
-        f'  </metadata>',
+        "  <metadata>",
+        f"    <name>{escape(folder_name)}</name>",
+        "  </metadata>",
     ]
 
     # Process tracks
@@ -883,17 +950,21 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
             continue
 
         # Sanitize track name for OnX sorting compatibility
-        sanitized_track_name, was_changed = sanitize_name_for_OnX(feature.title)
+        sanitized_track_name, was_changed = sanitize_name_for_onx(feature.title)
         if was_changed:
-            track_name_change('tracks', feature.title, sanitized_track_name)
+            track_name_change("tracks", feature.title, sanitized_track_name)
 
-        lines.append(f'  <trk>')
-        lines.append(f'    <name>{escape(sanitized_track_name)}</name>')
+        lines.append("  <trk>")
+        lines.append(f"    <name>{escape(sanitized_track_name)}</name>")
 
         # Map CalTopo stroke color to closest OnX color
-        OnX_color = ColorMapper.transform_color(feature.stroke) if feature.stroke else ColorMapper.DEFAULT_COLOR
-        OnX_style = pattern_to_style(feature.pattern)
-        OnX_weight = stroke_width_to_weight(feature.stroke_width)
+        onx_color = (
+            ColorMapper.transform_color(feature.stroke)
+            if feature.stroke
+            else ColorMapper.DEFAULT_COLOR
+        )
+        onx_style = pattern_to_style(feature.pattern)
+        onx_weight = stroke_width_to_weight(feature.stroke_width)
 
         # Match OnX-exported GPX behavior: include a key/value block in <desc>.
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
@@ -903,26 +974,26 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
                 f"name={feature.title}",
                 f"notes={notes_clean}",
                 f"id={trk_id}",
-                f"color={OnX_color}",
-                f"style={OnX_style}",
-                f"weight={OnX_weight}",
+                f"color={onx_color}",
+                f"style={onx_style}",
+                f"weight={onx_weight}",
             ]
         )
-        lines.append(f'    <desc>{escape(desc_kv)}</desc>')
+        lines.append(f"    <desc>{escape(desc_kv)}</desc>")
 
         # Add OnX extensions for color, style, and weight (use lowercase `onx:` prefix)
-        lines.append(f'    <extensions>')
-        lines.append(f'      <onx:color>{OnX_color}</onx:color>')
+        lines.append("    <extensions>")
+        lines.append(f"      <onx:color>{onx_color}</onx:color>")
 
         # Map CalTopo pattern to OnX style
-        lines.append(f'      <onx:style>{OnX_style}</onx:style>')
+        lines.append(f"      <onx:style>{onx_style}</onx:style>")
 
         # Map CalTopo stroke-width to OnX weight
-        lines.append(f'      <onx:weight>{OnX_weight}</onx:weight>')
+        lines.append(f"      <onx:weight>{onx_weight}</onx:weight>")
 
-        lines.append(f'    </extensions>')
+        lines.append("    </extensions>")
 
-        lines.append(f'    <trkseg>')
+        lines.append("    <trkseg>")
 
         # Add track points
         for coord in feature.coordinates:
@@ -932,23 +1003,24 @@ def write_gpx_tracks(features: List[ParsedFeature], output_path: Path,
 
                 # Add elevation if present
                 if len(coord) > 2:
-                    lines.append(f'        <ele>{coord[2]}</ele>')
+                    lines.append(f"        <ele>{coord[2]}</ele>")
 
-                lines.append(f'      </trkpt>')
+                lines.append("      </trkpt>")
 
-        lines.append(f'    </trkseg>')
-        lines.append(f'  </trk>')
+        lines.append("    </trkseg>")
+        lines.append("  </trk>")
 
-    lines.append('</gpx>')
+    lines.append("</gpx>")
 
     # Write to file
-    output_path.write_text('\n'.join(lines), encoding='utf-8')
+    output_path.write_text("\n".join(lines), encoding="utf-8")
 
     return output_path.stat().st_size
 
 
-def write_kml_shapes(features: List[ParsedFeature], output_path: Path,
-                     folder_name: str) -> int:
+def write_kml_shapes(
+    features: List[ParsedFeature], output_path: Path, folder_name: str
+) -> int:
     """
     Write shapes (polygons) to a KML file.
 
@@ -1010,7 +1082,11 @@ def write_kml_shapes(features: List[ParsedFeature], output_path: Path,
 
         # Format coordinates (KML format: lon,lat,elevation)
         coord_strings = []
-        coords = feature.coordinates[0] if isinstance(feature.coordinates[0][0], list) else feature.coordinates
+        coords = (
+            feature.coordinates[0]
+            if isinstance(feature.coordinates[0][0], list)
+            else feature.coordinates
+        )
         for coord in coords:
             if len(coord) >= 2:
                 lon, lat = coord[0], coord[1]
@@ -1021,6 +1097,6 @@ def write_kml_shapes(features: List[ParsedFeature], output_path: Path,
 
     # Write to file
     xml_string = prettify_xml(kml)
-    output_path.write_text(xml_string, encoding='utf-8')
+    output_path.write_text(xml_string, encoding="utf-8")
 
     return output_path.stat().st_size

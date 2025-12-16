@@ -63,7 +63,9 @@ def parse_lon_lat(coords: Iterable[float]) -> Tuple[float, float]:
     return float(c[0]), float(c[1])
 
 
-def parse_optional_ele_time(coords: Iterable[float]) -> Tuple[Optional[float], Optional[int]]:
+def parse_optional_ele_time(
+    coords: Iterable[float],
+) -> Tuple[Optional[float], Optional[int]]:
     """
     Extract optional elevation/time (epoch ms) from CalTopo-style coord arrays.
     """
@@ -101,4 +103,3 @@ def iso8601_to_epoch_ms(value: str) -> Optional[int]:
         return int(dt.timestamp() * 1000)
     except Exception:
         return None
-

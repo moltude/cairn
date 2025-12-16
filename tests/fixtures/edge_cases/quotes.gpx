@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="45.0" lon="-120.0">
+    <name>He said "hello"</name>
+    <desc>It's a trail with 'single' and "double" quotes</desc>
+  </wpt>
+</gpx>

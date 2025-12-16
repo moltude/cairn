@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>mixed features</name>
+  </metadata>
+  <wpt lat="45.0" lon="-120.0">
+    <name>Test Waypoint</name>
+    <desc>name=Test Waypoint
+notes=
+id=d5b42514-b60a-452f-aed1-3efe55e9321c
+color=rgba(8,122,255,1)
+icon=Location</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+</gpx>

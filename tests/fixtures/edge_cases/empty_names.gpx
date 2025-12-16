@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Cairn Edge Case Generator">
+  <wpt lat="45.0" lon="-120.0">
+    <name />
+  </wpt>
+  <wpt lat="45.1" lon="-120.1">
+    <desc>No name tag</desc>
+  </wpt>
+  <wpt lat="45.2" lon="-120.2">
+    <name>   </name>
+  </wpt>
+</gpx>

@@ -5,6 +5,8 @@ This module handles parsing CalTopo GeoJSON files and organizing
 features by folder and geometry type.
 """
 
+from __future__ import annotations
+
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 import json
@@ -28,13 +30,17 @@ class ParsedFeature:
         self.title = self.properties.get("title", "Untitled")
         self.description = strip_html(self.properties.get("description", ""))
         self.class_type = self.properties.get("class", "Unknown")
-        self.color = self.properties.get("marker-color") or self.properties.get("stroke", "")
+        self.color = self.properties.get("marker-color") or self.properties.get(
+            "stroke", ""
+        )
         self.symbol = self.properties.get("marker-symbol", "")
 
         # Extract line/track properties for OnX fidelity
         self.stroke = self.properties.get("stroke", "")  # Line color (hex)
         self.stroke_width = self.properties.get("stroke-width", 4)  # Line width
-        self.pattern = self.properties.get("pattern", "solid")  # Line pattern (solid, dash, etc.)
+        self.pattern = self.properties.get(
+            "pattern", "solid"
+        )  # Line pattern (solid, dash, etc.)
 
     @property
     def geometry_type(self) -> Optional[str]:
@@ -61,7 +67,9 @@ class ParsedFeature:
     def is_line(self) -> bool:
         """Check if this feature is a line/track."""
         # CalTopo exports both class="Line" and class="Shape" with LineString geometry
-        return (self.class_type == "Line" or self.class_type == "Shape") and self.geometry_type == "LineString"
+        return (
+            self.class_type == "Line" or self.class_type == "Shape"
+        ) and self.geometry_type == "LineString"
 
     def is_shape(self) -> bool:
         """Check if this feature is a shape/polygon."""
@@ -76,7 +84,7 @@ class ParsedData:
         self.folders: Dict[str, Dict[str, List[ParsedFeature]]] = {}
         self.orphaned_features: List[ParsedFeature] = []
 
-    def add_folder(self, folder_id: str, folder_name: str):
+    def add_folder(self, folder_id: str, folder_name: str) -> None:
         """Add a folder to the structure."""
         if folder_id not in self.folders:
             self.folders[folder_id] = {
@@ -86,7 +94,7 @@ class ParsedData:
                 "shapes": [],
             }
 
-    def add_feature_to_folder(self, folder_id: str, feature: ParsedFeature):
+    def add_feature_to_folder(self, folder_id: str, feature: ParsedFeature) -> None:
         """Add a feature to a specific folder."""
         if folder_id not in self.folders:
             self.orphaned_features.append(feature)
@@ -111,7 +119,9 @@ class ParsedData:
             "waypoints": len(folder["waypoints"]),
             "tracks": len(folder["tracks"]),
             "shapes": len(folder["shapes"]),
-            "total": len(folder["waypoints"]) + len(folder["tracks"]) + len(folder["shapes"]),
+            "total": len(folder["waypoints"])
+            + len(folder["tracks"])
+            + len(folder["shapes"]),
         }
 
     def get_all_folders(self) -> List[tuple]:
@@ -149,7 +159,7 @@ def parse_geojson(filepath: Path) -> ParsedData:
 
     # Load the GeoJSON with error handling
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         raise ValueError(
@@ -176,8 +186,7 @@ def parse_geojson(filepath: Path) -> ParsedData:
     features = data.get("features", [])
     if not isinstance(features, list):
         raise ValueError(
-            f"Invalid GeoJSON file: expected 'features' to be a list\n"
-            f"File: {filepath}"
+            f"Invalid GeoJSON file: expected 'features' to be a list\nFile: {filepath}"
         )
 
     if not features:
@@ -206,7 +215,7 @@ def parse_geojson(filepath: Path) -> ParsedData:
     # If no folders found, create a default folder based on filename
     if not folder_features:
         default_folder_id = "default"
-        default_folder_name = filepath.stem.replace('_', ' ')
+        default_folder_name = filepath.stem.replace("_", " ")
         parsed_data.add_folder(default_folder_id, default_folder_name)
 
         # Add all features to the default folder
@@ -218,7 +227,7 @@ def parse_geojson(filepath: Path) -> ParsedData:
 
         for feature in non_folder_features:
             # Check if feature has a folderId property
-            folder_id = feature.properties.get('folderId')
+            folder_id = feature.properties.get("folderId")
 
             if folder_id:
                 # Add to the specified folder

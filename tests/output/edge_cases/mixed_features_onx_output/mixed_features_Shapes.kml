@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>mixed features</name>
+    <Placemark>
+      <name>Test Area</name>
+      <Style>
+        <LineStyle>
+          <color>ff00ff00</color>
+          <width>2</width>
+        </LineStyle>
+        <PolyStyle>
+          <color>7f00ff00</color>
+        </PolyStyle>
+      </Style>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>-120.0,45.0,0 -120.1,45.0,0 -120.1,45.1,0 -120.0,45.1,0 -120.0,45.0,0</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>

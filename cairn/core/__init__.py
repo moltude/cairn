@@ -7,5 +7,5 @@ __all__ = [
     "config",
     "matcher",
     "color_mapper",
-    "preview"
+    "preview",
 ]

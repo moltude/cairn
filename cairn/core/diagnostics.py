@@ -7,8 +7,7 @@ especially when paired with JSONL trace logs.
 
 from __future__ import annotations
 
-from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from cairn.core.dedup import DedupReport
 from cairn.model import MapDocument, Track, Waypoint
@@ -79,7 +78,9 @@ def check_data_quality(doc: MapDocument) -> Dict[str, Any]:
 
     for name, items in name_counts.items():
         if len(items) > 1:
-            warnings["duplicate_names"].append((name, len(items), items[:3]))  # Show first 3
+            warnings["duplicate_names"].append(
+                (name, len(items), items[:3])
+            )  # Show first 3
 
     # Check for suspicious coordinates (e.g., exactly 0,0 or very close)
     for item in doc.items:
@@ -87,24 +88,28 @@ def check_data_quality(doc: MapDocument) -> Dict[str, Any]:
             lat, lon = item.lat, item.lon
             # Check for null island (0, 0) or very close
             if abs(lat) < 0.001 and abs(lon) < 0.001:
-                warnings["suspicious_coords"].append((
-                    "Waypoint",
-                    item.id,
-                    item.name,
-                    lat,
-                    lon,
-                    "Near (0,0) - possible default/invalid coordinate"
-                ))
+                warnings["suspicious_coords"].append(
+                    (
+                        "Waypoint",
+                        item.id,
+                        item.name,
+                        lat,
+                        lon,
+                        "Near (0,0) - possible default/invalid coordinate",
+                    )
+                )
             # Check for out-of-range coordinates
             if not (-90 <= float(lat) <= 90) or not (-180 <= float(lon) <= 180):
-                warnings["suspicious_coords"].append((
-                    "Waypoint",
-                    item.id,
-                    item.name,
-                    lat,
-                    lon,
-                    "Out of valid range (-90..90, -180..180)"
-                ))
+                warnings["suspicious_coords"].append(
+                    (
+                        "Waypoint",
+                        item.id,
+                        item.name,
+                        lat,
+                        lon,
+                        "Out of valid range (-90..90, -180..180)",
+                    )
+                )
         elif isinstance(item, Track):
             if not getattr(item, "points", None):
                 warnings["empty_tracks"].append((item.id, item.name))

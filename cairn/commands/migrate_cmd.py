@@ -18,16 +18,26 @@ from typing import List, Optional, Tuple
 
 import typer
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
 from cairn.core.dedup import apply_waypoint_dedup
-from cairn.core.diagnostics import check_data_quality, dedup_inventory, document_inventory
+from cairn.core.diagnostics import (
+    check_data_quality,
+    dedup_inventory,
+    document_inventory,
+)
 from cairn.core.icon_registry import IconRegistry, write_icon_report_markdown
 from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.shape_dedup import apply_shape_dedup
 from cairn.core.trace import TraceWriter
 from cairn.io.caltopo_geojson import write_caltopo_geojson
-from cairn.io.onx_gpx import read_OnX_gpx
+from cairn.io.onx_gpx import read_onx_gpx
 from cairn.io.onx_kml import read_onx_kml
 from cairn.model import MapDocument
 from cairn.utils.utils import ensure_output_dir, format_file_size
@@ -44,7 +54,7 @@ Currently supported:
 
 The migration workflow is designed to preserve all map customization
 (icons, colors, notes, organization) - not just raw shapes.
-    """.strip()
+    """.strip(),
 )
 console = Console()
 
@@ -71,7 +81,9 @@ def _prompt_existing_path(label: str, *, expected_suffix: str) -> Path:
         return p
 
 
-def _validate_existing_file(value: Optional[Path], *, expected_suffix: str, label: str) -> Optional[Path]:
+def _validate_existing_file(
+    value: Optional[Path], *, expected_suffix: str, label: str
+) -> Optional[Path]:
     if value is None:
         return None
     p = value.expanduser()
@@ -90,14 +102,10 @@ def _find_export_files(directory: Path) -> Tuple[List[Path], List[Path]]:
         (gpx_files, kml_files) - sorted by modification time (newest first)
     """
     gpx_files = sorted(
-        directory.glob("*.gpx"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True
+        directory.glob("*.gpx"), key=lambda p: p.stat().st_mtime, reverse=True
     )
     kml_files = sorted(
-        directory.glob("*.kml"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True
+        directory.glob("*.kml"), key=lambda p: p.stat().st_mtime, reverse=True
     )
     return gpx_files, kml_files
 
@@ -160,10 +168,10 @@ def _run_onx_to_caltopo_pipeline(
 
             progress.update(task, description="Reading GPX")
             try:
-                doc = read_OnX_gpx(gpx, trace=trace_ctx)
+                doc = read_onx_gpx(gpx, trace=trace_ctx)
             except ValueError as e:
                 progress.stop()
-                console.print(f"\n[bold red]❌ Error reading GPX file:[/]")
+                console.print("\n[bold red]❌ Error reading GPX file:[/]")
                 console.print(f"[red]{e}[/]")
                 raise typer.Exit(1)
             progress.advance(task)
@@ -175,7 +183,7 @@ def _run_onx_to_caltopo_pipeline(
                     kml_doc = read_onx_kml(kml, trace=trace_ctx)
                 except ValueError as e:
                     progress.stop()
-                    console.print(f"\n[bold red]❌ Error reading KML file:[/]")
+                    console.print("\n[bold red]❌ Error reading KML file:[/]")
                     console.print(f"[red]{e}[/]")
                     raise typer.Exit(1)
                 progress.advance(task)
@@ -224,7 +232,9 @@ def _run_onx_to_caltopo_pipeline(
                     trace_ctx.emit({"event": "icons.report.error", "error": str(e)})
 
             if trace_ctx:
-                trace_ctx.emit({"event": "inventory.before_dedup", **document_inventory(doc)})
+                trace_ctx.emit(
+                    {"event": "inventory.before_dedup", **document_inventory(doc)}
+                )
 
             # Check data quality and show warnings
             progress.update(task, description="Checking data quality")
@@ -237,7 +247,9 @@ def _run_onx_to_caltopo_pipeline(
                 progress.update(task, description="Deduplicating waypoints")
                 wp_report = apply_waypoint_dedup(doc, trace=trace_ctx)
                 if trace_ctx and wp_report is not None:
-                    trace_ctx.emit({"event": "dedup.report", **dedup_inventory(wp_report)})
+                    trace_ctx.emit(
+                        {"event": "dedup.report", **dedup_inventory(wp_report)}
+                    )
             else:
                 progress.update(task, description="Skipping waypoint dedup")
             progress.advance(task)
@@ -254,13 +266,19 @@ def _run_onx_to_caltopo_pipeline(
             if desc_mode_norm in ("notes_only", "notes"):
                 desc_mode_norm = "notes_only"
             elif desc_mode_norm != "debug":
-                raise typer.BadParameter("--description-mode must be one of: notes-only, debug")
+                raise typer.BadParameter(
+                    "--description-mode must be one of: notes-only, debug"
+                )
 
-            route_color_norm = (route_color_strategy or "").strip().lower().replace("-", "_")
+            route_color_norm = (
+                (route_color_strategy or "").strip().lower().replace("-", "_")
+            )
             if route_color_norm == "defaultblue":
                 route_color_norm = "default_blue"
             if route_color_norm not in ("palette", "default_blue", "none"):
-                raise typer.BadParameter("--route-color-strategy must be one of: palette, default-blue, none")
+                raise typer.BadParameter(
+                    "--route-color-strategy must be one of: palette, default-blue, none"
+                )
 
             # Icon report + catalog (best-effort; never fails the migration)
             try:
@@ -297,14 +315,20 @@ def _run_onx_to_caltopo_pipeline(
             # Validate output file was written successfully
             if not primary_path.exists():
                 progress.stop()
-                console.print(f"\n[bold red]❌ Error:[/] Failed to write primary output file")
+                console.print(
+                    "\n[bold red]❌ Error:[/] Failed to write primary output file"
+                )
                 raise typer.Exit(1)
 
             primary_size = primary_path.stat().st_size
             if primary_size < 100:  # Suspiciously small file
                 progress.stop()
-                console.print(f"\n[yellow]⚠️  Warning:[/] Output file is very small ({primary_size} bytes)")
-                console.print(f"[yellow]This may indicate data loss. Please verify the output.[/]")
+                console.print(
+                    f"\n[yellow]⚠️  Warning:[/] Output file is very small ({primary_size} bytes)"
+                )
+                console.print(
+                    "[yellow]This may indicate data loss. Please verify the output.[/]"
+                )
 
             progress.advance(task)
 
@@ -312,7 +336,10 @@ def _run_onx_to_caltopo_pipeline(
             dropped_doc = MapDocument(
                 folders=list(doc.folders),
                 items=list(dropped_items),
-                metadata={"source": "cairn_shape_dedup_dropped", "primary": str(primary_path)},
+                metadata={
+                    "source": "cairn_shape_dedup_dropped",
+                    "primary": str(primary_path),
+                },
             )
             write_caltopo_geojson(
                 dropped_doc,
@@ -325,7 +352,9 @@ def _run_onx_to_caltopo_pipeline(
             # Validate secondary files were written
             if not dropped_shapes_path.exists():
                 progress.stop()
-                console.print(f"\n[yellow]⚠️  Warning:[/] Some output files may not have been written correctly")
+                console.print(
+                    "\n[yellow]⚠️  Warning:[/] Some output files may not have been written correctly"
+                )
 
             progress.advance(task)
 
@@ -334,28 +363,44 @@ def _run_onx_to_caltopo_pipeline(
         # Show data quality warnings if any
         if quality_warnings:
             if quality_warnings["empty_names"]:
-                console.print(f"\n[yellow]⚠️  Found {len(quality_warnings['empty_names'])} item(s) with empty/default names[/]")
+                console.print(
+                    f"\n[yellow]⚠️  Found {len(quality_warnings['empty_names'])} item(s) with empty/default names[/]"
+                )
             if quality_warnings["duplicate_names"]:
-                console.print(f"\n[yellow]⚠️  Found {len(quality_warnings['duplicate_names'])} duplicate name(s) (will be deduplicated if enabled)[/]")
+                console.print(
+                    f"\n[yellow]⚠️  Found {len(quality_warnings['duplicate_names'])} duplicate name(s) (will be deduplicated if enabled)[/]"
+                )
             if quality_warnings["suspicious_coords"]:
-                console.print(f"\n[yellow]⚠️  Found {len(quality_warnings['suspicious_coords'])} waypoint(s) with suspicious coordinates near (0,0)[/]")
+                console.print(
+                    f"\n[yellow]⚠️  Found {len(quality_warnings['suspicious_coords'])} waypoint(s) with suspicious coordinates near (0,0)[/]"
+                )
 
         console.print("\n[bold]Created files:[/]")
 
         console.print("\nPrimary CalTopo-importable GeoJSON (deduped by default):")
-        console.print(f"- [cyan]{_display_path(primary_path)}[/] [dim]({primary_size:,} bytes)[/]")
+        console.print(
+            f"- [cyan]{_display_path(primary_path)}[/] [dim]({primary_size:,} bytes)[/]"
+        )
 
-        dropped_size = dropped_shapes_path.stat().st_size if dropped_shapes_path.exists() else 0
+        dropped_size = (
+            dropped_shapes_path.stat().st_size if dropped_shapes_path.exists() else 0
+        )
         console.print("\nDropped duplicate shapes preserved as GeoJSON:")
-        console.print(f"- [cyan]{_display_path(dropped_shapes_path)}[/] [dim]({dropped_size:,} bytes)[/]")
+        console.print(
+            f"- [cyan]{_display_path(dropped_shapes_path)}[/] [dim]({dropped_size:,} bytes)[/]"
+        )
 
         if resolved_trace_path is not None:
-            console.print("\nMachine-parseable trace log (JSON Lines) for debugging/replay:")
+            console.print(
+                "\nMachine-parseable trace log (JSON Lines) for debugging/replay:"
+            )
             console.print(f"- [cyan]{_display_path(resolved_trace_path)}[/]")
 
         icon_report_path = out_dir / f"{base}_ICON_REPORT.md"
         if icon_report_path.exists():
-            console.print("\nIcon mapping report (incoming icons → mapped symbols + colors):")
+            console.print(
+                "\nIcon mapping report (incoming icons → mapped symbols + colors):"
+            )
             console.print(f"- [cyan]{_display_path(icon_report_path)}[/]")
     finally:
         if trace_ctx:
@@ -364,8 +409,7 @@ def _run_onx_to_caltopo_pipeline(
 
 
 def _select_files_interactive(
-    gpx_files: List[Path],
-    kml_files: List[Path]
+    gpx_files: List[Path], kml_files: List[Path]
 ) -> Tuple[Optional[Path], Optional[Path]]:
     """
     Display available files and prompt user to select.
@@ -384,7 +428,9 @@ def _select_files_interactive(
     for i, gpx in enumerate(gpx_files, 1):
         size = gpx.stat().st_size
         mtime = datetime.fromtimestamp(gpx.stat().st_mtime)
-        console.print(f"  {i}. {gpx.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]")
+        console.print(
+            f"  {i}. {gpx.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]"
+        )
 
     # Display KML files
     if not kml_files:
@@ -395,7 +441,9 @@ def _select_files_interactive(
         for i, kml in enumerate(kml_files, 1):
             size = kml.stat().st_size
             mtime = datetime.fromtimestamp(kml.stat().st_mtime)
-            console.print(f"  {i}. {kml.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]")
+            console.print(
+                f"  {i}. {kml.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]"
+            )
 
     # Prompt for selection (reprompt on invalid input).
     console.print()
@@ -414,7 +462,9 @@ def _select_files_interactive(
                 selected_kml = kml_files[int(kml_choice) - 1]
                 break
             except (ValueError, IndexError):
-                console.print("[red]Invalid selection[/] (enter a number from the list)")
+                console.print(
+                    "[red]Invalid selection[/] (enter a number from the list)"
+                )
     else:
         selected_kml = None
 
@@ -444,21 +494,25 @@ def _confirm_migration(
     if kml_path:
         console.print(f"  KML: [green]{kml_path.name}[/]")
     else:
-        console.print(f"  KML: [dim]None (areas may not be preserved)[/]")
+        console.print("  KML: [dim]None (areas may not be preserved)[/]")
 
     # Output files
-    console.print(f"\n[bold cyan]Output Directory:[/]")
+    console.print("\n[bold cyan]Output Directory:[/]")
     console.print(f"  {_display_path(output_dir)}")
 
-    console.print(f"\n[bold cyan]Output Files (will be created):[/]")
+    console.print("\n[bold cyan]Output Files (will be created):[/]")
     console.print(f"  • {base_name}.json [dim](primary GeoJSON)[/]")
     console.print(f"  • {base_name}_dropped_shapes.json [dim](duplicates)[/]")
     console.print(f"  • {base_name}_trace.jsonl [dim](debug log)[/]")
 
     # Options
-    console.print(f"\n[bold cyan]Processing Options:[/]")
-    console.print(f"  Dedupe waypoints: {'[green]Yes[/]' if dedupe_waypoints else '[dim]No[/]'}")
-    console.print(f"  Dedupe shapes: {'[green]Yes[/]' if dedupe_shapes else '[dim]No[/]'}")
+    console.print("\n[bold cyan]Processing Options:[/]")
+    console.print(
+        f"  Dedupe waypoints: {'[green]Yes[/]' if dedupe_waypoints else '[dim]No[/]'}"
+    )
+    console.print(
+        f"  Dedupe shapes: {'[green]Yes[/]' if dedupe_shapes else '[dim]No[/]'}"
+    )
 
     console.print("\n" + "─" * 60)
 
@@ -496,7 +550,9 @@ def _select_geojson_interactive(json_files: List[Path]) -> Optional[Path]:
     for i, json_file in enumerate(json_files, 1):
         size = json_file.stat().st_size
         mtime = datetime.fromtimestamp(json_file.stat().st_mtime)
-        console.print(f"  {i}. {json_file.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]")
+        console.print(
+            f"  {i}. {json_file.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]"
+        )
 
     # Prompt for selection (reprompt on invalid input).
     console.print()
@@ -509,7 +565,7 @@ def _select_geojson_interactive(json_files: List[Path]) -> Optional[Path]:
             console.print("[red]Invalid selection[/] (enter a number from the list)")
 
 
-def _validate_geojson_file(file_path: Path):
+def _validate_geojson_file(file_path: Path) -> None:
     """
     Validate GeoJSON file and parse it.
 
@@ -519,7 +575,7 @@ def _validate_geojson_file(file_path: Path):
     from cairn.core.parser import parse_geojson
 
     # Check extension
-    if file_path.suffix.lower() not in ['.json', '.geojson']:
+    if file_path.suffix.lower() not in [".json", ".geojson"]:
         console.print(f"[red]Expected a .json or .geojson file: {file_path}[/]")
         return False, None
 
@@ -528,7 +584,7 @@ def _validate_geojson_file(file_path: Path):
         parsed_data = parse_geojson(file_path)
         return True, parsed_data
     except Exception as e:
-        console.print(f"[bold red]❌ Error parsing GeoJSON:[/]")
+        console.print("[bold red]❌ Error parsing GeoJSON:[/]")
         console.print(f"[red]{e}[/]")
         return False, None
 
@@ -548,11 +604,13 @@ def _confirm_caltopo_migration(
     from cairn.core.parser import get_file_summary
 
     # Deprecated: kept for backwards-compat within this module, but no longer used by
-    # the interactive CalTopo → OnX migration path (see caltopo_to_OnX gate prompt).
+    # the interactive CalTopo → OnX migration path (see caltopo_to_onx gate prompt).
     console.print("\n[bold]Migration Summary:[/]")
     console.print("─" * 60)
     size = input_file.stat().st_size
-    console.print(f"\n[bold cyan]Input File:[/] {input_file.name} [dim]({format_file_size(size)})[/]")
+    console.print(
+        f"\n[bold cyan]Input File:[/] {input_file.name} [dim]({format_file_size(size)})[/]"
+    )
     summary = get_file_summary(parsed_data)
     console.print(
         f"[bold cyan]Content:[/] Folders={summary['folder_count']}, "
@@ -567,7 +625,7 @@ def _confirm_caltopo_migration(
 # Canonical name is lowercase `onx` (CLI-friendly).
 @app.command("OnX-to-caltopo", hidden=True, deprecated=True)
 @app.command("onx-to-caltopo")
-def OnX_to_caltopo(
+def onx_to_caltopo(
     input_dir: Optional[Path] = typer.Argument(
         None,
         help="Directory containing OnX GPX and KML exports",
@@ -781,7 +839,9 @@ def migrate_to_caltopo(
         elif src.suffix.lower() == ".kml":
             preferred_kml = src
         else:
-            console.print(f"[red]Unsupported input file type:[/] {src.name} (expected .gpx or .kml)")
+            console.print(
+                f"[red]Unsupported input file type:[/] {src.name} (expected .gpx or .kml)"
+            )
             raise typer.Exit(1)
         input_dir = src.parent
     elif src is not None and src.is_dir():
@@ -851,7 +911,7 @@ def migrate_to_caltopo(
 # Canonical name is lowercase `onx` (CLI-friendly).
 @app.command("caltopo-to-OnX", hidden=True, deprecated=True)
 @app.command("caltopo-to-onx")
-def caltopo_to_OnX(
+def caltopo_to_onx(
     input_dir: Optional[Path] = typer.Argument(
         None,
         help="CalTopo GeoJSON input: directory containing exports, or a single .json/.geojson file",
@@ -886,6 +946,21 @@ def caltopo_to_OnX(
         "--split-gpx/--no-split-gpx",
         help="Automatically split GPX files that exceed the max size into multiple numbered parts.",
     ),
+    session_file: Optional[Path] = typer.Option(
+        None,
+        "--session",
+        help="Path to an edit-session JSON file to auto-load/auto-save interactive edits (default: <output_dir>/<input>_session.json).",
+    ),
+    save_session: bool = typer.Option(
+        True,
+        "--save-session/--no-save-session",
+        help="Auto-save interactive edits to the session file so you can resume after reruns (default: enabled).",
+    ),
+    interactive: Optional[bool] = typer.Option(
+        None,
+        "--interactive/--no-interactive",
+        help="Force interactive prompting even when stdin is not a TTY (useful for scripted testing). Default: auto-detect.",
+    ),
 ):
     """Migrate CalTopo GeoJSON exports to OnX-importable GPX/KML format.
 
@@ -904,28 +979,44 @@ def caltopo_to_OnX(
 
     \b
     Use --no-sort to preserve original order instead of natural sorting.
+
+    \b
+    Tip: When you use interactive editing, Cairn can auto-save your edits to a session file
+    (see --session / --save-session). Re-run the command to resume without losing work.
     """
     from cairn.commands.convert_cmd import (
         display_name_sanitization_warnings,
         collect_unmapped_caltopo_symbols,
         display_unmapped_symbols,
+        handle_unmapped_symbols,
         process_and_write_files,
     )
     from cairn.core.config import load_config
-    from cairn.core.preview import preview_sorted_order, interactive_edit_before_export_per_folder
+    from cairn.core.preview import (
+        preview_sorted_order,
+        interactive_edit_before_export_per_folder,
+    )
+    from cairn.core.edit_session import (
+        init_or_load_session,
+        save_session as persist_session,
+    )
     from rich.prompt import Confirm
     from cairn.utils.utils import natural_sort_key
     import sys
 
     def _interactive() -> bool:
+        if interactive is not None:
+            return bool(interactive)
         return sys.stdin is not None and getattr(sys.stdin, "isatty", lambda: False)()
 
-    def _print_folder_previews():
+    def _print_folder_previews() -> None:
         console.print("\n[bold]Migration Summary:[/]")
         console.print("[dim]Per-folder order as it will be written for OnX.[/]\n")
 
         folder_items = list((getattr(parsed_data, "folders", {}) or {}).items())
-        folder_items.sort(key=lambda kv: natural_sort_key(str((kv[1] or {}).get("name") or kv[0])))
+        folder_items.sort(
+            key=lambda kv: natural_sort_key(str((kv[1] or {}).get("name") or kv[0]))
+        )
         for _, folder_data in folder_items:
             folder_name = str(folder_data.get("name") or "")
             tracks = list(folder_data.get("tracks", []) or [])
@@ -935,9 +1026,17 @@ def caltopo_to_OnX(
                 waypoints = sorted(waypoints, key=lambda f: natural_sort_key(f.title))
 
             if tracks:
-                preview_sorted_order(tracks, "tracks", folder_name, skip_confirmation=True, config=None)
+                preview_sorted_order(
+                    tracks, "tracks", folder_name, skip_confirmation=True, config=None
+                )
             if waypoints:
-                preview_sorted_order(waypoints, "waypoints", folder_name, skip_confirmation=True, config=config)
+                preview_sorted_order(
+                    waypoints,
+                    "waypoints",
+                    folder_name,
+                    skip_confirmation=True,
+                    config=config,
+                )
 
     def _prompt_resume_or_abort(*, label: str = "Resume editing or abort?") -> str:
         while True:
@@ -982,7 +1081,9 @@ def caltopo_to_OnX(
                 raise typer.Exit(1)
             json_files = _find_geojson_files(input_dir)
             if not json_files:
-                console.print(f"[red]No .json or .geojson files found in: {input_dir}[/]")
+                console.print(
+                    f"[red]No .json or .geojson files found in: {input_dir}[/]"
+                )
                 raise typer.Exit(1)
 
     # 3. Interactive file selection
@@ -1006,9 +1107,50 @@ def caltopo_to_OnX(
     # 6. Load icon mapping config
     config = load_config(config_file)
 
+    # 6b. Optional: resume interactive edits from a session file (autosaved checkpoints).
+    session = None
+    session_path: Optional[Path] = None
+    if save_session:
+        session_path = (
+            session_file.expanduser()
+            if session_file is not None
+            else (out_dir / f"{selected_file.stem}_session.json")
+        )
+        session = init_or_load_session(path=session_path, input_path=selected_file)
+        try:
+            resumed = session.apply_to_parsed_data(parsed_data)
+        except Exception:
+            resumed = 0
+        if resumed:
+            console.print(
+                f"[dim]Resumed {resumed} edit(s) from session:[/] [cyan]{_display_path(session_path)}[/]"
+            )
+        else:
+            # Keep this quiet; only tell the user where edits will be saved once we enter edit mode.
+            pass
+
     # Show unmapped-symbol warning early so users can map symbols before export.
     unmapped_report = collect_unmapped_caltopo_symbols(parsed_data, config)
     display_unmapped_symbols(config, unmapped_report=unmapped_report)
+
+    # Optional: allow users to persist mappings immediately, before previews/edits/exports.
+    if unmapped_report and _interactive():
+        if Confirm.ask(
+            "Map these symbols now and save them to your config?", default=True
+        ):
+            mappings_added = handle_unmapped_symbols(
+                config,
+                unmapped_report=unmapped_report,
+                interactive=True,
+                config_path=(config_file or Path("cairn_config.yaml")),
+            )
+            if mappings_added:
+                console.print(
+                    "\n[green]✓[/] Reloading configuration with new mappings...\n"
+                )
+                config = load_config(config_file)
+                unmapped_report = collect_unmapped_caltopo_symbols(parsed_data, config)
+                display_unmapped_symbols(config, unmapped_report=unmapped_report)
 
     # 7. Preview (and optional edit) before final confirmation
     sort_enabled = not no_sort
@@ -1018,7 +1160,18 @@ def caltopo_to_OnX(
     # Optional edit step (interactive terminals only).
     if _interactive():
         if Confirm.ask("Would you like to edit anything before export?", default=False):
-            interactive_edit_before_export_per_folder(parsed_data, config, sort_enabled=sort_enabled)
+            if save_session and session_path is not None:
+                console.print(
+                    f"[dim]Edits will be auto-saved to:[/] [cyan]{_display_path(session_path)}[/]"
+                )
+            interactive_edit_before_export_per_folder(
+                parsed_data,
+                config,
+                sort_enabled=sort_enabled,
+                session=session,
+                session_path=session_path,
+                autosave_session=save_session,
+            )
             console.print("\n[dim]Updated order after edits:[/]")
             _print_folder_previews()
 
@@ -1033,18 +1186,31 @@ def caltopo_to_OnX(
         if action == "abort":
             console.print("[yellow]Migration cancelled[/]")
             raise typer.Exit(0)
-        interactive_edit_before_export_per_folder(parsed_data, config, sort_enabled=sort_enabled)
+        if save_session and session_path is not None:
+            console.print(
+                f"[dim]Edits will be auto-saved to:[/] [cyan]{_display_path(session_path)}[/]"
+            )
+        interactive_edit_before_export_per_folder(
+            parsed_data,
+            config,
+            sort_enabled=sort_enabled,
+            session=session,
+            session_path=session_path,
+            autosave_session=save_session,
+        )
         console.print("\n[dim]Updated order after edits:[/]")
         _print_folder_previews()
 
     # 9. Process and write files
-    console.print(f"\n[bold white]Processing...[/]\n")
+    console.print("\n[bold white]Processing...[/]\n")
 
     # Icon report + catalog for CalTopo → OnX (best-effort; never fails the migration)
     try:
         registry = IconRegistry()
         inventory = registry.collect_caltopo_symbol_inventory(parsed_data)
-        rows = registry.collect_caltopo_to_onx_mapping_rows_using_config(parsed_data, config)
+        rows = registry.collect_caltopo_to_onx_mapping_rows_using_config(
+            parsed_data, config
+        )
 
         # Append to repo catalog (policy: append catalog only; no auto-mapping)
         registry.append_symbol_inventory_to_catalog(inventory)
@@ -1076,6 +1242,13 @@ def caltopo_to_OnX(
         max_gpx_bytes=int(max(0.0, float(max_gpx_mb)) * 1024 * 1024),
     )
 
+    # Persist session one last time (best-effort) so users can resume even if export artifacts change later.
+    if save_session and session is not None and session_path is not None:
+        try:
+            persist_session(session_path, session)
+        except Exception:
+            pass
+
     # 10. Display results
     if not output_files:
         console.print("[yellow]No files were created[/]")
@@ -1085,7 +1258,9 @@ def caltopo_to_OnX(
     display_name_sanitization_warnings()
 
     # Success footer
-    console.print(f"\n[bold green]✔ SUCCESS[/] Data written to [underline]{out_dir}[/]\n")
+    console.print(
+        f"\n[bold green]✔ SUCCESS[/] Data written to [underline]{out_dir}[/]\n"
+    )
 
 
 @app.command("onx")
@@ -1121,17 +1296,35 @@ def migrate_to_onx(
         "--split-gpx/--no-split-gpx",
         help="Automatically split GPX files that exceed the max size into multiple numbered parts.",
     ),
+    session_file: Optional[Path] = typer.Option(
+        None,
+        "--session",
+        help="Path to an edit-session JSON file to auto-load/auto-save interactive edits (default: <output_dir>/<input>_session.json).",
+    ),
+    save_session: bool = typer.Option(
+        True,
+        "--save-session/--no-save-session",
+        help="Auto-save interactive edits to the session file so you can resume after reruns (default: enabled).",
+    ),
+    interactive: Optional[bool] = typer.Option(
+        None,
+        "--interactive/--no-interactive",
+        help="Force interactive prompting even when stdin is not a TTY (useful for scripted testing). Default: auto-detect.",
+    ),
 ):
     """
     Alias for `migrate caltopo-to-onx` (target is OnX).
 
     Supports passing a directory or a specific GeoJSON file.
     """
-    return caltopo_to_OnX(
+    return caltopo_to_onx(
         input_dir=source,
         output_dir=output_dir,
         config_file=config_file,
         no_sort=no_sort,
         max_gpx_mb=max_gpx_mb,
         split_gpx=split_gpx,
+        session_file=session_file,
+        save_session=save_session,
+        interactive=interactive,
     )

@@ -1,0 +1,115 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "bd533e30-1f2d-45f1-a3d2-a123bc3fe2ce",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Sea Level",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Sea Level"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "882e7033-0cbe-4466-a2c8-a6616dcc6717",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35.5,
+          31.5
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Dead Sea Shore",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Dead Sea Shore"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "a27e4dc4-dc34-4ab3-9fbc-fd44dcc6932b",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          86.925,
+          27.9881
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Mount Everest Summit",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Mount Everest Summit"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "d29e04af-e813-4106-9718-6481ba426ba5",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "No Elevation Data",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "No Elevation Data"
+        }
+      }
+    }
+  ]
+}

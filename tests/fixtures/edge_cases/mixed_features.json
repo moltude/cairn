@@ -1,0 +1,83 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "title": "Test Waypoint",
+        "class": "Marker",
+        "marker-symbol": "circle"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -120.0,
+            45.0
+          ],
+          [
+            -120.1,
+            45.1
+          ],
+          [
+            -120.2,
+            45.2
+          ]
+        ]
+      },
+      "properties": {
+        "title": "Test Track",
+        "class": "Shape",
+        "stroke": "#0000FF",
+        "stroke-width": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -120.0,
+              45.0
+            ],
+            [
+              -120.1,
+              45.0
+            ],
+            [
+              -120.1,
+              45.1
+            ],
+            [
+              -120.0,
+              45.1
+            ],
+            [
+              -120.0,
+              45.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "title": "Test Area",
+        "class": "Shape",
+        "stroke": "#00FF00",
+        "fill": "#00FF00",
+        "fill-opacity": 0.3
+      }
+    }
+  ]
+}

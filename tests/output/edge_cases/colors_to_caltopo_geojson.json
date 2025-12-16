@@ -1,0 +1,115 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "OnX_waypoints",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Waypoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OnX_tracks",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Tracks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "d1259f4e-032c-4878-8769-d429a8e017a2",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.0
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "White Waypoint",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "White Waypoint"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "6324095f-0cda-46d9-a61a-165e36c40e7a",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.1
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Black Waypoint",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Black Waypoint"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "2453d557-2d9d-48d6-b28b-06531616078f",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.2
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Red Waypoint",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "Red Waypoint"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "52c354ba-0a61-4877-bbd1-82f26ca17b68",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.0,
+          45.3
+        ]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "No Color",
+        "description": "",
+        "marker-symbol": "point",
+        "marker-color": "#FF0000",
+        "folderId": "OnX_waypoints",
+        "cairn": {
+          "source": "OnX_gpx",
+          "name": "No Color"
+        }
+      }
+    }
+  ]
+}
