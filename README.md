@@ -34,27 +34,15 @@ Or maybe this
 
 🤬 **But this is what you got when you tired to use it** 🤬
 ---
-Sure it will work but it has a lot value while passing through the pipes.
+Sure it will work but it has a lot value while passing through the pipes and there is some garbage thrown in as a nice cherry on top.
 
 ![bad onx](demo/bitterroots/export-from-caltopo-into-onx-poor.png)
 
-
+Be sure to swing by and checkout the awesome cool `Import track markup` after visiting the the **Very cool tower** 🤘!
 ![bad caltopo](demo/bitterroots/export-from-onx-import-into-caltopo-poor.png)
 
 
 The data isn't lost, it jsut didn't make it from the file into the mapping software and that is were Cairn comes in. This tool tries to take as much of that data as possible and make sure it finds its way into the map.
----
-
-## Why dedup exists (and what it means)
-
-During this experiment I found cases where OnX exports include many distinct objects (different IDs) with identical names and identical geometry. CalTopo will happily import them all, which can look like "duplicates everywhere".
-
-By default, Cairn produces a **"most usable"** CalTopo file by:
-
-- **preferring polygons** (from KML) over track/route representations (from GPX) when they refer to the same OnX object
-- **deduplicating shapes** using a fuzzy geometry match (rotation/direction tolerant, coordinate rounding tolerant)
-
-Nothing is deleted permanently: every dropped duplicate is preserved in the secondary GeoJSON.
 
 ---
 
@@ -130,6 +118,17 @@ Nothing is deleted permanently: every dropped duplicate is preserved in the seco
   - Cannot use Fuchsia (track-only color)
   - OnX will assign the default ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` blue color on import for non-matching values
   - After manual edit, OnX exports using the exact 10 waypoint colors
+
+### Dedupping
+
+During this experiment I found cases where OnX exports include many distinct objects (different IDs) with identical names and identical geometry. CalTopo will happily import them all, which can look like "duplicates everywhere".
+
+By default, Cairn produces a **"most usable"** CalTopo file by:
+
+- **preferring polygons** (from KML) over track/route representations (from GPX) when they refer to the same OnX object
+- **deduplicating shapes** using a fuzzy geometry match (rotation/direction tolerant, coordinate rounding tolerant)
+
+Nothing is deleted permanently: every dropped duplicate is preserved in the secondary GeoJSON.
 
 ### Running tests
 
