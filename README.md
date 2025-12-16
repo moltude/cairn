@@ -1,6 +1,6 @@
 # Cairn
 
-## This is a work in progress
+**Work in progress, buyer beware.**
 
 ### Why?
 
@@ -12,74 +12,166 @@ This tool started as an experiment and it surfaced a number of challenges. I'm n
 
 In theory, these formats should make it easy to move between map platforms. In practice, platforms tend to:
 
-- supports only a subset of each format
-- adds non-standard fields or extensions
-- rewrites data during import/export (sometimes subtly)
+- support only a subset of each format
+- add non-standard fields or extensions
+- rewrite data during import/export (sometimes subtly)
 
-I built Cairn to make migration between systems easier *without losing the customization that makes a map valuable* (names, notes, colors, icons, and organizational intent) — not just the raw shapes. I have only developed this for **OnX Backcountry** and **CalTopo** but there are other platform out there.
+I built Cairn to make migration between systems easier *without losing the customization that makes a map valuable* (names, notes, colors, icons, and organizational intent) — not just the raw shapes. I have only developed this for **OnX Backcountry** and **CalTopo** but there are other platforms out there.
 
 ### Story
 
 *Heard you were heading up my way, here is a GPX file with some choice spots!*
 [cool-spots.gpx](cool-spots.gpx)
 
-That GPX file contains details of an area and lois of information, hiking and backpacking routes, great rocking climbing, a cool tower and fishing spots. There are important waypoints that indicate hazards,  water sources and approaches. When they constructed this dataset they took the time to assign colors, icons and other metadata beyond the lines, dots and polygons to help you and others make the most of this map.
+That GPX file contains details of an area and lots of information, hiking and backpacking routes, great rock climbing, a cool tower and fishing spots. There are important waypoints that indicate hazards, water sources and approaches. When they constructed this dataset they took the time to assign colors, icons and other metadata beyond the lines, dots and polygons to help you and others make the most of this map.
 
 This is what they built 😍
 ---
-![good onx](demo/bitterroots/hd-onx.png)
+<!-- ![good onx](demo/bitterroots/hd-onx.png) -->
+<img src="demo/bitterroots/hd-onx.png" alt="Alt text" style="width:75%; height:auto;">
 
 Or maybe this
-![good caltopo](demo/bitterroots/hd-caltopo.png)
+<!-- ![good caltopo](demo/bitterroots/hd-caltopo.png) -->
+<img src="demo/bitterroots/hd-caltopo.png" alt="Alt text" style="width:75%; height:auto;">
 
-🤬 **But this is what you got when you tired to use it** 🤬
+
+🤬 **But this is what you got when you tried to use it** 🤬
 ---
-Sure it will work but it has a lot value while passing through the pipes and there is some garbage thrown in as a nice cherry on top.
+Sure it will work but it lost a lot of value while passing through the pipes and there is some garbage thrown in as a nice cherry on top. The data isn't lost, it just didn't make it from the GPX file into the mapping software. That is where Cairn comes in, it takes as much of that data as possible and drops it into your map.
 
-![bad onx](demo/bitterroots/export-from-caltopo-into-onx-poor.png)
+<!-- ![bad onx](demo/bitterroots/export-from-caltopo-into-onx-poor.png) -->
+<img src="demo/bitterroots/export-from-caltopo-into-onx-poor.png" alt="Alt text" style="width:75%; height:auto;">
 
-Be sure to swing by and checkout the awesome cool `Import track markup` after visiting the the **Very cool tower** 🤘!
-![bad caltopo](demo/bitterroots/export-from-onx-import-into-caltopo-poor.png)
-
-
-The data isn't lost, it jsut didn't make it from the file into the mapping software and that is were Cairn comes in. This tool tries to take as much of that data as possible and make sure it finds its way into the map.
-
+Be sure to swing by and checkout the awesome cool `Import track markup` after visiting the **Very cool tower** 🤘!
+<!-- ![bad caltopo](demo/bitterroots/export-from-onx-import-into-caltopo-poor.png) -->
+<img src="demo/bitterroots/export-from-onx-import-into-caltopo-poor.png" alt="Alt text" style="width:75%; height:auto;">
 ---
 
-## Known quirks, blockers and things I learned along the way
+## Installation
 
-*If any of my assumptions are wrong, I want to know — the goal is a faithful migration.*
+```shell
+# Install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-- **OnX export variance**: similar "linework" can export as `<trk>` vs `<rte>`. Areas/polygons often only appear as polygons in KML.
-- **CalTopo's exported "GeoJSON" is CalTopo-flavored**: it may include extra properties and 4D coordinate arrays like `[lon, lat, ele, time]`. I treat this as normal normalization, not automatically a bug.
-- **Standards aren't fully standard in practice**: GPX/KML/GeoJSON are interchange formats, but platform behavior still matters more than file validity.
+# Clone and install
+git clone https://github.com/moltude/cairn.git
+cd cairn
 
-- **Ordering is not reliable after import**: even if I carefully write GPX/KML in a particular order, OnX may re-order items in folders after import and there isn't a stable user-visible "sort by name" / "sort by import order" workflow that guarantees the same outcome every time.
+uv sync # Or if that fails then 'uv pip install -e .'
 
-- **Waypoints and tracks use the same base colors, but tracks have one extra**: OnX waypoints support 10 colors, while tracks/lines support 11 colors. The first 10 colors are identical between waypoints and tracks. Tracks have one additional color (Fuchsia) that waypoints don't support.
+# cairn is available
+cairn --help
 
-  ### OnX Waypoint Colors (10 Official Colors)
+# To run directly
+uv run cairn
+```
 
-  OnX waypoints support exactly **10 specific RGBA values**. Any other color values may be ignored or normalized on import.
+## Quick start
 
-  **Note:** Tracks/lines use these exact same 10 colors, plus one additional color (Fuchsia).
+### CalTopo --> OnX
 
-| #  | Color Name   | RGBA Value           | RGB              | Hex                                                                                  |
-|----|--------------|----------------------|------------------|--------------------------------------------------------------------------------------|
-| 1  | Red-Orange   | `rgba(255,51,0,1)`   | RGB(255, 51, 0)  | ![brand-ff3300](https://readme-swatches.vercel.app/FF3300?style=square&size=20) `#FF3300` |
-| 2  | Blue         | `rgba(8,122,255,1)`  | RGB(8, 122, 255) | ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` |
-| 3  | Cyan         | `rgba(0,255,255,1)`  | RGB(0, 255, 255) | ![brand-00ffff](https://readme-swatches.vercel.app/00FFFF?style=square&size=20) `#00FFFF` |
-| 4  | Lime         | `rgba(132,212,0,1)`  | RGB(132, 212, 0) | ![brand-84d400](https://readme-swatches.vercel.app/84D400?style=square&size=20) `#84D400` |
-| 5  | Black        | `rgba(0,0,0,1)`      | RGB(0, 0, 0)     | ![brand-000000](https://readme-swatches.vercel.app/000000?style=square&size=20) `#000000` |
-| 6  | White        | `rgba(255,255,255,1)`| RGB(255, 255, 255)| ![brand-ffffff](https://readme-swatches.vercel.app/FFFFFF?style=square&size=20) `#FFFFFF` |
-| 7  | Purple       | `rgba(128,0,128,1)`  | RGB(128, 0, 128) | ![brand-800080](https://readme-swatches.vercel.app/800080?style=square&size=20) `#800080` |
-| 8  | Yellow       | `rgba(255,255,0,1)`  | RGB(255, 255, 0) | ![brand-ffff00](https://readme-swatches.vercel.app/FFFF00?style=square&size=20) `#FFFF00` |
-| 9  | Red          | `rgba(255,0,0,1)`    | RGB(255, 0, 0)   | ![brand-ff0000](https://readme-swatches.vercel.app/FF0000?style=square&size=20) `#FF0000` |
-| 10 | Brown        | `rgba(139,69,19,1)`  | RGB(139, 69, 19) | ![brand-8b4513](https://readme-swatches.vercel.app/8B4513?style=square&size=20) `#8B4513` |
+```shell
+cairn migrate onx ~/Downloads/my-caltopo-map.json
+```
 
-  ### Track/Line Colors (11 Official Colors)
+Cairn will guide you through:
+- Selecting which file to convert
+- Previewing waypoints with their icons/colors
+- Editing any waypoints before export
+- Handling unmapped icons
 
-  **Tracks support 11 colors** (waypoints only support 10). The first 10 colors are **identical** to the waypoint colors above. Tracks have one additional color: Fuchsia.
+Output goes to `onx_ready/` folder (GPX for waypoints/tracks, KML for polygons).
+
+### OnX --> CalTopo
+
+```shell
+cairn migrate caltopo ~/Downloads/my-onx-exports/
+```
+
+Cairn will:
+- Find your GPX and KML files
+- Merge them (preferring polygons)
+- Deduplicate shapes automatically
+- Generate CalTopo-ready GeoJSON
+
+Output goes to `caltopo_ready/` folder.
+
+## Icon, Symbol and Color Mapping
+
+The real value of Cairn is migrating the colors, icons, names and descriptions from one place to another. Cairn solves this challenge by allowing users to preview and edit all of that data ahead of time.
+
+### Why is icon and color mapping important for OnX?
+
+OnX supports discovery by searching across everything or within a specific content type. However, the only way to filter is by **Color** and **Icon** for waypoints.
+
+Color is a key filtering property in OnX's "My Content" feature. When importing waypoints from CalTopo, having colors correctly mapped allows you to:
+- Filter large sets of imported waypoints by color and icon
+- Quickly find waypoints by combining text + filtering
+- Maintain an organizational structure
+
+OnX only allows specific colors and icon terms to be used.
+
+See the tables below for the allowed OnX colors. "If the data you want to import provides color information, Cairn will convert it to the closest OnX color. If no color is provided then OnX will use the default blue.
+
+For icons and symbols, OnX accepts a set of ~40 icons but CalTopo exports a much larger set. Even when the icons are visually identical the text labels used may not match and the icon doesn't transfer.
+
+Cairn maintains a default mapping of common CalTopo --> OnX icons, and it will warn you when it sees an icon it can't map.
+
+Example warning output:
+
+```text
+⚠️  Found 3 unmapped CalTopo symbol(s):
+
+Symbol      Count  Example Waypoint
+climbing-2  3      Main Wall - Lost horse canyon
+circle-p    1      Parking- Main Wall and Starlight Lounge
+climbing-1  1      Pullout boulders
+
+💡 Add these to your config (default: cairn_config.yaml) to map them to OnX icons
+   Run 'cairn config export' to create a template
+   Run 'cairn config show' to see valid OnX icons already used in your mappings
+```
+
+To permanently map `climbing-1` to the OnX climber icon, add this to your `cairn_config.yaml`:
+
+```yaml
+symbol_mappings:
+  climbing-1: Climbing
+```
+
+## Configuration
+
+Cairn uses `cairn_config.yaml` to store custom icon mappings and preferences.
+
+### Structure
+
+```yaml
+symbol_mappings:
+  # CalTopo symbol → OnX icon name
+  climbing-1: Climbing
+  climbing-2: Climbing
+  campsite-1: Campground
+  circle-p: Parking
+
+# Add more mappings as you encounter unmapped symbols
+```
+
+### Commands
+
+```shell
+# See what's in your current config (shows active mappings)
+cairn config show
+
+# Generate a template config file in your current directory
+cairn config export
+
+# Validate your config file
+cairn config validate cairn_config.yaml
+```
+
+## Color reference
+
+There are 10(ish) official OnX colors. Waypoints support **10** colors and Tracks/Lines support **11**, all of the previous 10 plus Fuchsia.
 
 | #  | Color Name   | RGBA Value           | RGB              | Hex                                                                                  | In Waypoints? |
 |----|--------------|----------------------|------------------|--------------------------------------------------------------------------------------|---------------|
@@ -95,29 +187,17 @@ The data isn't lost, it jsut didn't make it from the file into the mapping softw
 | 10 | Brown        | `rgba(139,69,19,1)`  | RGB(139, 69, 19) | ![brand-8b4513](https://readme-swatches.vercel.app/8B4513?style=square&size=20) `#8B4513` | ✅ Yes |
 | 11 | Fuchsia      | `rgba(255,0,255,1)`  | RGB(255, 0, 255) | ![brand-ff00ff](https://readme-swatches.vercel.app/FF00FF?style=square&size=20) `#FF00FF` | ❌ No (track-only) |
 
-  ### Why Color Preservation Matters
+## Known quirks, blockers and things I learned along the way
 
-  Color is a key filtering property in OnX's "My Content" feature. When importing waypoints from CalTopo, having colors correctly mapped allows you to:
-  - Filter large sets of imported waypoints by color
-  - Organize and find waypoints quickly after import
-  - Maintain your organizational system from CalTopo
+*If any of my assumptions are wrong, I want to know — the goal is a faithful migration.*
 
-  This makes color mapping especially important when migrating large datasets between platforms.
+- **OnX export variance**: similar "linework" can export as `<trk>` vs `<rte>`. Areas/polygons often only appear as polygons in KML.
+- **CalTopo's exported "GeoJSON" is CalTopo-flavored**: it may include extra properties and 4D coordinate arrays like `[lon, lat, ele, time]`. I treat this as normal normalization, not automatically a bug.
+- **Standards aren't fully standard in practice**: GPX/KML/GeoJSON are interchange formats, but platform behavior still matters more than file validity.
 
-  ### Import Behavior
+- **Ordering is not reliable after import**: even if I carefully write GPX/KML in a particular order, OnX may re-order items in folders after import and there isn't a stable user-visible "sort by name" / "sort by import order" workflow that guarantees the same outcome every time.
 
-  **Tracks** ✅
-  - All 11 colors are imported and preserved correctly
-  - Colors can be manually changed in OnX UI
-  - Must use one of the 11 official RGBA values listed above
-
-  **Waypoints** ✅
-  - All 10 colors are imported and preserved correctly
-  - Colors can be manually changed in OnX UI
-  - Must use one of the 10 official RGBA values listed above
-  - Cannot use Fuchsia (track-only color)
-  - OnX will assign the default ![brand-087aff](https://readme-swatches.vercel.app/087AFF?style=square&size=20) `#087AFF` blue color on import for non-matching values
-  - After manual edit, OnX exports using the exact 10 waypoint colors
+- **Waypoints and tracks use the same base colors, but tracks have one extra**: OnX waypoints support 10 colors, while tracks/lines support 11 colors. The first 10 colors are identical between waypoints and tracks. Tracks have one additional color (Fuchsia) that waypoints don't support.
 
 ### Dedupping
 
@@ -136,7 +216,15 @@ Nothing is deleted permanently: every dropped duplicate is preserved in the seco
 uv run --with pytest pytest -q
 ```
 
----
+### Chaos demo
+
+If you want to *watch* a full CalTopo → OnX migration run (including intentional bad inputs to exercise error handling, bulk edits, and re-editing a folder) without interacting, run the included replay script:
+
+```bash
+./scripts/run_chaos_demo.sh
+```
+
+This runs `cairn migrate onx` against `demo/bitterroots/` and writes outputs to `demo/bitterroots/onx_ready_chaos_watch/` by default.
 
 ## License
 
