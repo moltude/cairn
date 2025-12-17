@@ -14,19 +14,19 @@ observed_caltopo_symbols:
     examples:
     - Peak + Photos
   point:
-    count: 456
+    count: 477
     examples:
     - Chute1
     - Good looking skiing
     - Sick bowl brah
   circle-p:
-    count: 126
+    count: 133
     examples:
     - Parking- Main Wall and Starlight Lounge
     - North rim approach trail
     - Gash trailhead
   climbing-2:
-    count: 110
+    count: 131
     examples:
     - Main Wall- Lost horse canyon
     - Shoshone Spire
@@ -38,7 +38,7 @@ observed_caltopo_symbols:
     - Ridgeline Yurt
     - Downing Mountain Lodge
   camping:
-    count: 57
+    count: 71
     examples:
     - Camp spot
     - Camping
@@ -63,7 +63,7 @@ observed_caltopo_symbols:
     examples:
     - Parking
   climbing-1:
-    count: 22
+    count: 29
     examples:
     - Pullout boulders
   repair-streamcrossing:
@@ -260,4 +260,4 @@ observed_onx_icons:
     - Solo Waypoint
     - North Pole
     - South Pole
-updated_at: '2025-12-16T21:22:36+00:00'
+updated_at: '2025-12-17T00:17:42+00:00'
