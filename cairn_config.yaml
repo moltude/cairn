@@ -1,113 +1,18 @@
-# =============================================================================
-# Cairn Icon Mapping Configuration
-# =============================================================================
-# This file maps CalTopo symbols to OnX Backcountry icons.
-#
-# HOW IT WORKS (in priority order):
-#   1. symbol_mappings - matches CalTopo marker-symbol field
-#   2. keyword_mappings - searches title/description for keywords
-#   3. Default: "Location" icon (blue pin)
-#
-# TIPS:
-#   - Generic symbols (point, marker, pin) are automatically ignored
-#     so keyword matching can work for those waypoints.
-#   - Keywords are case-insensitive and match anywhere in the text.
-# =============================================================================
-
-# Add icon type prefix to names (e.g., "Hazard - Avalanche Zone")
 use_icon_name_prefix: false
-
-# Track symbols without mappings (shows report after conversion)
 enable_unmapped_detection: true
-
-# =============================================================================
-# ICON EMOJIS (for terminal preview)
-# =============================================================================
-# Format: "OnX Icon Name": "emoji"
-# Used in the preview to visualize icon assignments.
-#
-icon_emojis:
-  # Camping
-  Campsite: "⛺"
-  Camp: "⛺"
-  Camp Backcountry: "⛺"
-  Camp Area: "⛺"
-  Campground: "⛺"
-
-  # Water
-  Water Source: "💧"
-  Waterfall: "💧"
-  Hot Spring: "♨️"
-  Potable Water: "💧"
-  Water Crossing: "🌉"
-
-  # Transportation
-  Parking: "🅿️"
-  Trailhead: "🥾"
-  4x4: "🚙"
-  ATV: "🏍️"
-
-  # Winter Sports
-  XC Skiing: "⛷️"
-  Ski: "⛷️"
-  Ski Touring: "⛷️"
-  Skin Track: "⛷️"
-  Snowboarder: "🏂"
-  Snowmobile: "🛷"
-
-  # Terrain
-  Summit: "🏔️"
-  Cave: "🕳️"
-
-  # Hazards
-  Hazard: "⚠️"
-  Barrier: "🚧"
-
-  # Hiking
-  Hike: "🥾"
-  Backpacker: "🎒"
-
-  # Observation
-  Photo: "📷"
-  View: "👁️"
-  Lookout: "🔭"
-
-  # Facilities
-  Cabin: "🏠"
-  Shelter: "🏚️"
-  House: "🏠"
-  Food Source: "🍎"
-
-  # Default
-  Location: "📍"
-
-# =============================================================================
-# SYMBOL MAPPINGS
-# =============================================================================
-# Format: caltopo_symbol: OnX Icon Name
-# Maps the "marker-symbol" field from CalTopo GeoJSON exports.
-#
-# NOTE: Don't add generic symbols like "point" or "marker" here!
-# They are automatically skipped so keyword matching can work.
-#
 symbol_mappings:
-  # Hazards & Warnings -> Hazard (red warning triangle)
   skull: Hazard
   danger: Hazard
   warning: Hazard
   caution: Hazard
   hazard: Hazard
   alert: Hazard
-
-  # Camping -> Campsite/Camp (orange tent)
   tent: Campsite
   campsite: Campsite
   camp: Camp
   camping: Campsite
   bivy: Camp Backcountry
   campground: Campground
-
-  # Water Sources -> Water Source (cyan droplet)
   water: Water Source
   droplet: Water Source
   spring: Water Source
@@ -116,17 +21,12 @@ symbol_mappings:
   river: Water Source
   waterfall: Waterfall
   hot-spring: Hot Spring
-  ford: Water Crossing
-
-  # Parking & Vehicles -> Parking (gray P)
   car: Parking
   parking: Parking
   vehicle: Parking
   lot: Parking
   4x4: 4x4
   atv: ATV
-
-  # Winter Sports -> XC Skiing/Ski (white skier)
   ski: Ski
   skiing: XC Skiing
   xc-skiing: XC Skiing
@@ -136,85 +36,54 @@ symbol_mappings:
   ski-touring: Ski Touring
   snowboard: Snowboarder
   snowmobile: Snowmobile
-
-  # Hiking & Trails -> Trailhead (green boot)
   trailhead: Trailhead
   trail: Trailhead
   hike: Hike
   hiking: Hike
   backpack: Backpacker
   backpacker: Backpacker
-
-  # Summits & Peaks -> Summit (red peak)
   summit: Summit
   peak: Summit
   triangle-u: Summit
   mountain: Summit
   top: Summit
-
-  # Views & Photos -> Photo/View (yellow)
   camera: Photo
   photo: Photo
   binoculars: View
-  # CalTopo sometimes uses abbreviated binocular symbol ids in exports
-  binoc: View
   viewpoint: View
   vista: View
   overlook: View
   lookout: Lookout
-
-  # CalTopo generic placemark variants (treat as a generic Location marker)
-  placemark2: Location
-
-  # Facilities -> Cabin (brown)
   cabin: Cabin
   hut: Cabin
   yurt: Cabin
   shelter: Shelter
   house: House
-
-# =============================================================================
-# KEYWORD MAPPINGS
-# =============================================================================
-# Format: "OnX Icon Name": [list, of, keywords]
-# Searches waypoint title and description for these keywords.
-# Only used when no symbol_mapping matches.
-# Case-insensitive, matches substrings.
-#
+  climbing-2: Climbing
+  circle-p: Parking
+  climbing-1: Climbing
 keyword_mappings:
-  # Camping keywords -> Campsite
   Campsite:
     - tent
     - camp
     - sleep
     - overnight
     - camping
-
-  # Water keywords -> Water Source
   Water Source:
     - water
     - spring
     - refill
     - creek
     - stream
-
-  # Water Crossing keywords -> Water Crossing
-  Water Crossing:
-    - river crossing
-
-  # Parking keywords -> Parking
   Parking:
     - car
     - parking
     - lot
     - vehicle
-
-  # Trailhead keywords -> Trailhead
   Trailhead:
     - trailhead
     - trail head
-
-  # Winter sports keywords -> XC Skiing
+    - th
   XC Skiing:
     - ski
     - skin
@@ -222,14 +91,11 @@ keyword_mappings:
     - uptrack
     - skiing
     - xc
-
-  # Summit keywords -> Summit
   Summit:
     - summit
     - peak
+    - top
     - mt
-
-  # Hazard keywords -> Hazard
   Hazard:
     - danger
     - avy
@@ -239,21 +105,15 @@ keyword_mappings:
     - warning
     - deadfall
     - dead fall
-
-  # Photo keywords -> Photo
   Photo:
     - camera
     - photo
-
-  # View keywords -> View
   View:
     - view
     - viewpoint
     - vista
     - overlook
     - scenic
-
-  # Cabin keywords -> Cabin
   Cabin:
     - cabin
     - hut

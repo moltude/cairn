@@ -1,7 +1,7 @@
 version: 1
 observed_caltopo_symbols:
   campsite:
-    count: 120
+    count: 140
     examples:
     - Test Waypoint
   placemark2:
@@ -14,19 +14,19 @@ observed_caltopo_symbols:
     examples:
     - Peak + Photos
   point:
-    count: 450
+    count: 456
     examples:
     - Chute1
     - Good looking skiing
     - Sick bowl brah
   circle-p:
-    count: 124
+    count: 126
     examples:
     - Parking- Main Wall and Starlight Lounge
     - North rim approach trail
     - Gash trailhead
   climbing-2:
-    count: 104
+    count: 110
     examples:
     - Main Wall- Lost horse canyon
     - Shoshone Spire
@@ -38,7 +38,7 @@ observed_caltopo_symbols:
     - Ridgeline Yurt
     - Downing Mountain Lodge
   camping:
-    count: 53
+    count: 57
     examples:
     - Camp spot
     - Camping
@@ -63,7 +63,7 @@ observed_caltopo_symbols:
     examples:
     - Parking
   climbing-1:
-    count: 20
+    count: 22
     examples:
     - Pullout boulders
   repair-streamcrossing:
@@ -78,6 +78,11 @@ observed_caltopo_symbols:
     count: 13
     examples:
     - Launching point
+  circle:
+    count: 3
+    examples:
+    - Solo Marker
+    - Test Waypoint
 observed_onx_icons:
   Location:
     count: 7945
@@ -98,7 +103,7 @@ observed_onx_icons:
     - Gash knob
     - Cool pointy summit
   Water Source:
-    count: 361
+    count: 411
     examples:
     - Mill Creek TH?
     - Bass Creek TH
@@ -141,7 +146,7 @@ observed_onx_icons:
     - Waypoint 11/30/25 14:03
     - Camp Area - Ridge Camping Zone (Lime)
   Campsite:
-    count: 265
+    count: 315
     examples:
     - Test2-ExtensionsOnly
     - Campsite - Alpine Meadow (Red-Orange)
@@ -249,4 +254,10 @@ observed_onx_icons:
     count: 6
     examples:
     - Waterfall - Cascade Falls (Purple)
-updated_at: '2025-12-16T19:30:29+00:00'
+  (missing):
+    count: 33363
+    examples:
+    - Solo Waypoint
+    - North Pole
+    - South Pole
+updated_at: '2025-12-16T21:22:36+00:00'
