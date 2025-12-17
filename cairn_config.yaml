@@ -8,7 +8,6 @@ symbol_mappings:
   hazard: Hazard
   alert: Hazard
   tent: Campsite
-  campsite: Campsite
   camp: Camp
   camping: Campsite
   bivy: Camp Backcountry
