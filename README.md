@@ -2,6 +2,8 @@
 
 **Work in progress, buyer beware.**
 
+![alt text](./demo.gif)
+
 ### Why?
 
 I'm an advocate for open data and being able to exchange map data between platforms. GPX/KML/GeoJSON are meant to be platform-agnostic interchange formats (or at least that's how I understand them). Cairn is my attempt to make that promise feel real for backcountry mapping: move between OnX and CalTopo while taking *all the map customization with you* (icons, colors, notes, and organization), not just raw shapes.
