@@ -202,6 +202,9 @@ There are 10(ish) official OnX colors. Waypoints support **10** colors and Track
 
 - **Waypoints and tracks use the same base colors, but tracks have one extra**: OnX waypoints support 10 colors, while tracks/lines support 11 colors. The first 10 colors are identical between waypoints and tracks. Tracks have one additional color (Fuchsia) that waypoints don't support.
 
+- **Feature with geometry: null** CalTopo exports GeoJSON that matches their internal model by using Features with `geometry: null` to represent folder organization (with other features linked via folderId), and by sometimes emitting 4-value coordinate arrays like [lon, lat, 0, 0] even though [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946) positions are intended to be 2D/3D. Cairn handles these CalTopo-specific patterns by parsing them into a normalized internal document model (folders + waypoints + tracks/shapes) and then exporting standards-based GPX/KML for OnX import, avoiding those GeoJSON interoperability pitfalls.
+
+
 ### Dedupping
 
 During this experiment I found cases where OnX exports include many distinct objects (different IDs) with identical names and identical geometry. CalTopo will happily import them all, which can look like "duplicates everywhere".
