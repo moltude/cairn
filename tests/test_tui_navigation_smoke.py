@@ -30,12 +30,7 @@ def test_tui_routes_enter_advances_to_waypoints() -> None:
             await pilot.pause()
 
             assert app.step == "Routes"
-            # Press Enter via pilot (should advance to Edit_routes).
-            await pilot.press("enter")
-            await pilot.pause()
-            assert app.step == "Edit_routes"
-
-            # Then Enter should advance to Waypoints.
+            # Press Enter via pilot (should advance to Waypoints).
             await pilot.press("enter")
             await pilot.pause()
             assert app.step == "Waypoints"

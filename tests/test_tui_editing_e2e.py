@@ -89,12 +89,6 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             rec.snapshot(app, label="routes_selected_one")
             assert len(app._selected_route_keys) >= 1
 
-            # -> Edit_routes (new step)
-            await pilot.press("enter")
-            await pilot.pause()
-            rec.snapshot(app, label="edit_routes")
-            assert app.step == "Edit_routes"
-
             # Actions -> Rename
             await pilot.press("a")
             await pilot.pause()
@@ -108,14 +102,19 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             await _wait_for_selector("#new_title")
             app.screen.query_one("#new_title", Input).value = route_new_title
             await pilot.pause()
-            await pilot.press("tab")
-            await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()
             rec.snapshot(app, label="routes_renamed")
 
             tracks, _ = app._current_folder_features()
             assert any(getattr(t, "title", "") == route_new_title for t in tracks)
+
+            # Selection resets after each edit; reselect a route for the next edit.
+            app.action_focus_table()
+            await pilot.pause()
+            await pilot.press("space")
+            await pilot.pause()
+            assert len(app._selected_route_keys) >= 1
 
             # Actions -> Color
             await pilot.press("a")
@@ -138,9 +137,9 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             assert tracks, "Expected at least one track in selected folder"
             assert str(getattr(tracks[0], "stroke", "") or "").startswith("#")
 
-            # Ensure we're back on the Edit_routes screen (modal fully dismissed) before continuing.
-            await _wait_for_selector("#edit_routes_table")
-            assert app.step == "Edit_routes"
+            # Ensure we're back on the Routes screen (modal fully dismissed) before continuing.
+            await _wait_for_selector("#routes_table")
+            assert app.step == "Routes"
 
             # -> Waypoints
             await pilot.press("enter")
@@ -156,12 +155,6 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             rec.snapshot(app, label="waypoints_selected_one")
             assert len(app._selected_waypoint_keys) >= 1
 
-            # -> Edit_waypoints (new step)
-            await pilot.press("enter")
-            await pilot.pause()
-            rec.snapshot(app, label="edit_waypoints")
-            assert app.step == "Edit_waypoints"
-
             # Actions -> Rename waypoint
             await pilot.press("a")
             await pilot.pause()
@@ -171,8 +164,6 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             await _wait_for_selector("#new_title")
             app.screen.query_one("#new_title", Input).value = wp_new_title
             await pilot.pause()
-            await pilot.press("tab")
-            await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()
             rec.snapshot(app, label="waypoints_renamed")
@@ -180,6 +171,13 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             _, waypoints = app._current_folder_features()
             assert waypoints, "Expected at least one waypoint in selected folder"
             assert any(getattr(w, "title", "") == wp_new_title for w in waypoints)
+
+            # Selection resets after each edit; reselect a waypoint for the next edit.
+            app.action_focus_table()
+            await pilot.pause()
+            await pilot.press("space")
+            await pilot.pause()
+            assert len(app._selected_waypoint_keys) >= 1
 
             # Actions -> Set icon override
             await pilot.press("a")
@@ -201,6 +199,13 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             await pilot.pause()
             rec.snapshot(app, label="waypoints_icon_applied")
 
+            # Reselect after edit.
+            app.action_focus_table()
+            await pilot.pause()
+            await pilot.press("space")
+            await pilot.pause()
+            assert len(app._selected_waypoint_keys) >= 1
+
             # Actions -> Set waypoint color
             await pilot.press("a")
             await pilot.pause()
@@ -216,6 +221,13 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             await pilot.pause()
             rec.snapshot(app, label="waypoints_color_applied")
 
+            # Reselect after edit.
+            app.action_focus_table()
+            await pilot.pause()
+            await pilot.press("space")
+            await pilot.pause()
+            assert len(app._selected_waypoint_keys) >= 1
+
             # Actions -> Set description
             await pilot.press("a")
             await pilot.pause()
@@ -226,8 +238,6 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             rec.snapshot(app, label="waypoints_description_modal")
             await _wait_for_selector("#new_description")
             app.screen.query_one("#new_description", Input).value = wp_desc_raw
-            await pilot.pause()
-            await pilot.press("tab")
             await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()

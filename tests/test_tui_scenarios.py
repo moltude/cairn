@@ -63,11 +63,6 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
             rec.snapshot(app, label="routes_selected_one")
             assert len(app._selected_route_keys) >= 1
 
-            await pilot.press("enter")  # -> Edit_routes
-            await pilot.pause()
-            rec.snapshot(app, label="edit_routes")
-            assert app.step == "Edit_routes"
-
             await pilot.press("enter")  # -> Waypoints
             await pilot.pause()
             rec.snapshot(app, label="waypoints")
@@ -79,11 +74,6 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
             await pilot.pause()
             rec.snapshot(app, label="waypoints_selected_one")
             assert len(app._selected_waypoint_keys) >= 1
-
-            await pilot.press("enter")  # -> Edit_waypoints
-            await pilot.pause()
-            rec.snapshot(app, label="edit_waypoints")
-            assert app.step == "Edit_waypoints"
 
             await pilot.press("enter")  # -> Preview
             await pilot.pause()
@@ -148,11 +138,7 @@ def test_tui_export_error_when_output_path_is_a_file(tmp_path: Path) -> None:
             app.model.selected_folder_id = _pick_first_folder_id(app)
             await pilot.press("enter")  # -> Routes
             await pilot.pause()
-            await pilot.press("enter")  # -> Edit_routes
-            await pilot.pause()
             await pilot.press("enter")  # -> Waypoints
-            await pilot.pause()
-            await pilot.press("enter")  # -> Edit_waypoints
             await pilot.pause()
             await pilot.press("enter")  # -> Preview
             await pilot.pause()

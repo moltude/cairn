@@ -175,9 +175,6 @@ class ArtifactRecorder:
             "actions_table",
             "palette_table",
             "icon_table",
-            # Edit steps
-            "edit_routes_table",
-            "edit_waypoints_table",
         ):
             tbl = _safe_query(app, f"#{tid}")
             if tbl is None:

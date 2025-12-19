@@ -8,7 +8,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import DataTable, Footer, Header, Input, Static, DirectoryTree
+from textual.widgets import DataTable, Footer, Header, Input, Static
 import threading
 import os
 import time
@@ -37,15 +37,17 @@ from cairn.tui.edit_screens import (
     RenameModal,
 )
 
+# File types shown in Select_file tree. (Parsing support may be narrower than visibility.)
+_VISIBLE_INPUT_EXTS = {".json", ".geojson", ".kml", ".gpx"}
+_PARSEABLE_INPUT_EXTS = {".json", ".geojson"}
+
 
 STEPS = [
     "Select_file",
     "List_data",
     "Folder",
     "Routes",
-    "Edit_routes",
     "Waypoints",
-    "Edit_waypoints",
     "Preview",
     "Save",
 ]
@@ -101,7 +103,8 @@ class CairnTuiApp(App):
         Binding("tab", "focus_next", "Next field"),
         Binding("/", "focus_search", "Search"),
         Binding("t", "focus_table", "Table"),
-        Binding("a", "actions", "Actions"),
+        Binding("a", "actions", "Edit"),
+        Binding("x", "clear_selection", "Clear selection"),
         Binding("e", "export", "Export"),
     ]
 
@@ -123,6 +126,57 @@ class CairnTuiApp(App):
         self._waypoints_filter: str = ""
         self._ui_error: Optional[str] = None
         self._debug_events: list[dict[str, object]] = []
+        # Select_file browser state
+        self._file_browser_dir: Optional[Path] = None
+
+    def _set_input_path(self, p: Path) -> None:
+        """
+        Set a new input path and reset all derived UI/model state.
+
+        Without this, switching files can incorrectly reuse previously parsed data.
+        """
+        try:
+            p = Path(p).expanduser()
+            try:
+                p = p.resolve()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # If it's the same file, don't thrash state.
+        try:
+            cur = self.model.input_path
+            if cur is not None:
+                try:
+                    cur = cur.resolve()
+                except Exception:
+                    pass
+            if cur is not None and str(cur) == str(p):
+                self.model.input_path = p
+                return
+        except Exception:
+            pass
+
+        self.model.input_path = p
+        self.model.parsed = None
+        self.model.selected_folder_id = None
+        self._folder_name_by_id = {}
+        self._selected_route_keys.clear()
+        self._selected_waypoint_keys.clear()
+        self._routes_filter = ""
+        self._waypoints_filter = ""
+
+        # Reset export UI state for the new dataset.
+        self._export_manifest = None
+        self._export_error = None
+        self._export_in_progress = False
+
+        # Reset progress indicator.
+        self._done_steps.clear()
+        # Track whether edits were applied since last selection clear, to show a hint.
+        self._routes_edited: bool = False
+        self._waypoints_edited: bool = False
 
     def _dbg(self, *, event: str, data: Optional[dict[str, object]] = None) -> None:
         """
@@ -310,84 +364,7 @@ class CairnTuiApp(App):
                 key=key,
             )
 
-    def _refresh_edit_routes_table(self) -> None:
-        """Refresh Edit_routes table in-place (avoid remounting + DuplicateIds)."""
-        if self.step != "Edit_routes":
-            return
-        try:
-            table = self.query_one("#edit_routes_table", DataTable)
-        except Exception:
-            return
-        if self.model.parsed is None or not self.model.selected_folder_id:
-            return
-        fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-        tracks = list((fd or {}).get("tracks", []) or [])
-        sel = sorted(k for k in self._selected_route_keys if str(k).isdigit())
-
-        self._datatable_clear_rows(table)
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Name", "Stroke", "Pattern", "Width")
-        except Exception:
-            try:
-                table.add_columns("Name", "Stroke", "Pattern", "Width")
-            except Exception:
-                pass
-
-        for k in sel:
-            i = int(k)
-            if i < 0 or i >= len(tracks):
-                continue
-            trk = tracks[i]
-            table.add_row(
-                str(getattr(trk, "title", "") or "Untitled"),
-                str(getattr(trk, "stroke", "") or ""),
-                str(getattr(trk, "pattern", "") or ""),
-                str(getattr(trk, "stroke_width", "") or ""),
-                key=str(k),
-            )
-
-    def _refresh_edit_waypoints_table(self) -> None:
-        """Refresh Edit_waypoints table in-place (avoid remounting + DuplicateIds)."""
-        if self.step != "Edit_waypoints":
-            return
-        try:
-            table = self.query_one("#edit_waypoints_table", DataTable)
-        except Exception:
-            return
-        if self.model.parsed is None or not self.model.selected_folder_id:
-            return
-        fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-        waypoints = list((fd or {}).get("waypoints", []) or [])
-        sel = sorted(k for k in self._selected_waypoint_keys if str(k).isdigit())
-
-        self._datatable_clear_rows(table)
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Name", "OnX icon", "OnX color")
-        except Exception:
-            try:
-                table.add_columns("Name", "OnX icon", "OnX color")
-            except Exception:
-                pass
-
-        for k in sel:
-            i = int(k)
-            if i < 0 or i >= len(waypoints):
-                continue
-            wp = waypoints[i]
-            name0 = str(getattr(wp, "title", "") or "Untitled")
-            icon = self._resolved_waypoint_icon(wp)
-            rgba = self._resolved_waypoint_color(wp, icon)
-            try:
-                table.add_row(name0, icon, self._color_chip(rgba), key=str(k))
-            except Exception:
-                table.add_row(
-                    name0,
-                    icon,
-                    f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}",
-                    key=str(k),
-                )
+    # (Edit_routes/Edit_waypoints steps removed; no extra edit tables needed.)
 
     # -----------------------
     # Compose
@@ -405,7 +382,8 @@ class CairnTuiApp(App):
                 yield Static("Keys:", classes="muted")
                 yield Static("Enter: Continue", classes="muted")
                 yield Static("Esc: Back", classes="muted")
-                yield Static("a: Actions", classes="muted")
+                yield Static("a: Edit", classes="muted")
+                yield Static("x: Clear selection", classes="muted")
                 yield Static("q: Quit", classes="muted")
             with Container(classes="main"):
                 yield Static("", id="main_title", classes="title")
@@ -424,8 +402,8 @@ class CairnTuiApp(App):
         Ensure focus is on an on-screen widget after step transitions.
 
         This fixes a subtle real-world issue: when we auto-advance from Select_file
-        (DirectoryTree focused) to List_data, focus may remain on the removed tree,
-        causing Enter key presses to be swallowed / not reach the app-level flow.
+        to List_data, focus may remain on a removed widget, causing Enter key presses
+        to be swallowed / not reach the app-level flow.
         """
         try:
             if self.step == "List_data":
@@ -443,10 +421,123 @@ class CairnTuiApp(App):
         except Exception:
             return
 
+    def _refresh_file_browser(self) -> None:
+        """Populate Select_file file browser table with dirs + allowed extensions only."""
+        if self.step != "Select_file":
+            return
+        try:
+            table = self.query_one("#file_browser", DataTable)
+        except Exception:
+            return
+        base = self._file_browser_dir
+        if base is None:
+            return
+
+        # Clear rows without nuking columns (compat).
+        self._datatable_clear_rows(table)
+        try:
+            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
+                table.add_columns("Name", "Type")
+        except Exception:
+            try:
+                table.add_columns("Name", "Type")
+            except Exception:
+                pass
+
+        # Parent entry
+        try:
+            parent = base.parent
+            if parent != base:
+                table.add_row("..", "dir", key="__up__")
+        except Exception:
+            pass
+
+        entries: list[Path] = []
+        try:
+            entries = list(base.iterdir())
+        except Exception:
+            entries = []
+
+        dirs = sorted([p for p in entries if p.is_dir()], key=lambda p: p.name.lower())
+        files = sorted(
+            [
+                p
+                for p in entries
+                if p.is_file() and p.suffix.lower() in _VISIBLE_INPUT_EXTS
+            ],
+            key=lambda p: p.name.lower(),
+        )
+
+        for p in dirs:
+            table.add_row(p.name, "dir", key=f"dir:{p}")
+        for p in files:
+            table.add_row(p.name, p.suffix.lower().lstrip("."), key=f"file:{p}")
+
+        # Keep cursor stable
+        try:
+            if getattr(table, "row_count", 0):
+                table.cursor_row = 0  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def _file_browser_enter(self) -> None:
+        """Handle Enter on Select_file file browser table."""
+        if self.step != "Select_file":
+            return
+        base = self._file_browser_dir
+        if base is None:
+            return
+        try:
+            table = self.query_one("#file_browser", DataTable)
+        except Exception:
+            return
+        rk = self._table_cursor_row_key(table)
+        if not rk:
+            return
+        if rk == "__up__":
+            try:
+                self._file_browser_dir = base.parent if base.parent != base else base
+            except Exception:
+                self._file_browser_dir = base
+            self._refresh_file_browser()
+            return
+        if rk.startswith("dir:"):
+            p = Path(rk[4:])
+            self._file_browser_dir = p
+            self._refresh_file_browser()
+            return
+        if rk.startswith("file:"):
+            p = Path(rk[5:])
+            suf = p.suffix.lower()
+            # Show selection in the input box.
+            try:
+                inp = self.query_one("#input_path", Input)
+                inp.value = str(p)
+            except Exception:
+                pass
+            if suf in _PARSEABLE_INPUT_EXTS and p.exists() and p.is_file():
+                self._set_input_path(p)
+                self._done_steps.add("Select_file")
+                self._goto("List_data")
+                return
+            if suf in _VISIBLE_INPUT_EXTS:
+                self.push_screen(
+                    InfoModal(
+                        "This TUI currently supports CalTopo GeoJSON inputs only (.json/.geojson).\n\n"
+                        "GPX/KML inputs are not supported in the TUI yet."
+                    )
+                )
+            return
+
     def _goto(self, step: str) -> None:
         if step not in STEPS:
             return
         self.step = step
+        # Clear per-step edit hints when leaving the step.
+        if step != "Routes":
+            self._routes_edited = False
+        if step != "Waypoints":
+            self._waypoints_edited = False
         self._render_sidebar()
         self._render_main()
         try:
@@ -498,9 +589,7 @@ class CairnTuiApp(App):
     def action_continue(self) -> None:
         # Step-specific gating + actions.
         if self.step == "Select_file":
-            # Rely on selecting a file in the tree (or submitting the input field) to advance.
-            # Enter is often consumed by DirectoryTree, and also makes it too easy to
-            # accidentally advance with an old selection when navigating back.
+            # Rely on selecting a file in the browser table (or submitting the input field) to advance.
             return
 
         if self.step == "List_data":
@@ -527,21 +616,11 @@ class CairnTuiApp(App):
 
         if self.step == "Routes":
             self._done_steps.add("Routes")
-            self._goto("Edit_routes")
-            return
-
-        if self.step == "Edit_routes":
-            self._done_steps.add("Edit_routes")
             self._goto("Waypoints")
             return
 
         if self.step == "Waypoints":
             self._done_steps.add("Waypoints")
-            self._goto("Edit_waypoints")
-            return
-
-        if self.step == "Edit_waypoints":
-            self._done_steps.add("Edit_waypoints")
             self._goto("Preview")
             return
 
@@ -585,11 +664,11 @@ class CairnTuiApp(App):
         return tracks, waypoints
 
     def _selected_keys_for_step(self) -> Optional[EditContext]:
-        if self.step in ("Routes", "Edit_routes"):
+        if self.step == "Routes":
             if not self._selected_route_keys:
                 return None
             return EditContext(kind="route", selected_keys=tuple(sorted(self._selected_route_keys)))
-        if self.step in ("Waypoints", "Edit_waypoints"):
+        if self.step == "Waypoints":
             if not self._selected_waypoint_keys:
                 return None
             return EditContext(kind="waypoint", selected_keys=tuple(sorted(self._selected_waypoint_keys)))
@@ -757,15 +836,20 @@ class CairnTuiApp(App):
         if not changed:
             return
 
+        # Mark edited so we can show a hint to clear selection and edit another subset.
+        if ctx.kind == "route":
+            self._routes_edited = True
+        elif ctx.kind == "waypoint":
+            self._waypoints_edited = True
+
         # Refresh current step tables so edits are visible immediately.
-        if self.step == "Routes":
+        if ctx.kind == "route":
+            # After applying an edit, reset selection so subsequent edits start fresh.
+            self._selected_route_keys.clear()
             self._refresh_routes_table()
-        elif self.step == "Waypoints":
+        elif ctx.kind == "waypoint":
+            self._selected_waypoint_keys.clear()
             self._refresh_waypoints_table()
-        elif self.step == "Edit_routes":
-            self._refresh_edit_routes_table()
-        elif self.step == "Edit_waypoints":
-            self._refresh_edit_waypoints_table()
         elif self.step == "Preview":
             self._render_main()
 
@@ -823,22 +907,30 @@ class CairnTuiApp(App):
 
         if self.step == "Select_file":
             title.update("Select file")
-            subtitle.update("Choose a CalTopo GeoJSON export (.json/.geojson)")
+            subtitle.update("Choose an input file (.json/.geojson/.kml/.gpx)")
             body = self._clear_main_body()
             default_root = Path(self._state.default_root).expanduser() if self._state.default_root else Path.cwd()
             body.mount(Static("Pick a file (tree) or paste a path:", classes="muted"))
+            # Initialize file browser directory once per visit.
+            if self._file_browser_dir is None:
+                try:
+                    self._file_browser_dir = default_root.resolve()
+                except Exception:
+                    self._file_browser_dir = default_root
+
+            # Simple in-app file browser: dirs + allowed extensions only.
+            table = DataTable(id="file_browser")
+            table.add_columns("Name", "Type")
+            body.mount(table)
+            self._refresh_file_browser()
+
             body.mount(
-                DirectoryTree(
-                    str(default_root),
-                    id="file_tree",
-                )
+                Input(placeholder="Path to .json/.geojson/.kml/.gpx", id="input_path")
             )
-            body.mount(Input(placeholder="Path to .json/.geojson", id="input_path"))
             body.mount(Static("Enter: continue", classes="muted"))
             # Prefer focusing the tree so arrow keys + Enter work immediately.
             try:
-                tree = self.query_one("#file_tree", DirectoryTree)
-                self.call_after_refresh(tree.focus)
+                self.call_after_refresh(table.focus)
             except Exception:
                 pass
             return
@@ -909,7 +1001,10 @@ class CairnTuiApp(App):
 
         if self.step == "Routes":
             title.update("Routes")
-            subtitle.update("Browse routes (Space to toggle selection, / to search)")
+            subtitle_msg = "Browse routes (Space to toggle selection, / to search)  •  Edit: a"
+            if self._routes_edited:
+                subtitle_msg += "  •  Edited. Press x to clear selection and edit another set."
+            subtitle.update(subtitle_msg)
             body = self._clear_main_body()
             if self.model.parsed is None or not self.model.selected_folder_id:
                 body.mount(Static("No folder selected. Go back.", classes="err"))
@@ -942,42 +1037,12 @@ class CairnTuiApp(App):
                 pass
             return
 
-        if self.step == "Edit_routes":
-            title.update("Edit routes")
-            subtitle.update("Review selected routes (press 'a' for Actions, Enter to continue)")
-            body = self._clear_main_body()
-            if self.model.parsed is None or not self.model.selected_folder_id:
-                body.mount(Static("No folder selected. Go back.", classes="err"))
-                return
-            fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-            tracks = list((fd or {}).get("tracks", []) or [])
-
-            sel = sorted(k for k in self._selected_route_keys if str(k).isdigit())
-            body.mount(
-                Static(
-                    f"Selected routes: {len(sel)}  (Space toggles on Routes screen)",
-                    classes="muted",
-                )
-            )
-            if not sel:
-                body.mount(Static("No routes selected. Press Enter to continue.", classes="muted"))
-                return
-
-            table = DataTable(id="edit_routes_table")
-            table.add_columns("Name", "Stroke", "Pattern", "Width")
-            body.mount(table)
-            # Populate rows via in-place refresher (also used after edits).
-            self._refresh_edit_routes_table()
-            body.mount(Static("a: Actions  Enter: continue to Waypoints", classes="muted"))
-            try:
-                self.call_after_refresh(table.focus)
-            except Exception:
-                pass
-            return
-
         if self.step == "Waypoints":
             title.update("Waypoints")
-            subtitle.update("Browse waypoints (Space to toggle selection, / to search)")
+            subtitle_msg = "Browse waypoints (Space to toggle selection, / to search)  •  Edit: a"
+            if self._waypoints_edited:
+                subtitle_msg += "  •  Edited. Press x to clear selection and edit another set."
+            subtitle.update(subtitle_msg)
             body = self._clear_main_body()
             if self.model.parsed is None or not self.model.selected_folder_id:
                 body.mount(Static("No folder selected. Go back.", classes="err"))
@@ -1016,42 +1081,9 @@ class CairnTuiApp(App):
                 pass
             return
 
-        if self.step == "Edit_waypoints":
-            title.update("Edit waypoints")
-            subtitle.update("Review selected waypoints (press 'a' for Actions, Enter to continue)")
-            body = self._clear_main_body()
-            if self.model.parsed is None or not self.model.selected_folder_id:
-                body.mount(Static("No folder selected. Go back.", classes="err"))
-                return
-            fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-            waypoints = list((fd or {}).get("waypoints", []) or [])
-
-            sel = sorted(k for k in self._selected_waypoint_keys if str(k).isdigit())
-            body.mount(
-                Static(
-                    f"Selected waypoints: {len(sel)}  (Space toggles on Waypoints screen)",
-                    classes="muted",
-                )
-            )
-            if not sel:
-                body.mount(Static("No waypoints selected. Press Enter to continue.", classes="muted"))
-                return
-
-            table = DataTable(id="edit_waypoints_table")
-            table.add_columns("Name", "OnX icon", "OnX color")
-            body.mount(table)
-            # Populate rows via in-place refresher (also used after edits).
-            self._refresh_edit_waypoints_table()
-            body.mount(Static("a: Actions  Enter: continue to Preview", classes="muted"))
-            try:
-                self.call_after_refresh(table.focus)
-            except Exception:
-                pass
-            return
-
         if self.step == "Preview":
             title.update("Preview")
-            subtitle.update("What will be exported (folder, routes, waypoints, files)")
+            subtitle.update("Preview of the full export (all routes + waypoints)")
             body = self._clear_main_body()
             if self.model.parsed is None:
                 body.mount(Static("No parsed data. Go back.", classes="err"))
@@ -1067,13 +1099,11 @@ class CairnTuiApp(App):
 
             body.mount(Static(f"Folder: {folder_name}", classes="ok"))
 
-            # Waypoint preview table (selected first, then rest).
+            # Waypoint preview table (full export, capped for UI readability).
             wp_table = DataTable(id="preview_waypoints")
             wp_table.add_columns("Name", "OnX icon", "OnX color")
-            for i, wp in enumerate(waypoints):
-                key = str(i)
-                if self._selected_waypoint_keys and key not in self._selected_waypoint_keys:
-                    continue
+            max_rows = 50
+            for i, wp in enumerate(waypoints[:max_rows]):
                 name0 = str(getattr(wp, "title", "") or "Untitled")
                 icon = self._resolved_waypoint_icon(wp)
                 rgba = self._resolved_waypoint_color(wp, icon)
@@ -1082,15 +1112,15 @@ class CairnTuiApp(App):
                 except Exception as e:
                     self._dbg(event="preview.wp_row_error", data={"err": str(e), "rgba": rgba})
                     wp_table.add_row(name0, icon, f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}")
-            body.mount(Static("Waypoints (selected)", classes="accent"))
+            note_wp = f"Waypoints ({len(waypoints)})"
+            if len(waypoints) > max_rows:
+                note_wp += f" [dim](showing first {max_rows})[/]"
+            body.mount(Static(note_wp, classes="accent"))
             body.mount(wp_table)
 
             trk_table = DataTable(id="preview_routes")
             trk_table.add_columns("Name", "OnX color", "Style", "Weight")
-            for i, trk in enumerate(tracks):
-                key = str(i)
-                if self._selected_route_keys and key not in self._selected_route_keys:
-                    continue
+            for i, trk in enumerate(tracks[:max_rows]):
                 name0 = str(getattr(trk, "title", "") or "Untitled")
                 rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
                 style = str(getattr(trk, "pattern", "") or "solid")
@@ -1105,7 +1135,10 @@ class CairnTuiApp(App):
                         style,
                         weight,
                     )
-            body.mount(Static("Routes (selected)", classes="accent"))
+            note_trk = f"Routes ({len(tracks)})"
+            if len(tracks) > max_rows:
+                note_trk += f" [dim](showing first {max_rows})[/]"
+            body.mount(Static(note_trk, classes="accent"))
             body.mount(trk_table)
 
             body.mount(Static("Enter to continue to Save", classes="muted"))
@@ -1168,11 +1201,20 @@ class CairnTuiApp(App):
                 p = p.resolve()
             except Exception:
                 pass
-            self.model.input_path = p
             self._render_sidebar()
-            if self.step == "Select_file" and p.suffix.lower() in (".json", ".geojson") and p.exists() and p.is_file():
-                self._done_steps.add("Select_file")
-                self._goto("List_data")
+            if self.step == "Select_file":
+                suf = p.suffix.lower()
+                if suf in _PARSEABLE_INPUT_EXTS and p.exists() and p.is_file():
+                    self._set_input_path(p)
+                    self._done_steps.add("Select_file")
+                    self._goto("List_data")
+                elif suf in _VISIBLE_INPUT_EXTS:
+                    self.push_screen(
+                        InfoModal(
+                            "This TUI currently supports CalTopo GeoJSON inputs only (.json/.geojson).\n\n"
+                            "GPX/KML inputs are not supported in the TUI yet."
+                        )
+                    )
         elif event.input.id == "output_dir":
             raw = (event.value or "").strip()
             if not raw:
@@ -1193,14 +1235,30 @@ class CairnTuiApp(App):
             )
 
     def action_focus_search(self) -> None:
-        # Best-effort: focus the search input on routes/waypoints screens.
+        # Best-effort: focus the search/filter input on the current screen (including modals).
         try:
             if self.step == "Routes":
                 self.query_one("#routes_search", Input).focus()
-            elif self.step == "Waypoints":
+                return
+            if self.step == "Waypoints":
                 self.query_one("#waypoints_search", Input).focus()
+                return
         except Exception:
+            pass
+
+        # Modals (icon/color pickers) use different IDs.
+        try:
+            self.screen.query_one("#icon_search", Input).focus()
             return
+        except Exception:
+            pass
+        try:
+            self.screen.query_one("#color_search", Input).focus()
+            return
+        except Exception:
+            pass
+
+    # (EditMoreModal prompts removed; selection workflow is handled via 'x' to clear selection.)
 
     def action_focus_table(self) -> None:
         """Focus the main table for the current step (so Space toggles selection)."""
@@ -1212,6 +1270,22 @@ class CairnTuiApp(App):
                 tbl = self.query_one("#waypoints_table", DataTable)
                 tbl.focus()
         except Exception as e:
+            return
+
+    def action_clear_selection(self) -> None:
+        """Clear selection for the current selection step (Routes/Waypoints)."""
+        try:
+            if self.step == "Routes":
+                self._selected_route_keys.clear()
+                self._routes_edited = False
+                self._refresh_routes_table()
+                return
+            if self.step == "Waypoints":
+                self._selected_waypoint_keys.clear()
+                self._waypoints_edited = False
+                self._refresh_waypoints_table()
+                return
+        except Exception:
             return
 
     def on_key(self, event) -> None:  # type: ignore[override]
@@ -1249,6 +1323,22 @@ class CairnTuiApp(App):
             except Exception:
                 pass
             return
+
+        # Special-case: Select_file file browser (Enter opens dir/selects file).
+        if self.step == "Select_file":
+            try:
+                focused_id = getattr(getattr(self, "focused", None), "id", None)
+                if focused_id == "file_browser" and (
+                    event.key in ("enter", "return") or getattr(event, "character", None) == "\r"
+                ):
+                    self._file_browser_enter()
+                    try:
+                        event.stop()
+                    except Exception:
+                        pass
+                    return
+            except Exception:
+                pass
 
         # Accept common Enter variants across terminals/backends.
         if event.key in ("enter", "return") or getattr(event, "character", None) == "\r":
@@ -1350,25 +1440,6 @@ class CairnTuiApp(App):
         self._export_manifest = manifest
         self._export_error = err
         self._render_main()
-
-    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
-        p = Path(str(event.path))
-        if p.suffix.lower() not in (".json", ".geojson"):
-            return
-        self.model.input_path = p
-        # Update input box if present.
-        try:
-            inp = self.query_one("#input_path", Input)
-            inp.value = str(p)
-        except Exception:
-            pass
-        self._render_sidebar()
-
-        # Auto-advance: in many terminals the DirectoryTree consumes Enter, so relying on a
-        # second Enter to trigger the app-level "continue" is unreliable.
-        if self.step == "Select_file":
-            self._done_steps.add("Select_file")
-            self._goto("List_data")
 
     def on_input_changed(self, event: Input.Changed) -> None:
         try:

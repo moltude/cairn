@@ -6,7 +6,10 @@ from typing import Optional, Sequence
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, Input, Static
+from textual.widgets import DataTable, Input, Static
+from rich.text import Text
+
+from cairn.core.color_mapper import ColorMapper
 
 
 @dataclass(frozen=True)
@@ -38,7 +41,7 @@ def _table_cursor_row_key(table: DataTable) -> Optional[str]:
 
 
 class InfoModal(ModalScreen[None]):
-    """Simple OK modal (used for errors / empty selection)."""
+    """Simple info modal (Enter/Esc to dismiss)."""
 
     def __init__(self, message: str, *, title: str = "Info") -> None:
         super().__init__()
@@ -49,12 +52,17 @@ class InfoModal(ModalScreen[None]):
         with Vertical(id="info_modal"):
             yield Static(self._title, classes="title")
             yield Static(self._message)
-            with Horizontal():
-                yield Button("OK", id="ok", variant="primary")
+            yield Static("Enter/Esc: close", classes="muted")
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "ok":
+    def on_key(self, event) -> None:  # type: ignore[override]
+        key = str(getattr(event, "key", "") or "")
+        if key == "escape" or key in ("enter", "return") or getattr(event, "character", None) == "\r":
             self.dismiss(None)
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
 
 
 class ActionsModal(ModalScreen[None]):
@@ -152,9 +160,7 @@ class RenameModal(ModalScreen[None]):
                 classes="muted",
             )
             yield Input(placeholder=self._placeholder, id="new_title")
-            with Horizontal():
-                yield Button("Apply", id="apply", variant="primary")
-                yield Button("Cancel", id="cancel")
+            yield Static("Enter: apply  Esc: cancel", classes="muted")
 
     def on_mount(self) -> None:
         try:
@@ -162,17 +168,20 @@ class RenameModal(ModalScreen[None]):
         except Exception:
             pass
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
+    def on_key(self, event) -> None:  # type: ignore[override]
+        key = str(getattr(event, "key", "") or "")
+        if key == "escape":
             self.dismiss(None)
+            try:
+                event.stop()
+            except Exception:
+                pass
             return
-        if event.button.id != "apply":
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "new_title":
             return
-        raw = ""
-        try:
-            raw = (self.query_one("#new_title", Input).value or "").strip()
-        except Exception:
-            raw = ""
+        raw = (event.value or "").strip()
         if not raw:
             self.dismiss(None)
             return
@@ -200,9 +209,7 @@ class DescriptionModal(ModalScreen[None]):
                 classes="muted",
             )
             yield Input(placeholder=self._placeholder, id="new_description")
-            with Horizontal():
-                yield Button("Apply", id="apply", variant="primary")
-                yield Button("Cancel", id="cancel")
+            yield Static("Enter: apply  Esc: cancel", classes="muted")
 
     def on_mount(self) -> None:
         try:
@@ -210,17 +217,20 @@ class DescriptionModal(ModalScreen[None]):
         except Exception:
             pass
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
+    def on_key(self, event) -> None:  # type: ignore[override]
+        key = str(getattr(event, "key", "") or "")
+        if key == "escape":
             self.dismiss(None)
+            try:
+                event.stop()
+            except Exception:
+                pass
             return
-        if event.button.id != "apply":
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "new_description":
             return
-        raw = ""
-        try:
-            raw = (self.query_one("#new_description", Input).value or "").strip()
-        except Exception:
-            raw = ""
+        raw = (event.value or "").strip()
         if not raw:
             self.dismiss(None)
             return
@@ -250,12 +260,9 @@ class ColorPickerModal(ModalScreen[None]):
             yield Static(self._title, classes="title")
             yield Input(placeholder="Filter colors…", id="color_search")
             tbl = DataTable(id="palette_table")
-            tbl.add_columns("Name", "RGBA")
+            tbl.add_columns("Color")
             yield tbl
-            with Horizontal():
-                yield Button("Apply", id="apply", variant="primary")
-                yield Button("Cancel", id="cancel")
-            yield Static("Enter: choose  Esc: cancel", classes="muted")
+            yield Static("Enter: apply  Esc: cancel  /: filter", classes="muted")
 
     def on_mount(self) -> None:
         self._refresh_table()
@@ -263,6 +270,13 @@ class ColorPickerModal(ModalScreen[None]):
             self.query_one("#palette_table", DataTable).focus()
         except Exception:
             pass
+
+    def _chip(self, rgba: str, name: str) -> Text:
+        r, g, b = ColorMapper.parse_color(str(rgba))
+        nm = (name or "").replace("-", " ").upper()
+        chip = Text("■ ", style=f"rgb({r},{g},{b})")
+        chip.append(nm, style="bold")
+        return chip
 
     def _refresh_table(self) -> None:
         try:
@@ -281,7 +295,7 @@ class ColorPickerModal(ModalScreen[None]):
         for rgba, name in self._palette:
             if q and q not in (name or "").lower():
                 continue
-            tbl.add_row(str(name), str(rgba), key=str(rgba))
+            tbl.add_row(self._chip(str(rgba), str(name)), key=str(rgba))
         # Keep selection stable when filtering.
         if self._selected_rgba:
             try:
@@ -308,26 +322,18 @@ class ColorPickerModal(ModalScreen[None]):
         # Select; user can Apply or hit Enter.
         self._selected_rgba = rgba
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
-            self.dismiss(None)
-            return
-        if event.button.id == "apply":
-            rgba = (self._selected_rgba or "").strip()
-            if not rgba:
-                # Best-effort default to the cursor row if nothing was selected.
-                try:
-                    tbl = self.query_one("#palette_table", DataTable)
-                    rgba = (_table_cursor_row_key(tbl) or "").strip()
-                except Exception:
-                    rgba = ""
-            if not rgba:
-                return
-            self.dismiss({"action": "color", "value": rgba, "ctx": self._ctx})
-            return
-
     def on_key(self, event) -> None:  # type: ignore[override]
         key = str(getattr(event, "key", "") or "")
+        if key in ("/", "slash"):
+            try:
+                self.query_one("#color_search", Input).focus()
+            except Exception:
+                pass
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
         if key == "escape":
             self.dismiss(None)
             try:
@@ -372,16 +378,13 @@ class IconOverrideModal(ModalScreen[None]):
             tbl = DataTable(id="icon_table")
             tbl.add_columns("Icon")
             yield tbl
-            with Horizontal():
-                yield Button("Apply", id="apply", variant="primary")
-                yield Button("Clear", id="clear")
-                yield Button("Cancel", id="cancel")
-            yield Static("Enter: choose  Esc: cancel", classes="muted")
+            yield Static("Enter: apply  Esc: cancel  c: clear  /: filter", classes="muted")
 
     def on_mount(self) -> None:
         self._refresh_table()
         try:
-            self.query_one("#icon_table", DataTable).focus()
+            # Default focus: search input so typing works immediately.
+            self.query_one("#icon_search", Input).focus()
         except Exception:
             pass
 
@@ -402,6 +405,12 @@ class IconOverrideModal(ModalScreen[None]):
             if q and q not in icon.lower():
                 continue
             tbl.add_row(icon, key=icon)
+        # Ensure a predictable cursor row for Enter/apply + arrow navigation.
+        try:
+            if getattr(tbl, "row_count", 0):
+                tbl.cursor_row = 0  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id != "icon_search":
@@ -447,22 +456,46 @@ class IconOverrideModal(ModalScreen[None]):
             return
         self.dismiss({"action": "icon", "value": icon, "ctx": self._ctx})
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
-            self.dismiss(None)
-            return
-        if event.button.id == "clear":
-            self.dismiss({"action": "icon", "value": "__clear__", "ctx": self._ctx})
-            return
-        if event.button.id == "apply":
-            icon = (self._current_icon() or "").strip()
-            if not icon:
-                return
-            self.dismiss({"action": "icon", "value": icon, "ctx": self._ctx})
-            return
-
     def on_key(self, event) -> None:  # type: ignore[override]
         key = str(getattr(event, "key", "") or "")
+        if key in ("/", "slash"):
+            try:
+                self.query_one("#icon_search", Input).focus()
+            except Exception:
+                pass
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if key == "c":
+            self.dismiss({"action": "icon", "value": "__clear__", "ctx": self._ctx})
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if key in ("up", "down"):
+            # Allow arrow navigation through filtered results even when the search box is focused.
+            delta = -1 if key == "up" else 1
+            try:
+                tbl = self.query_one("#icon_table", DataTable)
+                row_count = int(getattr(tbl, "row_count", 0) or 0)
+                if row_count <= 0:
+                    return
+                cur = int(getattr(tbl, "cursor_row", 0) or 0)
+                nxt = max(0, min(row_count - 1, cur + delta))
+                try:
+                    tbl.cursor_row = nxt  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+            except Exception:
+                return
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
         if key == "escape":
             self.dismiss(None)
             try:
