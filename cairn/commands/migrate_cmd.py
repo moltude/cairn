@@ -26,6 +26,8 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
+from cairn.ui.interactive import InteractiveUI, is_interactive_tty
+
 from cairn.core.dedup import apply_waypoint_dedup
 from cairn.core.diagnostics import (
     check_data_quality,
@@ -57,6 +59,7 @@ The migration workflow is designed to preserve all map customization
     """.strip(),
 )
 console = Console()
+ui = InteractiveUI(console=console)
 
 
 def _display_path(p: Path) -> str:
@@ -409,7 +412,7 @@ def _run_onx_to_caltopo_pipeline(
 
 
 def _select_files_interactive(
-    gpx_files: List[Path], kml_files: List[Path]
+    gpx_files: List[Path], kml_files: List[Path], *, force_interactive: Optional[bool] = None
 ) -> Tuple[Optional[Path], Optional[Path]]:
     """
     Display available files and prompt user to select.
@@ -419,33 +422,56 @@ def _select_files_interactive(
     """
     console.print("\n[bold]Found export files:[/]")
 
-    # Display GPX files
     if not gpx_files:
         console.print("[red]No GPX files found[/]")
         return None, None
 
+    def _label(p: Path) -> str:
+        try:
+            size = p.stat().st_size
+            mtime = datetime.fromtimestamp(p.stat().st_mtime)
+            return f"{p.name} ({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})"
+        except Exception:
+            return p.name
+
+    # Prefer prompt-toolkit selection when interactive; fallback to existing numeric prompts otherwise.
+    if is_interactive_tty(force=force_interactive) and ui.has_prompt_toolkit():
+        selected_gpx = ui.pick_from_paths(
+            title="Select GPX file", paths=gpx_files, default_index=0, labeler=_label
+        )
+        if selected_gpx is None:
+            return None, None
+
+        selected_kml: Optional[Path] = None
+        if kml_files:
+            # KML is optional; include a None option.
+            kml_choices: List[Tuple[str, str]] = [("__none__", "None (skip KML)")]
+            kml_choices.extend([(str(p), _label(p)) for p in kml_files])
+            picked = ui.choose_one(
+                title="Select KML file (optional)",
+                choices=kml_choices,
+                default=kml_choices[0][0],
+            )
+            if picked and picked != "__none__":
+                selected_kml = Path(picked)
+        else:
+            selected_kml = None
+
+        return selected_gpx, selected_kml
+
+    # Existing Rich output + Typer numeric prompts.
     console.print("\n[bold cyan]GPX files:[/]")
     for i, gpx in enumerate(gpx_files, 1):
-        size = gpx.stat().st_size
-        mtime = datetime.fromtimestamp(gpx.stat().st_mtime)
-        console.print(
-            f"  {i}. {gpx.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]"
-        )
+        console.print(f"  {i}. {_label(gpx)}")
 
-    # Display KML files
     if not kml_files:
         console.print("\n[yellow]⚠️  No KML files found (optional but recommended)[/]")
         selected_kml = None
     else:
         console.print("\n[bold cyan]KML files:[/]")
         for i, kml in enumerate(kml_files, 1):
-            size = kml.stat().st_size
-            mtime = datetime.fromtimestamp(kml.stat().st_mtime)
-            console.print(
-                f"  {i}. {kml.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]"
-            )
+            console.print(f"  {i}. {_label(kml)}")
 
-    # Prompt for selection (reprompt on invalid input).
     console.print()
     while True:
         try:
@@ -462,9 +488,7 @@ def _select_files_interactive(
                 selected_kml = kml_files[int(kml_choice) - 1]
                 break
             except (ValueError, IndexError):
-                console.print(
-                    "[red]Invalid selection[/] (enter a number from the list)"
-                )
+                console.print("[red]Invalid selection[/] (enter a number from the list)")
     else:
         selected_kml = None
 
@@ -533,7 +557,9 @@ def _find_geojson_files(directory: Path) -> List[Path]:
     return json_files
 
 
-def _select_geojson_interactive(json_files: List[Path]) -> Optional[Path]:
+def _select_geojson_interactive(
+    json_files: List[Path], *, force_interactive: Optional[bool] = None
+) -> Optional[Path]:
     """
     Display available GeoJSON files and prompt user to select.
 
@@ -546,15 +572,23 @@ def _select_geojson_interactive(json_files: List[Path]) -> Optional[Path]:
         console.print("[red]No JSON/GeoJSON files found[/]")
         return None
 
-    console.print("\n[bold cyan]Available files:[/]")
-    for i, json_file in enumerate(json_files, 1):
-        size = json_file.stat().st_size
-        mtime = datetime.fromtimestamp(json_file.stat().st_mtime)
-        console.print(
-            f"  {i}. {json_file.name} [dim]({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})[/]"
+    def _label(p: Path) -> str:
+        try:
+            size = p.stat().st_size
+            mtime = datetime.fromtimestamp(p.stat().st_mtime)
+            return f"{p.name} ({format_file_size(size)}, {mtime:%Y-%m-%d %H:%M})"
+        except Exception:
+            return p.name
+
+    if is_interactive_tty(force=force_interactive) and ui.has_prompt_toolkit():
+        return ui.pick_from_paths(
+            title="Select GeoJSON file", paths=json_files, default_index=0, labeler=_label
         )
 
-    # Prompt for selection (reprompt on invalid input).
+    console.print("\n[bold cyan]Available files:[/]")
+    for i, json_file in enumerate(json_files, 1):
+        console.print(f"  {i}. {_label(json_file)}")
+
     console.print()
     while True:
         try:
@@ -696,7 +730,7 @@ def onx_to_caltopo(
     import sys
 
     def _interactive() -> bool:
-        return sys.stdin is not None and getattr(sys.stdin, "isatty", lambda: False)()
+        return is_interactive_tty()
 
     def _prompt_resume_or_abort(*, label: str = "Resume selection or abort?") -> str:
         while True:
@@ -710,8 +744,15 @@ def onx_to_caltopo(
     # 1. Validate input directory
     if input_dir is None:
         while True:
-            input_dir_str = typer.prompt("Path to directory with OnX exports")
-            p = Path(input_dir_str).expanduser().resolve()
+            if _interactive():
+                picked = ui.pick_directory(title="OnX exports directory")
+                if picked is None:
+                    console.print("[yellow]Migration cancelled[/]")
+                    raise typer.Exit(0)
+                p = picked
+            else:
+                input_dir_str = typer.prompt("Path to directory with OnX exports")
+                p = Path(input_dir_str).expanduser().resolve()
             if not p.exists() or not p.is_dir():
                 console.print(f"[red]Directory not found: {p}[/]")
                 continue
@@ -738,7 +779,9 @@ def onx_to_caltopo(
     out_dir = ensure_output_dir(output_dir)
     # 4. Interactive file selection + final gate
     while True:
-        gpx, kml = _select_files_interactive(gpx_files, kml_files)
+        gpx, kml = _select_files_interactive(
+            gpx_files, kml_files, force_interactive=_interactive()
+        )
         if gpx is None:
             console.print("[yellow]Migration cancelled[/]")
             raise typer.Exit(0)
@@ -827,7 +870,7 @@ def migrate_to_caltopo(
     import sys
 
     def _interactive() -> bool:
-        return sys.stdin is not None and getattr(sys.stdin, "isatty", lambda: False)()
+        return is_interactive_tty()
 
     src = _as_existing_path(source)
     preferred_gpx: Optional[Path] = None
@@ -855,8 +898,11 @@ def migrate_to_caltopo(
         if not _interactive():
             raise typer.Exit(1)
         while True:
-            entered = typer.prompt("Path to directory with OnX exports").strip()
-            p = Path(entered).expanduser().resolve()
+            picked = ui.pick_directory(title="OnX exports directory")
+            if picked is None:
+                console.print("[yellow]Migration cancelled[/]")
+                raise typer.Exit(0)
+            p = picked
             if not p.exists() or not p.is_dir():
                 console.print(f"[red]Directory not found: {p}[/]")
                 continue
@@ -874,7 +920,9 @@ def migrate_to_caltopo(
     gpx_files = _reorder_prefer_first(gpx_files, preferred_gpx)
     kml_files = _reorder_prefer_first(kml_files, preferred_kml)
 
-    gpx, kml = _select_files_interactive(gpx_files, kml_files)
+    gpx, kml = _select_files_interactive(
+        gpx_files, kml_files, force_interactive=_interactive()
+    )
     if gpx is None:
         console.print("[yellow]Migration cancelled[/]")
         raise typer.Exit(0)
@@ -1007,7 +1055,7 @@ def caltopo_to_onx(
     def _interactive() -> bool:
         if interactive is not None:
             return bool(interactive)
-        return sys.stdin is not None and getattr(sys.stdin, "isatty", lambda: False)()
+        return is_interactive_tty()
 
     def _print_folder_previews() -> None:
         console.print("\n[bold]Migration Summary:[/]")
@@ -1053,8 +1101,15 @@ def caltopo_to_onx(
 
     if input_dir is None:
         while True:
-            input_dir_str = typer.prompt("Path to directory with CalTopo exports")
-            p = Path(input_dir_str).expanduser().resolve()
+            if _interactive():
+                picked = ui.pick_directory(title="CalTopo exports directory")
+                if picked is None:
+                    console.print("[yellow]Migration cancelled[/]")
+                    raise typer.Exit(0)
+                p = picked
+            else:
+                input_dir_str = typer.prompt("Path to directory with CalTopo exports")
+                p = Path(input_dir_str).expanduser().resolve()
             if not p.exists() or not p.is_dir():
                 console.print(f"[red]Directory not found: {p}[/]")
                 continue
@@ -1088,7 +1143,9 @@ def caltopo_to_onx(
 
     # 3. Interactive file selection
     if selected_file is None:
-        selected_file = _select_geojson_interactive(json_files)
+        selected_file = _select_geojson_interactive(
+            json_files, force_interactive=_interactive()
+        )
         if selected_file is None:
             console.print("[yellow]Migration cancelled[/]")
             raise typer.Exit(0)

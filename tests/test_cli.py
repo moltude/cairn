@@ -69,6 +69,12 @@ class TestCLI:
         result = runner.invoke(app, ["config", "--help"])
         assert result.exit_code == 0
 
+    def test_tui_help(self):
+        """tui --help works (should not launch the full-screen app)."""
+        result = runner.invoke(app, ["tui", "--help"])
+        assert result.exit_code == 0
+        assert "tui" in result.stdout.lower()
+
     def test_convert_missing_file(self):
         """convert with missing file shows error."""
         result = runner.invoke(app, ["convert", "nonexistent_file.json"])

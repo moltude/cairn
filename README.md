@@ -84,6 +84,31 @@ Cairn will guide you through:
 
 Output goes to `onx_ready/` folder (GPX for waypoints/tracks, KML for polygons).
 
+### Try it first: small demo dataset (dry run + export)
+
+If you want to get a feel for the workflow before running a large map, use the included
+small CalTopo-style GeoJSON demo:
+
+```shell
+# Preview what will happen (no files written)
+cairn convert --dry-run demo/demo_small_caltopo.json
+
+# Export OnX-ready files (writes to ./onx_ready_demo/)
+cairn migrate onx demo/demo_small_caltopo.json -o ./onx_ready_demo
+```
+
+### Recording “screenshots” of the flow (optional)
+
+This repo includes [VHS](https://github.com/charmbracelet/vhs) tape scripts that record terminal runs as GIFs.
+
+```shell
+# Small demo walkthrough (dry run + export)
+vhs demo/demo_small_storyboard.tape
+
+# Focused regression test walkthrough
+vhs demo/test_run_storyboard.tape
+```
+
 ### OnX --> CalTopo
 
 ```shell

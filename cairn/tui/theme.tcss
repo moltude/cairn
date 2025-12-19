@@ -1,0 +1,94 @@
+/* Warm, natural palette (earth tones). */
+
+Screen {
+  background: #2A1F1D;
+  color: #E0DBB7;
+}
+
+/* Layout */
+
+.sidebar {
+  width: 34;
+  background: #241A18;
+  border: solid #563C27;
+  padding: 1 1;
+}
+
+.main {
+  padding: 1 2;
+}
+
+.footer {
+  height: 3;
+  background: #241A18;
+  border-top: solid #563C27;
+  padding: 0 2;
+}
+
+.title {
+  color: #FFF9D5;
+  text-style: bold;
+}
+
+.muted {
+  color: #B7B092;
+}
+
+.accent {
+  color: #E99D2A;
+}
+
+.ok {
+  color: #95D8BA;
+}
+
+.warn {
+  color: #D0D150;
+}
+
+.err {
+  color: #E84627;
+}
+
+/* Stepper */
+
+.step {
+  padding: 0 0 0 1;
+}
+
+.step--done {
+  color: #95D8BA;
+}
+
+.step--current {
+  color: #FFF9D5;
+  text-style: bold;
+  background: #3A2A24;
+}
+
+.step--todo {
+  color: #9B8F7C;
+}
+
+/* Inputs / lists */
+
+Input {
+  border: solid #563C27;
+  background: #1F1513;
+  color: #FFF9D5;
+}
+
+DataTable {
+  border: solid #563C27;
+  background: #1F1513;
+}
+
+DataTable > .datatable--header {
+  background: #2F221D;
+  color: #FFF9D5;
+  text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+  background: #563C27;
+}
