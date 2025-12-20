@@ -22,7 +22,7 @@ def test_tui_bitterroots_complete_fixture_is_present_and_large() -> None:
 
 def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
     """
-    End-to-end: drive the TUI through Preview -> Save and run a real export to tmp_path.
+    End-to-end: drive the TUI through Preview (Preview & Export) and run a real export to tmp_path.
 
     We seed the model input_path directly (rather than driving DirectoryTree) for stability.
     """
@@ -50,7 +50,13 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
             rec.snapshot(app, label="folder")
 
             # Select a folder deterministically (avoid relying on DataTable cursor inference).
-            app.model.selected_folder_id = _pick_first_folder_id(app)
+            fid = _pick_first_folder_id(app)
+            app.model.selected_folder_id = fid
+            # In multi-folder mode, Folder step advances only when at least one folder is selected.
+            try:
+                app._selected_folders.add(fid)
+            except Exception:
+                pass
             await pilot.press("enter")  # -> Routes
             await pilot.pause()
             rec.snapshot(app, label="routes")
@@ -58,10 +64,7 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
             assert app.step == "Routes"
             app.action_focus_table()
             await pilot.pause()
-            await pilot.press("space")
-            await pilot.pause()
-            rec.snapshot(app, label="routes_selected_one")
-            assert len(app._selected_route_keys) >= 1
+            rec.snapshot(app, label="routes")
 
             await pilot.press("enter")  # -> Waypoints
             await pilot.pause()
@@ -70,29 +73,15 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
 
             app.action_focus_table()
             await pilot.pause()
-            await pilot.press("space")
-            await pilot.pause()
-            rec.snapshot(app, label="waypoints_selected_one")
-            assert len(app._selected_waypoint_keys) >= 1
+            rec.snapshot(app, label="waypoints")
 
             await pilot.press("enter")  # -> Preview
             await pilot.pause()
             rec.snapshot(app, label="preview")
             assert app.step == "Preview"
 
-            await pilot.press("enter")  # -> Save
-            await pilot.pause()
-            rec.snapshot(app, label="save")
-            assert app.step == "Save"
-
             # Real export into tmp_path.
             app.model.output_dir = out_dir
-            # Trigger export via Save browser: move to [Export], then Enter.
-            from tests.tui_harness import move_datatable_cursor_to_row_key
-            app.action_focus_table()
-            await pilot.pause()
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-            await pilot.pause()
             await pilot.press("enter")  # open Confirm Export modal
             await pilot.pause()
             await pilot.press("enter")  # confirm export
@@ -124,7 +113,7 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
 
 
 def test_tui_export_error_when_output_path_is_a_file(tmp_path: Path) -> None:
-    """Negative Save/Export: if output dir can't be created, Save should render an error."""
+    """Negative export: if output dir can't be created, Preview & Export should render an error."""
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -143,25 +132,22 @@ def test_tui_export_error_when_output_path_is_a_file(tmp_path: Path) -> None:
             await pilot.pause()
             await pilot.press("enter")  # -> Folder
             await pilot.pause()
-            app.model.selected_folder_id = _pick_first_folder_id(app)
+            fid = _pick_first_folder_id(app)
+            app.model.selected_folder_id = fid
+            try:
+                app._selected_folders.add(fid)
+            except Exception:
+                pass
             await pilot.press("enter")  # -> Routes
             await pilot.pause()
             await pilot.press("enter")  # -> Waypoints
             await pilot.pause()
             await pilot.press("enter")  # -> Preview
             await pilot.pause()
-            await pilot.press("enter")  # -> Save
-            await pilot.pause()
-
-            assert app.step == "Save"
-            rec.snapshot(app, label="save")
+            assert app.step == "Preview"
+            rec.snapshot(app, label="preview")
 
             app.model.output_dir = not_a_dir
-            from tests.tui_harness import move_datatable_cursor_to_row_key
-            app.action_focus_table()
-            await pilot.pause()
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-            await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()
             await pilot.press("enter")

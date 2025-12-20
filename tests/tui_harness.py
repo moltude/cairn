@@ -9,6 +9,7 @@ from typing import Any, Optional
 
 
 BITTERROOTS_COMPLETE_FIXTURE_REL = Path("tests/fixtures/bitterroots/Bitterroots__Complete_.json")
+TUI_TWO_WAYPOINTS_FIXTURE_REL = Path("tests/fixtures/tui/two_waypoints.json")
 
 
 def repo_root() -> Path:
@@ -29,6 +30,21 @@ def get_bitterroots_complete_fixture(*, min_bytes: int = 1_000_000) -> Path:
     likely to be accidentally deleted than demo assets.
     """
     p = repo_root() / BITTERROOTS_COMPLETE_FIXTURE_REL
+    assert p.exists(), f"Missing fixture: {p}"
+    assert p.is_file(), f"Fixture path is not a file: {p}"
+    sz = p.stat().st_size
+    assert sz >= min_bytes, f"Fixture too small ({sz} bytes): {p}"
+    return p
+
+
+def get_tui_two_waypoints_fixture(*, min_bytes: int = 100) -> Path:
+    """
+    Small GeoJSON fixture for fast TUI overlay/focus regressions.
+
+    Contract: contains >=2 marker waypoints so multi-select edit flows are testable
+    without the heavyweight Bitterroots Complete dataset.
+    """
+    p = repo_root() / TUI_TWO_WAYPOINTS_FIXTURE_REL
     assert p.exists(), f"Missing fixture: {p}"
     assert p.is_file(), f"Fixture path is not a file: {p}"
     sz = p.stat().st_size
@@ -133,11 +149,26 @@ def move_datatable_cursor_to_row_key(app: Any, *, table_id: str, target_row_key:
         return
 
     target_idx: Optional[int] = None
+    # Textual DataTable row-key APIs vary by version.
+    # Prefer `get_row_key(i)` when available, otherwise derive via coordinate->cell_key.
+    try:
+        from textual.coordinate import Coordinate  # type: ignore
+    except Exception:
+        Coordinate = None  # type: ignore[assignment]
     for i in range(row_count):
+        rk = None
         try:
-            rk = tbl.get_row_key(i)  # type: ignore[attr-defined]
+            if hasattr(tbl, "get_row_key"):
+                rk = tbl.get_row_key(i)  # type: ignore[attr-defined]
         except Exception:
             rk = None
+        if rk is None and Coordinate is not None and hasattr(tbl, "coordinate_to_cell_key"):
+            try:
+                ck = tbl.coordinate_to_cell_key(Coordinate(i, 0))  # type: ignore[misc]
+                rk_obj = getattr(ck, "row_key", None)
+                rk = rk_obj
+            except Exception:
+                rk = None
         if rk is None:
             continue
         rk_val = getattr(rk, "value", rk)

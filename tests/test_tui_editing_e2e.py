@@ -237,25 +237,14 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             r, g, b = ColorMapper.parse_color(str(getattr(edited_wp, "color", "")))
             assert 0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255
 
-            # -> Preview -> Save
+            # -> Preview (Preview & Export)
             app._goto("Preview")
             await pilot.pause()
             rec.snapshot(app, label="preview")
             assert app.step == "Preview"
 
-            app._goto("Save")
-            await pilot.pause()
-            rec.snapshot(app, label="save")
-            assert app.step == "Save"
-
             # Export into tmp output dir.
             app.model.output_dir = out_dir
-            # Trigger export via Save browser: move to [Export] row, then Enter.
-            from tests.tui_harness import move_datatable_cursor_to_row_key
-            app.action_focus_table()
-            await pilot.pause()
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-            await pilot.pause()
             await pilot.press("enter")  # open Confirm Export modal
             await pilot.pause()
             await pilot.press("enter")  # confirm export

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional, Callable, TextIO
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import DataTable, Header, Input, Static
@@ -13,6 +14,7 @@ import threading
 import os
 import time
 import re
+import json
 
 from rich.text import Text
 
@@ -41,9 +43,33 @@ from cairn.tui.edit_screens import (
     IconPickerOverlay,
     InlineEditOverlay,
     InfoModal,
+    SaveTargetOverlay,
     RenameOverlay,
     UnmappedSymbolModal,
 )
+
+# region agent log
+_AGENT_DEBUG_LOG_PATH = "/Users/scott/_code/cairn/.cursor/debug.log"
+
+
+def _agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> None:
+    try:
+        payload = {
+            "timestamp": int(time.time() * 1000),
+            "sessionId": "debug-session",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesisId,
+            "location": location,
+            "message": message,
+            "data": data,
+        }
+        with open(_AGENT_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        return
+
+
+# endregion agent log
 
 # File types shown in Select_file tree. (Parsing support may be narrower than visibility.)
 _VISIBLE_INPUT_EXTS = {".json", ".geojson", ".kml", ".gpx"}
@@ -57,7 +83,6 @@ STEPS = [
     "Routes",
     "Waypoints",
     "Preview",
-    "Save",
 ]
 
 # Display labels for steps (internal names use underscores for code references)
@@ -67,8 +92,7 @@ STEP_LABELS = {
     "Folder": "Folder",
     "Routes": "Routes",
     "Waypoints": "Waypoints",
-    "Preview": "Preview",
-    "Save": "Save",
+    "Preview": "Preview & Export",
 }
 
 
@@ -165,17 +189,11 @@ class StepAwareFooter(Static):
             ("q", "Quit"),
         ],
         "Preview": [
-            ("Enter", "Continue"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Save": [
             ("Enter", "Export"),
-            ("Tab", "Next field"),
+            ("y", "Change target"),
             ("r", "Apply names"),
-            ("n", "New file"),
+            ("Ctrl+N", "New file"),
+            ("Tab", "Next field"),
             ("Esc", "Back"),
             ("?", "Help"),
             ("q", "Quit"),
@@ -218,7 +236,7 @@ class CairnTuiApp(App):
         Binding("x", "clear_selection", "Clear selection"),
         Binding("ctrl+a", "select_all", "Toggle all"),
         Binding("r", "apply_renames", "Apply names"),
-        Binding("n", "new_file", "New file"),
+        Binding("ctrl+n", "new_file", "New file"),
         Binding("m", "map_unmapped", "Map unmapped"),
     ]
 
@@ -240,6 +258,11 @@ class CairnTuiApp(App):
         self._waypoints_filter: str = ""
         self._ui_error: Optional[str] = None
         self._debug_events: list[dict[str, object]] = []
+        self._debug_file_path: Optional[str] = None
+        self._debug_file: Optional[TextIO] = None
+        self._debug_file_lock = threading.Lock()
+        self._save_snapshot_emitted: bool = False
+        self._save_change_prompt_dismissed: bool = False
         # Select_file browser state
         self._file_browser_dir: Optional[Path] = None
         # Save browser state (output directory picker)
@@ -247,6 +270,9 @@ class CairnTuiApp(App):
         self._output_prefix: str = ""
         self._rename_overrides_by_idx: dict[int, str] = {}
         self._post_save_prompt_shown: bool = False
+        # Guard: DataTable selection events can fire during cursor restoration / re-render;
+        # suppress Save browser actions while we are rebuilding the table.
+        self._suppress_save_browser_select: bool = False
         # Unmapped symbol mapping state
         self._unmapped_symbols: list[tuple[str, dict]] = []  # [(symbol, info), ...]
         self._unmapped_index: int = 0
@@ -311,6 +337,7 @@ class CairnTuiApp(App):
         self._output_prefix = ""
         self._save_browser_dir = None
         self._post_save_prompt_shown = False
+        self._save_snapshot_emitted = False
 
         # Reset progress indicator.
         self._done_steps.clear()
@@ -339,6 +366,160 @@ class CairnTuiApp(App):
             # Prevent unbounded growth during long sessions/tests.
             if len(self._debug_events) > 500:
                 self._debug_events = self._debug_events[-250:]
+
+            # Optional: also stream each event as NDJSON for reproducible traces.
+            debug_file_path = os.getenv("CAIRN_TUI_DEBUG_FILE")
+            if debug_file_path:
+                with self._debug_file_lock:
+                    try:
+                        if self._debug_file is None or self._debug_file_path != debug_file_path:
+                            # Close any prior file handle first (best-effort).
+                            try:
+                                if self._debug_file is not None:
+                                    self._debug_file.flush()
+                                    self._debug_file.close()
+                            except Exception:
+                                pass
+                            self._debug_file_path = debug_file_path
+                            # Line-buffered append; still flush explicitly below for durability.
+                            self._debug_file = open(debug_file_path, "a", encoding="utf-8", buffering=1)
+                        line = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+                        self._debug_file.write(line + "\n")
+                        # Best-effort: flush so crashes / terminal corruption still preserve logs.
+                        try:
+                            self._debug_file.flush()
+                        except Exception:
+                            pass
+                    except Exception:
+                        # Never let debug logging break the UI.
+                        return
+        except Exception:
+            return
+
+    def _close_debug_file(self) -> None:
+        """Best-effort: flush/close debug file handle (if open)."""
+        try:
+            with self._debug_file_lock:
+                try:
+                    if self._debug_file is not None:
+                        try:
+                            self._debug_file.flush()
+                        except Exception:
+                            pass
+                        try:
+                            self._debug_file.close()
+                        except Exception:
+                            pass
+                finally:
+                    self._debug_file = None
+                    self._debug_file_path = None
+        except Exception:
+            return
+
+    async def action_quit(self) -> None:
+        """Quit the app (best-effort flush of debug logs first)."""
+        _agent_log(
+            hypothesisId="H_quit_binding",
+            location="cairn/tui/app.py:action_quit",
+            message="action_quit_called",
+            data={"step": str(getattr(self, "step", "")), "focused_id": getattr(getattr(self, "focused", None), "id", None)},
+        )
+        try:
+            self._close_debug_file()
+        except Exception:
+            pass
+        try:
+            _agent_log(
+                hypothesisId="H_quit_binding",
+                location="cairn/tui/app.py:action_quit",
+                message="awaiting_super_action_quit",
+                data={},
+            )
+            await super().action_quit()  # type: ignore[misc]
+            _agent_log(
+                hypothesisId="H_quit_binding",
+                location="cairn/tui/app.py:action_quit",
+                message="super_action_quit_returned",
+                data={},
+            )
+        except Exception:
+            # Last resort if upstream action is unavailable for some reason.
+            _agent_log(
+                hypothesisId="H_quit_binding",
+                location="cairn/tui/app.py:action_quit",
+                message="super_action_quit_raised",
+                data={},
+            )
+            try:
+                self.exit()
+            except Exception:
+                pass
+
+    def on_unmount(self) -> None:
+        """Best-effort: flush/close debug file at app shutdown."""
+        _agent_log(
+            hypothesisId="H_quit_binding",
+            location="cairn/tui/app.py:on_unmount",
+            message="on_unmount_called",
+            data={"step": str(getattr(self, "step", ""))},
+        )
+        try:
+            self._close_debug_file()
+        except Exception:
+            return
+
+    def _emit_save_browser_snapshot(self, table: DataTable) -> None:
+        """Best-effort one-time snapshot of the Save browser table state."""
+        try:
+            base = self._save_browser_dir
+            row_count = int(getattr(table, "row_count", 0) or 0)
+            cursor_row = getattr(table, "cursor_row", None)
+            cursor_row_key = self._table_cursor_row_key(table)
+
+            rows: list[dict[str, object]] = []
+            for i in range(row_count):
+                rk: Optional[str] = None
+                try:
+                    ck = table.coordinate_to_cell_key(Coordinate(i, 0))  # type: ignore[arg-type]
+                    rk_obj = getattr(ck, "row_key", None)
+                    rk = str(getattr(rk_obj, "value", rk_obj))
+                except Exception:
+                    rk = None
+
+                name_cell_text: Optional[str] = None
+                type_cell_text: Optional[str] = None
+                try:
+                    row = table.get_row_at(i)  # type: ignore[attr-defined]
+                    if isinstance(row, list) and len(row) >= 2:
+                        try:
+                            name_cell_text = str(row[0])
+                        except Exception:
+                            name_cell_text = None
+                        try:
+                            type_cell_text = str(row[1])
+                        except Exception:
+                            type_cell_text = None
+                except Exception:
+                    pass
+
+                rows.append(
+                    {
+                        "row_key": rk,
+                        "name_cell_text": name_cell_text,
+                        "type_cell_text": type_cell_text,
+                    }
+                )
+
+            self._dbg(
+                event="save.snapshot",
+                data={
+                    "save_browser_dir": str(base) if base is not None else None,
+                    "row_count": row_count,
+                    "rows": rows,
+                    "cursor_row": cursor_row,
+                    "cursor_row_key": cursor_row_key,
+                },
+            )
         except Exception:
             return
 
@@ -607,6 +788,7 @@ class CairnTuiApp(App):
                 yield Container(id="main_body")
                 # True popup overlay (stays within the current screen, doesn't navigate).
                 yield InlineEditOverlay()
+                yield SaveTargetOverlay()
                 yield ColorPickerOverlay()
                 yield IconPickerOverlay()
                 yield RenameOverlay()
@@ -702,6 +884,12 @@ class CairnTuiApp(App):
             get_waypoint_color=self._resolved_waypoint_color,
             get_route_color=get_route_color,
         )
+        # Harden focus: ensure the fields DataTable regains focus after the overlay is
+        # visually open (important after canceling sub-overlays like Rename).
+        try:
+            self.call_after_refresh(self._focus_inline_fields_table)
+        except Exception:
+            self._focus_inline_fields_table()
 
     def on_rename_overlay_submitted(self, message: RenameOverlay.Submitted) -> None:  # type: ignore[name-defined]
         """Handle apply/cancel from RenameOverlay."""
@@ -777,6 +965,38 @@ class CairnTuiApp(App):
         except Exception:
             pass
 
+    def on_save_target_overlay_done(self, message: SaveTargetOverlay.Done) -> None:  # type: ignore[name-defined]
+        """Apply Save directory/prefix changes from SaveTargetOverlay."""
+        if getattr(message, "cancelled", False):
+            try:
+                self.set_focus(None)  # type: ignore[arg-type]
+            except Exception:
+                pass
+            return
+        try:
+            d = getattr(message, "directory", None)
+            if d is not None:
+                self.model.output_dir = Path(d).expanduser()
+        except Exception:
+            pass
+        try:
+            self._output_prefix = str(getattr(message, "prefix", "") or "")
+        except Exception:
+            pass
+        self._save_change_prompt_dismissed = True
+        try:
+            self._render_main()
+        except Exception:
+            pass
+        # Clear focus so Enter on the Save screen routes reliably to export.
+        try:
+            self.call_after_refresh(lambda: self.set_focus(None))  # type: ignore[arg-type]
+        except Exception:
+            try:
+                self.set_focus(None)  # type: ignore[arg-type]
+            except Exception:
+                pass
+
     def _confirm(self, *, title: str, message: str, callback: Callable[[bool], None]) -> None:
         """Show an in-screen confirm overlay and run callback with result."""
         self._confirm_callback = callback
@@ -808,14 +1028,6 @@ class CairnTuiApp(App):
             if self.step == "Preview":
                 # Preview uses read-only tables; avoid focusing them so Enter/q reach app handlers.
                 self.set_focus(None)  # type: ignore[arg-type]
-                return
-            if self.step == "Save":
-                # Default focus on the directory browser so arrows + Enter work immediately,
-                # but avoid focusing the output dir input (typing there should be explicit via Tab).
-                try:
-                    self.query_one("#save_browser", DataTable).focus()
-                except Exception:
-                    self.set_focus(None)  # type: ignore[arg-type]
                 return
         except Exception:
             return
@@ -942,53 +1154,79 @@ class CairnTuiApp(App):
         if base is None:
             return
 
-        self._datatable_clear_rows(table)
+        t0 = time.perf_counter()
+        self._dbg(event="save.refresh.start", data={"base": str(base)})
+        entries_count: int = 0
+        dirs_count: int = 0
+        entries_err: Optional[str] = None
+
+        # Prevent selection events from triggering actions while we rebuild rows / set cursor.
+        self._suppress_save_browser_select = True
         try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Name", "Type")
-        except Exception:
+            self._datatable_clear_rows(table)
             try:
-                table.add_columns("Name", "Type")
+                if not getattr(table, "columns", None):  # type: ignore[attr-defined]
+                    table.add_columns("Name", "Type")
+            except Exception:
+                try:
+                    table.add_columns("Name", "Type")
+                except Exception:
+                    pass
+
+            has_parent_row = False
+            try:
+                parent = base.parent
+                if parent != base:
+                    table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
+                    has_parent_row = True
             except Exception:
                 pass
 
-        has_parent_row = False
-        try:
-            parent = base.parent
-            if parent != base:
-                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
-                has_parent_row = True
-        except Exception:
-            pass
+            entries: list[Path] = []
+            try:
+                entries = list(base.iterdir())
+            except Exception as e:
+                entries = []
+                entries_err = str(e)
+            entries_count = int(len(entries))
 
-        entries: list[Path] = []
-        try:
-            entries = list(base.iterdir())
-        except Exception:
-            entries = []
+            dirs = sorted(
+                [p for p in entries if p.is_dir() and not p.name.startswith(".")],
+                key=lambda p: p.name.lower(),
+            )
+            dirs_count = int(len(dirs))
+            for p in dirs:
+                table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
 
-        dirs = sorted(
-            [p for p in entries if p.is_dir() and not p.name.startswith(".")],
-            key=lambda p: p.name.lower(),
-        )
-        for p in dirs:
-            table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
+            # Action rows (kept at the bottom so the browser reads like a normal dir listing).
+            table.add_row(Text("[Use this folder]", style="bold"), Text("select", style="dim"), key="__use__")
+            table.add_row(Text("[Export]", style="bold"), Text("export", style="dim"), key="__export__")
 
-        # Action rows (kept at the bottom so the browser reads like a normal dir listing).
-        table.add_row(Text("[Use this folder]", style="bold"), Text("select", style="dim"), key="__use__")
-        table.add_row(Text("[Export]", style="bold"), Text("export", style="dim"), key="__export__")
-
-        # Default cursor: first directory entry (not the parent '..' row).
-        try:
-            if getattr(table, "row_count", 0):
-                first_dir_row = (1 if has_parent_row else 0)
-                if len(dirs) > 0:
-                    table.cursor_row = first_dir_row  # type: ignore[attr-defined]
-                else:
-                    # No sub-dirs; fall back to [Use this folder] (2nd-to-last row).
-                    table.cursor_row = max(int(getattr(table, "row_count", 0) or 0) - 2, 0)  # type: ignore[attr-defined]
-        except Exception:
-            pass
+            # Default cursor: first directory entry (not the parent '..' row).
+            try:
+                if getattr(table, "row_count", 0):
+                    first_dir_row = (1 if has_parent_row else 0)
+                    if len(dirs) > 0:
+                        # Textual 6.x: cursor_row is a read-only property; use cursor_coordinate.
+                        table.cursor_coordinate = Coordinate(first_dir_row, 0)  # type: ignore[attr-defined]
+                    else:
+                        # No sub-dirs; fall back to [Use this folder] (2nd-to-last row).
+                        target = max(int(getattr(table, "row_count", 0) or 0) - 2, 0)
+                        table.cursor_coordinate = Coordinate(target, 0)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        finally:
+            self._dbg(
+                event="save.refresh.end",
+                data={
+                    "base": str(base),
+                    "entries_count": entries_count,
+                    "dirs_count": dirs_count,
+                    "duration_ms": float((time.perf_counter() - t0) * 1000.0),
+                    "error_if_any": entries_err,
+                },
+            )
+            self._suppress_save_browser_select = False
 
     def _save_browser_enter(self) -> None:
         """Handle Enter on Save output directory browser table."""
@@ -1004,12 +1242,41 @@ class CairnTuiApp(App):
         rk = self._table_cursor_row_key(table)
         if not rk:
             return
+
+        next_dir: Optional[str] = None
+        try:
+            if rk == "__up__":
+                try:
+                    p = base.parent if base.parent != base else base
+                except Exception:
+                    p = base
+                next_dir = str(p)
+            elif rk.startswith("dir:"):
+                next_dir = str(rk[4:])
+        except Exception:
+            next_dir = None
+        self._dbg(
+            event="save.enter",
+            data={
+                "base": str(base),
+                "rk": str(rk),
+                "next_dir": next_dir,
+                "cursor_row": getattr(table, "cursor_row", None),
+                "cursor_row_key": str(rk),
+            },
+        )
+
         if rk == "__up__":
             try:
                 self._save_browser_dir = base.parent if base.parent != base else base
             except Exception:
                 self._save_browser_dir = base
-            self._render_main()
+            try:
+                # Update UI in-place (avoid re-mounting widgets / DuplicateIds).
+                self._refresh_save_browser()
+            except Exception:
+                # Fallback: full re-render (best-effort).
+                self._render_main()
             return
         if rk == "__use__":
             self.model.output_dir = base
@@ -1025,7 +1292,10 @@ class CairnTuiApp(App):
             except Exception:
                 return
             self._save_browser_dir = p
-            self._render_main()
+            try:
+                self._refresh_save_browser()
+            except Exception:
+                self._render_main()
             return
 
     def _goto(self, step: str) -> None:
@@ -1055,10 +1325,113 @@ class CairnTuiApp(App):
             pass
 
     def action_back(self) -> None:
+        # Overlay-aware back: if any in-screen overlay is visible, Esc/Back should
+        # cancel/close that overlay (and return to the inline editor) rather than
+        # navigating the global stepper.
+        if self._dismiss_any_open_overlay_for_back():
+            return
         idx = STEPS.index(self.step)
         if idx <= 0:
             return
         self._goto(STEPS[idx - 1])
+
+    def _overlay_open(self, selector: str) -> bool:
+        try:
+            w = self.query_one(selector)
+            return bool(getattr(w, "has_class", lambda _c: False)("open"))
+        except Exception:
+            return False
+
+    def _focus_inline_fields_table(self) -> None:
+        """Best-effort: ensure the inline fields DataTable has focus when overlay is open."""
+        if not self._overlay_open("#inline_edit_overlay"):
+            return
+        try:
+            self.query_one("#fields_table", DataTable).focus()
+        except Exception:
+            pass
+
+    def _dismiss_any_open_overlay_for_back(self) -> bool:
+        """
+        If an edit overlay is open, dismiss it and return True.
+
+        This is intentionally defensive: even if a widget fails to stop key events,
+        Textual's Esc binding may still invoke `action_back()`. We must never let that
+        advance the stepper while an edit overlay is visible.
+        """
+        # Confirm overlay (multi-rename): treat Back as "No".
+        if self._overlay_open("#confirm_overlay"):
+            try:
+                self.query_one("#confirm_overlay", ConfirmOverlay).close()
+            except Exception:
+                pass
+            try:
+                self.on_confirm_overlay_result(ConfirmOverlay.Result(False))  # type: ignore[arg-type]
+            except Exception:
+                pass
+            return True
+
+        # Rename / Description overlays: treat Back as cancel and return to inline overlay.
+        if self._overlay_open("#rename_overlay"):
+            try:
+                self.query_one("#rename_overlay", RenameOverlay).close()
+            except Exception:
+                pass
+            ctx = self._selected_keys_for_step()
+            if ctx is not None:
+                feats = self._selected_features(ctx)
+                if feats:
+                    self._show_inline_overlay(ctx=ctx, feats=feats)
+            return True
+
+        if self._overlay_open("#description_overlay"):
+            try:
+                self.query_one("#description_overlay", DescriptionOverlay).close()
+            except Exception:
+                pass
+            ctx = self._selected_keys_for_step()
+            if ctx is not None:
+                feats = self._selected_features(ctx)
+                if feats:
+                    self._show_inline_overlay(ctx=ctx, feats=feats)
+            return True
+
+        # Picker overlays: reuse existing cancel handlers (which also restore focus).
+        if self._overlay_open("#color_picker_overlay"):
+            try:
+                self.query_one("#color_picker_overlay", ColorPickerOverlay).close()
+            except Exception:
+                pass
+            try:
+                self.on_color_picker_overlay_color_picked(ColorPickerOverlay.ColorPicked(None))  # type: ignore[arg-type]
+            except Exception:
+                pass
+            return True
+
+        if self._overlay_open("#icon_picker_overlay"):
+            try:
+                self.query_one("#icon_picker_overlay", IconPickerOverlay).close()
+            except Exception:
+                pass
+            try:
+                self.on_icon_picker_overlay_icon_picked(IconPickerOverlay.IconPicked(None))  # type: ignore[arg-type]
+            except Exception:
+                pass
+            return True
+
+        # Inline editor overlay: treat Back as "Done/Esc".
+        if self._overlay_open("#inline_edit_overlay"):
+            try:
+                self.query_one("#inline_edit_overlay", InlineEditOverlay).close()
+            except Exception:
+                pass
+            try:
+                self._on_inline_edit_action(None)
+            except Exception:
+                pass
+            return True
+
+        return False
 
     def _infer_folder_selection(self) -> Optional[str]:
         """
@@ -1270,21 +1643,23 @@ class CairnTuiApp(App):
             return
 
         if self.step == "Preview":
-            self._done_steps.add("Preview")
-            self._goto("Save")
+            # Preview is the final step; Enter-to-export is handled in on_key.
+            return
             return
 
-        if self.step == "Save":
-            # Save is driven by the on-screen browser/actions (Enter on [Export]).
-            return
+        # Save step removed; Preview is the final step.
 
     def action_export(self) -> None:
-        if self.step == "Save":
+        if self.step in {"Preview"}:
             # Show confirmation before export
+            out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
+            prefix = str(self._output_prefix or "").strip()
             self.push_screen(
                 ConfirmModal(
-                    "Ready to generate map files?\n\n"
-                    "This will write GPX/KML files to the output directory.",
+                    "Confirm export:\n\n"
+                    f"Directory: {out_dir}\n"
+                    f"Filename prefix: {prefix or '(none)'}\n\n"
+                    "Note: export may produce multiple files depending on size.\n",
                     title="Confirm Export",
                 ),
                 self._on_export_confirmed,
@@ -1295,8 +1670,8 @@ class CairnTuiApp(App):
             self._start_export()
 
     def action_apply_renames(self) -> None:
-        """Apply filename edits to exported files (Save step only)."""
-        if self.step != "Save":
+        """Apply filename edits to exported files (Preview & Export step only)."""
+        if self.step != "Preview":
             return
         if self._export_in_progress:
             return
@@ -1980,7 +2355,7 @@ class CairnTuiApp(App):
         if step == "List_data":
             return (
                 "Review everything found in your export: folders, routes, waypoints, tracks, "
-                "shapes, and unmapped symbols.\n\n"
+                "shapes, and unmapped symbols.\n\n\n"
                 "onX does not support folders, so this is a good time to bake folder structure "
                 "into names/descriptions so you can find items via onX search."
             )
@@ -1996,14 +2371,8 @@ class CairnTuiApp(App):
             )
         if step == "Preview":
             return (
-                "Confirm the mapping data you want to import into onX.\n"
-                "If you need to make changes, press Esc to go back."
-            )
-        if step == "Save":
-            return (
-                "Choose where to save the GPX output and optionally edit the suggested filename.\n"
-                "If the export must be split to stay under 4 MB, each file will be listed with "
-                "an editable name and a short explanation."
+                "Confirm the exact output target (directory + base name), then review what will be exported.\n\n\n"
+                "Press [bold]y[/] to change location/name, or Enter to export (with confirmation)."
             )
         return ""
 
@@ -2052,6 +2421,28 @@ class CairnTuiApp(App):
 
     def _render_main(self) -> None:
         # Render errors should never hard-crash the app in debug mode; capture and surface.
+        try:
+            ov_open = None
+            ov_classes = None
+            try:
+                ov = self.query_one("#save_target_overlay")
+                ov_classes = str(getattr(ov, "classes", None))
+                ov_open = bool(getattr(ov, "has_class", lambda _c: False)("open"))
+            except Exception:
+                ov_open = None
+                ov_classes = None
+            _agent_log(
+                hypothesisId="H_overlay_visibility",
+                location="cairn/tui/app.py:_render_main",
+                message="render_main_entry",
+                data={
+                    "step": str(getattr(self, "step", "")),
+                    "save_target_overlay_open": ov_open,
+                    "save_target_overlay_classes": ov_classes,
+                },
+            )
+        except Exception:
+            pass
         try:
             title = self.query_one("#main_title", Static)
             subtitle = self.query_one("#main_subtitle", Static)
@@ -2129,6 +2520,7 @@ class CairnTuiApp(App):
                 body.mount(Static("Press [bold]m[/] to map these symbols now, or Enter to continue.", classes="muted"))
             else:
                 body.mount(Static("Unmapped symbols: 0", classes="ok"))
+                body.mount(Static(""))  # spacer
                 body.mount(Static("Press Enter to continue.", classes="muted"))
             return
 
@@ -2274,18 +2666,215 @@ class CairnTuiApp(App):
             return
 
         if self.step == "Preview":
-            title.update("Preview")
-            subtitle.update("Preview of the full export (all routes + waypoints)")
-            body = self._clear_main_body()
+            title.update("Preview & Export")
+            subtitle.update("")
             if self.model.parsed is None:
+                body = self._clear_main_body()
                 body.mount(Static("No parsed data. Go back.", classes="err"))
                 return
+
+            # Default output directory: <project_dir>/onx_ready
+            out_dir = self.model.output_dir
+            if out_dir is None:
+                try:
+                    out_dir = (Path.cwd() / "onx_ready").resolve()
+                except Exception:
+                    out_dir = Path.cwd() / "onx_ready"
+                self.model.output_dir = out_dir
+
+            # Default prefix: input file stem (sanitized)
+            if not (self._output_prefix or "").strip():
+                try:
+                    if self.model.input_path:
+                        self._output_prefix = sanitize_filename(self.model.input_path.stem)
+                except Exception:
+                    pass
+
+            # Build the Preview & Export screen once; subsequent updates should be in-place to avoid DuplicateIds.
+            try:
+                preview_root = self.query_one("#preview_root", Container)
+            except Exception:
+                preview_root = None
+
+            if preview_root is None:
+                body = self._clear_main_body()
+                preview_root = Container(id="preview_root")
+                body.mount(preview_root)
+
+                preview_root.mount(Static("", id="preview_folder_label", classes="ok"))
+
+                save_root = Container(id="save_root")
+                preview_root.mount(save_root)
+                save_root.mount(Static("", id="save_dir", classes="muted"))
+                save_root.mount(Static("", id="save_prefix", classes="muted"))
+                save_root.mount(Static("", id="save_change_prompt", classes="muted"))
+                save_root.mount(Static("Enter: export (confirmation will appear).", id="save_export_hint", classes="muted"))
+                save_root.mount(Static("", id="save_status", classes="muted"))
+                save_root.mount(Container(id="save_post"))
+
+                preview_root.mount(Static("Export contents:", classes="accent"))
+                preview_root.mount(Static("", id="preview_waypoints_title", classes="accent"))
+                wp_table = DataTable(id="preview_waypoints")
+                wp_table.add_columns("Name", "OnX color", "OnX icon", "Description")
+                preview_root.mount(wp_table)
+
+                preview_root.mount(Static("", id="preview_routes_title", classes="accent"))
+                trk_table = DataTable(id="preview_routes")
+                trk_table.add_columns("Name", "OnX color", "Description")
+                preview_root.mount(trk_table)
+
+            # Update export target summary
+            try:
+                out_dir2 = self.model.output_dir
+                prefix2 = str(self._output_prefix or "")
+                save_as = ""
+                try:
+                    if out_dir2 is not None and prefix2:
+                        save_as = str(Path(out_dir2) / prefix2)
+                    elif out_dir2 is not None:
+                        save_as = str(Path(out_dir2))
+                    else:
+                        save_as = prefix2
+                except Exception:
+                    save_as = f"{out_dir2}/{prefix2}".strip("/")
+                self.query_one("#save_dir", Static).update(f"Save as: {save_as}")
+            except Exception:
+                pass
+            try:
+                self.query_one("#save_prefix", Static).update("")
+            except Exception:
+                pass
+            try:
+                self.query_one("#save_change_prompt", Static).update("Change location or name? y")
+            except Exception:
+                pass
+
+            # Update status + post-export UI (manifest + rename inputs) in-place (reuse Save step logic).
+            try:
+                status = self.query_one("#save_status", Static)
+            except Exception:
+                status = None
+            if status is not None:
+                try:
+                    if self._export_in_progress:
+                        status.update("Exporting… (please wait)")
+                    elif self._export_error:
+                        status.update(str(self._export_error))
+                    elif self._export_manifest:
+                        status.update("Export complete. Review outputs below (optional rename: press [bold]r[/]).")
+                    else:
+                        status.update("")
+                except Exception:
+                    pass
+
+            try:
+                post = self.query_one("#save_post", Container)
+            except Exception:
+                post = None
+
+            if post is not None:
+                # Clear post-export widgets if no manifest is present.
+                if not self._export_manifest:
+                    try:
+                        for child in list(getattr(post, "children", ())):
+                            try:
+                                child.remove()
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+
+            if post is not None and self._export_manifest:
+                # Detect split parts so we can explain why multiple files exist.
+                split_base_counts: dict[str, int] = {}
+                for fn, fmt, cnt, sz in self._export_manifest:
+                    p = Path(fn)
+                    m = re.match(r"^(?P<base>.+)_(?P<num>\d+)$", p.stem)
+                    if m:
+                        base = f"{m.group('base')}{p.suffix.lower()}"
+                        split_base_counts[base] = split_base_counts.get(base, 0) + 1
+
+                try:
+                    manifest_tbl = self.query_one("#manifest", DataTable)
+                except Exception:
+                    manifest_tbl = None
+                if manifest_tbl is None:
+                    manifest_tbl = DataTable(id="manifest")
+                    try:
+                        manifest_tbl.add_columns("File", "Format", "Items", "Bytes", "Note")
+                    except Exception:
+                        pass
+                    try:
+                        post.mount(manifest_tbl)
+                    except Exception:
+                        pass
+                try:
+                    self._datatable_clear_rows(manifest_tbl)
+                except Exception:
+                    pass
+                for fn, fmt, cnt, sz in self._export_manifest:
+                    note = ""
+                    p = Path(fn)
+                    m = re.match(r"^(?P<base>.+)_(?P<num>\d+)$", p.stem)
+                    if m:
+                        base = f"{m.group('base')}{p.suffix.lower()}"
+                        if split_base_counts.get(base, 0) > 1:
+                            note = "Split (4 MB limit)"
+                    try:
+                        manifest_tbl.add_row(fn, fmt, str(cnt), str(sz), note)
+                    except Exception:
+                        pass
+
+                try:
+                    rename_help = self.query_one("#save_rename_help", Static)
+                except Exception:
+                    rename_help = None
+                if rename_help is None:
+                    rename_help = Static(
+                        "Rename outputs (optional): edit names below, then press [bold]r[/] to apply.",
+                        id="save_rename_help",
+                        classes="muted",
+                    )
+                    try:
+                        post.mount(rename_help)
+                    except Exception:
+                        pass
+
+                for i, (fn, fmt, cnt, sz) in enumerate(self._export_manifest):
+                    desired = self._rename_overrides_by_idx.get(i)
+                    if desired is None:
+                        desired = self._suggest_output_name(fn)
+                        self._rename_overrides_by_idx[i] = desired
+                    try:
+                        inp = self.query_one(f"#rename_{i}", Input)
+                    except Exception:
+                        inp = None
+                    if inp is None:
+                        row = Horizontal(id=f"rename_row_{i}")
+                        try:
+                            post.mount(row)
+                        except Exception:
+                            row = None
+                        if row is not None:
+                            row.mount(Static(str(fn), classes="muted"))
+                            inp = Input(placeholder="New filename", id=f"rename_{i}")
+                            try:
+                                inp.value = desired
+                            except Exception:
+                                pass
+                            row.mount(inp)
+                    else:
+                        try:
+                            inp.value = desired
+                        except Exception:
+                            pass
 
             # Collect all items from all folders (for multi-folder projects)
             folders = getattr(self.model.parsed, "folders", {}) or {}
             all_tracks = []
             all_waypoints = []
 
+            folder_label = ""
             if self._folders_to_process:
                 # Multi-folder: collect from selected folders
                 try:
@@ -2297,7 +2886,7 @@ class CairnTuiApp(App):
                         shown = ", ".join(names[:3])
                         if len(names) > 3:
                             shown += f" (+{len(names) - 3} more)"
-                        body.mount(Static(f"Folders: {shown}", classes="ok"))
+                        folder_label = f"Folders: {shown}"
                 except Exception:
                     pass
                 for fid in self._folders_to_process:
@@ -2308,61 +2897,90 @@ class CairnTuiApp(App):
                 # Single folder: use current folder
                 fid = self.model.selected_folder_id
                 if not fid:
-                    body.mount(Static("No folder selected. Go back.", classes="err"))
+                    try:
+                        self.query_one("#preview_folder_label", Static).update("No folder selected. Go back.")
+                    except Exception:
+                        pass
                     return
                 fd = folders.get(fid) or {}
                 all_tracks = list(fd.get("tracks", []) or [])
                 all_waypoints = list(fd.get("waypoints", []) or [])
                 folder_name = self._folder_name_by_id.get(fid, fid)
-                body.mount(Static(f"Folder: {folder_name}", classes="ok"))
+                folder_label = f"Folder: {folder_name}"
+
+            try:
+                self.query_one("#preview_folder_label", Static).update(folder_label)
+            except Exception:
+                pass
 
             # Sort all items alphabetically
             tracks = sorted(all_tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
             waypoints = sorted(all_waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
 
-            # Waypoint preview table (full export, capped for UI readability).
-            wp_table = DataTable(id="preview_waypoints")
-            wp_table.add_columns("Name", "OnX icon", "OnX color")
-            max_rows = 50
-            for i, wp in enumerate(waypoints[:max_rows]):
+            # Waypoint preview table (full export).
+            try:
+                wp_table = self.query_one("#preview_waypoints", DataTable)
+            except Exception:
+                wp_table = None
+            if wp_table is not None:
+                try:
+                    self._datatable_clear_rows(wp_table)
+                except Exception:
+                    pass
+            for i, wp in enumerate(waypoints):
                 name0 = str(getattr(wp, "title", "") or "Untitled")
                 icon = self._resolved_waypoint_icon(wp)
                 rgba = self._resolved_waypoint_color(wp, icon)
+                desc0 = str(getattr(wp, "description", "") or "")
+                desc0 = " ".join(desc0.split())
                 try:
-                    wp_table.add_row(name0, icon, self._color_chip(rgba))
+                    if wp_table is not None:
+                        wp_table.add_row(name0, self._color_chip(rgba), icon, desc0)
                 except Exception as e:
                     self._dbg(event="preview.wp_row_error", data={"err": str(e), "rgba": rgba})
-                    wp_table.add_row(name0, icon, f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}")
+                    if wp_table is not None:
+                        wp_table.add_row(
+                            name0,
+                            f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}",
+                            icon,
+                            desc0,
+                        )
             note_wp = f"Waypoints ({len(waypoints)})"
-            if len(waypoints) > max_rows:
-                note_wp += f" [dim](showing first {max_rows})[/]"
-            body.mount(Static(note_wp, classes="accent"))
-            body.mount(wp_table)
+            try:
+                self.query_one("#preview_waypoints_title", Static).update(note_wp)
+            except Exception:
+                pass
 
-            trk_table = DataTable(id="preview_routes")
-            trk_table.add_columns("Name", "OnX color", "Style", "Weight")
-            for i, trk in enumerate(tracks[:max_rows]):
+            try:
+                trk_table = self.query_one("#preview_routes", DataTable)
+            except Exception:
+                trk_table = None
+            if trk_table is not None:
+                try:
+                    self._datatable_clear_rows(trk_table)
+                except Exception:
+                    pass
+            for i, trk in enumerate(tracks):
                 name0 = str(getattr(trk, "title", "") or "Untitled")
                 rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
-                style = str(getattr(trk, "pattern", "") or "solid")
-                weight = str(getattr(trk, "stroke_width", "") or "")
+                desc0 = str(getattr(trk, "description", "") or "")
+                desc0 = " ".join(desc0.split())
                 try:
-                    trk_table.add_row(name0, self._color_chip(rgba), style, weight)
+                    if trk_table is not None:
+                        trk_table.add_row(name0, self._color_chip(rgba), desc0)
                 except Exception as e:
                     self._dbg(event="preview.trk_row_error", data={"err": str(e), "rgba": rgba})
-                    trk_table.add_row(
-                        name0,
-                        f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}",
-                        style,
-                        weight,
-                    )
+                    if trk_table is not None:
+                        trk_table.add_row(
+                            name0,
+                            f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}",
+                            desc0,
+                        )
             note_trk = f"Routes ({len(tracks)})"
-            if len(tracks) > max_rows:
-                note_trk += f" [dim](showing first {max_rows})[/]"
-            body.mount(Static(note_trk, classes="accent"))
-            body.mount(trk_table)
-
-            body.mount(Static("Enter to continue to Save", classes="muted"))
+            try:
+                self.query_one("#preview_routes_title", Static).update(note_trk)
+            except Exception:
+                pass
             # Ensure app-level keys (Enter/q) work reliably even if a DataTable would grab focus.
             try:
                 self.call_after_refresh(lambda: self.set_focus(None))  # type: ignore[arg-type]
@@ -2375,53 +2993,93 @@ class CairnTuiApp(App):
 
         if self.step == "Save":
             title.update("Save")
-            subtitle.update("Choose output directory and export")
-            body = self._clear_main_body()
+            subtitle.update("")
 
-            # Initialize save browser directory once per visit.
-            if self._save_browser_dir is None:
+            # Default output directory: <project_dir>/onx_ready
+            out_dir = self.model.output_dir
+            if out_dir is None:
                 try:
-                    self._save_browser_dir = (self.model.output_dir or Path.cwd()).expanduser().resolve()
+                    out_dir = (Path.cwd() / "onx_ready").resolve()
                 except Exception:
-                    self._save_browser_dir = self.model.output_dir or Path.cwd()
+                    out_dir = Path.cwd() / "onx_ready"
+                self.model.output_dir = out_dir
 
-            try:
-                body.mount(Static(f"Browse output folder: {self._save_browser_dir}", classes="muted"))
-            except Exception:
-                body.mount(Static("Browse output folder:", classes="muted"))
-
-            save_tbl = DataTable(id="save_browser")
-            save_tbl.add_columns("Name", "Type")
-            body.mount(save_tbl)
-            self._refresh_save_browser()
-
-            # Output directory (selected): chosen via browser only (no manual path entry).
-            out_default = self.model.output_dir or (Path.cwd() / "onx_ready")
-            body.mount(Static(f"Output folder: {out_default}", classes="muted"))
-
-            # Default prefix: input file stem (sanitized), if available.
+            # Default prefix: input file stem (sanitized)
             if not (self._output_prefix or "").strip():
                 try:
                     if self.model.input_path:
                         self._output_prefix = sanitize_filename(self.model.input_path.stem)
                 except Exception:
                     pass
-            prefix_inp = Input(
-                placeholder="Output filename prefix (optional)",
-                id="output_prefix",
-            )
+
+            # Build Save UI once; subsequent updates should be in-place to avoid DuplicateIds.
             try:
-                prefix_inp.value = str(self._output_prefix or "")
+                save_root = self.query_one("#save_root", Container)
+            except Exception:
+                save_root = None
+
+            if save_root is None:
+                body = self._clear_main_body()
+                save_root = Container(id="save_root")
+                body.mount(save_root)
+                save_root.mount(Static("", id="save_dir", classes="muted"))
+                save_root.mount(Static("", id="save_prefix", classes="muted"))
+                save_root.mount(Static("", id="save_change_prompt", classes="muted"))
+                save_root.mount(Static("Enter: export (confirmation will appear).", id="save_export_hint", classes="muted"))
+                save_root.mount(Static("", id="save_status", classes="muted"))
+                save_root.mount(Container(id="save_post"))
+
+            # Update summary text
+            try:
+                out_dir2 = self.model.output_dir
+                prefix2 = str(self._output_prefix or "")
+                save_as = ""
+                try:
+                    if out_dir2 is not None and prefix2:
+                        save_as = str(Path(out_dir2) / prefix2)
+                    elif out_dir2 is not None:
+                        save_as = str(Path(out_dir2))
+                    else:
+                        save_as = prefix2
+                except Exception:
+                    save_as = f"{out_dir2}/{prefix2}".strip("/")
+                self.query_one("#save_dir", Static).update(f"Save as: {save_as}")
             except Exception:
                 pass
-            body.mount(prefix_inp)
+            try:
+                # Spacer line (keeps consistent vertical rhythm).
+                self.query_one("#save_prefix", Static).update("")
+            except Exception:
+                pass
+            try:
+                self.query_one("#save_change_prompt", Static).update("Change location or name? y/n")
+            except Exception:
+                pass
 
-            if self._export_in_progress:
-                body.mount(Static("Exporting… (please wait)", classes="accent"))
-            if self._export_error:
-                body.mount(Static(self._export_error, classes="err"))
+            # Update status + post-export UI (manifest + rename inputs)
+            try:
+                status = self.query_one("#save_status", Static)
+            except Exception:
+                status = None
+            if status is not None:
+                try:
+                    if self._export_in_progress:
+                        status.update("Exporting… (please wait)")
+                    elif self._export_error:
+                        status.update(str(self._export_error))
+                    elif self._export_manifest:
+                        status.update("Export complete. Review outputs below (optional rename: press [bold]r[/]).")
+                    else:
+                        status.update("")
+                except Exception:
+                    pass
 
-            if self._export_manifest:
+            try:
+                post = self.query_one("#save_post", Container)
+            except Exception:
+                post = None
+
+            if post is not None and self._export_manifest:
                 # Detect split parts so we can explain why multiple files exist.
                 split_base_counts: dict[str, int] = {}
                 for fn, fmt, cnt, sz in self._export_manifest:
@@ -2431,8 +3089,24 @@ class CairnTuiApp(App):
                         base = f"{m.group('base')}{p.suffix.lower()}"
                         split_base_counts[base] = split_base_counts.get(base, 0) + 1
 
-                tbl = DataTable(id="manifest")
-                tbl.add_columns("File", "Format", "Items", "Bytes", "Note")
+                try:
+                    manifest_tbl = self.query_one("#manifest", DataTable)
+                except Exception:
+                    manifest_tbl = None
+                if manifest_tbl is None:
+                    manifest_tbl = DataTable(id="manifest")
+                    try:
+                        manifest_tbl.add_columns("File", "Format", "Items", "Bytes", "Note")
+                    except Exception:
+                        pass
+                    try:
+                        post.mount(manifest_tbl)
+                    except Exception:
+                        pass
+                try:
+                    self._datatable_clear_rows(manifest_tbl)
+                except Exception:
+                    pass
                 for fn, fmt, cnt, sz in self._export_manifest:
                     note = ""
                     p = Path(fn)
@@ -2441,41 +3115,58 @@ class CairnTuiApp(App):
                         base = f"{m.group('base')}{p.suffix.lower()}"
                         if split_base_counts.get(base, 0) > 1:
                             note = "Split (4 MB limit)"
-                    tbl.add_row(fn, fmt, str(cnt), str(sz), note)
-                body.mount(Static("Export manifest", classes="accent"))
-                body.mount(tbl)
-
-                if any(v > 1 for v in split_base_counts.values()):
-                    body.mount(
-                        Static(
-                            "Some GPX outputs were split to stay under the 4 MB onX import limit.",
-                            classes="muted",
-                        )
-                    )
-
-                body.mount(Static("Rename outputs (optional): edit names below, then press [bold]r[/] to apply.", classes="muted"))
-                # One input per output file, keyed by manifest index.
-                for i, (fn, fmt, cnt, sz) in enumerate(self._export_manifest):
-                    row = Horizontal()
-                    body.mount(row)
                     try:
-                        row.mount(Static(fn, classes="muted"))
+                        manifest_tbl.add_row(fn, fmt, str(cnt), str(sz), note)
                     except Exception:
-                        row.mount(Static(str(fn), classes="muted"))
-                    inp = Input(placeholder="New filename", id=f"rename_{i}")
+                        pass
+
+                try:
+                    rename_help = self.query_one("#save_rename_help", Static)
+                except Exception:
+                    rename_help = None
+                if rename_help is None:
+                    rename_help = Static(
+                        "Rename outputs (optional): edit names below, then press [bold]r[/] to apply.",
+                        id="save_rename_help",
+                        classes="muted",
+                    )
+                    try:
+                        post.mount(rename_help)
+                    except Exception:
+                        pass
+
+                for i, (fn, fmt, cnt, sz) in enumerate(self._export_manifest):
                     desired = self._rename_overrides_by_idx.get(i)
                     if desired is None:
                         desired = self._suggest_output_name(fn)
                         self._rename_overrides_by_idx[i] = desired
                     try:
-                        inp.value = desired
+                        inp = self.query_one(f"#rename_{i}", Input)
                     except Exception:
-                        pass
-                    row.mount(inp)
+                        inp = None
+                    if inp is None:
+                        row = Horizontal(id=f"rename_row_{i}")
+                        try:
+                            post.mount(row)
+                        except Exception:
+                            row = None
+                        if row is not None:
+                            try:
+                                row.mount(Static(fn, classes="muted"))
+                            except Exception:
+                                row.mount(Static(str(fn), classes="muted"))
+                            inp = Input(placeholder="New filename", id=f"rename_{i}")
+                            try:
+                                inp.value = desired
+                            except Exception:
+                                pass
+                            row.mount(inp)
+                    else:
+                        try:
+                            inp.value = desired
+                        except Exception:
+                            pass
 
-                body.mount(Static("Done. Press [bold]n[/] to migrate another file, or [bold]q[/] to quit.", classes="muted"))
-            else:
-                body.mount(Static("Select [bold][Export][/] and press Enter (Confirm Export will appear).", classes="muted"))
             return
 
     # -----------------------
@@ -2486,7 +3177,7 @@ class CairnTuiApp(App):
             self._output_prefix = str(event.value or "")
             # Re-render to update suggested rename defaults (if any).
             self._render_sidebar()
-            if self.step == "Save":
+            if self.step == "Preview":
                 self._render_main()
         elif str(event.input.id or "").startswith("rename_"):
             # Persist edited rename values (used when applying renames with 'r').
@@ -2498,9 +3189,44 @@ class CairnTuiApp(App):
                 self._rename_overrides_by_idx[idx] = str(event.value or "")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        # Routes/Waypoints tables: treat Enter as "continue" even if the focused DataTable consumes Key events.
+        # This keeps the workflow fluid and makes tests/pilot interaction reliable.
+        if event.data_table.id == "routes_table" and self.step == "Routes":
+            try:
+                self.action_continue()
+                event.stop()
+            except Exception:
+                pass
+            return
+        if event.data_table.id == "waypoints_table" and self.step == "Waypoints":
+            try:
+                self.action_continue()
+                event.stop()
+            except Exception:
+                pass
+            return
+
         if event.data_table.id == "save_browser":
             # Save browser should be fully operable via Enter even if DataTable consumes Key events.
-            if self.step != "Save":
+            if self.step != "Preview":
+                return
+            try:
+                event_row_key = None
+                try:
+                    event_row_key = str(getattr(getattr(event, "row_key", None), "value", getattr(event, "row_key", None)))
+                except Exception:
+                    event_row_key = None
+                self._dbg(
+                    event="save.row_selected",
+                    data={
+                        "event_row_key": event_row_key,
+                        "suppress_flag": bool(getattr(self, "_suppress_save_browser_select", False)),
+                        "cursor_row_key": self._table_cursor_row_key(event.data_table),
+                    },
+                )
+            except Exception:
+                pass
+            if getattr(self, "_suppress_save_browser_select", False):
                 return
             try:
                 self._save_browser_enter()
@@ -2575,8 +3301,9 @@ class CairnTuiApp(App):
             elif self.step == "Waypoints":
                 tbl = self.query_one("#waypoints_table", DataTable)
                 tbl.focus()
-            elif self.step == "Save":
-                self.query_one("#save_browser", DataTable).focus()
+            elif self.step == "Preview":
+                # Preview & Export is summary-driven; keep focus clear so Enter routes reliably to app handlers.
+                self.set_focus(None)  # type: ignore[arg-type]
         except Exception as e:
             return
 
@@ -2597,6 +3324,30 @@ class CairnTuiApp(App):
             return
 
     def on_key(self, event) -> None:  # type: ignore[override]
+        try:
+            key0 = str(getattr(event, "key", "") or "")
+            ch0 = str(getattr(event, "character", "") or "")
+            if key0 in {"q", "ctrl+q"} or ch0.lower() == "q":
+                ov_open = None
+                try:
+                    ov_open = bool(self.query_one("#save_target_overlay").has_class("open"))
+                except Exception:
+                    ov_open = None
+                _agent_log(
+                    hypothesisId="H_quit_binding",
+                    location="cairn/tui/app.py:on_key",
+                    message="key_seen",
+                    data={
+                        "key": key0,
+                        "character": ch0,
+                        "step": str(getattr(self, "step", "")),
+                        "focused_type": type(self.focused).__name__ if self.focused else None,
+                        "focused_id": getattr(getattr(self, "focused", None), "id", None),
+                        "save_target_overlay_open": ov_open,
+                    },
+                )
+        except Exception:
+            pass
         # Debug: capture keys when enabled (useful for diagnosing "Enter doesn't advance").
         self._dbg(
             event="key",
@@ -2740,6 +3491,7 @@ class CairnTuiApp(App):
 
         if (
             _overlay_open("#inline_edit_overlay")
+            or _overlay_open("#save_target_overlay")
             or _overlay_open("#rename_overlay")
             or _overlay_open("#description_overlay")
             or _overlay_open("#confirm_overlay")
@@ -2758,6 +3510,20 @@ class CairnTuiApp(App):
         # Make navigation reliable regardless of focused widget.
         # Some widgets may consume Enter/Escape depending on focus state.
         if event.key == "escape":
+            if self.step == "Preview":
+                try:
+                    self._dbg(
+                        event="save.key",
+                        data={
+                            "key": str(getattr(event, "key", "")),
+                            "character": str(getattr(event, "character", "")),
+                            "focused_id": getattr(getattr(self, "focused", None), "id", None),
+                            "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
+                            "prefix": str(self._output_prefix or ""),
+                        },
+                    )
+                except Exception:
+                    pass
             self.action_back()
             try:
                 event.stop()
@@ -2781,21 +3547,49 @@ class CairnTuiApp(App):
             except Exception:
                 pass
 
-        # Special-case: Save output dir browser (Enter navigates/selects folder).
-        if self.step == "Save":
-            try:
-                focused_id = getattr(getattr(self, "focused", None), "id", None)
-                if focused_id == "save_browser" and (
-                    event.key in ("enter", "return") or getattr(event, "character", None) == "\r"
-                ):
-                    self._save_browser_enter()
-                    try:
-                        event.stop()
-                    except Exception:
-                        pass
-                    return
-            except Exception:
-                pass
+        # Preview & Export step: y prompt + Enter-to-export (with confirmation).
+        if self.step == "Preview":
+            key = str(getattr(event, "key", "") or "")
+            ch = str(getattr(event, "character", "") or "")
+            if ch.lower() == "y":
+                try:
+                    out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
+                    self.query_one("#save_target_overlay", SaveTargetOverlay).open(
+                        directory=out_dir,
+                        prefix=str(self._output_prefix or ""),
+                    )
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+
+            focused_type = type(self.focused).__name__ if self.focused else None
+            if focused_type != "Input" and (key in ("enter", "return") or ch == "\r"):
+                try:
+                    self._dbg(
+                        event="save.key",
+                        data={
+                            "key": key,
+                            "character": ch,
+                            "focused_id": getattr(getattr(self, "focused", None), "id", None),
+                            "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
+                            "prefix": str(self._output_prefix or ""),
+                        },
+                    )
+                except Exception:
+                    pass
+                try:
+                    self.action_export()
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
 
         # Accept common Enter variants across terminals/backends.
         if event.key in ("enter", "return") or getattr(event, "character", None) == "\r":

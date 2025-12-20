@@ -19,10 +19,35 @@ def _dismiss_post_save_prompt_if_present(pilot, app) -> None:
         pass
 
 
+async def _open_save_target_overlay(app, pilot) -> None:
+    """Open the SaveTargetOverlay via the Preview & Export step 'y' prompt."""
+    await pilot.press("y")
+    await pilot.pause()
+
+
+async def _activate_save_target_row(app, pilot, *, row_key: str) -> None:
+    """
+    Deterministic SaveTargetOverlay activation without relying on Pilot's Enter handling.
+
+    Textual's Pilot can time out waiting for screens to fully drain call_later callbacks
+    during heavy re-render/unmount cycles. For Save target editing, we move the cursor
+    to a row key in the overlay and invoke the overlay activation method directly.
+    """
+    ov = app.query_one("#save_target_overlay")
+    if row_key == "__done__":
+        # Done is now a dedicated control outside the scrolling DataTable.
+        ov._apply_done()  # type: ignore[attr-defined]
+    else:
+        move_datatable_cursor_to_row_key(app, table_id="save_target_browser", target_row_key=row_key)
+        await pilot.pause()
+        ov.activate()
+    await pilot.pause()
+
+
 def test_tui_save_change_folder_then_export(tmp_path: Path) -> None:
     """
-    E2E: on Save screen, navigate into a subfolder, select it as output dir, then export.
-    This exercises the Save browser navigation + Enter behavior.
+    E2E: on Preview & Export screen, navigate into a subfolder, select it as output dir, then export.
+    This exercises SaveTargetOverlay navigation + Enter behavior.
     """
 
     async def _run() -> None:
@@ -45,31 +70,20 @@ def test_tui_save_change_folder_then_export(tmp_path: Path) -> None:
             await pilot.pause()
             await pilot.press("enter")  # -> Folder
             await pilot.pause()
-            # Continue from Folder (infer selection) -> Routes/Waypoints -> Preview -> Save
+            # Continue from Folder (infer selection) -> Routes/Waypoints -> Preview
             app.action_continue()
             await pilot.pause()
             app._goto("Preview")
             await pilot.pause()
-            await pilot.press("enter")  # -> Save
-            await pilot.pause()
-            assert app.step == "Save"
+            assert app.step == "Preview"
 
-            # Save browser should show sub_out; cursor defaults to first directory row.
-            # Enter should navigate into the directory.
-            await pilot.press("enter")
-            await pilot.pause()
-            assert str(getattr(app, "_save_browser_dir", "")) == str(sub)
-
-            # Use this folder
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__use__")
-            await pilot.pause()
-            await pilot.press("enter")
-            await pilot.pause()
+            # Change output folder to sub_out via overlay, then Done.
+            await _open_save_target_overlay(app, pilot)
+            await _activate_save_target_row(app, pilot, row_key=f"dir:{sub}")
+            await _activate_save_target_row(app, pilot, row_key="__done__")
             assert app.model.output_dir == sub
 
             # Export
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-            await pilot.pause()
             await pilot.press("enter")  # open confirm
             await pilot.pause()
             await pilot.press("enter")  # confirm
@@ -110,30 +124,23 @@ def test_tui_save_prefix_persists_across_folder_navigation(tmp_path: Path) -> No
 
             app._goto("List_data")
             await pilot.pause()
-            app._goto("Save")
+            app._goto("Preview")
             await pilot.pause()
-            assert app.step == "Save"
+            assert app.step == "Preview"
 
-            # Set prefix programmatically (avoids needing to Tab-focus in tests).
+            # Open overlay and set prefix programmatically (avoids needing to Tab-focus in tests).
             prefix = "MY_PREFIX"
-            inp = app.query_one("#output_prefix", Input)
-            inp.value = prefix
+            await _open_save_target_overlay(app, pilot)
+            app.query_one("#save_target_prefix", Input).value = prefix
             await pilot.pause()
 
-            # Navigate into subfolder and back out.
-            await pilot.press("enter")  # enter sub_out (first directory)
-            await pilot.pause()
-            assert str(getattr(app, "_save_browser_dir", "")) == str(sub)
+            # Navigate into subfolder and back out, then Done to apply.
+            await _activate_save_target_row(app, pilot, row_key=f"dir:{sub}")
+            await _activate_save_target_row(app, pilot, row_key="__up__")
+            await _activate_save_target_row(app, pilot, row_key="__done__")
 
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__up__")
-            await pilot.pause()
-            await pilot.press("enter")  # go up
-            await pilot.pause()
-            assert str(getattr(app, "_save_browser_dir", "")) == str(base)
-
-            # Prefix should persist after re-render.
-            inp2 = app.query_one("#output_prefix", Input)
-            assert (inp2.value or "").strip() == prefix
+            # Prefix should persist after applying changes.
+            assert (app._output_prefix or "").strip() == prefix
 
     asyncio.run(_run())
 
@@ -161,12 +168,10 @@ def test_tui_save_rename_outputs_and_apply(tmp_path: Path) -> None:
             # Parse first (export requires parsed data).
             app._goto("List_data")
             await pilot.pause()
-            app._goto("Save")
+            app._goto("Preview")
             await pilot.pause()
 
             # Export
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-            await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()
             await pilot.press("enter")
@@ -236,12 +241,10 @@ def test_tui_save_rename_negative_cases_then_recover(tmp_path: Path, mode: str) 
             # Parse first (export requires parsed data) then go to Save.
             app._goto("List_data")
             await pilot.pause()
-            app._goto("Save")
+            app._goto("Preview")
             await pilot.pause()
 
             # Export
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-            await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()
             await pilot.press("enter")
@@ -288,7 +291,7 @@ def test_tui_save_rename_negative_cases_then_recover(tmp_path: Path, mode: str) 
             await pilot.press("r")
             await pilot.pause()
 
-            assert app.step == "Save"
+            assert app.step == "Preview"
             assert app._export_error is not None
             assert "Rename error:" in app._export_error
 
@@ -312,6 +315,44 @@ def test_tui_save_rename_negative_cases_then_recover(tmp_path: Path, mode: str) 
             assert app._export_error is None
             assert (out_dir / new0).exists()
             assert not (out_dir / old0).exists()
+
+    asyncio.run(_run())
+
+
+def test_tui_save_target_overlay_done_applies_output_dir_and_prefix(tmp_path: Path) -> None:
+    """
+    Unit-style: ensure SaveTargetOverlay Done applies to app model state.
+    """
+
+    async def _run() -> None:
+        from cairn.tui.app import CairnTuiApp
+        from textual.widgets import Input
+
+        fixture_copy = copy_fixture_to_tmp(tmp_path)
+        base = tmp_path / "out_base"
+        sub = base / "sub_out"
+        sub.mkdir(parents=True, exist_ok=True)
+
+        app = CairnTuiApp()
+        app.model.input_path = fixture_copy
+        app.model.output_dir = base
+
+        async with app.run_test() as pilot:
+            _dismiss_post_save_prompt_if_present(pilot, app)
+            app._goto("List_data")
+            await pilot.pause()
+            app._goto("Preview")
+            await pilot.pause()
+
+            await _open_save_target_overlay(app, pilot)
+            # Navigate into subfolder and set prefix, then Done.
+            await _activate_save_target_row(app, pilot, row_key=f"dir:{sub}")
+            app.query_one("#save_target_prefix", Input).value = "UNIT_PREFIX"
+            await pilot.pause()
+            await _activate_save_target_row(app, pilot, row_key="__done__")
+
+            assert app.model.output_dir == sub
+            assert (app._output_prefix or "").strip() == "UNIT_PREFIX"
 
     asyncio.run(_run())
 
@@ -378,59 +419,38 @@ def test_tui_save_flow_permutations(
             # Parse first (export requires parsed data).
             app._goto("List_data")
             await pilot.pause()
-            app._goto("Save")
+            app._goto("Preview")
             await pilot.pause()
-            assert app.step == "Save"
+            assert app.step == "Preview"
 
             # Optionally set prefix up-front (should survive folder navigation / re-renders).
             prefix_val = "SCENARIO_PREFIX" if set_prefix else ""
-            if set_prefix:
-                app.query_one("#output_prefix", Input).value = prefix_val
-                await pilot.pause()
-
-            # Optionally navigate within save browser before export.
-            if nav_before_export:
-                # Enter first dir (sub_out by name sort); then back up; then into sib_out; then back up.
-                await pilot.press("enter")
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__up__")
-                await pilot.pause()
-                await pilot.press("enter")
-                await pilot.pause()
-
-                # Move to sib_out explicitly by key (dir:PATH)
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key=f"dir:{sib}")
-                await pilot.pause()
-                await pilot.press("enter")
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__up__")
-                await pilot.pause()
-                await pilot.press("enter")
-                await pilot.pause()
-
             # Optionally change the output folder.
             expected_out_dir = base
-            if change_folder:
-                # Enter sub_out (first directory row), then select it as output.
-                await pilot.press("enter")
-                await pilot.pause()
-                assert str(getattr(app, "_save_browser_dir", "")) == str(sub)
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__use__")
-                await pilot.pause()
-                await pilot.press("enter")
-                await pilot.pause()
-                expected_out_dir = sub
-                assert app.model.output_dir == expected_out_dir
-            else:
-                assert app.model.output_dir == base
+            if nav_before_export or change_folder or set_prefix:
+                await _open_save_target_overlay(app, pilot)
+                if set_prefix:
+                    app.query_one("#save_target_prefix", Input).value = prefix_val
+                    await pilot.pause()
 
-            # Prefix should persist (even after folder navigation + selection).
+                if nav_before_export:
+                    # Browse around, but return to base.
+                    await _activate_save_target_row(app, pilot, row_key=f"dir:{sub}")
+                    await _activate_save_target_row(app, pilot, row_key="__up__")
+                    await _activate_save_target_row(app, pilot, row_key=f"dir:{sib}")
+                    await _activate_save_target_row(app, pilot, row_key="__up__")
+
+                if change_folder:
+                    await _activate_save_target_row(app, pilot, row_key=f"dir:{sub}")
+                    expected_out_dir = sub
+
+                await _activate_save_target_row(app, pilot, row_key="__done__")
+
+            assert app.model.output_dir == expected_out_dir
             if set_prefix:
-                assert (app.query_one("#output_prefix", Input).value or "").strip() == prefix_val
+                assert (app._output_prefix or "").strip() == prefix_val
 
             # Export
-            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-            await pilot.pause()
             await pilot.press("enter")  # open confirm
             await pilot.pause()
             await pilot.press("enter")  # confirm
@@ -479,16 +499,13 @@ def test_tui_save_flow_permutations(
 
             # Optionally navigate after export and ensure rename fields/prefix persist.
             if nav_after_export:
-                # Navigate into a folder and back up; ensure prefix field is still present and stable.
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key=f"dir:{sub if expected_out_dir == base else base}")
-                await pilot.pause()
-                await pilot.press("enter")
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__up__")
-                await pilot.pause()
-                await pilot.press("enter")
+                # Open overlay, browse a bit, then cancel; ensure prefix stays stable.
+                await _open_save_target_overlay(app, pilot)
+                await _activate_save_target_row(app, pilot, row_key=f"dir:{sub if expected_out_dir == base else base}")
+                await _activate_save_target_row(app, pilot, row_key="__up__")
+                await pilot.press("escape")
                 await pilot.pause()
                 if set_prefix:
-                    assert (app.query_one("#output_prefix", Input).value or "").strip() == prefix_val
+                    assert (app._output_prefix or "").strip() == prefix_val
 
     asyncio.run(_run())

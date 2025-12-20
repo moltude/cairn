@@ -195,19 +195,11 @@ class TestSingleItemEditing:
                 _, waypoints = app._current_folder_features()
                 assert any(getattr(w, "title", "") == NEW_NAME for w in waypoints)
 
-                # Continue to save and export
+                # Continue to Preview (Preview & Export) and export
                 await pilot.press("enter")  # -> Preview
-                await pilot.pause()
-                await pilot.press("enter")  # -> Save
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                # Trigger export via Save browser: move to [Export], then Enter.
-                from tests.tui_harness import move_datatable_cursor_to_row_key
-                app.action_focus_table()
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-                await pilot.pause()
                 await pilot.press("enter")  # open Confirm Export modal
                 await pilot.pause()
                 await pilot.press("enter")  # Confirm export
@@ -295,15 +287,8 @@ class TestSingleItemEditing:
                 # Export
                 await pilot.press("enter")  # -> Preview
                 await pilot.pause()
-                await pilot.press("enter")  # -> Save
-                await pilot.pause()
 
                 app.model.output_dir = out_dir
-                from tests.tui_harness import move_datatable_cursor_to_row_key
-                app.action_focus_table()
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-                await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -390,15 +375,8 @@ class TestMultiSelectEditing:
                 # Export
                 await pilot.press("enter")  # Preview
                 await pilot.pause()
-                await pilot.press("enter")  # Save
-                await pilot.pause()
 
                 app.model.output_dir = out_dir
-                from tests.tui_harness import move_datatable_cursor_to_row_key
-                app.action_focus_table()
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-                await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -469,16 +447,11 @@ class TestMultiSelectEditing:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                # Export (jump to Save directly; routes-only folders may skip Waypoints)
-                app._goto("Save")
+                # Export (jump to Preview directly; routes-only folders may skip Waypoints)
+                app._goto("Preview")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                from tests.tui_harness import move_datatable_cursor_to_row_key
-                app.action_focus_table()
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-                await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -792,15 +765,10 @@ class TestMultiSelectEditing:
                 assert renamed[0] is expected_waypoint, "Wrong waypoint was renamed - sorting mismatch!"
 
                 # Export and verify GPX
-                app._goto("Save")
+                app._goto("Preview")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                from tests.tui_harness import move_datatable_cursor_to_row_key
-                app.action_focus_table()
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-                await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -955,11 +923,6 @@ class TestDifferentFolders:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                from tests.tui_harness import move_datatable_cursor_to_row_key
-                app.action_focus_table()
-                await pilot.pause()
-                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
-                await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -1042,7 +1005,7 @@ class TestNavigation:
                 await pilot.pause()
                 assert app.step == "Folder"
 
-                # Forward all the way to Save
+                # Forward all the way to Preview (Preview & Export is the final step)
                 await pilot.press("enter")  # -> Routes
                 await pilot.pause()
                 await pilot.press("enter")  # -> Waypoints
@@ -1051,14 +1014,10 @@ class TestNavigation:
                 await pilot.pause()
                 assert app.step == "Preview"
 
-                await pilot.press("enter")  # -> Save
-                await pilot.pause()
-                assert app.step == "Save"
-
-                # Back from Save
+                # Back from Preview
                 await pilot.press("escape")
                 await pilot.pause()
-                assert app.step == "Preview"
+                assert app.step == "Waypoints"
 
         asyncio.run(_run())
 

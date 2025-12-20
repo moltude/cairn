@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 from textual.app import ComposeResult
+from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical
 from textual.message import Message
 from textual.screen import ModalScreen
@@ -12,6 +14,31 @@ from rich.text import Text
 
 from cairn.core.color_mapper import ColorMapper
 
+# region agent log
+import json
+import time
+
+_AGENT_DEBUG_LOG_PATH = "/Users/scott/_code/cairn/.cursor/debug.log"
+
+
+def _agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> None:
+    try:
+        payload = {
+            "timestamp": int(time.time() * 1000),
+            "sessionId": "debug-session",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesisId,
+            "location": location,
+            "message": message,
+            "data": data,
+        }
+        with open(_AGENT_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        return
+
+
+# endregion agent log
 
 @dataclass(frozen=True)
 class EditContext:
@@ -132,13 +159,11 @@ class HelpModal(ModalScreen[None]):
             ("q", "Quit application"),
         ],
         "Preview": [
-            ("Enter", "Continue to save"),
+            ("y", "Change directory/prefix"),
+            ("Enter", "Export (with confirmation)"),
+            ("r", "Apply rename edits (after export)"),
+            ("Ctrl+N", "Start a new migration"),
             ("Esc", "Go back to make changes"),
-            ("q", "Quit application"),
-        ],
-        "Save": [
-            ("e", "Export files to output directory"),
-            ("Esc", "Go back to preview"),
             ("q", "Quit application"),
         ],
     }
@@ -212,6 +237,220 @@ class ConfirmModal(ModalScreen[bool]):
             return
         if key in ("enter", "return") or char == "\r" or char.lower() == "y":
             self.dismiss(True)
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+
+
+class SaveTargetOverlay(Container):
+    """
+    Save target editor overlay (directory browser + filename prefix).
+
+    Opened from the Save step via the inline \"Change? Y/n\" prompt.
+    """
+
+    class Done(Message):
+        bubble = True
+
+        def __init__(self, *, directory: Path, prefix: str, cancelled: bool = False) -> None:
+            super().__init__()
+            self.directory = directory
+            self.prefix = prefix
+            self.cancelled = cancelled
+
+    class _DoneControl(Static):
+        """Focusable Done control so it remains accessible even when the table scrolls."""
+
+        can_focus = True
+
+    def __init__(self, *, id: str = "save_target_overlay", classes: str = "") -> None:
+        super().__init__(id=id, classes=classes)
+        self._cur_dir: Path = Path.cwd()
+        self._prefix: str = ""
+
+    def compose(self) -> ComposeResult:
+        _agent_log(
+            hypothesisId="H_overlay_visibility",
+            location="cairn/tui/edit_screens.py:SaveTargetOverlay.compose",
+            message="compose",
+            data={"id": getattr(self, "id", None), "classes": str(getattr(self, "classes", None))},
+        )
+        with Vertical(id="save_target_dialog", classes="overlay_dialog"):
+            yield Static("", id="save_target_path", classes="muted")
+            tbl = DataTable(id="save_target_browser")
+            tbl.add_columns("Name", "Type")
+            yield tbl
+            yield Static("File name prefix", classes="accent")
+            yield Input(placeholder="Filename prefix", id="save_target_prefix")
+            yield self._DoneControl("[Done]", id="save_target_done", classes="accent")
+            yield Static("Enter: open/select  •  d/Tab→Enter: done  •  Esc: cancel", classes="muted")
+
+    def open(self, *, directory: Path, prefix: str) -> None:
+        _agent_log(
+            hypothesisId="H_overlay_visibility",
+            location="cairn/tui/edit_screens.py:SaveTargetOverlay.open",
+            message="open_called",
+            data={"directory": str(directory), "prefix": str(prefix), "prior_classes": str(getattr(self, "classes", None))},
+        )
+        try:
+            self._cur_dir = Path(directory).expanduser()
+        except Exception:
+            self._cur_dir = directory
+        self._prefix = str(prefix or "")
+        try:
+            self.add_class("open")
+        except Exception:
+            pass
+        try:
+            self._refresh()
+        except Exception:
+            pass
+        try:
+            self.query_one("#save_target_browser", DataTable).focus()
+        except Exception:
+            pass
+        # Best-effort debug hook
+        try:
+            getattr(self.app, "_dbg")(event="save.change.open", data={"dir": str(self._cur_dir), "prefix": self._prefix})
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        _agent_log(
+            hypothesisId="H_overlay_visibility",
+            location="cairn/tui/edit_screens.py:SaveTargetOverlay.close",
+            message="close_called",
+            data={"classes": str(getattr(self, "classes", None))},
+        )
+        try:
+            self.remove_class("open")
+        except Exception:
+            pass
+
+    def _refresh(self) -> None:
+        try:
+            self.query_one("#save_target_path", Static).update(f"Directory: {self._cur_dir}")
+        except Exception:
+            pass
+        try:
+            inp = self.query_one("#save_target_prefix", Input)
+            inp.value = self._prefix
+        except Exception:
+            pass
+        try:
+            tbl = self.query_one("#save_target_browser", DataTable)
+        except Exception:
+            return
+
+        _datatable_clear_rows(tbl)
+        # Parent row
+        has_parent_row = False
+        try:
+            parent = self._cur_dir.parent
+            if parent != self._cur_dir:
+                tbl.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
+                has_parent_row = True
+        except Exception:
+            has_parent_row = False
+
+        entries: list[Path] = []
+        try:
+            entries = list(self._cur_dir.iterdir())
+        except Exception:
+            entries = []
+        dirs = sorted([p for p in entries if p.is_dir() and not p.name.startswith(".")], key=lambda p: p.name.lower())
+        for p in dirs:
+            tbl.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
+
+        # Default cursor: first directory (or parent if no dirs)
+        first_dir_row = 1 if has_parent_row else 0
+        try:
+            if len(dirs) > 0:
+                tbl.cursor_coordinate = Coordinate(first_dir_row, 0)  # type: ignore[attr-defined]
+            elif has_parent_row and int(getattr(tbl, "row_count", 0) or 0) > 0:
+                tbl.cursor_coordinate = Coordinate(0, 0)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def _apply_done(self) -> None:
+        try:
+            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
+        except Exception:
+            pass
+        self.post_message(self.Done(directory=self._cur_dir, prefix=self._prefix, cancelled=False))
+        self.close()
+
+    def activate(self) -> None:
+        """Deterministic activation used by tests (same as Enter on the browser)."""
+        try:
+            tbl = self.query_one("#save_target_browser", DataTable)
+        except Exception:
+            return
+        # Preserve any typed prefix while navigating the directory browser.
+        try:
+            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
+        except Exception:
+            pass
+        rk = _table_cursor_row_key(tbl)
+        if not rk:
+            return
+        if rk == "__up__":
+            try:
+                self._cur_dir = self._cur_dir.parent if self._cur_dir.parent != self._cur_dir else self._cur_dir
+            except Exception:
+                pass
+            try:
+                getattr(self.app, "_dbg")(event="save.change.navigate", data={"rk": "__up__", "dir": str(self._cur_dir)})
+            except Exception:
+                pass
+            self._refresh()
+            return
+        if rk.startswith("dir:"):
+            try:
+                self._cur_dir = Path(rk[4:])
+            except Exception:
+                return
+            try:
+                getattr(self.app, "_dbg")(event="save.change.navigate", data={"rk": rk, "dir": str(self._cur_dir)})
+            except Exception:
+                pass
+            self._refresh()
+            return
+
+    def on_key(self, event) -> None:  # type: ignore[override]
+        key = str(getattr(event, "key", "") or "")
+        ch = str(getattr(event, "character", "") or "")
+        if key == "escape":
+            try:
+                getattr(self.app, "_dbg")(event="save.change.cancel", data={"dir": str(self._cur_dir)})
+            except Exception:
+                pass
+            self.post_message(self.Done(directory=self._cur_dir, prefix=self._prefix, cancelled=True))
+            self.close()
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if ch.lower() == "d":
+            self._apply_done()
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if key in ("enter", "return") or ch == "\r":
+            focused_id = None
+            try:
+                focused_id = getattr(getattr(self.app, "focused", None), "id", None)
+            except Exception:
+                focused_id = None
+            if focused_id == "save_target_done":
+                self._apply_done()
+            else:
+                self.activate()
             try:
                 event.stop()
             except Exception:

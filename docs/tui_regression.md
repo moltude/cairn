@@ -34,6 +34,29 @@ Each scenario directory contains:
 - `index.md` (snapshot list)
 - `000_<label>.json`, `001_<label>.json`, ... (step snapshots)
 
+## Save-step diagnostics (manual repro trace)
+
+If you’re chasing “Save step bounce/freeze” issues interactively, you can emit a single **NDJSON trace**
+with the relevant Save browser events.
+
+```bash
+CAIRN_TUI_ARTIFACTS=1 \
+CAIRN_TUI_DEBUG_FILE=/tmp/cairn_tui_debug.ndjson \
+CAIRN_TUI_DEBUG_SNAPSHOT=1 \
+uv run cairn tui
+```
+
+Files to inspect after reproducing:
+- `/tmp/cairn_tui_debug.ndjson` (events like `save.key`, `save.row_selected`, `save.enter`, `save.refresh.*`, `save.snapshot`)
+
+Optional (Textual internal logs; may vary by Textual version/install):
+
+```bash
+TEXTUAL_LOG=/tmp/textual.log TEXTUAL_LOG_LEVEL=DEBUG \
+CAIRN_TUI_ARTIFACTS=1 CAIRN_TUI_DEBUG_FILE=/tmp/cairn_tui_debug.ndjson CAIRN_TUI_DEBUG_SNAPSHOT=1 \
+uv run cairn tui
+```
+
 ## What’s covered
 
 - Stepper path: `List_data → Folder → Routes → Waypoints → Preview → Save`
