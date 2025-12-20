@@ -1164,11 +1164,15 @@ class CairnTuiApp(App):
                 continue
             idx = int(k)
             if ctx.kind == "route":
-                if 0 <= idx < len(tracks):
-                    out.append(tracks[idx])
+                # Sort tracks to match table display order (alphabetical by name)
+                sorted_tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
+                if 0 <= idx < len(sorted_tracks):
+                    out.append(sorted_tracks[idx])
             elif ctx.kind == "waypoint":
-                if 0 <= idx < len(waypoints):
-                    out.append(waypoints[idx])
+                # Sort waypoints to match table display order (alphabetical by name)
+                sorted_waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
+                if 0 <= idx < len(sorted_waypoints):
+                    out.append(sorted_waypoints[idx])
         return out
 
     def _on_edit_prompt_confirmed(self, confirmed: bool) -> None:
@@ -1372,15 +1376,24 @@ class CairnTuiApp(App):
             self._waypoints_edited = True
 
         # Refresh current step tables so edits are visible immediately.
-        if ctx.kind == "route":
-            # After applying an edit, reset selection so subsequent edits start fresh.
-            self._selected_route_keys.clear()
-            self._refresh_routes_table()
-        elif ctx.kind == "waypoint":
-            self._selected_waypoint_keys.clear()
-            self._refresh_waypoints_table()
-        elif self.step == "Preview":
-            self._render_main()
+        # Use call_after_refresh to ensure refresh happens after modal closes
+        def refresh_after_modal():
+            if ctx.kind == "route":
+                # After applying an edit, reset selection so subsequent edits start fresh.
+                self._selected_route_keys.clear()
+                self._refresh_routes_table()
+            elif ctx.kind == "waypoint":
+                self._selected_waypoint_keys.clear()
+                self._refresh_waypoints_table()
+            elif self.step == "Preview":
+                self._render_main()
+
+        # Schedule refresh after modal closes
+        try:
+            self.call_after_refresh(refresh_after_modal)
+        except Exception:
+            # Fallback: try immediate refresh if call_after_refresh not available
+            refresh_after_modal()
 
         # If in single-item edit mode, return to EditRecordModal after applying changes
         if self._in_single_item_edit:
