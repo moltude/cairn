@@ -200,6 +200,101 @@ class ConfirmModal(ModalScreen[bool]):
             return
 
 
+class EditRecordModal(ModalScreen[None]):
+    """
+    Show current record fields for editing.
+
+    This is the main edit screen that shows all editable fields for the selected item(s).
+    """
+
+    def __init__(self, *, ctx: EditContext, features: list) -> None:
+        super().__init__()
+        self._ctx = ctx
+        self._features = features
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="edit_record_modal"):
+            yield Static("Edit Record", classes="title")
+            yield Static(
+                f"Selected: {len(self._ctx.selected_keys)} {self._ctx.kind}(s)",
+                classes="muted",
+            )
+            yield Static("")
+
+            # Show current values for single item
+            if len(self._features) == 1:
+                feat = self._features[0]
+                name = str(getattr(feat, "title", "") or "Untitled")
+                desc = str(getattr(feat, "description", "") or "(none)")
+                yield Static(f"[bold]Name:[/] {name}")
+                yield Static(f"[bold]Description:[/] {desc}")
+                if self._ctx.kind == "waypoint":
+                    icon = str(getattr(feat, "properties", {}).get("cairn_onx_icon_override", "") or "(mapped)")
+                    color = str(getattr(feat, "color", "") or "(default)")
+                    yield Static(f"[bold]Icon:[/] {icon}")
+                    yield Static(f"[bold]Color:[/] {color}")
+                else:
+                    color = str(getattr(feat, "stroke", "") or "(default)")
+                    yield Static(f"[bold]Color:[/] {color}")
+
+            yield Static("")
+            tbl = DataTable(id="edit_actions_table")
+            tbl.add_columns("Field")
+            tbl.add_row("Rename", key="rename")
+            tbl.add_row("Set description", key="description")
+            if self._ctx.kind == "waypoint":
+                tbl.add_row("Set/clear icon override", key="icon")
+                tbl.add_row("Set waypoint color", key="color")
+            else:
+                tbl.add_row("Set route color", key="color")
+            tbl.add_row("Done", key="done")
+            yield tbl
+            yield Static("Enter: choose  Esc: back", classes="muted")
+
+    def on_mount(self) -> None:
+        try:
+            self.query_one("#edit_actions_table", DataTable).focus()
+        except Exception:
+            pass
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        if event.data_table.id != "edit_actions_table":
+            return
+        try:
+            action = str(event.row_key.value)
+        except Exception:
+            action = "done"
+        if action == "done":
+            self.dismiss(None)
+        else:
+            self.dismiss(action)
+
+    def on_key(self, event) -> None:  # type: ignore[override]
+        key = str(getattr(event, "key", "") or "")
+        if key == "escape":
+            self.dismiss(None)
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if key in ("enter", "return") or getattr(event, "character", None) == "\r":
+            try:
+                tbl = self.query_one("#edit_actions_table", DataTable)
+            except Exception:
+                return
+            act = (_table_cursor_row_key(tbl) or "done").strip() or "done"
+            if act == "done":
+                self.dismiss(None)
+            else:
+                self.dismiss(act)
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+
+
 class ActionsModal(ModalScreen[None]):
     """
     Pick an edit action for the current selection.
