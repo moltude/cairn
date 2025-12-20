@@ -271,6 +271,9 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             app.model.output_dir = out_dir
             await pilot.press("e")
             await pilot.pause()
+            # Confirm the export dialog
+            await pilot.press("enter")
+            await pilot.pause()
             rec.snapshot(app, label="export_started")
 
             for _ in range(600):

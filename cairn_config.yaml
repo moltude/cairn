@@ -61,59 +61,64 @@ symbol_mappings:
   climbing-2: Climbing
   circle-p: Parking
   climbing-1: Climbing
+  flag-1: Location
+  scrambling: Climbing
+  automobile: Parking
+  snowboarding: Snowboarder
+  repair-streamcrossing: Water Crossing
 keyword_mappings:
   Campsite:
-    - tent
-    - camp
-    - sleep
-    - overnight
-    - camping
+  - tent
+  - camp
+  - sleep
+  - overnight
+  - camping
   Water Source:
-    - water
-    - spring
-    - refill
-    - creek
-    - stream
+  - water
+  - spring
+  - refill
+  - creek
+  - stream
   Parking:
-    - car
-    - parking
-    - lot
-    - vehicle
+  - car
+  - parking
+  - lot
+  - vehicle
   Trailhead:
-    - trailhead
-    - trail head
-    - th
+  - trailhead
+  - trail head
+  - th
   XC Skiing:
-    - ski
-    - skin
-    - tour
-    - uptrack
-    - skiing
-    - xc
+  - ski
+  - skin
+  - tour
+  - uptrack
+  - skiing
+  - xc
   Summit:
-    - summit
-    - peak
-    - top
-    - mt
+  - summit
+  - peak
+  - top
+  - mt
   Hazard:
-    - danger
-    - avy
-    - avalanche
-    - slide
-    - caution
-    - warning
-    - deadfall
-    - dead fall
+  - danger
+  - avy
+  - avalanche
+  - slide
+  - caution
+  - warning
+  - deadfall
+  - dead fall
   Photo:
-    - camera
-    - photo
+  - camera
+  - photo
   View:
-    - view
-    - viewpoint
-    - vista
-    - overlook
-    - scenic
+  - view
+  - viewpoint
+  - vista
+  - overlook
+  - scenic
   Cabin:
-    - cabin
-    - hut
-    - yurt
+  - cabin
+  - hut
+  - yurt

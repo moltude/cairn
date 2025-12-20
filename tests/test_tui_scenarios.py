@@ -89,6 +89,9 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
             app.model.output_dir = out_dir
             await pilot.press("e")
             await pilot.pause()
+            # Confirm the export dialog
+            await pilot.press("enter")
+            await pilot.pause()
             rec.snapshot(app, label="export_started")
 
             # Wait for export to complete (background thread updates state).
@@ -150,6 +153,9 @@ def test_tui_export_error_when_output_path_is_a_file(tmp_path: Path) -> None:
 
             app.model.output_dir = not_a_dir
             await pilot.press("e")
+            await pilot.pause()
+            # Confirm the export dialog
+            await pilot.press("enter")
             await pilot.pause()
 
             # Error should be set synchronously (mkdir fails before thread starts).

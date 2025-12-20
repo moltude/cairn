@@ -8,7 +8,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import DataTable, Footer, Header, Input, Static
+from textual.widgets import DataTable, Header, Input, Static
 import threading
 import os
 import time
@@ -24,17 +24,22 @@ from cairn.core.config import (
     get_icon_color,
     load_config,
     normalize_onx_icon_name,
+    save_user_mapping,
 )
+from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.parser import ParsedData, parse_geojson
 from cairn.ui.state import UIState, load_state
 from cairn.tui.edit_screens import (
     ActionsModal,
     ColorPickerModal,
+    ConfirmModal,
     DescriptionModal,
     EditContext,
+    HelpModal,
     IconOverrideModal,
     InfoModal,
     RenameModal,
+    UnmappedSymbolModal,
 )
 
 # File types shown in Select_file tree. (Parsing support may be narrower than visibility.)
@@ -51,6 +56,17 @@ STEPS = [
     "Preview",
     "Save",
 ]
+
+# Display labels for steps (internal names use underscores for code references)
+STEP_LABELS = {
+    "Select_file": "Select file",
+    "List_data": "List map data",
+    "Folder": "Folder",
+    "Routes": "Routes",
+    "Waypoints": "Waypoints",
+    "Preview": "Preview",
+    "Save": "Save",
+}
 
 
 @dataclass
@@ -79,13 +95,86 @@ class Stepper(Static):
     def render(self) -> str:
         lines: list[str] = []
         for s in self.steps:
+            label = STEP_LABELS.get(s, s)
             if s == self.current:
-                lines.append(f" ▸ {s}")
+                lines.append(f" ▸ {label}")
             elif s in self.done:
-                lines.append(f" ✓ {s}")
+                lines.append(f" ✓ {label}")
             else:
-                lines.append(f"   {s}")
+                lines.append(f"   {label}")
         return "\n".join(lines)
+
+
+class StepAwareFooter(Static):
+    """Dynamic footer showing step-specific keyboard shortcuts."""
+
+    # Define shortcuts for each step
+    STEP_SHORTCUTS = {
+        "Select_file": [
+            ("↑↓", "Navigate"),
+            ("Enter", "Select"),
+            ("Esc", "Back"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ],
+        "List_data": [
+            ("m", "Map unmapped"),
+            ("Enter", "Continue"),
+            ("Esc", "Back"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ],
+        "Folder": [
+            ("↑↓", "Navigate"),
+            ("Enter", "Select"),
+            ("Esc", "Back"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ],
+        "Routes": [
+            ("Space", "Toggle"),
+            ("Ctrl+A", "Select all"),
+            ("/", "Search"),
+            ("a", "Edit"),
+            ("x", "Clear"),
+            ("Enter", "Continue"),
+            ("?", "Help"),
+        ],
+        "Waypoints": [
+            ("Space", "Toggle"),
+            ("Ctrl+A", "Select all"),
+            ("/", "Search"),
+            ("a", "Edit"),
+            ("x", "Clear"),
+            ("Enter", "Continue"),
+            ("?", "Help"),
+        ],
+        "Preview": [
+            ("Enter", "Continue"),
+            ("Esc", "Back"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ],
+        "Save": [
+            ("e", "Export"),
+            ("Esc", "Back"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ],
+    }
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.current_step: str = "Select_file"
+
+    def set_step(self, step: str) -> None:
+        self.current_step = step
+        self.refresh()
+
+    def render(self) -> str:
+        shortcuts = self.STEP_SHORTCUTS.get(self.current_step, [])
+        parts = [f"[bold]{key}[/] {desc}" for key, desc in shortcuts]
+        return "  ".join(parts)
 
 
 class CairnTuiApp(App):
@@ -100,12 +189,15 @@ class CairnTuiApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Quit"),
+        Binding("question_mark", "show_help", "Help", key_display="?"),
         Binding("tab", "focus_next", "Next field"),
         Binding("/", "focus_search", "Search"),
         Binding("t", "focus_table", "Table"),
         Binding("a", "actions", "Edit"),
         Binding("x", "clear_selection", "Clear selection"),
+        Binding("ctrl+a", "select_all", "Select all"),
         Binding("e", "export", "Export"),
+        Binding("m", "map_unmapped", "Map unmapped"),
     ]
 
     step: reactive[str] = reactive(STEPS[0])
@@ -128,6 +220,9 @@ class CairnTuiApp(App):
         self._debug_events: list[dict[str, object]] = []
         # Select_file browser state
         self._file_browser_dir: Optional[Path] = None
+        # Unmapped symbol mapping state
+        self._unmapped_symbols: list[tuple[str, dict]] = []  # [(symbol, info), ...]
+        self._unmapped_index: int = 0
 
     def _set_input_path(self, p: Path) -> None:
         """
@@ -342,10 +437,10 @@ class CairnTuiApp(App):
 
         try:
             if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Sel", "Name", "Stroke", "Pattern", "Width")
+                table.add_columns("Sel", "Name", "Color", "Pattern", "Width")
         except Exception:
             try:
-                table.add_columns("Sel", "Name", "Stroke", "Pattern", "Width")
+                table.add_columns("Sel", "Name", "Color", "Pattern", "Width")
             except Exception:
                 pass
 
@@ -355,10 +450,15 @@ class CairnTuiApp(App):
             if q and q not in name.lower():
                 continue
             sel = "●" if key in self._selected_route_keys else " "
+            rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
+            try:
+                color_cell = self._color_chip(rgba)
+            except Exception:
+                color_cell = f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}"
             table.add_row(
                 sel,
                 name,
-                str(getattr(trk, "stroke", "") or ""),
+                color_cell,
                 str(getattr(trk, "pattern", "") or ""),
                 str(getattr(trk, "stroke_width", "") or ""),
                 key=key,
@@ -380,16 +480,18 @@ class CairnTuiApp(App):
                 yield Stepper(steps=STEPS, id="stepper")
                 yield Static("")
                 yield Static("Keys:", classes="muted")
+                yield Static("?: Help", classes="muted")
                 yield Static("Enter: Continue", classes="muted")
                 yield Static("Esc: Back", classes="muted")
                 yield Static("a: Edit", classes="muted")
+                yield Static("Ctrl+A: Select all", classes="muted")
                 yield Static("x: Clear selection", classes="muted")
                 yield Static("q: Quit", classes="muted")
             with Container(classes="main"):
                 yield Static("", id="main_title", classes="title")
                 yield Static("", id="main_subtitle", classes="muted")
                 yield Container(id="main_body")
-        yield Footer()
+        yield StepAwareFooter(id="step_footer", classes="footer")
 
     def on_mount(self) -> None:
         self._goto("Select_file")
@@ -458,7 +560,10 @@ class CairnTuiApp(App):
         except Exception:
             entries = []
 
-        dirs = sorted([p for p in entries if p.is_dir()], key=lambda p: p.name.lower())
+        dirs = sorted(
+            [p for p in entries if p.is_dir() and not p.name.startswith(".")],
+            key=lambda p: p.name.lower(),
+        )
         files = sorted(
             [
                 p
@@ -540,11 +645,20 @@ class CairnTuiApp(App):
             self._waypoints_edited = False
         self._render_sidebar()
         self._render_main()
+        self._update_footer()
         try:
             self.call_after_refresh(self._reset_focus_for_step)
         except Exception:
             # If call_after_refresh isn't available for some reason, fall back to best effort.
             self._reset_focus_for_step()
+
+    def _update_footer(self) -> None:
+        """Update the step-aware footer with current step's shortcuts."""
+        try:
+            footer = self.query_one("#step_footer", StepAwareFooter)
+            footer.set_step(self.step)
+        except Exception:
+            pass
 
     def action_back(self) -> None:
         idx = STEPS.index(self.step)
@@ -636,7 +750,139 @@ class CairnTuiApp(App):
 
     def action_export(self) -> None:
         if self.step == "Save":
+            # Show confirmation before export
+            self.push_screen(
+                ConfirmModal(
+                    "Ready to generate map files?\n\n"
+                    "This will write GPX/KML files to the output directory.",
+                    title="Confirm Export",
+                ),
+                self._on_export_confirmed,
+            )
+
+    def _on_export_confirmed(self, confirmed: bool) -> None:
+        if confirmed:
             self._start_export()
+
+    def action_show_help(self) -> None:
+        """Show context-sensitive help modal."""
+        self.push_screen(HelpModal(step=self.step))
+
+    def action_select_all(self) -> None:
+        """Select all items in the current Routes/Waypoints table."""
+        if self.step == "Routes":
+            if self.model.parsed is None or not self.model.selected_folder_id:
+                return
+            fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
+            tracks = list((fd or {}).get("tracks", []) or [])
+            # Select all visible (respecting filter)
+            q = (self._routes_filter or "").strip().lower()
+            for i, trk in enumerate(tracks):
+                name = str(getattr(trk, "title", "") or "Untitled")
+                if q and q not in name.lower():
+                    continue
+                self._selected_route_keys.add(str(i))
+            self._refresh_routes_table()
+        elif self.step == "Waypoints":
+            if self.model.parsed is None or not self.model.selected_folder_id:
+                return
+            fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
+            waypoints = list((fd or {}).get("waypoints", []) or [])
+            # Select all visible (respecting filter)
+            q = (self._waypoints_filter or "").strip().lower()
+            for i, wp in enumerate(waypoints):
+                name = str(getattr(wp, "title", "") or "Untitled")
+                if q and q not in name.lower():
+                    continue
+                self._selected_waypoint_keys.add(str(i))
+            self._refresh_waypoints_table()
+
+    def action_map_unmapped(self) -> None:
+        """Start the process of mapping unmapped CalTopo symbols to OnX icons."""
+        if self.step != "List_data":
+            return
+        if self.model.parsed is None:
+            self.push_screen(InfoModal("No data parsed yet. Select a file first."))
+            return
+
+        # Collect unmapped symbols
+        unmapped = collect_unmapped_caltopo_symbols(self.model.parsed, self._config)
+        if not unmapped:
+            self.push_screen(InfoModal("All symbols are already mapped!", title="No Unmapped Symbols"))
+            return
+
+        # Sort by count (most common first) for efficient mapping
+        sorted_unmapped = sorted(unmapped.items(), key=lambda kv: kv[1]["count"], reverse=True)
+        self._unmapped_symbols = sorted_unmapped
+        self._unmapped_index = 0
+
+        # Show the first unmapped symbol modal
+        self._show_next_unmapped_modal()
+
+    def _show_next_unmapped_modal(self) -> None:
+        """Show modal for the next unmapped symbol in the queue."""
+        if self._unmapped_index >= len(self._unmapped_symbols):
+            # All done
+            self.push_screen(
+                InfoModal(
+                    "All symbols have been processed.\n\n"
+                    "Mappings are saved to cairn_config.yaml.\n"
+                    "The config has been reloaded.",
+                    title="Mapping Complete"
+                )
+            )
+            # Reload config to pick up new mappings
+            self._config = load_config(None)
+            # Re-render to update unmapped count
+            self._render_main()
+            return
+
+        symbol, info = self._unmapped_symbols[self._unmapped_index]
+        example = (info.get("examples") or [""])[0]
+        count = info.get("count", 0)
+
+        # Get fuzzy match suggestions
+        all_icons = get_all_onx_icons()
+        matcher = FuzzyIconMatcher(all_icons)
+        suggestions = matcher.find_best_matches(symbol, top_n=5)
+
+        self.push_screen(
+            UnmappedSymbolModal(
+                symbol=symbol,
+                example=f"{example} ({count} waypoint{'s' if count != 1 else ''})",
+                suggestions=suggestions,
+                all_icons=all_icons,
+                current_index=self._unmapped_index + 1,
+                total_count=len(self._unmapped_symbols),
+            ),
+            self._on_unmapped_symbol_mapped,
+        )
+
+    def _on_unmapped_symbol_mapped(self, result: Optional[str]) -> None:
+        """Handle the result of mapping an unmapped symbol."""
+        if result is None:
+            # User pressed Esc - cancel all remaining
+            self._unmapped_symbols = []
+            self._unmapped_index = 0
+            return
+
+        if result == "__skip__":
+            # User skipped this symbol, move to next
+            self._unmapped_index += 1
+            self._show_next_unmapped_modal()
+            return
+
+        # User selected an icon - save the mapping
+        symbol, _ = self._unmapped_symbols[self._unmapped_index]
+        try:
+            save_user_mapping(symbol, result)
+        except Exception as e:
+            self.push_screen(InfoModal(f"Error saving mapping: {e}", title="Error"))
+            return
+
+        # Move to next symbol
+        self._unmapped_index += 1
+        self._show_next_unmapped_modal()
 
     # -----------------------
     # Editing (TUI)
@@ -970,10 +1216,11 @@ class CairnTuiApp(App):
                 for sym, info in top:
                     ex = (info.get("examples") or [""])[0]
                     body.mount(Static(f"  - {sym} ({info['count']}): {ex}", classes="muted"))
+                body.mount(Static(""))  # spacer
+                body.mount(Static("Press [bold]m[/] to map these symbols now, or Enter to continue.", classes="muted"))
             else:
                 body.mount(Static("Unmapped symbols: 0", classes="ok"))
-
-            body.mount(Static("Press Enter to continue.", classes="muted"))
+                body.mount(Static("Press Enter to continue.", classes="muted"))
             return
 
         if self.step == "Folder":
@@ -1013,7 +1260,7 @@ class CairnTuiApp(App):
             tracks = list((fd or {}).get("tracks", []) or [])
             body.mount(Input(placeholder="Filter routes…", id="routes_search"))
             table = DataTable(id="routes_table")
-            table.add_columns("Sel", "Name", "Stroke", "Pattern", "Width")
+            table.add_columns("Sel", "Name", "Color", "Pattern", "Width")
             q = (self._routes_filter or "").strip().lower()
             for i, trk in enumerate(tracks):
                 name = str(getattr(trk, "title", "") or "Untitled")
@@ -1021,10 +1268,11 @@ class CairnTuiApp(App):
                     continue
                 key = str(i)
                 sel = "●" if key in self._selected_route_keys else " "
+                rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
                 table.add_row(
                     sel,
                     name,
-                    str(getattr(trk, "stroke", "") or ""),
+                    self._color_chip(rgba),
                     str(getattr(trk, "pattern", "") or ""),
                     str(getattr(trk, "stroke_width", "") or ""),
                     key=key,
@@ -1313,6 +1561,15 @@ class CairnTuiApp(App):
                 return
         except Exception:
             pass
+
+        # Handle ? for help (works from anywhere)
+        if event.key == "question_mark" or getattr(event, "character", None) == "?":
+            self.action_show_help()
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
 
         # Make navigation reliable regardless of focused widget.
         # Some widgets may consume Enter/Escape depending on focus state.
