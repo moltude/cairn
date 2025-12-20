@@ -3,6 +3,7 @@
 Screen {
   background: #2A1F1D;
   color: #E0DBB7;
+  layers: base overlay;
 }
 
 /* Layout */
@@ -35,11 +36,13 @@ Screen {
 }
 
 .accent {
-  color: #E99D2A;
+  /* Muted amber accent (avoid high-intensity brights; keep good contrast on dark bg) */
+  color: #C48A4A;
 }
 
 .ok {
-  color: #95D8BA;
+  /* Muted green (avoid high-intensity brights) */
+  color: #7FB89D;
 }
 
 .warn {
@@ -57,7 +60,7 @@ Screen {
 }
 
 .step--done {
-  color: #95D8BA;
+  color: #7FB89D;
 }
 
 .step--current {
@@ -91,4 +94,69 @@ DataTable > .datatable--header {
 
 DataTable > .datatable--cursor {
   background: #563C27;
+}
+
+/* Inline edit overlay (true popup, doesn't navigate Screens) */
+
+#inline_edit_overlay {
+  display: none;
+  layer: overlay;
+  width: 100%;
+  height: 100%;
+  align: center middle;
+}
+
+#inline_edit_overlay.open {
+  display: block;
+}
+
+#inline_edit_dialog {
+  width: 70;
+  height: auto;
+  max-height: 70%;
+  border: solid #6FA6C6;
+  background: #233642;
+  padding: 1 2;
+}
+
+#color_picker_overlay, #icon_picker_overlay {
+  display: none;
+  layer: overlay;
+  width: 100%;
+  height: 100%;
+  align: center middle;
+}
+
+#color_picker_overlay.open, #icon_picker_overlay.open {
+  display: block;
+}
+
+#color_picker_dialog, #icon_picker_dialog {
+  width: 80;
+  height: auto;
+  max-height: 75%;
+  border: solid #563C27;
+  background: #241A18;
+  padding: 1 2;
+}
+
+#rename_overlay, #description_overlay, #confirm_overlay {
+  display: none;
+  layer: overlay;
+  width: 100%;
+  height: 100%;
+  align: center middle;
+}
+
+#rename_overlay.open, #description_overlay.open, #confirm_overlay.open {
+  display: block;
+}
+
+#rename_dialog, #description_dialog, #confirm_dialog {
+  width: 80;
+  height: auto;
+  max-height: 60%;
+  border: solid #563C27;
+  background: #241A18;
+  padding: 1 2;
 }

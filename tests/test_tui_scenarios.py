@@ -87,10 +87,15 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
 
             # Real export into tmp_path.
             app.model.output_dir = out_dir
-            await pilot.press("e")
+            # Trigger export via Save browser: move to [Export], then Enter.
+            from tests.tui_harness import move_datatable_cursor_to_row_key
+            app.action_focus_table()
             await pilot.pause()
-            # Confirm the export dialog
-            await pilot.press("enter")
+            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+            await pilot.pause()
+            await pilot.press("enter")  # open Confirm Export modal
+            await pilot.pause()
+            await pilot.press("enter")  # confirm export
             await pilot.pause()
             rec.snapshot(app, label="export_started")
 
@@ -152,9 +157,13 @@ def test_tui_export_error_when_output_path_is_a_file(tmp_path: Path) -> None:
             rec.snapshot(app, label="save")
 
             app.model.output_dir = not_a_dir
-            await pilot.press("e")
+            from tests.tui_harness import move_datatable_cursor_to_row_key
+            app.action_focus_table()
             await pilot.pause()
-            # Confirm the export dialog
+            move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()
 

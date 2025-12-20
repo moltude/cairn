@@ -110,6 +110,65 @@ def _dump_datatable(table: Any, *, max_rows: int = 25) -> dict[str, Any]:
     return out
 
 
+def move_datatable_cursor_to_row_key(app: Any, *, table_id: str, target_row_key: str) -> None:
+    """
+    Move a DataTable cursor to the row whose key matches target_row_key.
+
+    This avoids tests depending on row ordering (e.g. Save browser action rows moving).
+    """
+    tbl = _safe_query(app, f"#{table_id}")
+    if tbl is None or type(tbl).__name__ != "DataTable":
+        return
+
+    try:
+        tbl.focus()
+    except Exception:
+        pass
+
+    try:
+        row_count = int(getattr(tbl, "row_count", 0) or 0)
+    except Exception:
+        row_count = 0
+    if row_count <= 0:
+        return
+
+    target_idx: Optional[int] = None
+    for i in range(row_count):
+        try:
+            rk = tbl.get_row_key(i)  # type: ignore[attr-defined]
+        except Exception:
+            rk = None
+        if rk is None:
+            continue
+        rk_val = getattr(rk, "value", rk)
+        if str(rk_val) == str(target_row_key):
+            target_idx = i
+            break
+    if target_idx is None:
+        return
+
+    try:
+        current_pos = int(getattr(tbl, "cursor_row", 0) or 0)
+    except Exception:
+        current_pos = 0
+
+    # Move to top, then down to target (stable even if current_pos is unreliable).
+    try:
+        if current_pos > 0:
+            for _ in range(current_pos):
+                try:
+                    tbl.action_cursor_up()  # type: ignore[attr-defined]
+                except Exception:
+                    break
+        for _ in range(target_idx):
+            try:
+                tbl.action_cursor_down()  # type: ignore[attr-defined]
+            except Exception:
+                break
+    except Exception:
+        return
+
+
 @dataclass
 class ArtifactRecorder:
     scenario: str

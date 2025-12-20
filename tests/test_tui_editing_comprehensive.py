@@ -33,6 +33,22 @@ def _pick_folder_id_by_index(app, index: int = 0) -> str:
     return folder_ids[index]
 
 
+def _pick_folder_id_with_min_counts(
+    app, *, min_waypoints: int = 0, min_tracks: int = 0
+) -> str:
+    """Pick a folder with at least N waypoints/tracks (best-effort deterministic)."""
+    assert app.model.parsed is not None, "Expected parsed data"
+    folders = getattr(app.model.parsed, "folders", {}) or {}
+    for folder_id, fd in (folders or {}).items():
+        waypoints = list((fd or {}).get("waypoints", []) or [])
+        tracks = list((fd or {}).get("tracks", []) or [])
+        if len(waypoints) >= int(min_waypoints) and len(tracks) >= int(min_tracks):
+            return str(folder_id)
+    assert (
+        False
+    ), f"No folder found with >= {min_waypoints} waypoints and >= {min_tracks} tracks"
+
+
 def _get_folder_name(app, folder_id: str) -> str:
     """Get the display name for a folder."""
     folders = getattr(app.model.parsed, "folders", {}) or {}
@@ -167,7 +183,7 @@ class TestSingleItemEditing:
 
                 # Set new name
                 try:
-                    inp = app.screen.query_one("#new_title", Input)
+                    inp = app.query_one("#rename_value", Input)
                     inp.value = NEW_NAME
                 except Exception:
                     pass
@@ -186,7 +202,13 @@ class TestSingleItemEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("e")
+                # Trigger export via Save browser: move to [Export], then Enter.
+                from tests.tui_harness import move_datatable_cursor_to_row_key
+                app.action_focus_table()
+                await pilot.pause()
+                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+                await pilot.pause()
+                await pilot.press("enter")  # open Confirm Export modal
                 await pilot.pause()
                 await pilot.press("enter")  # Confirm export
                 await pilot.pause()
@@ -277,7 +299,12 @@ class TestSingleItemEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("e")
+                from tests.tui_harness import move_datatable_cursor_to_row_key
+                app.action_focus_table()
+                await pilot.pause()
+                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+                await pilot.pause()
+                await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -347,7 +374,7 @@ class TestMultiSelectEditing:
                 await pilot.pause()
 
                 try:
-                    inp = app.screen.query_one("#new_title", Input)
+                    inp = app.query_one("#rename_value", Input)
                     inp.value = BULK_NAME
                 except Exception:
                     pass
@@ -367,7 +394,12 @@ class TestMultiSelectEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("e")
+                from tests.tui_harness import move_datatable_cursor_to_row_key
+                app.action_focus_table()
+                await pilot.pause()
+                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+                await pilot.pause()
+                await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -405,10 +437,10 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")  # -> Routes
+                app.model.selected_folder_id = _pick_folder_id_with_min_counts(
+                    app, min_tracks=2
+                )
+                app._goto("Routes")
                 await pilot.pause()
 
                 assert app.step == "Routes"
@@ -424,11 +456,11 @@ class TestMultiSelectEditing:
 
                 assert len(app._selected_route_keys) == 2
 
-                # Set color (rename -> desc -> color)
+                # Set color via inline overlay (move cursor to Color row then Enter)
                 await pilot.press("a")
                 await pilot.pause()
-                await pilot.press("down")
-                await pilot.press("down")
+                await pilot.press("down")  # Description
+                await pilot.press("down")  # Color
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -437,16 +469,17 @@ class TestMultiSelectEditing:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                # Export
-                await pilot.press("enter")  # -> Waypoints
-                await pilot.pause()
-                await pilot.press("enter")  # -> Preview
-                await pilot.pause()
-                await pilot.press("enter")  # -> Save
+                # Export (jump to Save directly; routes-only folders may skip Waypoints)
+                app._goto("Save")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("e")
+                from tests.tui_harness import move_datatable_cursor_to_row_key
+                app.action_focus_table()
+                await pilot.pause()
+                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+                await pilot.pause()
+                await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -476,12 +509,10 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")  # -> Routes
-                await pilot.pause()
-                await pilot.press("enter")  # -> Waypoints
+                app.model.selected_folder_id = _pick_folder_id_with_min_counts(
+                    app, min_waypoints=3
+                )
+                app._goto("Waypoints")
                 await pilot.pause()
 
                 assert app.step == "Waypoints"
@@ -552,6 +583,61 @@ class TestMultiSelectEditing:
 
         asyncio.run(_run())
 
+    def test_rename_multiple_waypoints_confirm_does_not_crash(self, tmp_path: Path) -> None:
+        """Regression: confirming multi-rename should not crash (AttributeError _apply_rename_confirmed)."""
+
+        async def _run() -> None:
+            from cairn.tui.app import CairnTuiApp
+            from textual.widgets import Input
+
+            fixture_copy = copy_fixture_to_tmp(tmp_path)
+            app = CairnTuiApp()
+            app.model.input_path = fixture_copy
+
+            async with app.run_test() as pilot:
+                app._goto("List_data")
+                await pilot.pause()
+                app.model.selected_folder_id = _pick_folder_id_with_min_counts(app, min_waypoints=3)
+                app._goto("Waypoints")
+                await pilot.pause()
+
+                # Select 2 waypoints
+                app.action_focus_table()
+                await pilot.pause()
+                await pilot.press("space")
+                await pilot.pause()
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("space")
+                await pilot.pause()
+                assert len(app._selected_waypoint_keys) == 2
+
+                selected_ids = set(app._selected_waypoint_keys)
+
+                # Open inline overlay, rename
+                await pilot.press("a")
+                await pilot.pause()
+                await pilot.press("enter")  # Name -> RenameModal
+                await pilot.pause()
+
+                NEW = "MULTI_RENAME_TEST"
+                inp = app.query_one("#rename_value", Input)
+                inp.value = NEW
+                await pilot.pause()
+                await pilot.press("enter")  # submit -> ConfirmOverlay
+                await pilot.pause()
+                await pilot.press("y")  # confirm
+                await pilot.pause()
+
+                # Verify both selected records got renamed (using stable ids)
+                _, waypoints = app._current_folder_features()
+                by_id = {str(getattr(w, "id", "")): w for w in waypoints}
+                renamed = [by_id[i] for i in selected_ids if i in by_id]
+                assert len(renamed) == 2
+                assert all(getattr(w, "title", "") == NEW for w in renamed)
+
+        asyncio.run(_run())
+
     def test_set_color_on_multiple_routes_ui_refresh(self, tmp_path: Path) -> None:
         """Verify setting color on multiple routes updates the UI table immediately."""
 
@@ -567,10 +653,10 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")  # -> Routes
+                app.model.selected_folder_id = _pick_folder_id_with_min_counts(
+                    app, min_tracks=2
+                )
+                app._goto("Routes")
                 await pilot.pause()
 
                 assert app.step == "Routes"
@@ -654,13 +740,9 @@ class TestMultiSelectEditing:
                 app._goto("List_data")
                 await pilot.pause()
                 app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
-                await pilot.press("enter")
+                # Navigate deterministically; step skipping can vary by folder contents.
+                app._goto("Waypoints")
                 await pilot.pause()
-                await pilot.press("enter")  # -> Routes
-                await pilot.pause()
-                await pilot.press("enter")  # -> Waypoints
-                await pilot.pause()
-
                 assert app.step == "Waypoints"
 
                 # Get waypoints in sorted order (as displayed in table)
@@ -669,6 +751,11 @@ class TestMultiSelectEditing:
 
                 if len(sorted_waypoints) < 2:
                     return  # Skip if not enough waypoints
+
+                # The waypoint that should be edited (index 1 in sorted order)
+                expected_waypoint = sorted_waypoints[1]
+                expected_key = str(getattr(expected_waypoint, "id", "") or "")
+                assert expected_key, "Expected waypoint to have a stable id"
 
                 # Select waypoint at index 1 in sorted order
                 app.action_focus_table()
@@ -680,11 +767,7 @@ class TestMultiSelectEditing:
 
                 assert len(app._selected_waypoint_keys) == 1
                 selected_key = list(app._selected_waypoint_keys)[0]
-                assert selected_key == "1", f"Expected key '1', got '{selected_key}'"
-
-                # Get the waypoint that should be edited (index 1 in sorted order)
-                expected_waypoint = sorted_waypoints[1]
-                expected_title = getattr(expected_waypoint, "title", "")
+                assert selected_key == expected_key, f"Expected key '{expected_key}', got '{selected_key}'"
 
                 # Rename it
                 await pilot.press("a")
@@ -694,7 +777,7 @@ class TestMultiSelectEditing:
 
                 NEW_NAME = "SORTING_TEST_WP"
                 try:
-                    inp = app.screen.query_one("#new_title", Input)
+                    inp = app.query_one("#rename_value", Input)
                     inp.value = NEW_NAME
                 except Exception:
                     pass
@@ -709,13 +792,16 @@ class TestMultiSelectEditing:
                 assert renamed[0] is expected_waypoint, "Wrong waypoint was renamed - sorting mismatch!"
 
                 # Export and verify GPX
-                await pilot.press("enter")  # Preview
-                await pilot.pause()
-                await pilot.press("enter")  # Save
+                app._goto("Save")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("e")
+                from tests.tui_harness import move_datatable_cursor_to_row_key
+                app.action_focus_table()
+                await pilot.pause()
+                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+                await pilot.pause()
+                await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -788,7 +874,7 @@ class TestSelectAllEditing:
                 await pilot.pause()
 
                 try:
-                    inp = app.screen.query_one("#new_description", Input)
+                    inp = app.query_one("#description_value", Input)
                     inp.value = BULK_DESC
                 except Exception:
                     pass
@@ -854,7 +940,7 @@ class TestDifferentFolders:
                 await pilot.pause()
 
                 try:
-                    inp = app.screen.query_one("#new_title", Input)
+                    inp = app.query_one("#rename_value", Input)
                     inp.value = SECOND_FOLDER_NAME
                 except Exception:
                     pass
@@ -869,7 +955,12 @@ class TestDifferentFolders:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("e")
+                from tests.tui_harness import move_datatable_cursor_to_row_key
+                app.action_focus_table()
+                await pilot.pause()
+                move_datatable_cursor_to_row_key(app, table_id="save_browser", target_row_key="__export__")
+                await pilot.pause()
+                await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()

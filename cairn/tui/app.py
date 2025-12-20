@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -12,6 +12,7 @@ from textual.widgets import DataTable, Header, Input, Static
 import threading
 import os
 import time
+import re
 
 from rich.text import Text
 
@@ -29,17 +30,18 @@ from cairn.core.config import (
 from cairn.core.matcher import FuzzyIconMatcher
 from cairn.core.parser import ParsedData, parse_geojson
 from cairn.ui.state import UIState, load_state
+from cairn.utils.utils import sanitize_filename
 from cairn.tui.edit_screens import (
-    ActionsModal,
-    ColorPickerModal,
+    ColorPickerOverlay,
+    ConfirmOverlay,
     ConfirmModal,
-    DescriptionModal,
+    DescriptionOverlay,
     EditContext,
-    EditRecordModal,
     HelpModal,
-    IconOverrideModal,
+    IconPickerOverlay,
+    InlineEditOverlay,
     InfoModal,
-    RenameModal,
+    RenameOverlay,
     UnmappedSymbolModal,
 )
 
@@ -114,6 +116,7 @@ class StepAwareFooter(Static):
         "Select_file": [
             ("↑↓", "Navigate"),
             ("Enter", "Select"),
+            ("Tab", "Next field"),
             ("Esc", "Back"),
             ("?", "Help"),
             ("q", "Quit"),
@@ -121,43 +124,58 @@ class StepAwareFooter(Static):
         "List_data": [
             ("m", "Map unmapped"),
             ("Enter", "Continue"),
+            ("Tab", "Next field"),
             ("Esc", "Back"),
             ("?", "Help"),
             ("q", "Quit"),
         ],
         "Folder": [
             ("↑↓", "Navigate"),
+            ("Space", "Toggle (multi-folder)"),
             ("Enter", "Select"),
+            ("Tab", "Next field"),
             ("Esc", "Back"),
             ("?", "Help"),
             ("q", "Quit"),
         ],
         "Routes": [
+            ("↑↓", "Navigate"),
             ("Space", "Toggle"),
-            ("Ctrl+A", "Select all"),
+            ("Ctrl+A", "Toggle all"),
             ("/", "Search"),
+            ("Tab", "Next field"),
             ("a", "Edit"),
             ("x", "Clear"),
-            ("Enter", "Continue"),
-            ("?", "Help"),
-        ],
-        "Waypoints": [
-            ("Space", "Toggle"),
-            ("Ctrl+A", "Select all"),
-            ("/", "Search"),
-            ("a", "Edit"),
-            ("x", "Clear"),
-            ("Enter", "Continue"),
-            ("?", "Help"),
-        ],
-        "Preview": [
             ("Enter", "Continue"),
             ("Esc", "Back"),
             ("?", "Help"),
             ("q", "Quit"),
         ],
+        "Waypoints": [
+            ("↑↓", "Navigate"),
+            ("Space", "Toggle"),
+            ("Ctrl+A", "Toggle all"),
+            ("/", "Search"),
+            ("Tab", "Next field"),
+            ("a", "Edit"),
+            ("x", "Clear"),
+            ("Enter", "Continue"),
+            ("Esc", "Back"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ],
+        "Preview": [
+            ("Enter", "Continue"),
+            ("Tab", "Next field"),
+            ("Esc", "Back"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ],
         "Save": [
-            ("e", "Export"),
+            ("Enter", "Export"),
+            ("Tab", "Next field"),
+            ("r", "Apply names"),
+            ("n", "New file"),
             ("Esc", "Back"),
             ("?", "Help"),
             ("q", "Quit"),
@@ -191,14 +209,16 @@ class CairnTuiApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Quit"),
+        Binding("escape", "back", "Back", key_display="Esc"),
         Binding("question_mark", "show_help", "Help", key_display="?"),
         Binding("tab", "focus_next", "Next field"),
         Binding("/", "focus_search", "Search"),
         Binding("t", "focus_table", "Table"),
         Binding("a", "actions", "Edit"),
         Binding("x", "clear_selection", "Clear selection"),
-        Binding("ctrl+a", "select_all", "Select all"),
-        Binding("e", "export", "Export"),
+        Binding("ctrl+a", "select_all", "Toggle all"),
+        Binding("r", "apply_renames", "Apply names"),
+        Binding("n", "new_file", "New file"),
         Binding("m", "map_unmapped", "Map unmapped"),
     ]
 
@@ -222,11 +242,18 @@ class CairnTuiApp(App):
         self._debug_events: list[dict[str, object]] = []
         # Select_file browser state
         self._file_browser_dir: Optional[Path] = None
+        # Save browser state (output directory picker)
+        self._save_browser_dir: Optional[Path] = None
+        self._output_prefix: str = ""
+        self._rename_overrides_by_idx: dict[int, str] = {}
+        self._post_save_prompt_shown: bool = False
         # Unmapped symbol mapping state
         self._unmapped_symbols: list[tuple[str, dict]] = []  # [(symbol, info), ...]
         self._unmapped_index: int = 0
         # Edit flow state
         self._in_single_item_edit: bool = False  # Track if we're editing a single item
+        self._in_inline_edit: bool = False  # Track if we're in inline edit mode (single or multiple)
+        self._confirm_callback: Optional[Callable[[bool], None]] = None
         # Multi-folder workflow state
         self._folder_iteration_mode: bool = False
         self._folders_to_process: list[str] = []
@@ -280,6 +307,10 @@ class CairnTuiApp(App):
         self._export_manifest = None
         self._export_error = None
         self._export_in_progress = False
+        self._rename_overrides_by_idx.clear()
+        self._output_prefix = ""
+        self._save_browser_dir = None
+        self._post_save_prompt_shown = False
 
         # Reset progress indicator.
         self._done_steps.clear()
@@ -479,10 +510,10 @@ class CairnTuiApp(App):
         # Ensure columns exist if clear() nuked them.
         try:
             if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Selected", "Name", "Symbol", "Mapped icon", "Color")
+                table.add_columns("Selected", "Name", "OnX icon", "OnX color")
         except Exception:
             try:
-                table.add_columns("Selected", "Name", "Symbol", "Mapped icon", "Color")
+                table.add_columns("Selected", "Name", "OnX icon", "OnX color")
             except Exception:
                 pass
 
@@ -490,19 +521,18 @@ class CairnTuiApp(App):
         waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
 
         for i, wp in enumerate(waypoints):
-            key = str(i)
+            key = self._feature_row_key(wp, str(i))
             title0 = str(getattr(wp, "title", "") or "Untitled")
             if q and q not in title0.lower():
                 continue
             sel = "●" if key in self._selected_waypoint_keys else " "
-            sym = str(getattr(wp, "symbol", "") or "")
             mapped = self._resolved_waypoint_icon(wp)
             rgba = self._resolved_waypoint_color(wp, mapped)
             try:
-                table.add_row(sel, title0, sym, mapped, self._color_chip(rgba), key=key)
+                table.add_row(sel, title0, mapped, self._color_chip(rgba), key=key)
             except Exception:
                 name = ColorMapper.get_color_name(rgba).replace("-", " ").upper()
-                table.add_row(sel, title0, sym, mapped, f"■ {name}", key=key)
+                table.add_row(sel, title0, mapped, f"■ {name}", key=key)
 
     def _refresh_routes_table(self) -> None:
         if self.step != "Routes":
@@ -532,7 +562,7 @@ class CairnTuiApp(App):
         tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
 
         for i, trk in enumerate(tracks):
-            key = str(i)
+            key = self._feature_row_key(trk, str(i))
             name = str(getattr(trk, "title", "") or "Untitled")
             if q and q not in name.lower():
                 continue
@@ -566,22 +596,195 @@ class CairnTuiApp(App):
                 yield Static("")
                 yield Stepper(steps=STEPS, id="stepper")
                 yield Static("")
-                yield Static("Keys:", classes="muted")
-                yield Static("?: Help", classes="muted")
-                yield Static("Enter: Continue", classes="muted")
-                yield Static("Esc: Back", classes="muted")
-                yield Static("a: Edit", classes="muted")
-                yield Static("Ctrl+A: Select all", classes="muted")
-                yield Static("x: Clear selection", classes="muted")
-                yield Static("q: Quit", classes="muted")
+                yield Static("Instructions", classes="muted")
+                yield Static("", id="sidebar_instructions")
+                yield Static("")
+                yield Static("Shortcuts", classes="muted")
+                yield Static("", id="sidebar_shortcuts", classes="muted")
             with Container(classes="main"):
                 yield Static("", id="main_title", classes="title")
                 yield Static("", id="main_subtitle", classes="muted")
                 yield Container(id="main_body")
+                # True popup overlay (stays within the current screen, doesn't navigate).
+                yield InlineEditOverlay()
+                yield ColorPickerOverlay()
+                yield IconPickerOverlay()
+                yield RenameOverlay()
+                yield DescriptionOverlay()
+                yield ConfirmOverlay()
         yield StepAwareFooter(id="step_footer", classes="footer")
 
     def on_mount(self) -> None:
         self._goto("Select_file")
+
+    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
+        """
+        Handle selection events from the in-screen inline editor overlay.
+
+        We route back into the existing edit flow, but without Screen navigation.
+        """
+        field_key = getattr(message, "field_key", None)
+        if field_key is None:
+            # Done / Esc
+            self._on_inline_edit_action(None)
+            return
+        self._on_inline_edit_action(field_key)
+
+    def on_color_picker_overlay_color_picked(self, message: ColorPickerOverlay.ColorPicked) -> None:  # type: ignore[name-defined]
+        """Handle apply/cancel from ColorPickerOverlay."""
+        # Ensure focus doesn't remain on the (now hidden) picker table.
+        try:
+            self.set_focus(None)  # type: ignore[arg-type]
+        except Exception:
+            pass
+        rgba = getattr(message, "rgba", None)
+        if rgba is None:
+            # Cancel -> reopen inline edit overlay
+            ctx = self._selected_keys_for_step()
+            if ctx is not None:
+                feats = self._selected_features(ctx)
+                if feats:
+                    self._show_inline_overlay(ctx=ctx, feats=feats)
+            return
+
+        ctx = self._selected_keys_for_step()
+        if ctx is None:
+            return
+        self._apply_edit_payload({"action": "color", "value": rgba, "ctx": ctx})
+        # Re-open inline overlay
+        feats = self._selected_features(ctx)
+        if feats:
+            self._show_inline_overlay(ctx=ctx, feats=feats)
+
+    def on_icon_picker_overlay_icon_picked(self, message: IconPickerOverlay.IconPicked) -> None:  # type: ignore[name-defined]
+        """Handle apply/cancel from IconPickerOverlay."""
+        try:
+            self.set_focus(None)  # type: ignore[arg-type]
+        except Exception:
+            pass
+        icon = getattr(message, "icon", None)
+        if icon is None:
+            ctx = self._selected_keys_for_step()
+            if ctx is not None:
+                feats = self._selected_features(ctx)
+                if feats:
+                    self._show_inline_overlay(ctx=ctx, feats=feats)
+            return
+
+        ctx = self._selected_keys_for_step()
+        if ctx is None:
+            return
+        self._apply_edit_payload({"action": "icon", "value": icon, "ctx": ctx})
+        feats = self._selected_features(ctx)
+        if feats:
+            self._show_inline_overlay(ctx=ctx, feats=feats)
+
+    def _show_inline_overlay(self, *, ctx: EditContext, feats: list) -> None:
+        """(Internal) open InlineEditOverlay with current helpers."""
+        self._in_single_item_edit = len(feats) == 1
+        self._in_inline_edit = True
+
+        def get_route_color(feat):
+            stroke = str(getattr(feat, "stroke", "") or "")
+            if stroke:
+                return ColorMapper.map_track_color(stroke)
+            return ColorMapper.DEFAULT_TRACK_COLOR
+
+        try:
+            overlay = self.query_one("#inline_edit_overlay", InlineEditOverlay)
+        except Exception:
+            return
+        overlay.open(
+            ctx=ctx,
+            features=feats,
+            get_color_chip=self._color_chip,
+            get_waypoint_icon=self._resolved_waypoint_icon,
+            get_waypoint_color=self._resolved_waypoint_color,
+            get_route_color=get_route_color,
+        )
+
+    def on_rename_overlay_submitted(self, message: RenameOverlay.Submitted) -> None:  # type: ignore[name-defined]
+        """Handle apply/cancel from RenameOverlay."""
+        # Clear focus so we don't leave focus on a hidden overlay input.
+        try:
+            self.set_focus(None)  # type: ignore[arg-type]
+        except Exception:
+            pass
+
+        ctx = getattr(message, "ctx", None)
+        value = getattr(message, "value", None)
+        if not isinstance(ctx, EditContext) or value is None:
+            # Cancel -> return to inline overlay if editing
+            if isinstance(ctx, EditContext) and self._in_inline_edit:
+                feats = self._selected_features(ctx)
+                if feats:
+                    self._show_inline_overlay(ctx=ctx, feats=feats)
+            else:
+                try:
+                    self.call_after_refresh(self.action_focus_table)
+                except Exception:
+                    self.action_focus_table()
+            return
+
+        self._apply_edit_payload({"action": "rename", "value": value, "ctx": ctx})
+        # If this triggered a confirmation overlay (multi-rename), don't steal focus by
+        # reopening the inline overlay yet; `_apply_rename_confirmed` will bring us back.
+        try:
+            if self.query_one("#confirm_overlay", ConfirmOverlay).has_class("open"):
+                return
+        except Exception:
+            pass
+        if self._in_inline_edit:
+            feats = self._selected_features(ctx)
+            if feats:
+                self._show_inline_overlay(ctx=ctx, feats=feats)
+
+    def on_description_overlay_submitted(self, message: DescriptionOverlay.Submitted) -> None:  # type: ignore[name-defined]
+        """Handle apply/cancel from DescriptionOverlay."""
+        try:
+            self.set_focus(None)  # type: ignore[arg-type]
+        except Exception:
+            pass
+
+        ctx = getattr(message, "ctx", None)
+        value = getattr(message, "value", None)
+        if not isinstance(ctx, EditContext) or value is None:
+            if isinstance(ctx, EditContext) and self._in_inline_edit:
+                feats = self._selected_features(ctx)
+                if feats:
+                    self._show_inline_overlay(ctx=ctx, feats=feats)
+            else:
+                try:
+                    self.call_after_refresh(self.action_focus_table)
+                except Exception:
+                    self.action_focus_table()
+            return
+
+        self._apply_edit_payload({"action": "description", "value": value, "ctx": ctx})
+        if self._in_inline_edit:
+            feats = self._selected_features(ctx)
+            if feats:
+                self._show_inline_overlay(ctx=ctx, feats=feats)
+
+    def on_confirm_overlay_result(self, message: ConfirmOverlay.Result) -> None:  # type: ignore[name-defined]
+        """Handle result from ConfirmOverlay."""
+        cb = self._confirm_callback
+        self._confirm_callback = None
+        if cb is None:
+            return
+        try:
+            cb(bool(getattr(message, "confirmed", False)))
+        except Exception:
+            pass
+
+    def _confirm(self, *, title: str, message: str, callback: Callable[[bool], None]) -> None:
+        """Show an in-screen confirm overlay and run callback with result."""
+        self._confirm_callback = callback
+        try:
+            ov = self.query_one("#confirm_overlay", ConfirmOverlay)
+        except Exception:
+            return
+        ov.open(title=title, message=message)
 
     # -----------------------
     # Navigation
@@ -602,10 +805,17 @@ class CairnTuiApp(App):
             if self.step == "Folder":
                 self.query_one("#folder_table", DataTable).focus()
                 return
-            if self.step == "Save":
-                # Don't auto-focus the output dir input: it would swallow the 'e' binding
-                # (export) and make the default flow confusing. Users can Tab to focus it.
+            if self.step == "Preview":
+                # Preview uses read-only tables; avoid focusing them so Enter/q reach app handlers.
                 self.set_focus(None)  # type: ignore[arg-type]
+                return
+            if self.step == "Save":
+                # Default focus on the directory browser so arrows + Enter work immediately,
+                # but avoid focusing the output dir input (typing there should be explicit via Tab).
+                try:
+                    self.query_one("#save_browser", DataTable).focus()
+                except Exception:
+                    self.set_focus(None)  # type: ignore[arg-type]
                 return
         except Exception:
             return
@@ -634,10 +844,12 @@ class CairnTuiApp(App):
                 pass
 
         # Parent entry
+        has_parent_row = False
         try:
             parent = base.parent
             if parent != base:
-                table.add_row("..", "dir", key="__up__")
+                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
+                has_parent_row = True
         except Exception:
             pass
 
@@ -661,14 +873,16 @@ class CairnTuiApp(App):
         )
 
         for p in dirs:
-            table.add_row(p.name, "dir", key=f"dir:{p}")
+            # Subtle distinction: folders get the muted accent; files keep base foreground.
+            table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
         for p in files:
-            table.add_row(p.name, p.suffix.lower().lstrip("."), key=f"file:{p}")
+            ext = p.suffix.lower().lstrip(".")
+            table.add_row(Text(p.name), Text(ext, style="dim"), key=f"file:{p}")
 
-        # Keep cursor stable
+        # Default cursor: first real entry (not the parent '..' row).
         try:
             if getattr(table, "row_count", 0):
-                table.cursor_row = 0  # type: ignore[attr-defined]
+                table.cursor_row = (1 if has_parent_row and getattr(table, "row_count", 0) > 1 else 0)  # type: ignore[attr-defined]
         except Exception:
             pass
 
@@ -701,12 +915,6 @@ class CairnTuiApp(App):
         if rk.startswith("file:"):
             p = Path(rk[5:])
             suf = p.suffix.lower()
-            # Show selection in the input box.
-            try:
-                inp = self.query_one("#input_path", Input)
-                inp.value = str(p)
-            except Exception:
-                pass
             if suf in _PARSEABLE_INPUT_EXTS and p.exists() and p.is_file():
                 self._set_input_path(p)
                 self._done_steps.add("Select_file")
@@ -719,6 +927,105 @@ class CairnTuiApp(App):
                         "GPX/KML inputs are not supported in the TUI yet."
                     )
                 )
+            return
+
+    def _refresh_save_browser(self) -> None:
+        """Populate Save output directory browser table (directories only)."""
+        if self.step != "Save":
+            return
+        try:
+            table = self.query_one("#save_browser", DataTable)
+        except Exception:
+            return
+
+        base = self._save_browser_dir
+        if base is None:
+            return
+
+        self._datatable_clear_rows(table)
+        try:
+            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
+                table.add_columns("Name", "Type")
+        except Exception:
+            try:
+                table.add_columns("Name", "Type")
+            except Exception:
+                pass
+
+        has_parent_row = False
+        try:
+            parent = base.parent
+            if parent != base:
+                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
+                has_parent_row = True
+        except Exception:
+            pass
+
+        entries: list[Path] = []
+        try:
+            entries = list(base.iterdir())
+        except Exception:
+            entries = []
+
+        dirs = sorted(
+            [p for p in entries if p.is_dir() and not p.name.startswith(".")],
+            key=lambda p: p.name.lower(),
+        )
+        for p in dirs:
+            table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
+
+        # Action rows (kept at the bottom so the browser reads like a normal dir listing).
+        table.add_row(Text("[Use this folder]", style="bold"), Text("select", style="dim"), key="__use__")
+        table.add_row(Text("[Export]", style="bold"), Text("export", style="dim"), key="__export__")
+
+        # Default cursor: first directory entry (not the parent '..' row).
+        try:
+            if getattr(table, "row_count", 0):
+                first_dir_row = (1 if has_parent_row else 0)
+                if len(dirs) > 0:
+                    table.cursor_row = first_dir_row  # type: ignore[attr-defined]
+                else:
+                    # No sub-dirs; fall back to [Use this folder] (2nd-to-last row).
+                    table.cursor_row = max(int(getattr(table, "row_count", 0) or 0) - 2, 0)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def _save_browser_enter(self) -> None:
+        """Handle Enter on Save output directory browser table."""
+        if self.step != "Save":
+            return
+        base = self._save_browser_dir
+        if base is None:
+            return
+        try:
+            table = self.query_one("#save_browser", DataTable)
+        except Exception:
+            return
+        rk = self._table_cursor_row_key(table)
+        if not rk:
+            return
+        if rk == "__up__":
+            try:
+                self._save_browser_dir = base.parent if base.parent != base else base
+            except Exception:
+                self._save_browser_dir = base
+            self._render_main()
+            return
+        if rk == "__use__":
+            self.model.output_dir = base
+            self._render_sidebar()
+            return
+        if rk == "__export__":
+            # Export uses the global confirm modal (Enter to confirm, Esc to cancel).
+            self.action_export()
+            return
+        if rk.startswith("dir:"):
+            try:
+                p = Path(rk[4:])
+            except Exception:
+                return
+            self._save_browser_dir = p
+            self._render_main()
             return
 
     def _goto(self, step: str) -> None:
@@ -895,15 +1202,9 @@ class CairnTuiApp(App):
             return
 
         if self.step == "Routes":
-            # If items are selected, prompt to edit instead of advancing
+            # If items are selected, open edit modal directly instead of advancing
             if self._selected_route_keys:
-                self.push_screen(
-                    ConfirmModal(
-                        "You have selected items. Did you mean to edit the selected item(s)?",
-                        title="Edit Selected Items?",
-                    ),
-                    self._on_edit_prompt_confirmed,
-                )
+                self.action_actions()
                 return
             self._done_steps.add("Routes")
             # Check if waypoints exist, skip if not
@@ -945,15 +1246,9 @@ class CairnTuiApp(App):
             return
 
         if self.step == "Waypoints":
-            # If items are selected, prompt to edit instead of advancing
+            # If items are selected, open edit modal directly instead of advancing
             if self._selected_waypoint_keys:
-                self.push_screen(
-                    ConfirmModal(
-                        "You have selected items. Did you mean to edit the selected item(s)?",
-                        title="Edit Selected Items?",
-                    ),
-                    self._on_edit_prompt_confirmed,
-                )
+                self.action_actions()
                 return
             self._done_steps.add("Waypoints")
             # If in multi-folder mode, move to next folder
@@ -980,8 +1275,7 @@ class CairnTuiApp(App):
             return
 
         if self.step == "Save":
-            # In Save step, Enter is a no-op by default (export is explicit via 'e')
-            # so users can type in the output dir input without accidental exports.
+            # Save is driven by the on-screen browser/actions (Enter on [Export]).
             return
 
     def action_export(self) -> None:
@@ -1000,37 +1294,149 @@ class CairnTuiApp(App):
         if confirmed:
             self._start_export()
 
+    def action_apply_renames(self) -> None:
+        """Apply filename edits to exported files (Save step only)."""
+        if self.step != "Save":
+            return
+        if self._export_in_progress:
+            return
+        if not self._export_manifest:
+            return
+
+        out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
+        try:
+            out_dir = out_dir.expanduser()
+        except Exception:
+            pass
+
+        # Validate desired names first (no partial renames).
+        desired_by_idx: dict[int, str] = {}
+        seen: set[str] = set()
+        for i, (fn, fmt, cnt, sz) in enumerate(self._export_manifest):
+            raw = str(self._rename_overrides_by_idx.get(i, fn) or "").strip()
+            if not raw:
+                self._export_error = f"Rename error: filename for '{fn}' is empty."
+                self._render_main()
+                return
+            # Disallow paths; this is a rename within the output directory.
+            if Path(raw).name != raw:
+                self._export_error = f"Rename error: '{raw}' must be a filename (no directories)."
+                self._render_main()
+                return
+            # Keep extension stable to avoid confusing output types.
+            if Path(raw).suffix.lower() != Path(fn).suffix.lower():
+                self._export_error = f"Rename error: '{raw}' must keep extension '{Path(fn).suffix}'."
+                self._render_main()
+                return
+            if raw in seen:
+                self._export_error = f"Rename error: duplicate filename '{raw}'."
+                self._render_main()
+                return
+            seen.add(raw)
+            desired_by_idx[i] = raw
+
+        # Apply renames on disk.
+        try:
+            for i, (fn, fmt, cnt, sz) in enumerate(list(self._export_manifest)):
+                desired = desired_by_idx.get(i, fn)
+                src = out_dir / fn
+                dst = out_dir / desired
+                if desired == fn:
+                    continue
+                if not src.exists():
+                    self._export_error = f"Rename error: missing source file '{src.name}'."
+                    self._render_main()
+                    return
+                if dst.exists():
+                    self._export_error = f"Rename error: target already exists '{dst.name}'."
+                    self._render_main()
+                    return
+                os.rename(src, dst)
+                # Update manifest entry.
+                self._export_manifest[i] = (desired, fmt, cnt, sz)
+            self._export_error = None
+        except Exception as e:
+            self._export_error = f"Rename error: {e}"
+
+        self._render_main()
+
+    def action_new_file(self) -> None:
+        """Start a new migration (return to Select file and clear current session state)."""
+        if self._export_in_progress:
+            return
+        # Reset most session state, but keep output_dir and user config/state.
+        self.model.input_path = None
+        self.model.parsed = None
+        self.model.selected_folder_id = None
+        self._folder_name_by_id = {}
+        self._selected_route_keys.clear()
+        self._selected_waypoint_keys.clear()
+        self._routes_filter = ""
+        self._waypoints_filter = ""
+        self._export_manifest = None
+        self._export_error = None
+        self._rename_overrides_by_idx.clear()
+        self._output_prefix = ""
+        self._post_save_prompt_shown = False
+        self._done_steps.clear()
+        self._routes_edited = False
+        self._waypoints_edited = False
+        # Reinitialize the file browser directory on re-entry.
+        self._file_browser_dir = None
+        self._save_browser_dir = None
+        self._goto("Select_file")
+
     def action_show_help(self) -> None:
         """Show context-sensitive help modal."""
         self.push_screen(HelpModal(step=self.step))
 
     def action_select_all(self) -> None:
-        """Select all items in the current Routes/Waypoints table."""
+        """Toggle select-all in the current Routes/Waypoints table (respects filter)."""
         if self.step == "Routes":
             if self.model.parsed is None or not self.model.selected_folder_id:
                 return
             fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
             tracks = list((fd or {}).get("tracks", []) or [])
-            # Select all visible (respecting filter)
+            # Visible keys (respecting filter)
             q = (self._routes_filter or "").strip().lower()
+            tracks = sorted(
+                tracks,
+                key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower(),
+            )
+            visible: set[str] = set()
             for i, trk in enumerate(tracks):
                 name = str(getattr(trk, "title", "") or "Untitled")
                 if q and q not in name.lower():
                     continue
-                self._selected_route_keys.add(str(i))
+                visible.add(self._feature_row_key(trk, str(i)))
+            if visible and visible.issubset(self._selected_route_keys):
+                # All visible already selected -> deselect them.
+                self._selected_route_keys.difference_update(visible)
+            else:
+                # Not all selected -> select everything visible.
+                self._selected_route_keys.update(visible)
             self._refresh_routes_table()
         elif self.step == "Waypoints":
             if self.model.parsed is None or not self.model.selected_folder_id:
                 return
             fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
             waypoints = list((fd or {}).get("waypoints", []) or [])
-            # Select all visible (respecting filter)
+            # Visible keys (respecting filter)
             q = (self._waypoints_filter or "").strip().lower()
+            waypoints = sorted(
+                waypoints,
+                key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower(),
+            )
+            visible: set[str] = set()
             for i, wp in enumerate(waypoints):
                 name = str(getattr(wp, "title", "") or "Untitled")
                 if q and q not in name.lower():
                     continue
-                self._selected_waypoint_keys.add(str(i))
+                visible.add(self._feature_row_key(wp, str(i)))
+            if visible and visible.issubset(self._selected_waypoint_keys):
+                self._selected_waypoint_keys.difference_update(visible)
+            else:
+                self._selected_waypoint_keys.update(visible)
             self._refresh_waypoints_table()
 
     def action_map_unmapped(self) -> None:
@@ -1145,6 +1551,21 @@ class CairnTuiApp(App):
         waypoints = list((fd or {}).get("waypoints", []) or [])
         return tracks, waypoints
 
+    def _feature_row_key(self, feat: object, fallback: str) -> str:
+        """
+        Return a stable row key for a feature.
+
+        Prefer the parsed feature's GeoJSON `id` when present, since table display is
+        sorted and indices are not stable under rename/re-sort.
+        """
+        try:
+            fid = str(getattr(feat, "id", "") or "").strip()
+            if fid:
+                return fid
+        except Exception:
+            pass
+        return str(fallback)
+
     def _selected_keys_for_step(self) -> Optional[EditContext]:
         if self.step == "Routes":
             if not self._selected_route_keys:
@@ -1158,36 +1579,39 @@ class CairnTuiApp(App):
 
     def _selected_features(self, ctx: EditContext) -> list:
         tracks, waypoints = self._current_folder_features()
-        out = []
-        for k in ctx.selected_keys:
-            if not str(k).isdigit():
-                continue
-            idx = int(k)
-            if ctx.kind == "route":
-                # Sort tracks to match table display order (alphabetical by name)
-                sorted_tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
-                if 0 <= idx < len(sorted_tracks):
-                    out.append(sorted_tracks[idx])
-            elif ctx.kind == "waypoint":
-                # Sort waypoints to match table display order (alphabetical by name)
-                sorted_waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
-                if 0 <= idx < len(sorted_waypoints):
-                    out.append(sorted_waypoints[idx])
+        out: list = []
+
+        if ctx.kind == "route":
+            by_id = {self._feature_row_key(t, ""): t for t in tracks}
+            sorted_tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
+            for k in ctx.selected_keys:
+                kk = str(k)
+                if kk in by_id:
+                    out.append(by_id[kk])
+                    continue
+                # Back-compat / safety: allow index-based keys if present.
+                if kk.isdigit():
+                    idx = int(kk)
+                    if 0 <= idx < len(sorted_tracks):
+                        out.append(sorted_tracks[idx])
+            return out
+
+        if ctx.kind == "waypoint":
+            by_id = {self._feature_row_key(w, ""): w for w in waypoints}
+            sorted_waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
+            for k in ctx.selected_keys:
+                kk = str(k)
+                if kk in by_id:
+                    out.append(by_id[kk])
+                    continue
+                if kk.isdigit():
+                    idx = int(kk)
+                    if 0 <= idx < len(sorted_waypoints):
+                        out.append(sorted_waypoints[idx])
+            return out
+
         return out
 
-    def _on_edit_prompt_confirmed(self, confirmed: bool) -> None:
-        """Handle confirmation from edit prompt when Enter pressed with selection."""
-        if confirmed:
-            # Open edit mode
-            self.action_actions()
-        else:
-            # User said no, so advance workflow
-            if self.step == "Routes":
-                self._done_steps.add("Routes")
-                self._goto("Waypoints")
-            elif self.step == "Waypoints":
-                self._done_steps.add("Waypoints")
-                self._goto("Preview")
 
     def action_actions(self) -> None:
         # Only available on Routes/Waypoints steps.
@@ -1198,80 +1622,139 @@ class CairnTuiApp(App):
                     InfoModal("Select one or more items first (Space toggles selection).")
                 )
             return
-        # For single item, show EditRecordModal with current fields
-        # For multiple items, show ActionsModal
+        # For single item, show inline overlay with current fields
+        # For multiple items, show inline overlay (shows summary values)
         feats = self._selected_features(ctx)
-        if len(feats) == 1:
-            self._in_single_item_edit = True
-            self.push_screen(EditRecordModal(ctx=ctx, features=feats), self._on_edit_record_action)
-        else:
-            self._in_single_item_edit = False
-            self.push_screen(ActionsModal(ctx=ctx), self._on_action_chosen)
+        if not feats:
+            return
+        self._show_inline_overlay(ctx=ctx, feats=feats)
 
-    def _on_edit_record_action(self, action: object) -> None:
-        """Handle action from EditRecordModal (single item edit)."""
-        if action is None:
+    def _on_inline_edit_action(self, field: object) -> None:
+        """Handle field selection from inline overlay."""
+        if field is None:
+            # Done or Esc pressed - close editing
             self._in_single_item_edit = False
+            self._in_inline_edit = False
+            # Clear selection when returning to the list so nothing remains highlighted.
+            try:
+                if self.step == "Routes":
+                    self._selected_route_keys.clear()
+                    self._refresh_routes_table()
+                elif self.step == "Waypoints":
+                    self._selected_waypoint_keys.clear()
+                    self._refresh_waypoints_table()
+            except Exception:
+                pass
+            # Critical: restore focus to the underlying table. Otherwise focus may remain
+            # on the now-hidden overlay DataTable, making the screen feel "frozen".
+            try:
+                self.set_focus(None)  # type: ignore[arg-type]
+            except Exception:
+                pass
+            try:
+                self.call_after_refresh(self.action_focus_table)
+            except Exception:
+                self.action_focus_table()
             return
-        act = str(action or "").strip().lower()
-        if act == "done" or act == "":
+        field_key = str(field or "").strip().lower()
+        if field_key == "done" or field_key == "":
             self._in_single_item_edit = False
+            self._in_inline_edit = False
+            # Clear selection when returning to the list so nothing remains highlighted.
+            try:
+                if self.step == "Routes":
+                    self._selected_route_keys.clear()
+                    self._refresh_routes_table()
+                elif self.step == "Waypoints":
+                    self._selected_waypoint_keys.clear()
+                    self._refresh_waypoints_table()
+            except Exception:
+                pass
+            try:
+                self.set_focus(None)  # type: ignore[arg-type]
+            except Exception:
+                pass
+            try:
+                self.call_after_refresh(self.action_focus_table)
+            except Exception:
+                self.action_focus_table()
             return
+
         ctx = self._selected_keys_for_step()
         if ctx is None:
             self._in_single_item_edit = False
             return
-        # Route to appropriate edit modal (keep _in_single_item_edit = True for Esc handling)
-        self._on_action_chosen(action)
 
-    def _on_action_chosen(self, action: object) -> None:
-        act = str(action or "").strip().lower()
-        ctx = self._selected_keys_for_step()
-        if ctx is None:
-            return
-        if act in ("", "cancel"):
-            return
-        if act == "rename":
-            self.push_screen(RenameModal(ctx=ctx), self._apply_edit_payload)
-            return
-        if act == "description":
-            self.push_screen(DescriptionModal(ctx=ctx), self._apply_edit_payload)
-            return
-        if act == "color":
+        # Open appropriate sub-modal for the selected field
+        # After picker closes, return to inline overlay
+        if field_key == "name":
+            try:
+                ov = self.query_one("#rename_overlay", RenameOverlay)
+            except Exception:
+                return
+            ov.open(ctx=ctx, title="Rename")
+        elif field_key == "description":
+            try:
+                ov = self.query_one("#description_overlay", DescriptionOverlay)
+            except Exception:
+                return
+            ov.open(ctx=ctx)
+        elif field_key == "color":
+            try:
+                picker = self.query_one("#color_picker_overlay", ColorPickerOverlay)
+            except Exception:
+                return
             if ctx.kind == "route":
                 palette = [
                     (p.rgba, (p.name or "").replace("-", " ").upper())
                     for p in ColorMapper.TRACK_PALETTE
                 ]
-                self.push_screen(
-                    ColorPickerModal(
-                        ctx=ctx,
-                        title="Select route color",
-                        palette=palette,
-                    ),
-                    self._apply_edit_payload,
-                )
-                return
-            if ctx.kind == "waypoint":
+                picker.open(title="Select route color", palette=palette)
+            elif ctx.kind == "waypoint":
                 palette = [
                     (p.rgba, (p.name or "").replace("-", " ").upper())
                     for p in ColorMapper.WAYPOINT_PALETTE
                 ]
-                self.push_screen(
-                    ColorPickerModal(
-                        ctx=ctx,
-                        title="Select waypoint color",
-                        palette=palette,
-                    ),
-                    self._apply_edit_payload,
-                )
+                picker.open(title="Select waypoint color", palette=palette)
+        elif field_key == "icon" and ctx.kind == "waypoint":
+            try:
+                picker = self.query_one("#icon_picker_overlay", IconPickerOverlay)
+            except Exception:
                 return
-        if act == "icon" and ctx.kind == "waypoint":
-            self.push_screen(
-                IconOverrideModal(ctx=ctx, icons=get_all_onx_icons()),
-                self._apply_edit_payload,
-            )
-            return
+            picker.open(icons=list(get_all_onx_icons()))
+
+    def _apply_edit_and_return_to_inline(self, payload: object) -> None:
+        """Apply edit payload and return to inline overlay."""
+        # Apply the edit
+        self._apply_edit_payload(payload)
+
+        # Return to inline overlay (works for both single and multiple entries)
+        ctx = self._selected_keys_for_step()
+        if ctx is not None:
+            feats = self._selected_features(ctx)
+            if feats:
+                def get_route_color(feat):
+                    stroke = str(getattr(feat, "stroke", "") or "")
+                    if stroke:
+                        return ColorMapper.map_track_color(stroke)
+                    return ColorMapper.DEFAULT_TRACK_COLOR
+
+                try:
+                    overlay = self.query_one("#inline_edit_overlay", InlineEditOverlay)
+                except Exception:
+                    return
+                overlay.open(
+                    ctx=ctx,
+                    features=feats,
+                    get_color_chip=self._color_chip,
+                    get_waypoint_icon=self._resolved_waypoint_icon,
+                    get_waypoint_color=self._resolved_waypoint_color,
+                    get_route_color=get_route_color,
+                )
+
+    # Legacy: previously we used an action-list modal.
+    # The edit flow is now driven by the in-screen overlay (`InlineEditOverlay`), so
+    # the old callback path is intentionally removed.
 
     def _apply_edit_payload(self, payload: object) -> None:
         """
@@ -1304,12 +1787,12 @@ class CairnTuiApp(App):
                 return
             # Prompt for confirmation if changing name for multiple records
             if len(ctx.selected_keys) > 1:
-                self.push_screen(
-                    ConfirmModal(
-                        "You are changing the name for multiple records. Apply this name change to all selected records?",
-                        title="Confirm Name Change",
+                self._confirm(
+                    title="Confirm Name Change",
+                    message="You are changing the name for multiple records. Apply this name change to all selected records?",
+                    callback=lambda confirmed, ctx=ctx, feats=feats, new_title=new_title: self._apply_rename_confirmed(
+                        confirmed, ctx, feats, new_title
                     ),
-                    lambda confirmed: self._apply_rename_confirmed(confirmed, feats, new_title) if confirmed else None,
                 )
                 return
             for f in feats:
@@ -1380,26 +1863,75 @@ class CairnTuiApp(App):
         def refresh_after_modal():
             if ctx.kind == "route":
                 # After applying an edit, reset selection so subsequent edits start fresh.
-                self._selected_route_keys.clear()
+                # But don't clear if we're returning to inline edit modal
+                if not self._in_inline_edit:
+                    self._selected_route_keys.clear()
                 self._refresh_routes_table()
             elif ctx.kind == "waypoint":
-                self._selected_waypoint_keys.clear()
+                # Don't clear selection if returning to inline edit
+                if not self._in_inline_edit:
+                    self._selected_waypoint_keys.clear()
                 self._refresh_waypoints_table()
             elif self.step == "Preview":
                 self._render_main()
 
-        # Schedule refresh after modal closes
+        # Refresh tables so edits are visible immediately.
+        # For modal-based edits, call_after_refresh ensures the modal is dismissed first.
+        # For overlay-based edits, call_after_refresh is still safe and keeps behavior consistent.
         try:
             self.call_after_refresh(refresh_after_modal)
         except Exception:
-            # Fallback: try immediate refresh if call_after_refresh not available
             refresh_after_modal()
 
-        # If in single-item edit mode, return to EditRecordModal after applying changes
-        if self._in_single_item_edit:
-            feats = self._selected_features(ctx)
-            if feats:
-                self.push_screen(EditRecordModal(ctx=ctx, features=feats), self._on_edit_record_action)
+    def _apply_rename_confirmed(self, confirmed: bool, ctx: EditContext, feats: list, new_title: str) -> None:
+        """Apply a multi-rename after the confirmation overlay returns."""
+        if not confirmed:
+            # If we were editing via overlay, return to it so user isn't stranded.
+            if self._in_inline_edit:
+                try:
+                    feats2 = self._selected_features(ctx)
+                    if feats2:
+                        self._show_inline_overlay(ctx=ctx, feats=feats2)
+                except Exception:
+                    pass
+            return
+
+        # Apply rename to all selected features.
+        for f in list(feats or []):
+            try:
+                setattr(f, "title", str(new_title))
+                # Best-effort keep properties in sync for ParsedFeature
+                props = getattr(f, "properties", None)
+                if isinstance(props, dict):
+                    props["title"] = str(new_title)
+            except Exception:
+                continue
+
+        # Mark edited + refresh table.
+        if ctx.kind == "route":
+            self._routes_edited = True
+        elif ctx.kind == "waypoint":
+            self._waypoints_edited = True
+
+        def refresh_after_confirm():
+            if ctx.kind == "route":
+                self._refresh_routes_table()
+            elif ctx.kind == "waypoint":
+                self._refresh_waypoints_table()
+
+        try:
+            self.call_after_refresh(refresh_after_confirm)
+        except Exception:
+            refresh_after_confirm()
+
+        # Return to inline overlay if applicable (keeps multi-edit workflow smooth).
+        if self._in_inline_edit:
+            try:
+                feats2 = self._selected_features(ctx)
+                if feats2:
+                    self._show_inline_overlay(ctx=ctx, feats=feats2)
+            except Exception:
+                pass
 
     # -----------------------
     # Rendering
@@ -1424,6 +1956,80 @@ class CairnTuiApp(App):
             )
             parts.append(f"Folders: {folder_count}  Waypoints: {wp}  Routes: {trk}")
         status.update("\n".join(parts))
+
+        # Step-specific left-column guidance
+        try:
+            instr = self.query_one("#sidebar_instructions", Static)
+            instr.update(self._sidebar_instructions(self.step))
+        except Exception:
+            pass
+        try:
+            sc = self.query_one("#sidebar_shortcuts", Static)
+            sc.update(self._sidebar_shortcuts(self.step))
+        except Exception:
+            pass
+
+    def _sidebar_instructions(self, step: str) -> str:
+        """Concise, process-oriented guidance shown in the left column per step."""
+        step = str(step or "")
+        if step == "Select_file":
+            return (
+                "Choose the CalTopo export you want to migrate to onX.\n"
+                "GeoJSON preserves the most detail, but GPX/KML are also supported."
+            )
+        if step == "List_data":
+            return (
+                "Review everything found in your export: folders, routes, waypoints, tracks, "
+                "shapes, and unmapped symbols.\n\n"
+                "onX does not support folders, so this is a good time to bake folder structure "
+                "into names/descriptions so you can find items via onX search."
+            )
+        if step == "Folder":
+            return (
+                "Pick what you want to edit next.\n"
+                "If multiple folders exist, select the ones you want to process."
+            )
+        if step in {"Routes", "Waypoints"}:
+            return (
+                "Update the name, description, and color so it’s meaningful once imported.\n"
+                "Use selection shortcuts to bulk-update or quickly scan large sets."
+            )
+        if step == "Preview":
+            return (
+                "Confirm the mapping data you want to import into onX.\n"
+                "If you need to make changes, press Esc to go back."
+            )
+        if step == "Save":
+            return (
+                "Choose where to save the GPX output and optionally edit the suggested filename.\n"
+                "If the export must be split to stay under 4 MB, each file will be listed with "
+                "an editable name and a short explanation."
+            )
+        return ""
+
+    def _sidebar_shortcuts(self, step: str) -> str:
+        """Always-visible shortcut list (mirrors the footer, but formatted for the sidebar)."""
+        shortcuts = StepAwareFooter.STEP_SHORTCUTS.get(step, [])
+        if not shortcuts:
+            return ""
+        return "\n".join([f"{key}: {desc}" for key, desc in shortcuts])
+
+    def _suggest_output_name(self, original_filename: str) -> str:
+        """
+        Suggest a rename target for an output file, based on the current output prefix.
+
+        We keep this intentionally conservative (same extension, no directory components).
+        """
+        fn = str(original_filename or "").strip()
+        if not fn:
+            return fn
+        prefix = sanitize_filename(str(self._output_prefix or "").strip())
+        if not prefix:
+            return Path(fn).name
+        p = Path(fn)
+        stem = p.stem or "output"
+        ext = p.suffix
+        return f"{prefix}_{stem}{ext}"
 
     def _clear_main_body(self) -> Container:
         body = self.query_one("#main_body", Container)
@@ -1458,7 +2064,7 @@ class CairnTuiApp(App):
             subtitle.update("Choose an input file (.json/.geojson/.kml/.gpx)")
             body = self._clear_main_body()
             default_root = Path(self._state.default_root).expanduser() if self._state.default_root else Path.cwd()
-            body.mount(Static("Pick a file (tree) or paste a path:", classes="muted"))
+            body.mount(Static("Pick a file:", classes="muted"))
             # Initialize file browser directory once per visit.
             if self._file_browser_dir is None:
                 try:
@@ -1471,11 +2077,7 @@ class CairnTuiApp(App):
             table.add_columns("Name", "Type")
             body.mount(table)
             self._refresh_file_browser()
-
-            body.mount(
-                Input(placeholder="Path to .json/.geojson/.kml/.gpx", id="input_path")
-            )
-            body.mount(Static("Enter: continue", classes="muted"))
+            body.mount(Static("Enter: open/select", classes="muted"))
             # Prefer focusing the tree so arrow keys + Enter work immediately.
             try:
                 self.call_after_refresh(table.focus)
@@ -1571,9 +2173,17 @@ class CairnTuiApp(App):
 
         if self.step == "Routes":
             title.update("Routes")
+            folder_name = ""
+            try:
+                if self.model.selected_folder_id:
+                    folder_name = self._folder_name_by_id.get(self.model.selected_folder_id, self.model.selected_folder_id)
+            except Exception:
+                folder_name = ""
             subtitle_msg = "Browse routes (Space to toggle selection, / to search)  •  Edit: a"
             if self._routes_edited:
                 subtitle_msg += "  •  Edited. Press x to clear selection and edit another set."
+            if folder_name:
+                subtitle_msg = f"Folder: {folder_name}  •  {subtitle_msg}"
             subtitle.update(subtitle_msg)
             body = self._clear_main_body()
             if self.model.parsed is None or not self.model.selected_folder_id:
@@ -1591,7 +2201,7 @@ class CairnTuiApp(App):
                 name = str(getattr(trk, "title", "") or "Untitled")
                 if q and q not in name.lower():
                     continue
-                key = str(i)
+                key = self._feature_row_key(trk, str(i))
                 sel = "●" if key in self._selected_route_keys else " "
                 rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
                 table.add_row(
@@ -1612,9 +2222,17 @@ class CairnTuiApp(App):
 
         if self.step == "Waypoints":
             title.update("Waypoints")
+            folder_name = ""
+            try:
+                if self.model.selected_folder_id:
+                    folder_name = self._folder_name_by_id.get(self.model.selected_folder_id, self.model.selected_folder_id)
+            except Exception:
+                folder_name = ""
             subtitle_msg = "Browse waypoints (Space to toggle selection, / to search)  •  Edit: a"
             if self._waypoints_edited:
                 subtitle_msg += "  •  Edited. Press x to clear selection and edit another set."
+            if folder_name:
+                subtitle_msg = f"Folder: {folder_name}  •  {subtitle_msg}"
             subtitle.update(subtitle_msg)
             body = self._clear_main_body()
             if self.model.parsed is None or not self.model.selected_folder_id:
@@ -1626,20 +2244,19 @@ class CairnTuiApp(App):
             waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
             body.mount(Input(placeholder="Filter waypoints…", id="waypoints_search"))
             table = DataTable(id="waypoints_table")
-            table.add_columns("Selected", "Name", "Symbol", "Mapped icon", "Color")
+            table.add_columns("Selected", "Name", "OnX icon", "OnX color")
 
             q = (self._waypoints_filter or "").strip().lower()
             for i, wp in enumerate(waypoints):
-                key = str(i)
+                key = self._feature_row_key(wp, str(i))
                 sel = "●" if key in self._selected_waypoint_keys else " "
                 title0 = str(getattr(wp, "title", "") or "Untitled")
                 if q and q not in title0.lower():
                     continue
-                sym = str(getattr(wp, "symbol", "") or "")
                 mapped = self._resolved_waypoint_icon(wp)
                 rgba = self._resolved_waypoint_color(wp, mapped)
                 try:
-                    table.add_row(sel, title0, sym, mapped, self._color_chip(rgba), key=key)
+                    table.add_row(sel, title0, mapped, self._color_chip(rgba), key=key)
                 except Exception as e:
                     # Some Textual versions are picky about cell renderables; fall back to plain text.
                     self._dbg(
@@ -1647,7 +2264,7 @@ class CairnTuiApp(App):
                         data={"err": str(e), "rgba": rgba, "name": title0},
                     )
                     name = ColorMapper.get_color_name(rgba).replace("-", " ").upper()
-                    table.add_row(sel, title0, sym, mapped, f"■ {name}", key=key)
+                    table.add_row(sel, title0, mapped, f"■ {name}", key=key)
             body.mount(table)
             body.mount(Static("Space: toggle select  /: filter  t: focus table  Enter: continue", classes="muted"))
             try:
@@ -1671,6 +2288,18 @@ class CairnTuiApp(App):
 
             if self._folders_to_process:
                 # Multi-folder: collect from selected folders
+                try:
+                    names = [
+                        str(self._folder_name_by_id.get(fid, fid))
+                        for fid in (self._folders_to_process or [])
+                    ]
+                    if names:
+                        shown = ", ".join(names[:3])
+                        if len(names) > 3:
+                            shown += f" (+{len(names) - 3} more)"
+                        body.mount(Static(f"Folders: {shown}", classes="ok"))
+                except Exception:
+                    pass
                 for fid in self._folders_to_process:
                     fd = folders.get(fid) or {}
                     all_tracks.extend(fd.get("tracks", []) or [])
@@ -1734,88 +2363,155 @@ class CairnTuiApp(App):
             body.mount(trk_table)
 
             body.mount(Static("Enter to continue to Save", classes="muted"))
+            # Ensure app-level keys (Enter/q) work reliably even if a DataTable would grab focus.
+            try:
+                self.call_after_refresh(lambda: self.set_focus(None))  # type: ignore[arg-type]
+            except Exception:
+                try:
+                    self.set_focus(None)  # type: ignore[arg-type]
+                except Exception:
+                    pass
             return
 
         if self.step == "Save":
             title.update("Save")
             subtitle.update("Choose output directory and export")
-            # IMPORTANT: don't re-mount a new Input with the same ID on re-render.
-            # Textual enforces globally unique IDs and can raise DuplicateIds if a widget
-            # is still in the DOM while we're rebuilding this screen (e.g., during export
-            # status updates). We keep/reuse the existing output_dir Input if present.
-            body = self.query_one("#main_body", Container)
-            existing_out: Optional[Input] = None
-            try:
-                existing_out = body.query_one("#output_dir", Input)
-            except Exception:
-                existing_out = None
+            body = self._clear_main_body()
 
-            # Remove everything except the output_dir input (if it already exists).
+            # Initialize save browser directory once per visit.
+            if self._save_browser_dir is None:
+                try:
+                    self._save_browser_dir = (self.model.output_dir or Path.cwd()).expanduser().resolve()
+                except Exception:
+                    self._save_browser_dir = self.model.output_dir or Path.cwd()
+
             try:
-                for child in list(getattr(body, "children", []) or []):
-                    if existing_out is not None and child is existing_out:
-                        continue
-                    try:
-                        child.remove()
-                    except Exception:
-                        pass
+                body.mount(Static(f"Browse output folder: {self._save_browser_dir}", classes="muted"))
+            except Exception:
+                body.mount(Static("Browse output folder:", classes="muted"))
+
+            save_tbl = DataTable(id="save_browser")
+            save_tbl.add_columns("Name", "Type")
+            body.mount(save_tbl)
+            self._refresh_save_browser()
+
+            # Output directory (selected): chosen via browser only (no manual path entry).
+            out_default = self.model.output_dir or (Path.cwd() / "onx_ready")
+            body.mount(Static(f"Output folder: {out_default}", classes="muted"))
+
+            # Default prefix: input file stem (sanitized), if available.
+            if not (self._output_prefix or "").strip():
+                try:
+                    if self.model.input_path:
+                        self._output_prefix = sanitize_filename(self.model.input_path.stem)
+                except Exception:
+                    pass
+            prefix_inp = Input(
+                placeholder="Output filename prefix (optional)",
+                id="output_prefix",
+            )
+            try:
+                prefix_inp.value = str(self._output_prefix or "")
             except Exception:
                 pass
+            body.mount(prefix_inp)
 
-            if existing_out is None:
-                body.mount(Input(placeholder="Output directory (default: ./onx_ready)", id="output_dir"))
             if self._export_in_progress:
                 body.mount(Static("Exporting… (please wait)", classes="accent"))
             if self._export_error:
                 body.mount(Static(self._export_error, classes="err"))
+
             if self._export_manifest:
-                tbl = DataTable(id="manifest")
-                tbl.add_columns("File", "Format", "Items", "Bytes")
+                # Detect split parts so we can explain why multiple files exist.
+                split_base_counts: dict[str, int] = {}
                 for fn, fmt, cnt, sz in self._export_manifest:
-                    tbl.add_row(fn, fmt, str(cnt), str(sz))
+                    p = Path(fn)
+                    m = re.match(r"^(?P<base>.+)_(?P<num>\d+)$", p.stem)
+                    if m:
+                        base = f"{m.group('base')}{p.suffix.lower()}"
+                        split_base_counts[base] = split_base_counts.get(base, 0) + 1
+
+                tbl = DataTable(id="manifest")
+                tbl.add_columns("File", "Format", "Items", "Bytes", "Note")
+                for fn, fmt, cnt, sz in self._export_manifest:
+                    note = ""
+                    p = Path(fn)
+                    m = re.match(r"^(?P<base>.+)_(?P<num>\d+)$", p.stem)
+                    if m:
+                        base = f"{m.group('base')}{p.suffix.lower()}"
+                        if split_base_counts.get(base, 0) > 1:
+                            note = "Split (4 MB limit)"
+                    tbl.add_row(fn, fmt, str(cnt), str(sz), note)
                 body.mount(Static("Export manifest", classes="accent"))
                 body.mount(tbl)
-                body.mount(Static("Done. q to quit.", classes="muted"))
+
+                if any(v > 1 for v in split_base_counts.values()):
+                    body.mount(
+                        Static(
+                            "Some GPX outputs were split to stay under the 4 MB onX import limit.",
+                            classes="muted",
+                        )
+                    )
+
+                body.mount(Static("Rename outputs (optional): edit names below, then press [bold]r[/] to apply.", classes="muted"))
+                # One input per output file, keyed by manifest index.
+                for i, (fn, fmt, cnt, sz) in enumerate(self._export_manifest):
+                    row = Horizontal()
+                    body.mount(row)
+                    try:
+                        row.mount(Static(fn, classes="muted"))
+                    except Exception:
+                        row.mount(Static(str(fn), classes="muted"))
+                    inp = Input(placeholder="New filename", id=f"rename_{i}")
+                    desired = self._rename_overrides_by_idx.get(i)
+                    if desired is None:
+                        desired = self._suggest_output_name(fn)
+                        self._rename_overrides_by_idx[i] = desired
+                    try:
+                        inp.value = desired
+                    except Exception:
+                        pass
+                    row.mount(inp)
+
+                body.mount(Static("Done. Press [bold]n[/] to migrate another file, or [bold]q[/] to quit.", classes="muted"))
             else:
-                body.mount(Static("Press 'e' to export", classes="muted"))
+                body.mount(Static("Select [bold][Export][/] and press Enter (Confirm Export will appear).", classes="muted"))
             return
 
     # -----------------------
     # Events
     # -----------------------
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if event.input.id == "input_path":
-            raw = (event.value or "").strip()
-            if not raw:
-                return
-            p = Path(raw).expanduser()
+        if event.input.id == "output_prefix":
+            self._output_prefix = str(event.value or "")
+            # Re-render to update suggested rename defaults (if any).
+            self._render_sidebar()
+            if self.step == "Save":
+                self._render_main()
+        elif str(event.input.id or "").startswith("rename_"):
+            # Persist edited rename values (used when applying renames with 'r').
             try:
-                p = p.resolve()
+                idx = int(str(event.input.id).split("_", 1)[1])
             except Exception:
-                pass
-            self._render_sidebar()
-            if self.step == "Select_file":
-                suf = p.suffix.lower()
-                if suf in _PARSEABLE_INPUT_EXTS and p.exists() and p.is_file():
-                    self._set_input_path(p)
-                    self._done_steps.add("Select_file")
-                    self._goto("List_data")
-                elif suf in _VISIBLE_INPUT_EXTS:
-                    self.push_screen(
-                        InfoModal(
-                            "This TUI currently supports CalTopo GeoJSON inputs only (.json/.geojson).\n\n"
-                            "GPX/KML inputs are not supported in the TUI yet."
-                        )
-                    )
-        elif event.input.id == "output_dir":
-            raw = (event.value or "").strip()
-            if not raw:
-                self.model.output_dir = Path.cwd() / "onx_ready"
-            else:
-                self.model.output_dir = Path(raw).expanduser()
-            self._render_sidebar()
+                idx = None
+            if idx is not None:
+                self._rename_overrides_by_idx[idx] = str(event.value or "")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        if event.data_table.id == "save_browser":
+            # Save browser should be fully operable via Enter even if DataTable consumes Key events.
+            if self.step != "Save":
+                return
+            try:
+                self._save_browser_enter()
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+            except Exception:
+                return
+            return
+
         if event.data_table.id == "folder_table":
             try:
                 folder_id = str(event.row_key.value)
@@ -1869,12 +2565,18 @@ class CairnTuiApp(App):
     def action_focus_table(self) -> None:
         """Focus the main table for the current step (so Space toggles selection)."""
         try:
-            if self.step == "Routes":
+            if self.step == "Select_file":
+                self.query_one("#file_browser", DataTable).focus()
+            elif self.step == "Folder":
+                self.query_one("#folder_table", DataTable).focus()
+            elif self.step == "Routes":
                 tbl = self.query_one("#routes_table", DataTable)
                 tbl.focus()
             elif self.step == "Waypoints":
                 tbl = self.query_one("#waypoints_table", DataTable)
                 tbl.focus()
+            elif self.step == "Save":
+                self.query_one("#save_browser", DataTable).focus()
         except Exception as e:
             return
 
@@ -1909,9 +2611,9 @@ class CairnTuiApp(App):
             },
         )
 
-        # IMPORTANT: When a modal is open (editing dialogs), let the modal handle
+        # IMPORTANT: When a modal or overlay is open (editing dialogs), let it handle
         # Enter/Escape/etc. Otherwise our global step-navigation hijacks Enter and
-        # makes modals unusable.
+        # makes dialogs unusable.
         try:
             from textual.screen import ModalScreen
 
@@ -1919,6 +2621,130 @@ class CairnTuiApp(App):
                 return
         except Exception:
             pass
+
+        # In-screen overlays are Widgets (not Screens), so guard explicitly.
+        def _overlay_open(selector: str) -> bool:
+            try:
+                w = self.query_one(selector)
+                return bool(getattr(w, "has_class", lambda _c: False)("open"))
+            except Exception:
+                return False
+
+        # Special handling: picker overlays focus a DataTable, which can consume Enter/Up/Down
+        # such that the overlay container never sees the Key event. Handle those here.
+        if _overlay_open("#icon_picker_overlay"):
+            key = str(getattr(event, "key", "") or "")
+            focused_id = getattr(getattr(self, "focused", None), "id", None)
+            try:
+                tbl = self.query_one("#icon_table", DataTable)
+            except Exception:
+                tbl = None
+            # IMPORTANT: Avoid double-moving the cursor. When the DataTable is focused,
+            # it will already handle Up/Down. We only forward arrows when focus is on
+            # a non-table widget (e.g. the filter input).
+            if key in ("up", "down") and tbl is not None and focused_id != "icon_table":
+                try:
+                    (tbl.action_cursor_down() if key == "down" else tbl.action_cursor_up())  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+            if key == "escape":
+                try:
+                    self.query_one("#icon_picker_overlay", IconPickerOverlay).close()
+                except Exception:
+                    pass
+                try:
+                    self.on_icon_picker_overlay_icon_picked(IconPickerOverlay.IconPicked(None))  # type: ignore[arg-type]
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+            if key in ("enter", "return") or getattr(event, "character", None) == "\r":
+                icon = None
+                if tbl is not None:
+                    icon = (self._table_cursor_row_key(tbl) or "").strip() or None
+                try:
+                    self.query_one("#icon_picker_overlay", IconPickerOverlay).close()
+                except Exception:
+                    pass
+                try:
+                    self.on_icon_picker_overlay_icon_picked(IconPickerOverlay.IconPicked(icon))  # type: ignore[arg-type]
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+            return
+
+        if _overlay_open("#color_picker_overlay"):
+            key = str(getattr(event, "key", "") or "")
+            focused_id = getattr(getattr(self, "focused", None), "id", None)
+            try:
+                tbl = self.query_one("#palette_table", DataTable)
+            except Exception:
+                tbl = None
+            # IMPORTANT: Avoid double-moving the cursor. When the DataTable is focused,
+            # it will already handle Up/Down. We only forward arrows when focus is on
+            # a non-table widget (e.g. the filter input).
+            if key in ("up", "down") and tbl is not None and focused_id != "palette_table":
+                try:
+                    (tbl.action_cursor_down() if key == "down" else tbl.action_cursor_up())  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+            if key == "escape":
+                try:
+                    self.query_one("#color_picker_overlay", ColorPickerOverlay).close()
+                except Exception:
+                    pass
+                try:
+                    self.on_color_picker_overlay_color_picked(ColorPickerOverlay.ColorPicked(None))  # type: ignore[arg-type]
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+            if key in ("enter", "return") or getattr(event, "character", None) == "\r":
+                rgba = None
+                if tbl is not None:
+                    rgba = (self._table_cursor_row_key(tbl) or "").strip() or None
+                try:
+                    self.query_one("#color_picker_overlay", ColorPickerOverlay).close()
+                except Exception:
+                    pass
+                try:
+                    self.on_color_picker_overlay_color_picked(ColorPickerOverlay.ColorPicked(rgba))  # type: ignore[arg-type]
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+            return
+
+        if (
+            _overlay_open("#inline_edit_overlay")
+            or _overlay_open("#rename_overlay")
+            or _overlay_open("#description_overlay")
+            or _overlay_open("#confirm_overlay")
+        ):
+            return
 
         # Handle ? for help (works from anywhere)
         if event.key == "question_mark" or getattr(event, "character", None) == "?":
@@ -1947,6 +2773,22 @@ class CairnTuiApp(App):
                     event.key in ("enter", "return") or getattr(event, "character", None) == "\r"
                 ):
                     self._file_browser_enter()
+                    try:
+                        event.stop()
+                    except Exception:
+                        pass
+                    return
+            except Exception:
+                pass
+
+        # Special-case: Save output dir browser (Enter navigates/selects folder).
+        if self.step == "Save":
+            try:
+                focused_id = getattr(getattr(self, "focused", None), "id", None)
+                if focused_id == "save_browser" and (
+                    event.key in ("enter", "return") or getattr(event, "character", None) == "\r"
+                ):
+                    self._save_browser_enter()
                     try:
                         event.stop()
                     except Exception:
@@ -2262,6 +3104,29 @@ class CairnTuiApp(App):
         self._export_error = err
         self._render_main()
 
+        # After a successful export, prompt for next action (new file vs quit).
+        try:
+            if err is None and manifest and not self._post_save_prompt_shown:
+                self._post_save_prompt_shown = True
+                self.push_screen(
+                    ConfirmModal(
+                        "Export complete.\n\nMigrate another file?",
+                        title="Export complete",
+                    ),
+                    self._on_post_save_choice,
+                )
+        except Exception:
+            pass
+
+    def _on_post_save_choice(self, confirmed: bool) -> None:
+        if confirmed:
+            self.action_new_file()
+        else:
+            try:
+                self.exit()
+            except Exception:
+                pass
+
     def on_input_changed(self, event: Input.Changed) -> None:
         try:
             if event.input.id == "routes_search":
@@ -2270,5 +3135,15 @@ class CairnTuiApp(App):
             elif event.input.id == "waypoints_search":
                 self._waypoints_filter = event.value or ""
                 self._refresh_waypoints_table()
+            elif event.input.id == "output_prefix":
+                # Keep in sync while typing; pressing Enter will also commit.
+                self._output_prefix = str(event.value or "")
+            elif str(event.input.id or "").startswith("rename_"):
+                try:
+                    idx = int(str(event.input.id).split("_", 1)[1])
+                except Exception:
+                    idx = None
+                if idx is not None:
+                    self._rename_overrides_by_idx[idx] = str(event.value or "")
         except Exception as e:
             self._ui_error = str(e)

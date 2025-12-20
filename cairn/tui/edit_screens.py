@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical
+from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Input, Static
 from rich.text import Text
@@ -38,6 +39,24 @@ def _table_cursor_row_key(table: DataTable) -> Optional[str]:
     except Exception:
         pass
     return None
+
+
+def _datatable_clear_rows(table: DataTable) -> None:
+    """Clear DataTable rows without relying on a single Textual version API."""
+    try:
+        table.clear()  # type: ignore[no-untyped-call]
+        return
+    except Exception:
+        pass
+    try:
+        rows = getattr(table, "rows", None) or {}
+        for rk in list(rows.keys()):
+            try:
+                table.remove_row(rk)  # type: ignore[no-untyped-call]
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 class InfoModal(ModalScreen[None]):
@@ -200,79 +219,201 @@ class ConfirmModal(ModalScreen[bool]):
             return
 
 
-class EditRecordModal(ModalScreen[None]):
+class InlineEditOverlay(Container):
     """
-    Show current record fields for editing.
+    Inline editor overlay that renders inside the current screen (not a ModalScreen).
 
-    This is the main edit screen that shows all editable fields for the selected item(s).
+    This is the "true popup" behavior: the underlying step UI remains visible because
+    we aren't switching Screens.
     """
 
-    def __init__(self, *, ctx: EditContext, features: list) -> None:
-        super().__init__()
-        self._ctx = ctx
-        self._features = features
+    class FieldChosen(Message):
+        bubble = True
+        def __init__(self, field_key: Optional[str]) -> None:
+            super().__init__()
+            self.field_key = field_key
+
+    def __init__(
+        self,
+        *,
+        id: str = "inline_edit_overlay",
+        classes: str = "",
+    ) -> None:
+        super().__init__(id=id, classes=classes)
+        self._ctx: Optional[EditContext] = None
+        self._features: list = []
+        self._get_color_chip = None
+        self._get_waypoint_icon = None
+        self._get_waypoint_color = None
+        self._get_route_color = None
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="edit_record_modal"):
-            yield Static("Edit Record", classes="title")
-            yield Static(
-                f"Selected: {len(self._ctx.selected_keys)} {self._ctx.kind}(s)",
-                classes="muted",
-            )
+        with Container(id="inline_edit_dialog"):
+            yield Static("Edit Record", id="inline_edit_title", classes="title")
+            yield Static("", id="inline_edit_subtitle", classes="muted")
             yield Static("")
 
-            # Show current values for single item
+            tbl = DataTable(id="fields_table")
+            tbl.add_columns("Field", "Value")
+            yield tbl
+            yield Static("↑/↓: navigate  Enter: edit  Esc: close", classes="muted")
+
+    def open(
+        self,
+        *,
+        ctx: EditContext,
+        features: list,
+        get_color_chip=None,
+        get_waypoint_icon=None,
+        get_waypoint_color=None,
+        get_route_color=None,
+    ) -> None:
+        self._ctx = ctx
+        self._features = list(features or [])
+        self._get_color_chip = get_color_chip
+        self._get_waypoint_icon = get_waypoint_icon
+        self._get_waypoint_color = get_waypoint_color
+        self._get_route_color = get_route_color
+        self.add_class("open")
+        self._refresh()
+        try:
+            tbl = self.query_one("#fields_table", DataTable)
+            tbl.focus()
+            # Reset cursor to the first row (Name) whenever the overlay opens.
+            # This avoids surprising navigation where the cursor is left on "Color"/"Done"
+            # after returning from a sub-editor.
+            for _ in range(10):
+                try:
+                    tbl.action_cursor_up()  # type: ignore[attr-defined]
+                except Exception:
+                    break
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        self.remove_class("open")
+
+    def _send(self, message: Message) -> None:
+        """Send a message to the App (preferred) so it always gets handled."""
+        try:
+            app = getattr(self, "app", None)
+            if app is not None:
+                app.post_message(message)
+                return
+        except Exception:
+            pass
+        try:
+            self.post_message(message)
+        except Exception:
+            pass
+
+    def _refresh(self) -> None:
+        # Subtitle
+        try:
+            subtitle = self.query_one("#inline_edit_subtitle", Static)
+            if self._ctx is None:
+                subtitle.update("")
+            elif len(self._features) > 1:
+                subtitle.update(f"Editing {len(self._features)} {self._ctx.kind}(s)")
+            else:
+                subtitle.update("")
+        except Exception:
+            pass
+
+        # Table rows
+        try:
+            tbl = self.query_one("#fields_table", DataTable)
+        except Exception:
+            return
+        _datatable_clear_rows(tbl)
+        try:
+            # Name
+            tbl.add_row("Name", self._get_name_summary(), key="name")
+            # Description
+            tbl.add_row("Description", self._get_description_summary(), key="description")
+            # Icon (waypoints)
+            if self._ctx is not None and self._ctx.kind == "waypoint":
+                tbl.add_row("Icon", self._get_icon_summary(), key="icon")
+            # Color
+            tbl.add_row("Color", self._get_color_summary(), key="color")
+            # Done
+            tbl.add_row("Done", "", key="done")
+        except Exception:
+            pass
+
+    def _get_name_summary(self) -> str:
+        if len(self._features) == 1:
+            return str(getattr(self._features[0], "title", "") or "Untitled")
+        names = {str(getattr(f, "title", "") or "Untitled") for f in self._features}
+        return list(names)[0] if len(names) == 1 else "[varies]"
+
+    def _get_description_summary(self) -> str:
+        def _snip(s: str) -> str:
+            if len(s) > 50:
+                return s[:47] + "..."
+            return s
+
+        if len(self._features) == 1:
+            return _snip(str(getattr(self._features[0], "description", "") or "(none)"))
+        descs = {str(getattr(f, "description", "") or "(none)") for f in self._features}
+        return _snip(list(descs)[0]) if len(descs) == 1 else "[varies]"
+
+    def _get_icon_summary(self) -> str:
+        if not self._get_waypoint_icon:
+            return "(unknown)"
+        if len(self._features) == 1:
+            return str(self._get_waypoint_icon(self._features[0]))
+        icons = {str(self._get_waypoint_icon(f)) for f in self._features}
+        return list(icons)[0] if len(icons) == 1 else "[varies]"
+
+    def _get_color_summary(self):
+        if self._ctx is None:
+            return "(unknown)"
+        if self._ctx.kind == "waypoint":
+            if not self._get_waypoint_color or not self._get_color_chip:
+                return "(unknown)"
             if len(self._features) == 1:
-                feat = self._features[0]
-                name = str(getattr(feat, "title", "") or "Untitled")
-                desc = str(getattr(feat, "description", "") or "(none)")
-                yield Static(f"[bold]Name:[/] {name}")
-                yield Static(f"[bold]Description:[/] {desc}")
-                if self._ctx.kind == "waypoint":
-                    icon = str(getattr(feat, "properties", {}).get("cairn_onx_icon_override", "") or "(mapped)")
-                    color = str(getattr(feat, "color", "") or "(default)")
-                    yield Static(f"[bold]Icon:[/] {icon}")
-                    yield Static(f"[bold]Color:[/] {color}")
-                else:
-                    color = str(getattr(feat, "stroke", "") or "(default)")
-                    yield Static(f"[bold]Color:[/] {color}")
+                wp = self._features[0]
+                icon = self._get_waypoint_icon(wp) if self._get_waypoint_icon else "Location"
+                rgba = self._get_waypoint_color(wp, icon)
+                return self._get_color_chip(rgba)
+            colors = []
+            for f in self._features:
+                icon = self._get_waypoint_icon(f) if self._get_waypoint_icon else "Location"
+                colors.append(self._get_waypoint_color(f, icon))
+            return self._get_color_chip(colors[0]) if len(set(colors)) == 1 else "[varies]"
 
-            yield Static("")
-            tbl = DataTable(id="edit_actions_table")
-            tbl.add_columns("Field")
-            tbl.add_row("Rename", key="rename")
-            tbl.add_row("Set description", key="description")
-            if self._ctx.kind == "waypoint":
-                tbl.add_row("Set/clear icon override", key="icon")
-                tbl.add_row("Set waypoint color", key="color")
-            else:
-                tbl.add_row("Set route color", key="color")
-            tbl.add_row("Done", key="done")
-            yield tbl
-            yield Static("Enter: choose  Esc: back", classes="muted")
-
-    def on_mount(self) -> None:
-        try:
-            self.query_one("#edit_actions_table", DataTable).focus()
-        except Exception:
-            pass
+        # route
+        if not self._get_route_color or not self._get_color_chip:
+            return "(unknown)"
+        if len(self._features) == 1:
+            rgba = self._get_route_color(self._features[0])
+            return self._get_color_chip(rgba)
+        colors = [self._get_route_color(f) for f in self._features]
+        return self._get_color_chip(colors[0]) if len(set(colors)) == 1 else "[varies]"
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id != "edit_actions_table":
+        if event.data_table.id != "fields_table":
             return
         try:
-            action = str(event.row_key.value)
+            field_key = str(event.row_key.value)
         except Exception:
-            action = "done"
-        if action == "done":
-            self.dismiss(None)
+            field_key = "done"
+        if field_key == "done":
+            self.close()
+            self._send(self.FieldChosen(None))
         else:
-            self.dismiss(action)
+            # Close overlay while we open a field editor.
+            self.close()
+            self._send(self.FieldChosen(field_key))
 
     def on_key(self, event) -> None:  # type: ignore[override]
+        if not self.has_class("open"):
+            return
         key = str(getattr(event, "key", "") or "")
         if key == "escape":
-            self.dismiss(None)
+            self.close()
+            self._send(self.FieldChosen(None))
             try:
                 event.stop()
             except Exception:
@@ -280,14 +421,16 @@ class EditRecordModal(ModalScreen[None]):
             return
         if key in ("enter", "return") or getattr(event, "character", None) == "\r":
             try:
-                tbl = self.query_one("#edit_actions_table", DataTable)
+                tbl = self.query_one("#fields_table", DataTable)
             except Exception:
                 return
-            act = (_table_cursor_row_key(tbl) or "done").strip() or "done"
-            if act == "done":
-                self.dismiss(None)
+            field_key = (_table_cursor_row_key(tbl) or "done").strip() or "done"
+            if field_key == "done":
+                self.close()
+                self._send(self.FieldChosen(None))
             else:
-                self.dismiss(act)
+                self.close()
+                self._send(self.FieldChosen(field_key))
             try:
                 event.stop()
             except Exception:
@@ -295,79 +438,536 @@ class EditRecordModal(ModalScreen[None]):
             return
 
 
-class ActionsModal(ModalScreen[None]):
-    """
-    Pick an edit action for the current selection.
+class ColorPickerOverlay(Container):
+    """In-screen overlay for choosing a color from a palette (no Screen navigation)."""
 
-    Emits one of:
-      - "rename"
-      - "description"
-      - "color"
-      - "icon" (waypoints only)
-      - "cancel"
-    """
+    class ColorPicked(Message):
+        bubble = True
+        def __init__(self, rgba: Optional[str]) -> None:
+            super().__init__()
+            self.rgba = rgba
 
-    def __init__(self, *, ctx: EditContext) -> None:
-        super().__init__()
-        self._ctx = ctx
+    def __init__(self, *, id: str = "color_picker_overlay", classes: str = "") -> None:
+        super().__init__(id=id, classes=classes)
+        self._title: str = "Select color"
+        self._palette: list[tuple[str, str]] = []
+        self._filter: str = ""
+        self._selected_rgba: Optional[str] = None
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="actions_modal"):
-            yield Static("Actions", classes="title")
-            yield Static(
-                f"Selected: {len(self._ctx.selected_keys)} {self._ctx.kind}(s)",
-                classes="muted",
-            )
-            tbl = DataTable(id="actions_table")
-            tbl.add_columns("Action")
-            tbl.add_row("Rename", key="rename")
-            tbl.add_row("Set description", key="description")
-            if self._ctx.kind == "waypoint":
-                tbl.add_row("Set/clear icon override", key="icon")
-                tbl.add_row("Set waypoint color", key="color")
-            else:
-                tbl.add_row("Set route color", key="color")
-            tbl.add_row("Cancel", key="cancel")
+        with Container(id="color_picker_dialog"):
+            yield Static("", id="color_picker_title", classes="title")
+            yield Input(placeholder="Filter colors…", id="color_search")
+            tbl = DataTable(id="palette_table")
+            tbl.add_columns("Color")
             yield tbl
-            yield Static("Enter: choose  Esc: cancel", classes="muted")
+            yield Static("Enter: apply  Esc: cancel  /: filter", classes="muted")
 
-    def on_mount(self) -> None:
+    def open(self, *, title: str, palette: list[tuple[str, str]]) -> None:
+        self._title = str(title or "Select color")
+        self._palette = [(str(rgba), str(name)) for rgba, name in (palette or [])]
+        self._filter = ""
+        self._selected_rgba = None
+        self.add_class("open")
+        self._refresh()
+        # Default focus on table for arrow navigation.
         try:
-            self.query_one("#actions_table", DataTable).focus()
+            self.query_one("#palette_table", DataTable).focus()
         except Exception:
             pass
 
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id != "actions_table":
-            return
+    def close(self) -> None:
+        self.remove_class("open")
+
+    def _send(self, message: Message) -> None:
         try:
-            action = str(event.row_key.value)
+            app = getattr(self, "app", None)
+            if app is not None:
+                app.post_message(message)
+                return
         except Exception:
-            action = "cancel"
-        self.dismiss(action)
+            pass
+        try:
+            self.post_message(message)
+        except Exception:
+            pass
+
+    def _chip(self, rgba: str, name: str) -> Text:
+        r, g, b = ColorMapper.parse_color(str(rgba))
+        nm = (name or "").replace("-", " ").upper()
+        chip = Text("■ ", style=f"rgb({r},{g},{b})")
+        chip.append(nm, style="bold")
+        return chip
+
+    def _refresh(self) -> None:
+        try:
+            self.query_one("#color_picker_title", Static).update(self._title)
+        except Exception:
+            pass
+        try:
+            tbl = self.query_one("#palette_table", DataTable)
+        except Exception:
+            return
+        _datatable_clear_rows(tbl)
+        q = (self._filter or "").strip().lower()
+        for rgba, name in self._palette:
+            if q and q not in (name or "").lower():
+                continue
+            tbl.add_row(self._chip(rgba, name), key=str(rgba))
+        # Ensure a predictable cursor row.
+        try:
+            if getattr(tbl, "row_count", 0):
+                tbl.cursor_row = 0  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id != "color_search":
+            return
+        self._filter = event.value or ""
+        self._refresh()
 
     def on_key(self, event) -> None:  # type: ignore[override]
+        if not self.has_class("open"):
+            return
         key = str(getattr(event, "key", "") or "")
+        if key in ("/", "slash"):
+            try:
+                self.query_one("#color_search", Input).focus()
+            except Exception:
+                pass
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
         if key == "escape":
-            self.dismiss("cancel")
+            self.close()
+            self._send(self.ColorPicked(None))
             try:
                 event.stop()
             except Exception:
                 pass
             return
         if key in ("enter", "return") or getattr(event, "character", None) == "\r":
-            try:
-                tbl = self.query_one("#actions_table", DataTable)
-            except Exception:
+            rgba = (self._selected_rgba or "").strip()
+            if not rgba:
+                try:
+                    tbl = self.query_one("#palette_table", DataTable)
+                    rgba = (_table_cursor_row_key(tbl) or "").strip()
+                except Exception:
+                    rgba = ""
+            if not rgba:
                 return
-            act = (_table_cursor_row_key(tbl) or "cancel").strip() or "cancel"
-            self.dismiss(act)
+            self.close()
+            self._send(self.ColorPicked(rgba))
             try:
                 event.stop()
             except Exception:
                 pass
             return
 
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        if event.data_table.id != "palette_table":
+            return
+        if not self.has_class("open"):
+            return
+        try:
+            rgba = str(event.row_key.value)
+        except Exception:
+            rgba = ""
+        self._selected_rgba = rgba or None
+        # Treat row selection as "apply" (Enter/click) so this works even if the
+        # DataTable consumes Enter and the overlay doesn't receive the Key event.
+        if rgba:
+            self.close()
+            self._send(self.ColorPicked(rgba))
+            try:
+                event.stop()
+            except Exception:
+                pass
+
+
+class IconPickerOverlay(Container):
+    """In-screen overlay for choosing an OnX icon (no Screen navigation)."""
+
+    class IconPicked(Message):
+        bubble = True
+        def __init__(self, icon: Optional[str]) -> None:
+            super().__init__()
+            self.icon = icon
+
+    def __init__(self, *, id: str = "icon_picker_overlay", classes: str = "") -> None:
+        super().__init__(id=id, classes=classes)
+        self._icons: list[str] = []
+        self._filter: str = ""
+        self._selected_icon: Optional[str] = None
+
+    def compose(self) -> ComposeResult:
+        with Container(id="icon_picker_dialog"):
+            yield Static("OnX icon override", classes="title")
+            yield Static("Type to filter, ↑/↓ to navigate", classes="muted")
+            yield Input(placeholder="Filter icons…", id="icon_search")
+            tbl = DataTable(id="icon_table")
+            tbl.add_columns("Icon")
+            yield tbl
+            yield Static("Enter: apply  Esc: cancel  /: filter", classes="muted")
+
+    def open(self, *, icons: list[str]) -> None:
+        self._icons = [str(x) for x in (icons or [])]
+        self._filter = ""
+        self._selected_icon = None
+        self.add_class("open")
+        self._refresh()
+        # Default focus on table for arrow navigation.
+        try:
+            self.query_one("#icon_table", DataTable).focus()
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        self.remove_class("open")
+
+    def _send(self, message: Message) -> None:
+        try:
+            app = getattr(self, "app", None)
+            if app is not None:
+                app.post_message(message)
+                return
+        except Exception:
+            pass
+        try:
+            self.post_message(message)
+        except Exception:
+            pass
+
+    def _refresh(self) -> None:
+        try:
+            tbl = self.query_one("#icon_table", DataTable)
+        except Exception:
+            return
+        _datatable_clear_rows(tbl)
+        q = (self._filter or "").strip().lower()
+        for icon in self._icons:
+            if q and q not in icon.lower():
+                continue
+            tbl.add_row(icon, key=icon)
+        try:
+            if getattr(tbl, "row_count", 0):
+                tbl.cursor_row = 0  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id != "icon_search":
+            return
+        self._filter = event.value or ""
+        self._refresh()
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        if event.data_table.id != "icon_table":
+            return
+        if not self.has_class("open"):
+            return
+        try:
+            icon = str(event.row_key.value)
+        except Exception:
+            icon = ""
+        self._selected_icon = icon or None
+        if icon:
+            self.close()
+            self._send(self.IconPicked(icon))
+            try:
+                event.stop()
+            except Exception:
+                pass
+
+    def on_key(self, event) -> None:  # type: ignore[override]
+        if not self.has_class("open"):
+            return
+
+
+class RenameOverlay(Container):
+    """In-screen overlay for renaming selected records (no Screen navigation)."""
+
+    class Submitted(Message):
+        bubble = True
+
+        def __init__(self, ctx: EditContext, value: Optional[str]) -> None:
+            super().__init__()
+            self.ctx = ctx
+            self.value = value
+
+    def __init__(self, *, id: str = "rename_overlay", classes: str = "") -> None:
+        super().__init__(id=id, classes=classes)
+        self._ctx: Optional[EditContext] = None
+        self._title: str = "Rename"
+        self._placeholder: str = "New title (applies to selected)"
+
+    def compose(self) -> ComposeResult:
+        with Container(id="rename_dialog"):
+            yield Static(self._title, classes="title")
+            yield Static("", id="rename_subtitle", classes="muted")
+            yield Input(placeholder=self._placeholder, id="rename_value")
+            yield Static("Enter: apply  Esc: cancel", classes="muted")
+
+    def open(self, *, ctx: EditContext, title: str = "Rename") -> None:
+        self._ctx = ctx
+        self._title = title
+        try:
+            self.query_one("#rename_subtitle", Static).update(
+                f"Selected: {len(ctx.selected_keys)} {ctx.kind}(s)"
+            )
+        except Exception:
+            pass
+        self.add_class("open")
+        try:
+            inp = self.query_one("#rename_value", Input)
+            inp.value = ""
+            inp.focus()
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        self.remove_class("open")
+
+    def _send(self, message: Message) -> None:
+        """Send a message to the App (preferred) so it always gets handled."""
+        try:
+            app = getattr(self, "app", None)
+            if app is not None:
+                app.post_message(message)
+                return
+        except Exception:
+            pass
+        try:
+            self.post_message(message)
+        except Exception:
+            pass
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "rename_value":
+            return
+        if self._ctx is None:
+            return
+        raw = (event.value or "").strip()
+        self.close()
+        self._send(self.Submitted(self._ctx, raw or None))
+        try:
+            event.stop()
+        except Exception:
+            pass
+
+    def on_key(self, event) -> None:  # type: ignore[override]
+        if not self.has_class("open"):
+            return
+        key = str(getattr(event, "key", "") or "")
+        if key == "escape":
+            if self._ctx is None:
+                self.close()
+                return
+            self.close()
+            self._send(self.Submitted(self._ctx, None))
+            try:
+                event.stop()
+            except Exception:
+                pass
+
+
+class DescriptionOverlay(Container):
+    """In-screen overlay for setting description (no Screen navigation)."""
+
+    class Submitted(Message):
+        bubble = True
+
+        def __init__(self, ctx: EditContext, value: Optional[str]) -> None:
+            super().__init__()
+            self.ctx = ctx
+            self.value = value
+
+    def __init__(self, *, id: str = "description_overlay", classes: str = "") -> None:
+        super().__init__(id=id, classes=classes)
+        self._ctx: Optional[EditContext] = None
+
+    def compose(self) -> ComposeResult:
+        with Container(id="description_dialog"):
+            yield Static("Set description", classes="title")
+            yield Static("", id="description_subtitle", classes="muted")
+            yield Input(placeholder="New description (applies to selected)", id="description_value")
+            yield Static("Enter: apply  Esc: cancel  (use \\n for new lines)", classes="muted")
+
+    def open(self, *, ctx: EditContext) -> None:
+        self._ctx = ctx
+        try:
+            self.query_one("#description_subtitle", Static).update(
+                f"Selected: {len(ctx.selected_keys)} {ctx.kind}(s)"
+            )
+        except Exception:
+            pass
+        self.add_class("open")
+        try:
+            inp = self.query_one("#description_value", Input)
+            inp.value = ""
+            inp.focus()
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        self.remove_class("open")
+
+    def _send(self, message: Message) -> None:
+        try:
+            app = getattr(self, "app", None)
+            if app is not None:
+                app.post_message(message)
+                return
+        except Exception:
+            pass
+        try:
+            self.post_message(message)
+        except Exception:
+            pass
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "description_value":
+            return
+        if self._ctx is None:
+            return
+        raw = (event.value or "").strip()
+        self.close()
+        self._send(self.Submitted(self._ctx, raw or None))
+        try:
+            event.stop()
+        except Exception:
+            pass
+
+    def on_key(self, event) -> None:  # type: ignore[override]
+        if not self.has_class("open"):
+            return
+        key = str(getattr(event, "key", "") or "")
+        if key == "escape":
+            if self._ctx is None:
+                self.close()
+                return
+            self.close()
+            self._send(self.Submitted(self._ctx, None))
+            try:
+                event.stop()
+            except Exception:
+                pass
+
+
+class ConfirmOverlay(Container):
+    """In-screen overlay confirmation (no Screen navigation)."""
+    can_focus = True
+
+    class Result(Message):
+        bubble = True
+
+        def __init__(self, confirmed: bool) -> None:
+            super().__init__()
+            self.confirmed = bool(confirmed)
+
+    def __init__(self, *, id: str = "confirm_overlay", classes: str = "") -> None:
+        super().__init__(id=id, classes=classes)
+        self._title: str = "Confirm"
+        self._message: str = ""
+
+    def compose(self) -> ComposeResult:
+        with Container(id="confirm_dialog"):
+            yield Static("", id="confirm_title", classes="title")
+            yield Static("", id="confirm_message")
+            yield Static("")
+            yield Static("y/Enter: Yes    n/Esc: No", classes="muted")
+
+    def open(self, *, title: str, message: str) -> None:
+        self._title = str(title or "Confirm")
+        self._message = str(message or "")
+        try:
+            self.query_one("#confirm_title", Static).update(self._title)
+            self.query_one("#confirm_message", Static).update(self._message)
+        except Exception:
+            pass
+        self.add_class("open")
+        try:
+            # Focus this container so it receives key events.
+            self.focus()
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        self.remove_class("open")
+
+    def _send(self, message: Message) -> None:
+        try:
+            app = getattr(self, "app", None)
+            if app is not None:
+                app.post_message(message)
+                return
+        except Exception:
+            pass
+        try:
+            self.post_message(message)
+        except Exception:
+            pass
+
+    def on_key(self, event) -> None:  # type: ignore[override]
+        if not self.has_class("open"):
+            return
+        key = str(getattr(event, "key", "") or "")
+        char = getattr(event, "character", "") or ""
+        if key == "escape" or char.lower() == "n":
+            self.close()
+            self._send(self.Result(False))
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if key in ("enter", "return") or char == "\r" or char.lower() == "y":
+            self.close()
+            self._send(self.Result(True))
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        key = str(getattr(event, "key", "") or "")
+        if key in ("/", "slash"):
+            try:
+                self.query_one("#icon_search", Input).focus()
+            except Exception:
+                pass
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if key == "escape":
+            self.close()
+            self._send(self.IconPicked(None))
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+        if key in ("enter", "return") or getattr(event, "character", None) == "\r":
+            icon = (self._selected_icon or "").strip()
+            if not icon:
+                try:
+                    tbl = self.query_one("#icon_table", DataTable)
+                    icon = (_table_cursor_row_key(tbl) or "").strip()
+                except Exception:
+                    icon = ""
+            if not icon:
+                return
+            self.close()
+            self._send(self.IconPicked(icon))
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
 
 class RenameModal(ModalScreen[None]):
     def __init__(
