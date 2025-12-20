@@ -17,6 +17,8 @@ dependencies = [
     "typer>=0.9.0",
     "rich>=13.0.0",
     "pyyaml>=6.0",
+    "prompt-toolkit>=3.0.43",
+    "textual>=0.58.0",
 ]
 
 [project.optional-dependencies]

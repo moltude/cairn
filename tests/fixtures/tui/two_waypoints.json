@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-120.0, 45.0]
+      },
+      "properties": {
+        "title": "Camping",
+        "class": "Marker",
+        "marker-symbol": "circle",
+        "marker-color": "#FF0000"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-120.01, 45.01]
+      },
+      "properties": {
+        "title": "Camp",
+        "class": "Marker",
+        "marker-symbol": "circle",
+        "marker-color": "#FF0000"
+      }
+    }
+  ]
+}

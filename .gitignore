@@ -35,4 +35,5 @@ htmlcov/
 
 # Project-specific output
 onx_ready/
+artifacts/tui/
 tests/fixtures/*.gpx

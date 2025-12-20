@@ -9,7 +9,7 @@ from __future__ import annotations
 import typer
 
 # Import command modules
-from cairn.commands import convert_cmd, config_cmd, migrate_cmd
+from cairn.commands import convert_cmd, config_cmd, migrate_cmd, tui_cmd
 
 app = typer.Typer(
     name="cairn",
@@ -22,6 +22,9 @@ app = typer.Typer(
 app.command(
     name="convert", help="Convert between supported formats (advanced)", hidden=True
 )(convert_cmd.convert)
+
+# Full-screen Textual TUI (opt-in)
+app.command(name="tui", help="Launch full-screen TUI (CalTopo → OnX)")(tui_cmd.tui)
 
 # Register command groups
 app.add_typer(config_cmd.app, name="config", help="Manage configuration settings")

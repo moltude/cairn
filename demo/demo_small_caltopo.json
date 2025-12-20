@@ -1,0 +1,182 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "demo-folder-1",
+      "geometry": null,
+      "properties": {
+        "class": "Folder",
+        "title": "Cairn Demo (Small)",
+        "visible": true
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "wp-parking-1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-113.9950, 45.7200, 0, 0]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Parking",
+        "description": "Start here. This is a small demo dataset for Cairn.",
+        "marker-symbol": "parking",
+        "marker-color": "#000000",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "wp-campsite-1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-113.9942, 45.7212, 0, 0]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Campsite (Lower)",
+        "description": "Camp spot near water.",
+        "marker-symbol": "campsite",
+        "marker-color": "#FF3300",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "wp-campsite-2",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-113.9929, 45.7230, 0, 0]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Campsite (Ridge)",
+        "description": "More exposed but good views.",
+        "marker-symbol": "tent",
+        "marker-color": "#FF3300",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "wp-peak-1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-113.9913, 45.7241, 0, 0]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Peak",
+        "description": "Summit point.",
+        "marker-symbol": "peak",
+        "marker-color": "#FF0000",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "wp-waterfall-1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-113.9936, 45.7224, 0, 0]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Waterfall",
+        "description": "Scenic waterfall.",
+        "marker-symbol": "waterfall",
+        "marker-color": "#00FFFF",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "wp-climbing-1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-113.9924, 45.7218, 0, 0]
+      },
+      "properties": {
+        "class": "Marker",
+        "title": "Climbing Wall",
+        "description": "Short cliff band with a few routes.",
+        "marker-symbol": "climbing",
+        "marker-color": "#800080",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "trk-uphill-1",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-113.9950, 45.7200],
+          [-113.9942, 45.7212],
+          [-113.9932, 45.7225],
+          [-113.9920, 45.7236],
+          [-113.9913, 45.7241]
+        ]
+      },
+      "properties": {
+        "class": "Shape",
+        "gpstype": "TRACK",
+        "title": "Uphill (Blue)",
+        "description": "Demo ascent line.",
+        "stroke": "#0000FF",
+        "stroke-width": 3,
+        "pattern": "solid",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "trk-downhill-1",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-113.9913, 45.7241],
+          [-113.9922, 45.7233],
+          [-113.9930, 45.7221],
+          [-113.9939, 45.7211],
+          [-113.9950, 45.7200]
+        ]
+      },
+      "properties": {
+        "class": "Shape",
+        "gpstype": "TRACK",
+        "title": "Downhill (Green)",
+        "description": "Demo descent line.",
+        "stroke": "#00FF00",
+        "stroke-width": 3,
+        "pattern": "solid",
+        "folderId": "demo-folder-1"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "trk-approach-1",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-113.9950, 45.7200],
+          [-113.9939, 45.7206],
+          [-113.9929, 45.7210],
+          [-113.9924, 45.7218]
+        ]
+      },
+      "properties": {
+        "class": "Shape",
+        "gpstype": "TRACK",
+        "title": "Approach (Red)",
+        "description": "Short approach to the climbing wall.",
+        "stroke": "#FF0000",
+        "stroke-width": 2,
+        "pattern": "dash",
+        "folderId": "demo-folder-1"
+      }
+    }
+  ]
+}

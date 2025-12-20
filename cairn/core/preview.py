@@ -7,7 +7,7 @@ to help users verify icon mappings before creating import files.
 
 from __future__ import annotations
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Sequence
 from collections import defaultdict
 from pathlib import Path
 
@@ -15,6 +15,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
+
+from cairn.ui.interactive import InteractiveUI, is_interactive_tty, render_change_preview
 
 from cairn.core.parser import ParsedData, ParsedFeature
 from cairn.core.mapper import map_icon
@@ -33,6 +35,49 @@ import re
 console = Console()
 
 _ONX_ICON_OVERRIDE_KEY = "cairn_onx_icon_override"
+
+
+def _ptk_ui() -> InteractiveUI:
+    # Keep a single Console instance for consistent output styling.
+    return InteractiveUI(console=console)
+
+
+def _ptk_available(*, force_interactive: Optional[bool] = None) -> bool:
+    ui = _ptk_ui()
+    return is_interactive_tty(force=force_interactive) and ui.has_prompt_toolkit()
+
+
+def _rename_preview_samples(
+    features: Sequence[ParsedFeature],
+    *,
+    prefix: str,
+    suffix: str,
+    trim: bool,
+    max_samples: int = 8,
+) -> list[tuple[str, str]]:
+    rows: list[tuple[str, str]] = []
+    for feat in features[:max_samples]:
+        before = feat.title or "Untitled"
+        base = before.strip() if trim else before
+        after = f"{prefix}{base}{suffix}"
+        rows.append((before, after))
+    return rows
+
+
+def _apply_rename_prefix_suffix(
+    features: Sequence[ParsedFeature],
+    *,
+    prefix: str,
+    suffix: str,
+    trim: bool,
+) -> list[tuple[ParsedFeature, str]]:
+    out: list[tuple[ParsedFeature, str]] = []
+    for feat in features:
+        before = feat.title or ""
+        base = before.strip() if trim else before
+        feat.title = f"{prefix}{base}{suffix}"
+        out.append((feat, feat.title))
+    return out
 
 
 def _parse_bulk_selection(raw: str, *, max_index: int) -> list[int]:
@@ -116,6 +161,9 @@ def _match_palette_color_choice(raw: str, palette: tuple) -> Optional[str]:
     # Common user-friendly aliases.
     if "REDORANGE" in by_name:
         by_name.setdefault("ORANGE", by_name["REDORANGE"])
+    # Back-compat: older docs/UI used "LIME" for the OnX green swatch.
+    if "GREEN" in by_name:
+        by_name.setdefault("LIME", by_name["GREEN"])
 
     key = _norm_name(raw)
     rgba = by_name.get(key)
@@ -775,95 +823,256 @@ def interactive_edit_before_export_per_folder(
                 if Confirm.ask(
                     "\nWould you like to edit any routes in this folder?", default=False
                 ):
-                    while True:
-                        sel = Prompt.ask(
-                            "Select route number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)",
-                            default="",
-                        ).strip()
-                        if not sel:
-                            break
-                        if _is_select_all(sel) and not Confirm.ask(
-                            f"Apply edits to ALL {len(tracks)} routes in this folder?",
-                            default=False,
-                        ):
-                            continue
+                    # prompt-toolkit enhanced bulk edit (non-full-screen, but richer selection).
+                    if _ptk_available():
+                        ui = _ptk_ui()
                         try:
-                            idxs = _parse_bulk_selection(sel, max_index=len(tracks))
-                        except ValueError as e:
-                            console.print(f"[red]{e}[/]")
-                            continue
-
-                        selected = [tracks[i - 1] for i in idxs]
-                        if len(selected) == 1:
-                            trk = selected[0]
-                            _clear_screen()
-                            _print_folder_header()
-                            _print_track_edit_context(
-                                idx=idxs[0], folder_name=folder_name, trk=trk
+                            from prompt_toolkit.shortcuts import (
+                                input_dialog,
+                                message_dialog,
+                                yes_no_dialog,
                             )
-                        else:
-                            console.print(
-                                f"\n[bold]Editing {len(selected)} routes[/] [dim]({idxs[0]}..{idxs[-1]})[/]"
+                        except Exception:
+                            input_dialog = None  # type: ignore[assignment]
+                            message_dialog = None  # type: ignore[assignment]
+                            yes_no_dialog = None  # type: ignore[assignment]
+
+                        def _route_label(trk: ParsedFeature) -> str:
+                            title = (trk.title or "Untitled").strip() or "Untitled"
+                            nm = _onx_color_name_upper(_resolved_track_color(trk))
+                            return f"{title} [{nm}]"
+
+                        while True:
+                            choices = [(str(i), _route_label(trk)) for i, trk in enumerate(tracks)]
+                            selected_ids = ui.choose_many(
+                                title=f"{folder_name}: select routes",
+                                choices=choices,
+                                require_filter_over=400,
                             )
+                            if not selected_ids:
+                                break
 
-                        new_name = Prompt.ask(
-                            "Name (press enter to keep existing value)", default=""
-                        ).strip()
-                        if new_name:
-                            for trk in selected:
-                                trk.title = new_name
-                                _maybe_record(
-                                    kind="track",
-                                    folder_id=folder_id,
-                                    feat=trk,
-                                    title=new_name,
+                            idxs = sorted({int(s) for s in selected_ids if str(s).isdigit()})
+                            selected = [tracks[i] for i in idxs if 0 <= i < len(tracks)]
+                            if not selected:
+                                break
+
+                            action = ui.choose_one(
+                                title="Bulk edit routes",
+                                choices=[
+                                    ("rename", "Rename: prefix/suffix"),
+                                    ("color", "Set route color"),
+                                    ("cancel", "Cancel"),
+                                ],
+                                default="rename",
+                            )
+                            if action in (None, "cancel"):
+                                break
+
+                            if action == "rename":
+                                if input_dialog is None or yes_no_dialog is None:
+                                    break
+                                prefix = input_dialog(
+                                    title="Prefix", text="Prefix to add (empty allowed):"
+                                ).run()
+                                if prefix is None:
+                                    continue
+                                suffix = input_dialog(
+                                    title="Suffix", text="Suffix to add (empty allowed):"
+                                ).run()
+                                if suffix is None:
+                                    continue
+                                trim = bool(
+                                    yes_no_dialog(
+                                        title="Trim whitespace?",
+                                        text="Trim leading/trailing whitespace before adding prefix/suffix?",
+                                    ).run()
                                 )
-                            changes_made = True
 
-                        new_desc = Prompt.ask(
-                            "Description (press enter to keep existing value)",
-                            default="",
-                        ).strip()
-                        if new_desc:
-                            new_desc = _prompt_multiline_hint(new_desc)
-                            for trk in selected:
-                                trk.description = new_desc
-                                _maybe_record(
-                                    kind="track",
-                                    folder_id=folder_id,
-                                    feat=trk,
-                                    description=new_desc,
+                                render_change_preview(
+                                    console=console,
+                                    title="Preview: rename routes",
+                                    total_selected=len(selected),
+                                    sample_rows=_rename_preview_samples(
+                                        selected,
+                                        prefix=str(prefix),
+                                        suffix=str(suffix),
+                                        trim=trim,
+                                    ),
                                 )
-                            changes_made = True
+                                if not bool(
+                                    yes_no_dialog(
+                                        title="Apply changes?",
+                                        text="Apply these rename changes?",
+                                    ).run()
+                                ):
+                                    continue
 
-                        cur_rgba = _resolved_track_color(selected[0])
-                        chosen = _palette_choice(
-                            title="Select route color",
-                            palette=ColorMapper.TRACK_PALETTE,
-                            current_rgba=cur_rgba,
-                        )
-                        if chosen:
-                            hex_color = _rgba_to_hex_hash(chosen)
-                            for trk in selected:
-                                trk.stroke = hex_color
-                                _maybe_record(
-                                    kind="track",
-                                    folder_id=folder_id,
-                                    feat=trk,
-                                    stroke=hex_color,
+                                applied = _apply_rename_prefix_suffix(
+                                    selected,
+                                    prefix=str(prefix),
+                                    suffix=str(suffix),
+                                    trim=trim,
                                 )
-                            changes_made = True
+                                for trk, new_title in applied:
+                                    _maybe_record(
+                                        kind="track",
+                                        folder_id=folder_id,
+                                        feat=trk,
+                                        title=new_title,
+                                    )
+                                changes_made = True
 
-                        # Re-render after each edit iteration.
+                            elif action == "color":
+                                if yes_no_dialog is None:
+                                    break
+                                # Choose a palette RGBA, then apply as track stroke (#RRGGBB).
+                                palette_choices = [
+                                    (p.rgba, (p.name or "").replace("-", " ").upper())
+                                    for p in ColorMapper.TRACK_PALETTE
+                                ]
+                                chosen_rgba = ui.choose_one(
+                                    title="Select route color",
+                                    choices=[(rgba, name) for rgba, name in palette_choices],
+                                    default=palette_choices[0][0],
+                                )
+                                if not chosen_rgba:
+                                    continue
+
+                                before_after = []
+                                for trk in selected[:8]:
+                                    before_nm = _onx_color_name_upper(_resolved_track_color(trk))
+                                    after_nm = _onx_color_name_upper(str(chosen_rgba))
+                                    before_after.append(
+                                        ((trk.title or "Untitled"), f"{before_nm} → {after_nm}")
+                                    )
+                                render_change_preview(
+                                    console=console,
+                                    title="Preview: route color",
+                                    total_selected=len(selected),
+                                    sample_rows=before_after,
+                                )
+                                if not bool(
+                                    yes_no_dialog(
+                                        title="Apply changes?",
+                                        text="Apply this color to the selected routes?",
+                                    ).run()
+                                ):
+                                    continue
+
+                                hex_color = _rgba_to_hex_hash(str(chosen_rgba))
+                                for trk in selected:
+                                    trk.stroke = hex_color
+                                    _maybe_record(
+                                        kind="track",
+                                        folder_id=folder_id,
+                                        feat=trk,
+                                        stroke=hex_color,
+                                    )
+                                changes_made = True
+
+                            if not bool(
+                                yes_no_dialog(
+                                    title="Continue?",
+                                    text="Edit more routes in this folder?",
+                                ).run()
+                            ):
+                                break
+
+                        # Re-render after prompt-toolkit flow.
                         _clear_screen()
                         _print_folder_header()
                         _print_tracks_list()
+                    else:
+                        while True:
+                            sel = Prompt.ask(
+                                "Select route number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)",
+                                default="",
+                            ).strip()
+                            if not sel:
+                                break
+                            if _is_select_all(sel) and not Confirm.ask(
+                                f"Apply edits to ALL {len(tracks)} routes in this folder?",
+                                default=False,
+                            ):
+                                continue
+                            try:
+                                idxs = _parse_bulk_selection(sel, max_index=len(tracks))
+                            except ValueError as e:
+                                console.print(f"[red]{e}[/]")
+                                continue
 
-                        if not Confirm.ask(
-                            "Would you like to change another route in this folder?",
-                            default=False,
-                        ):
-                            break
+                            selected = [tracks[i - 1] for i in idxs]
+                            if len(selected) == 1:
+                                trk = selected[0]
+                                _clear_screen()
+                                _print_folder_header()
+                                _print_track_edit_context(
+                                    idx=idxs[0], folder_name=folder_name, trk=trk
+                                )
+                            else:
+                                console.print(
+                                    f"\n[bold]Editing {len(selected)} routes[/] [dim]({idxs[0]}..{idxs[-1]})[/]"
+                                )
+
+                            new_name = Prompt.ask(
+                                "Name (press enter to keep existing value)", default=""
+                            ).strip()
+                            if new_name:
+                                for trk in selected:
+                                    trk.title = new_name
+                                    _maybe_record(
+                                        kind="track",
+                                        folder_id=folder_id,
+                                        feat=trk,
+                                        title=new_name,
+                                    )
+                                changes_made = True
+
+                            new_desc = Prompt.ask(
+                                "Description (press enter to keep existing value)",
+                                default="",
+                            ).strip()
+                            if new_desc:
+                                new_desc = _prompt_multiline_hint(new_desc)
+                                for trk in selected:
+                                    trk.description = new_desc
+                                    _maybe_record(
+                                        kind="track",
+                                        folder_id=folder_id,
+                                        feat=trk,
+                                        description=new_desc,
+                                    )
+                                changes_made = True
+
+                            cur_rgba = _resolved_track_color(selected[0])
+                            chosen = _palette_choice(
+                                title="Select route color",
+                                palette=ColorMapper.TRACK_PALETTE,
+                                current_rgba=cur_rgba,
+                            )
+                            if chosen:
+                                hex_color = _rgba_to_hex_hash(chosen)
+                                for trk in selected:
+                                    trk.stroke = hex_color
+                                    _maybe_record(
+                                        kind="track",
+                                        folder_id=folder_id,
+                                        feat=trk,
+                                        stroke=hex_color,
+                                    )
+                                changes_made = True
+
+                            # Re-render after each edit iteration.
+                            _clear_screen()
+                            _print_folder_header()
+                            _print_tracks_list()
+
+                            if not Confirm.ask(
+                                "Would you like to change another route in this folder?",
+                                default=False,
+                            ):
+                                break
 
                 # Gate: proceed to next section/folder.
                 if waypoints:
@@ -891,129 +1100,373 @@ def interactive_edit_before_export_per_folder(
                     "\nWould you like to edit any waypoints in this folder?",
                     default=False,
                 ):
-                    while True:
-                        sel = Prompt.ask(
-                            "Select waypoint number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)",
-                            default="",
-                        ).strip()
-                        if not sel:
-                            break
-                        if _is_select_all(sel) and not Confirm.ask(
-                            f"Apply edits to ALL {len(waypoints)} waypoints in this folder?",
-                            default=False,
-                        ):
-                            continue
+                    if _ptk_available():
+                        ui = _ptk_ui()
                         try:
-                            idxs = _parse_bulk_selection(sel, max_index=len(waypoints))
-                        except ValueError as e:
-                            console.print(f"[red]{e}[/]")
-                            continue
-
-                        selected = [waypoints[i - 1] for i in idxs]
-                        if len(selected) == 1:
-                            wp = selected[0]
-                            _clear_screen()
-                            _print_folder_header()
-                            _print_waypoint_edit_context(
-                                idx=idxs[0],
-                                folder_name=folder_name,
-                                wp=wp,
-                                config=config,
+                            from prompt_toolkit.shortcuts import (
+                                input_dialog,
+                                message_dialog,
+                                yes_no_dialog,
                             )
-                        else:
-                            console.print(
-                                f"\n[bold]Editing {len(selected)} waypoints[/] [dim]({idxs[0]}..{idxs[-1]})[/]"
+                        except Exception:
+                            input_dialog = None  # type: ignore[assignment]
+                            message_dialog = None  # type: ignore[assignment]
+                            yes_no_dialog = None  # type: ignore[assignment]
+
+                        def _wp_label(wp: ParsedFeature) -> str:
+                            title = (wp.title or "Untitled").strip() or "Untitled"
+                            icon = _resolved_waypoint_icon(wp, config)
+                            return f"{title} [{icon}]"
+
+                        while True:
+                            choices = [
+                                (str(i), _wp_label(wp)) for i, wp in enumerate(waypoints)
+                            ]
+                            selected_ids = ui.choose_many(
+                                title=f"{folder_name}: select waypoints",
+                                choices=choices,
+                                require_filter_over=600,
                             )
+                            if not selected_ids:
+                                break
 
-                        new_name = Prompt.ask(
-                            "Name (press enter to keep existing value)", default=""
-                        ).strip()
-                        if new_name:
-                            for wp in selected:
-                                wp.title = new_name
-                                _maybe_record(
-                                    kind="waypoint",
-                                    folder_id=folder_id,
-                                    feat=wp,
-                                    title=new_name,
+                            idxs = sorted({int(s) for s in selected_ids if str(s).isdigit()})
+                            selected = [
+                                waypoints[i] for i in idxs if 0 <= i < len(waypoints)
+                            ]
+                            if not selected:
+                                break
+
+                            action = ui.choose_one(
+                                title="Bulk edit waypoints",
+                                choices=[
+                                    ("rename", "Rename: prefix/suffix"),
+                                    ("icon", "Set/clear OnX icon override"),
+                                    ("color", "Set waypoint color"),
+                                    ("cancel", "Cancel"),
+                                ],
+                                default="rename",
+                            )
+                            if action in (None, "cancel"):
+                                break
+
+                            if action == "rename":
+                                if input_dialog is None or yes_no_dialog is None:
+                                    break
+                                prefix = input_dialog(
+                                    title="Prefix", text="Prefix to add (empty allowed):"
+                                ).run()
+                                if prefix is None:
+                                    continue
+                                suffix = input_dialog(
+                                    title="Suffix", text="Suffix to add (empty allowed):"
+                                ).run()
+                                if suffix is None:
+                                    continue
+                                trim = bool(
+                                    yes_no_dialog(
+                                        title="Trim whitespace?",
+                                        text="Trim leading/trailing whitespace before adding prefix/suffix?",
+                                    ).run()
                                 )
-                            changes_made = True
 
-                        new_desc = Prompt.ask(
-                            "Description (press enter to keep existing value)",
-                            default="",
-                        ).strip()
-                        if new_desc:
-                            new_desc = _prompt_multiline_hint(new_desc)
-                            for wp in selected:
-                                wp.description = new_desc
-                                _maybe_record(
-                                    kind="waypoint",
-                                    folder_id=folder_id,
-                                    feat=wp,
-                                    description=new_desc,
+                                render_change_preview(
+                                    console=console,
+                                    title="Preview: rename waypoints",
+                                    total_selected=len(selected),
+                                    sample_rows=_rename_preview_samples(
+                                        selected,
+                                        prefix=str(prefix),
+                                        suffix=str(suffix),
+                                        trim=trim,
+                                    ),
                                 )
-                            changes_made = True
-
-                        cur_icon = _resolved_waypoint_icon(selected[0], config)
-                        icon_choice = _prompt_icon_choice(current_icon=cur_icon)
-                        if icon_choice == "CLEAR":
-                            for wp in selected:
-                                if (
-                                    isinstance(getattr(wp, "properties", None), dict)
-                                    and _ONX_ICON_OVERRIDE_KEY in wp.properties
+                                if not bool(
+                                    yes_no_dialog(
+                                        title="Apply changes?",
+                                        text="Apply these rename changes?",
+                                    ).run()
                                 ):
-                                    del wp.properties[_ONX_ICON_OVERRIDE_KEY]
-                                    _maybe_record(
-                                        kind="waypoint",
-                                        folder_id=folder_id,
-                                        feat=wp,
-                                        onx_icon_override="",
-                                    )
-                                    changes_made = True
-                        elif icon_choice:
-                            for wp in selected:
-                                if isinstance(getattr(wp, "properties", None), dict):
-                                    wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
-                                    _maybe_record(
-                                        kind="waypoint",
-                                        folder_id=folder_id,
-                                        feat=wp,
-                                        onx_icon_override=icon_choice,
-                                    )
-                                    changes_made = True
+                                    continue
 
-                        final_icon = _resolved_waypoint_icon(selected[0], config)
-                        cur_rgba = _resolved_waypoint_color(
-                            selected[0], final_icon, config
-                        )
-                        chosen = _palette_choice(
-                            title="Select waypoint color",
-                            palette=ColorMapper.WAYPOINT_PALETTE,
-                            current_rgba=cur_rgba,
-                        )
-                        if chosen:
-                            hex_nohash = _rgba_to_hex_nohash(chosen)
-                            for wp in selected:
-                                wp.color = hex_nohash
-                                _maybe_record(
-                                    kind="waypoint",
-                                    folder_id=folder_id,
-                                    feat=wp,
-                                    color=hex_nohash,
+                                applied = _apply_rename_prefix_suffix(
+                                    selected,
+                                    prefix=str(prefix),
+                                    suffix=str(suffix),
+                                    trim=trim,
                                 )
-                            changes_made = True
+                                for wp, new_title in applied:
+                                    _maybe_record(
+                                        kind="waypoint",
+                                        folder_id=folder_id,
+                                        feat=wp,
+                                        title=new_title,
+                                    )
+                                changes_made = True
 
-                        # Re-render after each edit iteration.
+                            elif action == "icon":
+                                if input_dialog is None or yes_no_dialog is None:
+                                    break
+                                raw = input_dialog(
+                                    title="OnX icon override",
+                                    text=(
+                                        "Enter an OnX icon name (exact) to override.\n"
+                                        "Enter 'clear' to remove the override.\n"
+                                        "Leave blank to cancel."
+                                    ),
+                                ).run()
+                                raw = (raw or "").strip()
+                                if not raw:
+                                    continue
+                                if raw.lower() == "clear":
+                                    sample_rows = []
+                                    for wp in selected[:8]:
+                                        before = _resolved_waypoint_icon(wp, config)
+                                        sample_rows.append((wp.title or "Untitled", f"{before} → (cleared)"))
+                                    render_change_preview(
+                                        console=console,
+                                        title="Preview: clear icon override",
+                                        total_selected=len(selected),
+                                        sample_rows=sample_rows,
+                                    )
+                                    if not bool(
+                                        yes_no_dialog(
+                                            title="Apply changes?",
+                                            text="Clear icon overrides for the selected waypoints?",
+                                        ).run()
+                                    ):
+                                        continue
+                                    for wp in selected:
+                                        if isinstance(getattr(wp, "properties", None), dict):
+                                            wp.properties.pop(_ONX_ICON_OVERRIDE_KEY, None)
+                                        _maybe_record(
+                                            kind="waypoint",
+                                            folder_id=folder_id,
+                                            feat=wp,
+                                            onx_icon_override="",
+                                        )
+                                    changes_made = True
+                                else:
+                                    canon = normalize_onx_icon_name(raw)
+                                    if canon is None:
+                                        if message_dialog is not None:
+                                            message_dialog(
+                                                title="Invalid icon",
+                                                text="That icon name is not a valid OnX icon.",
+                                            ).run()
+                                        continue
+                                    sample_rows = []
+                                    for wp in selected[:8]:
+                                        before = _resolved_waypoint_icon(wp, config)
+                                        sample_rows.append((wp.title or "Untitled", f"{before} → {canon}"))
+                                    render_change_preview(
+                                        console=console,
+                                        title="Preview: set icon override",
+                                        total_selected=len(selected),
+                                        sample_rows=sample_rows,
+                                    )
+                                    if not bool(
+                                        yes_no_dialog(
+                                            title="Apply changes?",
+                                            text="Set this icon override for the selected waypoints?",
+                                        ).run()
+                                    ):
+                                        continue
+                                    for wp in selected:
+                                        if isinstance(getattr(wp, "properties", None), dict):
+                                            wp.properties[_ONX_ICON_OVERRIDE_KEY] = canon
+                                        _maybe_record(
+                                            kind="waypoint",
+                                            folder_id=folder_id,
+                                            feat=wp,
+                                            onx_icon_override=canon,
+                                        )
+                                    changes_made = True
+
+                            elif action == "color":
+                                if yes_no_dialog is None:
+                                    break
+                                palette_choices = [
+                                    (p.rgba, (p.name or "").replace("-", " ").upper())
+                                    for p in ColorMapper.WAYPOINT_PALETTE
+                                ]
+                                chosen_rgba = ui.choose_one(
+                                    title="Select waypoint color",
+                                    choices=[(rgba, name) for rgba, name in palette_choices],
+                                    default=palette_choices[0][0],
+                                )
+                                if not chosen_rgba:
+                                    continue
+                                before_after = []
+                                for wp in selected[:8]:
+                                    icon = _resolved_waypoint_icon(wp, config)
+                                    before_nm = _onx_color_name_upper(
+                                        _resolved_waypoint_color(wp, icon, config)
+                                    )
+                                    after_nm = _onx_color_name_upper(str(chosen_rgba))
+                                    before_after.append(
+                                        ((wp.title or "Untitled"), f"{before_nm} → {after_nm}")
+                                    )
+                                render_change_preview(
+                                    console=console,
+                                    title="Preview: waypoint color",
+                                    total_selected=len(selected),
+                                    sample_rows=before_after,
+                                )
+                                if not bool(
+                                    yes_no_dialog(
+                                        title="Apply changes?",
+                                        text="Apply this color to the selected waypoints?",
+                                    ).run()
+                                ):
+                                    continue
+
+                                hex_nohash = _rgba_to_hex_nohash(str(chosen_rgba))
+                                for wp in selected:
+                                    wp.color = hex_nohash
+                                    _maybe_record(
+                                        kind="waypoint",
+                                        folder_id=folder_id,
+                                        feat=wp,
+                                        color=hex_nohash,
+                                    )
+                                changes_made = True
+
+                            if not bool(
+                                yes_no_dialog(
+                                    title="Continue?",
+                                    text="Edit more waypoints in this folder?",
+                                ).run()
+                            ):
+                                break
+
                         _clear_screen()
                         _print_folder_header()
                         _print_waypoints_list()
+                    else:
+                        while True:
+                            sel = Prompt.ask(
+                                "Select waypoint number(s) (e.g. 1,2,3 or 1-4 or all; enter to finish)",
+                                default="",
+                            ).strip()
+                            if not sel:
+                                break
+                            if _is_select_all(sel) and not Confirm.ask(
+                                f"Apply edits to ALL {len(waypoints)} waypoints in this folder?",
+                                default=False,
+                            ):
+                                continue
+                            try:
+                                idxs = _parse_bulk_selection(sel, max_index=len(waypoints))
+                            except ValueError as e:
+                                console.print(f"[red]{e}[/]")
+                                continue
 
-                        if not Confirm.ask(
-                            "Would you like to change another waypoint in this folder?",
-                            default=False,
-                        ):
-                            break
+                            selected = [waypoints[i - 1] for i in idxs]
+                            if len(selected) == 1:
+                                wp = selected[0]
+                                _clear_screen()
+                                _print_folder_header()
+                                _print_waypoint_edit_context(
+                                    idx=idxs[0],
+                                    folder_name=folder_name,
+                                    wp=wp,
+                                    config=config,
+                                )
+                            else:
+                                console.print(
+                                    f"\n[bold]Editing {len(selected)} waypoints[/] [dim]({idxs[0]}..{idxs[-1]})[/]"
+                                )
+
+                            new_name = Prompt.ask(
+                                "Name (press enter to keep existing value)", default=""
+                            ).strip()
+                            if new_name:
+                                for wp in selected:
+                                    wp.title = new_name
+                                    _maybe_record(
+                                        kind="waypoint",
+                                        folder_id=folder_id,
+                                        feat=wp,
+                                        title=new_name,
+                                    )
+                                changes_made = True
+
+                            new_desc = Prompt.ask(
+                                "Description (press enter to keep existing value)",
+                                default="",
+                            ).strip()
+                            if new_desc:
+                                new_desc = _prompt_multiline_hint(new_desc)
+                                for wp in selected:
+                                    wp.description = new_desc
+                                    _maybe_record(
+                                        kind="waypoint",
+                                        folder_id=folder_id,
+                                        feat=wp,
+                                        description=new_desc,
+                                    )
+                                changes_made = True
+
+                            cur_icon = _resolved_waypoint_icon(selected[0], config)
+                            icon_choice = _prompt_icon_choice(current_icon=cur_icon)
+                            if icon_choice == "CLEAR":
+                                for wp in selected:
+                                    if (
+                                        isinstance(getattr(wp, "properties", None), dict)
+                                        and _ONX_ICON_OVERRIDE_KEY in wp.properties
+                                    ):
+                                        del wp.properties[_ONX_ICON_OVERRIDE_KEY]
+                                        _maybe_record(
+                                            kind="waypoint",
+                                            folder_id=folder_id,
+                                            feat=wp,
+                                            onx_icon_override="",
+                                        )
+                                        changes_made = True
+                            elif icon_choice:
+                                for wp in selected:
+                                    if isinstance(getattr(wp, "properties", None), dict):
+                                        wp.properties[_ONX_ICON_OVERRIDE_KEY] = icon_choice
+                                        _maybe_record(
+                                            kind="waypoint",
+                                            folder_id=folder_id,
+                                            feat=wp,
+                                            onx_icon_override=icon_choice,
+                                        )
+                                        changes_made = True
+
+                            final_icon = _resolved_waypoint_icon(selected[0], config)
+                            cur_rgba = _resolved_waypoint_color(
+                                selected[0], final_icon, config
+                            )
+                            chosen = _palette_choice(
+                                title="Select waypoint color",
+                                palette=ColorMapper.WAYPOINT_PALETTE,
+                                current_rgba=cur_rgba,
+                            )
+                            if chosen:
+                                hex_nohash = _rgba_to_hex_nohash(chosen)
+                                for wp in selected:
+                                    wp.color = hex_nohash
+                                    _maybe_record(
+                                        kind="waypoint",
+                                        folder_id=folder_id,
+                                        feat=wp,
+                                        color=hex_nohash,
+                                    )
+                                changes_made = True
+
+                            # Re-render after each edit iteration.
+                            _clear_screen()
+                            _print_folder_header()
+                            _print_waypoints_list()
+
+                            if not Confirm.ask(
+                                "Would you like to change another waypoint in this folder?",
+                                default=False,
+                            ):
+                                break
 
                 next_label = (
                     "Finish editing?" if is_last_folder else "Continue to next folder?"
