@@ -76,6 +76,9 @@ from cairn.tui.tables import TableManager
 # Import file browser manager
 from cairn.tui.file_browser import FileBrowserManager
 
+# Import state manager
+from cairn.tui.state import StateManager
+
 # Re-export widgets for backward compatibility (tests and other modules may import from app.py)
 # These are available as: from cairn.tui.app import FilteredFileTree, etc.
 
@@ -130,15 +133,53 @@ class CairnTuiApp(App):
         """Compatibility property setter: delegate to FileBrowserManager."""
         self.files.set_save_browser_dir(value)
 
+    # Compatibility properties for state variables (tests use these)
+    @property
+    def _done_steps(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._done_steps
+
+    @_done_steps.setter
+    def _done_steps(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._done_steps = value
+
+    @property
+    def _selected_route_keys(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._selected_route_keys
+
+    @_selected_route_keys.setter
+    def _selected_route_keys(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._selected_route_keys = value
+
+    @property
+    def _selected_waypoint_keys(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._selected_waypoint_keys
+
+    @_selected_waypoint_keys.setter
+    def _selected_waypoint_keys(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._selected_waypoint_keys = value
+
+    @property
+    def _selected_folders(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._selected_folders
+
+    @_selected_folders.setter
+    def _selected_folders(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._selected_folders = value
+
     def __init__(self) -> None:
         super().__init__()
         self.model = TuiModel()
-        self._done_steps: set[str] = set()
         self._state: UIState = load_state()
         self._config = load_config(None)
         self._folder_name_by_id: dict[str, str] = {}
-        self._selected_route_keys: set[str] = set()
-        self._selected_waypoint_keys: set[str] = set()
         self._export_manifest: Optional[list[tuple[str, str, int, int]]] = None
         self._export_error: Optional[str] = None
         self._export_in_progress: bool = False
@@ -151,6 +192,8 @@ class CairnTuiApp(App):
         self.tables = TableManager(self)
         # Initialize file browser manager
         self.files = FileBrowserManager(self)
+        # Initialize state manager
+        self.state = StateManager(self)
         self._save_snapshot_emitted: bool = False
         self._save_change_prompt_dismissed: bool = False
         self._output_prefix: str = ""
@@ -170,7 +213,6 @@ class CairnTuiApp(App):
         self._folder_iteration_mode: bool = False
         self._folders_to_process: list[str] = []
         self._current_folder_index: int = 0
-        self._selected_folders: set[str] = set()  # Folders selected for processing
 
     def _use_tree_browser(self) -> bool:
         """Check if DirectoryTree browser should be used (A/B test flag).
@@ -651,33 +693,8 @@ class CairnTuiApp(App):
     # Navigation
     # -----------------------
     def _reset_focus_for_step(self) -> None:
-        """
-        Ensure focus is on an on-screen widget after step transitions.
-
-        This fixes a subtle real-world issue: when we auto-advance from Select_file
-        to List_data, focus may remain on a removed widget, causing Enter key presses
-        to be swallowed / not reach the app-level flow.
-        """
-        try:
-            if self.step == "Select_file":
-                if self._use_tree_browser():
-                    self.query_one("#file_browser", FilteredFileTree).focus()
-                else:
-                    self.query_one("#file_browser", DataTable).focus()
-                return
-            if self.step == "List_data":
-                # Clear focus so Enter/Escape route to app handlers.
-                self.set_focus(None)  # type: ignore[arg-type]
-                return
-            if self.step == "Folder":
-                self.query_one("#folder_table", DataTable).focus()
-                return
-            if self.step == "Preview":
-                # Preview uses read-only tables; avoid focusing them so Enter/q reach app handlers.
-                self.set_focus(None)  # type: ignore[arg-type]
-                return
-        except Exception:
-            return
+        """Ensure focus is on an on-screen widget after step transitions. Delegates to StateManager."""
+        self.state.reset_focus_for_step()
 
     def _refresh_file_browser(self) -> None:
         """Populate Select_file file browser table with dirs + allowed extensions only."""
@@ -704,30 +721,12 @@ class CairnTuiApp(App):
         return self.files.save_browser_enter()
 
     def _goto(self, step: str) -> None:
-        if step not in STEPS:
-            return
-        self.step = step
-        # Clear per-step edit hints when leaving the step.
-        if step != "Routes":
-            self._routes_edited = False
-        if step != "Waypoints":
-            self._waypoints_edited = False
-        self._render_sidebar()
-        self._render_main()
-        self._update_footer()
-        try:
-            self.call_after_refresh(self._reset_focus_for_step)
-        except Exception:
-            # If call_after_refresh isn't available for some reason, fall back to best effort.
-            self._reset_focus_for_step()
+        """Navigate to a step. Delegates to StateManager."""
+        self.state.goto(step)
 
     def _update_footer(self) -> None:
-        """Update the step-aware footer with current step's shortcuts."""
-        try:
-            footer = self.query_one("#step_footer", StepAwareFooter)
-            footer.set_step(self.step)
-        except Exception:
-            pass
+        """Update the step-aware footer with current step's shortcuts. Delegates to StateManager."""
+        self.state.update_footer()
 
     def action_back(self) -> None:
         # Overlay-aware back: if any in-screen overlay is visible, Esc/Back should
@@ -839,75 +838,16 @@ class CairnTuiApp(App):
         return False
 
     def _infer_folder_selection(self) -> Optional[str]:
-        """
-        Best-effort: infer current folder selection from the folder table cursor.
-
-        Textual's DataTable APIs vary a bit across versions; we try a few approaches.
-        """
-        try:
-            table = self.query_one("#folder_table", DataTable)
-        except Exception:
-            return None
-
-        # Attempt 1: cursor_coordinate -> row_key
-        try:
-            coord = getattr(table, "cursor_coordinate", None)
-            if coord is not None and hasattr(table, "coordinate_to_cell_key"):
-                cell_key = table.coordinate_to_cell_key(coord)
-                rk = getattr(cell_key, "row_key", None)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
-        except Exception:
-            pass
-
-        # Attempt 2: cursor_row -> row key lookup (if available)
-        try:
-            row_idx = getattr(table, "cursor_row", None)
-            if row_idx is not None and hasattr(table, "get_row_key"):
-                rk = table.get_row_key(row_idx)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
-        except Exception:
-            pass
-
-        return None
+        """Best-effort: infer current folder selection from the folder table cursor. Delegates to StateManager."""
+        return self.state.infer_folder_selection()
 
     def _get_next_step_after_folder(self) -> str:
-        """Determine next step after Folder, skipping empty Routes/Waypoints steps."""
-        if self.model.parsed is None or not self.model.selected_folder_id:
-            return "Preview"
-        fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-        if not fd:
-            return "Preview"
-        tracks = list((fd or {}).get("tracks", []) or [])
-        waypoints = list((fd or {}).get("waypoints", []) or [])
-
-        # If routes exist, go to Routes
-        if tracks:
-            return "Routes"
-        # If no routes but waypoints exist, go to Waypoints
-        if waypoints:
-            return "Waypoints"
-        # Otherwise go to Preview
-        return "Preview"
+        """Determine next step after Folder, skipping empty Routes/Waypoints steps. Delegates to StateManager."""
+        return self.state.get_next_step_after_folder()
 
     def _has_real_folders(self) -> bool:
-        """Check if there are real folders (not just default folder)."""
-        if self.model.parsed is None:
-            return False
-        folders = getattr(self.model.parsed, "folders", {}) or {}
-        if not folders:
-            return False
-        # If only one folder and it's "default", treat as no folders
-        if len(folders) == 1:
-            default_id = list(folders.keys())[0]
-            if default_id == "default":
-                # Check if default folder has any content
-                fd = folders[default_id]
-                tracks = list((fd or {}).get("tracks", []) or [])
-                waypoints = list((fd or {}).get("waypoints", []) or [])
-                return len(tracks) > 0 or len(waypoints) > 0
-        return True
+        """Check if there are real folders (not just default folder). Delegates to StateManager."""
+        return self.state.has_real_folders()
 
     def action_continue(self) -> None:
         # Step-specific gating + actions.
@@ -973,7 +913,11 @@ class CairnTuiApp(App):
                     if inferred:
                         self.model.selected_folder_id = inferred
                     else:
-                        return
+                        # If inference fails but there's only one folder, auto-select it
+                        if folders:
+                            self.model.selected_folder_id = list(folders.keys())[0]
+                        else:
+                            return
                 self._done_steps.add("Folder")
                 next_step = self._get_next_step_after_folder()
                 self._goto(next_step)
