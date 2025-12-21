@@ -1,3 +1,4 @@
+# default_path: ~/_code/cairn/demo/
 use_icon_name_prefix: false
 enable_unmapped_detection: true
 symbol_mappings:

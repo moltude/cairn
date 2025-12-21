@@ -265,10 +265,11 @@ class SaveTargetOverlay(Container):
 
         can_focus = True
 
-    def __init__(self, *, id: str = "save_target_overlay", classes: str = "") -> None:
+    def __init__(self, *, id: str = "save_target_overlay", classes: str = "", use_tree: bool = False) -> None:
         super().__init__(id=id, classes=classes)
         self._cur_dir: Path = Path.cwd()
         self._prefix: str = ""
+        self._use_tree: bool = use_tree
 
     def compose(self) -> ComposeResult:
         _agent_log(
@@ -279,13 +280,29 @@ class SaveTargetOverlay(Container):
         )
         with Vertical(id="save_target_dialog", classes="overlay_dialog"):
             yield Static("", id="save_target_path", classes="muted")
-            tbl = DataTable(id="save_target_browser")
-            tbl.add_columns("Name", "Type")
-            yield tbl
+
+            if self._use_tree:
+                # Import FilteredDirectoryTree to show only directories (no files, no hidden)
+                try:
+                    from cairn.tui.app import FilteredDirectoryTree
+                    yield FilteredDirectoryTree(str(Path.home()), id="save_target_browser_tree")
+                except ImportError:
+                    # Fallback to base DirectoryTree if import fails
+                    from textual.widgets import DirectoryTree
+                    yield DirectoryTree(str(Path.home()), id="save_target_browser_tree")
+            else:
+                tbl = DataTable(id="save_target_browser")
+                tbl.add_columns("Name", "Type")
+                yield tbl
+
             yield Static("File name prefix", classes="accent")
             yield Input(placeholder="Filename prefix", id="save_target_prefix")
             yield self._DoneControl("[Done]", id="save_target_done", classes="accent")
-            yield Static("Enter: open/select  •  d/Tab→Enter: done  •  Esc: cancel", classes="muted")
+
+            if self._use_tree:
+                yield Static("Enter: select  •  Ctrl+N: new folder  •  d/Tab→Enter: done  •  Esc: cancel", classes="muted")
+            else:
+                yield Static("Enter: open/select  •  d/Tab→Enter: done  •  Esc: cancel", classes="muted")
 
     def open(self, *, directory: Path, prefix: str) -> None:
         _agent_log(
@@ -303,14 +320,25 @@ class SaveTargetOverlay(Container):
             self.add_class("open")
         except Exception:
             pass
+
+        # Refresh based on mode
         try:
-            self._refresh()
+            if self._use_tree:
+                self._refresh_tree()
+            else:
+                self._refresh()
         except Exception:
             pass
+
+        # Focus appropriate widget
         try:
-            self.query_one("#save_target_browser", DataTable).focus()
+            if self._use_tree:
+                self.query_one("#save_target_browser_tree").focus()
+            else:
+                self.query_one("#save_target_browser", DataTable).focus()
         except Exception:
             pass
+
         # Best-effort debug hook
         try:
             getattr(self.app, "_dbg")(event="save.change.open", data={"dir": str(self._cur_dir), "prefix": self._prefix})
@@ -374,6 +402,22 @@ class SaveTargetOverlay(Container):
         except Exception:
             pass
 
+    def _refresh_tree(self) -> None:
+        """Refresh tree browser display."""
+        try:
+            self.query_one("#save_target_path", Static).update(f"Directory: {self._cur_dir}")
+        except Exception:
+            pass
+
+        try:
+            inp = self.query_one("#save_target_prefix", Input)
+            inp.value = self._prefix
+        except Exception:
+            pass
+
+        # Reload tree at current directory
+        self._reload_tree()
+
     def _apply_done(self) -> None:
         try:
             self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
@@ -422,6 +466,16 @@ class SaveTargetOverlay(Container):
     def on_key(self, event) -> None:  # type: ignore[override]
         key = str(getattr(event, "key", "") or "")
         ch = str(getattr(event, "character", "") or "")
+
+        # Handle Ctrl+N for creating new folder (tree mode only)
+        if self._use_tree and key == "ctrl+n":
+            self._create_new_folder()
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+
         if key == "escape":
             try:
                 getattr(self.app, "_dbg")(event="save.change.cancel", data={"dir": str(self._cur_dir)})
@@ -456,6 +510,110 @@ class SaveTargetOverlay(Container):
             except Exception:
                 pass
             return
+
+    def _create_new_folder(self) -> None:
+        """Prompt user to create a new folder in the current directory."""
+        from textual.widgets import Button
+
+        class NewFolderModal(ModalScreen[Optional[str]]):
+            def compose(self) -> ComposeResult:
+                with Vertical(id="new_folder_modal"):
+                    yield Static("Create New Folder", classes="title")
+                    yield Input(placeholder="Folder name", id="new_folder_input")
+                    with Horizontal():
+                        yield Button("Create", variant="primary", id="create_btn")
+                        yield Button("Cancel", id="cancel_btn")
+
+            def on_button_pressed(self, event: Button.Pressed) -> None:
+                if event.button.id == "create_btn":
+                    inp = self.query_one("#new_folder_input", Input)
+                    self.dismiss(inp.value)
+                else:
+                    self.dismiss(None)
+
+            def on_key(self, event) -> None:  # type: ignore[override]
+                if event.key == "escape":
+                    self.dismiss(None)
+                elif event.key in ("enter", "return"):
+                    inp = self.query_one("#new_folder_input", Input)
+                    if inp.value:
+                        self.dismiss(inp.value)
+
+        def handle_folder_name(folder_name: Optional[str]) -> None:
+            if not folder_name or not folder_name.strip():
+                return
+
+            folder_name = folder_name.strip()
+            new_path = self._cur_dir / folder_name
+
+            try:
+                new_path.mkdir(parents=False, exist_ok=False)
+                # Success - reload tree to show new folder
+                self._reload_tree(new_path)
+            except FileExistsError:
+                # Show error modal
+                self.app.push_screen(InfoModal(f"Folder '{folder_name}' already exists."))
+            except PermissionError:
+                self.app.push_screen(InfoModal(f"Permission denied: cannot create folder in {self._cur_dir}"))
+            except Exception as e:
+                self.app.push_screen(InfoModal(f"Error creating folder: {e}"))
+
+        self.app.push_screen(NewFolderModal(), handle_folder_name)
+
+    def _reload_tree(self, select_path: Optional[Path] = None) -> None:
+        """Reload the directory tree and optionally select a specific path."""
+        if not self._use_tree:
+            return
+
+        try:
+            # Import FilteredDirectoryTree to show only directories
+            try:
+                from cairn.tui.app import FilteredDirectoryTree
+                TreeClass = FilteredDirectoryTree
+            except ImportError:
+                from textual.widgets import DirectoryTree
+                TreeClass = DirectoryTree
+
+            tree = self.query_one("#save_target_browser_tree")
+            # DirectoryTree doesn't have a built-in reload, so we need to:
+            # 1. Remove the old tree
+            tree.remove()
+
+            # 2. Create a new tree at the current directory
+            new_tree = TreeClass(str(self._cur_dir), id="save_target_browser_tree")
+
+            # 3. Mount it in the right place
+            dialog = self.query_one("#save_target_dialog")
+            path_label = self.query_one("#save_target_path")
+            dialog.mount(new_tree, after=path_label)
+
+            # 4. Focus the tree
+            new_tree.focus()
+        except Exception:
+            pass
+
+    def on_directory_tree_directory_selected(self, event) -> None:  # type: ignore[override]
+        """Handle directory selection from tree browser."""
+        if not self._use_tree:
+            return
+
+        # Update current directory
+        try:
+            self._cur_dir = Path(event.path)
+        except Exception:
+            return
+
+        # Update display
+        try:
+            self.query_one("#save_target_path", Static).update(f"Directory: {self._cur_dir}")
+        except Exception:
+            pass
+
+        # Preserve prefix
+        try:
+            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
+        except Exception:
+            pass
 
 
 class InlineEditOverlay(Container):

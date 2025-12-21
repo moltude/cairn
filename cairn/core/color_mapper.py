@@ -109,7 +109,7 @@ class ColorMapper:
     # Note: Tracks support 11 colors (waypoints only support 10)
     # The first 10 colors are IDENTICAL to the waypoint palette
     TRACK_PALETTE: tuple[_PaletteColor, ...] = (
-        _PaletteColor("red-orange", 255, 51, 0, "rgba(255,51,0,1)"),
+        _PaletteColor("orange", 255, 51, 0, "rgba(255,51,0,1)"),
         _PaletteColor("blue", 8, 122, 255, "rgba(8,122,255,1)"),
         _PaletteColor("cyan", 0, 255, 255, "rgba(0,255,255,1)"),
         _PaletteColor("green", 132, 212, 0, "rgba(132,212,0,1)"),
@@ -126,7 +126,7 @@ class ColorMapper:
 
     # Waypoint palette (official 10 colors). Source: docs/OnX-waypoint-colors-definitive.md
     WAYPOINT_PALETTE: tuple[_PaletteColor, ...] = (
-        _PaletteColor("red-orange", 255, 51, 0, "rgba(255,51,0,1)"),
+        _PaletteColor("orange", 255, 51, 0, "rgba(255,51,0,1)"),
         _PaletteColor("blue", 8, 122, 255, "rgba(8,122,255,1)"),
         _PaletteColor("cyan", 0, 255, 255, "rgba(0,255,255,1)"),
         _PaletteColor("green", 132, 212, 0, "rgba(132,212,0,1)"),

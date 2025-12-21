@@ -505,6 +505,7 @@ class IconMappingConfig:
         self.use_icon_name_prefix = False
         self.default_icon = "Location"
         self.default_color = "rgba(8,122,255,1)"
+        self.default_path: Optional[str] = None  # TUI tree browser starting directory
 
         # Load user config if provided
         if config_file and config_file.exists():
@@ -577,6 +578,10 @@ class IconMappingConfig:
                 self.enable_unmapped_detection = user_config[
                     "enable_unmapped_detection"
                 ]
+
+            # Set default_path for TUI tree browser
+            if "default_path" in user_config and user_config["default_path"]:
+                self.default_path = str(user_config["default_path"])
 
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML in config file: {e}")

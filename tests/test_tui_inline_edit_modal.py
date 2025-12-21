@@ -241,10 +241,10 @@ class TestInlineEditOverlayRendering:
                 await pilot.pause()
 
                 tbl = app.query_one("#palette_table", DataTable)
-                # Sanity: first row should be red-orange in the official palette order.
-                assert (app._table_cursor_row_key(tbl) or "").strip() == "rgba(255,51,0,1)"
+                # Sanity: first row should be BLACK after alphabetical sorting.
+                assert (app._table_cursor_row_key(tbl) or "").strip() == "rgba(0,0,0,1)"
 
-                # One Down should land on BLUE, not skip to CYAN.
+                # One Down should land on BLUE.
                 await pilot.press("down")
                 await pilot.pause()
                 assert (app._table_cursor_row_key(tbl) or "").strip() == "rgba(8,122,255,1)"
