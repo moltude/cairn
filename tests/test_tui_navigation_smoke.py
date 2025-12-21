@@ -25,7 +25,9 @@ def test_tui_routes_enter_advances_to_waypoints() -> None:
             await pilot.pause()
             app.action_continue()  # -> Folder
             await pilot.pause()
-            # Continue from Folder (should infer selection even without row event).
+            # Multi-folder requirement: simulate user explicitly selecting at least one folder via Space.
+            await pilot.press("space")
+            await pilot.pause()
             app.action_continue()  # -> Routes
             await pilot.pause()
 

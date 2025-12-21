@@ -50,210 +50,37 @@ from cairn.tui.edit_screens import (
     validate_folder_name,
 )
 
-# region agent log
-_AGENT_DEBUG_LOG_PATH = "/Users/scott/_code/cairn/.cursor/debug.log"
+# Import debug utilities
+from cairn.tui.debug import DebugLogger, agent_log as _agent_log
 
+# Import constants and models from models.py
+from cairn.tui.models import (
+    STEPS,
+    STEP_LABELS,
+    TuiModel,
+    _PARSEABLE_INPUT_EXTS,
+    _VISIBLE_INPUT_EXTS,
+)
 
-def _agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> None:
-    try:
-        payload = {
-            "timestamp": int(time.time() * 1000),
-            "sessionId": "debug-session",
-            "runId": "pre-fix",
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "data": data,
-        }
-        with open(_AGENT_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except Exception:
-        # Silently fail debug logging - never let it break the app
-        return
+# Import widgets from widgets.py
+from cairn.tui.widgets import (
+    FilteredFileTree,
+    FilteredDirectoryTree,
+    Stepper,
+    StepAwareFooter,
+)
 
+# Import table manager
+from cairn.tui.tables import TableManager
 
-# endregion agent log
+# Import file browser manager
+from cairn.tui.file_browser import FileBrowserManager
 
-# File types shown in Select_file tree. (Parsing support may be narrower than visibility.)
-_VISIBLE_INPUT_EXTS = {".json", ".geojson", ".kml", ".gpx"}
-_PARSEABLE_INPUT_EXTS = {".json", ".geojson"}
+# Import state manager
+from cairn.tui.state import StateManager
 
-
-class FilteredFileTree(DirectoryTree):
-    """DirectoryTree that filters to show only allowed file extensions.
-
-    This is used for the A/B test of tree-based file browser vs. table-based.
-    Filters out hidden directories and shows only files with allowed extensions.
-    """
-
-    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
-        """Filter paths to show only directories and allowed file extensions."""
-        allowed_extensions = _VISIBLE_INPUT_EXTS
-        filtered = []
-        for path in paths:
-            # Always show directories
-            if path.is_dir():
-                # Skip hidden directories (starting with .)
-                if not path.name.startswith("."):
-                    filtered.append(path)
-            # Show files with allowed extensions (but hide dotfiles - hide always wins)
-            elif path.is_file() and not path.name.startswith(".") and path.suffix.lower() in allowed_extensions:
-                filtered.append(path)
-        return filtered
-
-
-class FilteredDirectoryTree(DirectoryTree):
-    """DirectoryTree that shows only directories (no files).
-
-    Used for the A/B test of tree-based save directory browser.
-    Filters out hidden directories.
-    """
-
-    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
-        """Filter paths to show only non-hidden directories."""
-        filtered = []
-        for path in paths:
-            if path.is_dir() and not path.name.startswith("."):
-                filtered.append(path)
-        return filtered
-
-
-STEPS = [
-    "Select_file",
-    "List_data",
-    "Folder",
-    "Routes",
-    "Waypoints",
-    "Preview",  # Preview is now the final step with embedded export
-]
-
-# Display labels for steps (internal names use underscores for code references)
-STEP_LABELS = {
-    "Select_file": "Select file",
-    "List_data": "Summary of mapping data",
-    "Folder": "Folder",
-    "Routes": "Routes",
-    "Waypoints": "Waypoints",
-    "Preview": "Preview & Export",
-}
-
-
-@dataclass
-class TuiModel:
-    input_path: Optional[Path] = None
-    output_dir: Optional[Path] = None
-    parsed: Optional[ParsedData] = None
-    selected_folder_id: Optional[str] = None
-
-
-class Stepper(Static):
-    """Left-side stepper with current step highlighted."""
-
-    def __init__(self, *, steps: list[str], **kwargs) -> None:
-        # Accept standard Textual widget kwargs (id, classes, name, etc.).
-        super().__init__(**kwargs)
-        self.steps = steps
-        self.current: str = steps[0]
-        self.done: set[str] = set()
-
-    def set_state(self, *, current: str, done: set[str]) -> None:
-        self.current = current
-        self.done = set(done)
-        self.refresh()
-
-    def render(self) -> str:
-        lines: list[str] = []
-        for s in self.steps:
-            label = STEP_LABELS.get(s, s)
-            if s == self.current:
-                lines.append(f" ▸ {label}")
-            elif s in self.done:
-                lines.append(f" ✓ {label}")
-            else:
-                lines.append(f"   {label}")
-        return "\n".join(lines)
-
-
-class StepAwareFooter(Static):
-    """Dynamic footer showing step-specific keyboard shortcuts."""
-
-    # Define shortcuts for each step
-    STEP_SHORTCUTS = {
-        "Select_file": [
-            ("↑↓", "Navigate"),
-            ("Enter", "Select"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "List_data": [
-            ("m", "Map unmapped"),
-            ("Enter", "Continue"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Folder": [
-            ("↑↓", "Navigate"),
-            ("Space", "Toggle (multi-folder)"),
-            ("Enter", "Select"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Routes": [
-            ("↑↓", "Navigate"),
-            ("Space", "Toggle"),
-            ("Ctrl+A", "Toggle all"),
-            ("/", "Search"),
-            ("Tab", "Next field"),
-            ("a", "Edit"),
-            ("x", "Clear"),
-            ("Enter", "Continue"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Waypoints": [
-            ("↑↓", "Navigate"),
-            ("Space", "Toggle"),
-            ("Ctrl+A", "Toggle all"),
-            ("/", "Search"),
-            ("Tab", "Next field"),
-            ("a", "Edit"),
-            ("x", "Clear"),
-            ("Enter", "Continue"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Preview": [
-            ("↑↓", "Navigate"),
-            ("Enter", "Export"),
-            ("Ctrl+N", "New folder"),
-            ("r", "Apply names"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-    }
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.current_step: str = "Select_file"
-
-    def set_step(self, step: str) -> None:
-        self.current_step = step
-        self.refresh()
-
-    def render(self) -> str:
-        shortcuts = self.STEP_SHORTCUTS.get(self.current_step, [])
-        parts = [f"[bold]{key}[/] {desc}" for key, desc in shortcuts]
-        return "  ".join(parts)
+# Re-export widgets for backward compatibility (tests and other modules may import from app.py)
+# These are available as: from cairn.tui.app import FilteredFileTree, etc.
 
 
 class CairnTuiApp(App):
@@ -284,31 +111,91 @@ class CairnTuiApp(App):
 
     step: reactive[str] = reactive(STEPS[0])
 
+    # Compatibility properties for backward compatibility (tests use these)
+    # These delegate to FileBrowserManager
+    @property
+    def _file_browser_dir(self) -> Optional[Path]:
+        """Compatibility property: delegate to FileBrowserManager."""
+        return self.files.get_file_browser_dir()
+
+    @_file_browser_dir.setter
+    def _file_browser_dir(self, value: Optional[Path]) -> None:
+        """Compatibility property setter: delegate to FileBrowserManager."""
+        self.files.set_file_browser_dir(value)
+
+    @property
+    def _save_browser_dir(self) -> Optional[Path]:
+        """Compatibility property: delegate to FileBrowserManager."""
+        return self.files.get_save_browser_dir()
+
+    @_save_browser_dir.setter
+    def _save_browser_dir(self, value: Optional[Path]) -> None:
+        """Compatibility property setter: delegate to FileBrowserManager."""
+        self.files.set_save_browser_dir(value)
+
+    # Compatibility properties for state variables (tests use these)
+    @property
+    def _done_steps(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._done_steps
+
+    @_done_steps.setter
+    def _done_steps(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._done_steps = value
+
+    @property
+    def _selected_route_keys(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._selected_route_keys
+
+    @_selected_route_keys.setter
+    def _selected_route_keys(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._selected_route_keys = value
+
+    @property
+    def _selected_waypoint_keys(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._selected_waypoint_keys
+
+    @_selected_waypoint_keys.setter
+    def _selected_waypoint_keys(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._selected_waypoint_keys = value
+
+    @property
+    def _selected_folders(self) -> set[str]:
+        """Compatibility property: delegate to StateManager."""
+        return self.state._selected_folders
+
+    @_selected_folders.setter
+    def _selected_folders(self, value: set[str]) -> None:
+        """Compatibility property setter: delegate to StateManager."""
+        self.state._selected_folders = value
+
     def __init__(self) -> None:
         super().__init__()
         self.model = TuiModel()
-        self._done_steps: set[str] = set()
         self._state: UIState = load_state()
         self._config = load_config(None)
         self._folder_name_by_id: dict[str, str] = {}
-        self._selected_route_keys: set[str] = set()
-        self._selected_waypoint_keys: set[str] = set()
         self._export_manifest: Optional[list[tuple[str, str, int, int]]] = None
         self._export_error: Optional[str] = None
         self._export_in_progress: bool = False
         self._routes_filter: str = ""
         self._waypoints_filter: str = ""
         self._ui_error: Optional[str] = None
-        self._debug_events: list[dict[str, object]] = []
-        self._debug_file_path: Optional[str] = None
-        self._debug_file: Optional[TextIO] = None
-        self._debug_file_lock = threading.Lock()
+        # Initialize debug logger
+        self._debug_logger = DebugLogger(self)
+        # Initialize table manager
+        self.tables = TableManager(self)
+        # Initialize file browser manager
+        self.files = FileBrowserManager(self)
+        # Initialize state manager
+        self.state = StateManager(self)
         self._save_snapshot_emitted: bool = False
         self._save_change_prompt_dismissed: bool = False
-        # Select_file browser state
-        self._file_browser_dir: Optional[Path] = None
-        # Save browser state (output directory picker)
-        self._save_browser_dir: Optional[Path] = None
         self._output_prefix: str = ""
         self._rename_overrides_by_idx: dict[int, str] = {}
         self._post_save_prompt_shown: bool = False
@@ -326,7 +213,6 @@ class CairnTuiApp(App):
         self._folder_iteration_mode: bool = False
         self._folders_to_process: list[str] = []
         self._current_folder_index: int = 0
-        self._selected_folders: set[str] = set()  # Folders selected for processing
 
     def _use_tree_browser(self) -> bool:
         """Check if DirectoryTree browser should be used (A/B test flag).
@@ -400,7 +286,7 @@ class CairnTuiApp(App):
         self._export_in_progress = False
         self._rename_overrides_by_idx.clear()
         self._output_prefix = ""
-        self._save_browser_dir = None
+        self.files.set_save_browser_dir(None)
         self._post_save_prompt_shown = False
         self._save_snapshot_emitted = False
 
@@ -411,75 +297,12 @@ class CairnTuiApp(App):
         self._waypoints_edited: bool = False
 
     def _dbg(self, *, event: str, data: Optional[dict[str, object]] = None) -> None:
-        """
-        Best-effort debug event sink.
-
-        This app uses `_dbg(...)` from various event handlers / error paths; it must
-        never crash the UI if debug logging isn't configured.
-        """
-        try:
-            enabled = os.getenv("CAIRN_TUI_DEBUG") or os.getenv("CAIRN_TUI_ARTIFACTS")
-            if not enabled:
-                return
-            payload: dict[str, object] = {
-                "t": float(time.time()),
-                "event": str(event),
-                "step": str(getattr(self, "step", "")),
-                "data": data or {},
-            }
-            self._debug_events.append(payload)
-            # Prevent unbounded growth during long sessions/tests.
-            if len(self._debug_events) > 500:
-                self._debug_events = self._debug_events[-250:]
-
-            # Optional: also stream each event as NDJSON for reproducible traces.
-            debug_file_path = os.getenv("CAIRN_TUI_DEBUG_FILE")
-            if debug_file_path:
-                with self._debug_file_lock:
-                    try:
-                        if self._debug_file is None or self._debug_file_path != debug_file_path:
-                            # Close any prior file handle first (best-effort).
-                            try:
-                                if self._debug_file is not None:
-                                    self._debug_file.flush()
-                                    self._debug_file.close()
-                            except Exception:
-                                pass
-                            self._debug_file_path = debug_file_path
-                            # Line-buffered append; still flush explicitly below for durability.
-                            self._debug_file = open(debug_file_path, "a", encoding="utf-8", buffering=1)
-                        line = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-                        self._debug_file.write(line + "\n")
-                        # Best-effort: flush so crashes / terminal corruption still preserve logs.
-                        try:
-                            self._debug_file.flush()
-                        except Exception:
-                            pass
-                    except Exception:
-                        # Never let debug logging break the UI.
-                        return
-        except Exception:
-            return
+        """Best-effort debug event sink (delegates to DebugLogger)."""
+        self._debug_logger.log(event=event, data=data)
 
     def _close_debug_file(self) -> None:
         """Best-effort: flush/close debug file handle (if open)."""
-        try:
-            with self._debug_file_lock:
-                try:
-                    if self._debug_file is not None:
-                        try:
-                            self._debug_file.flush()
-                        except Exception:
-                            pass
-                        try:
-                            self._debug_file.close()
-                        except Exception:
-                            pass
-                finally:
-                    self._debug_file = None
-                    self._debug_file_path = None
-        except Exception:
-            return
+        self._debug_logger.close_debug_file()
 
     async def action_quit(self) -> None:
         """Quit the app (best-effort flush of debug logs first)."""
@@ -536,7 +359,7 @@ class CairnTuiApp(App):
     def _emit_save_browser_snapshot(self, table: DataTable) -> None:
         """Best-effort one-time snapshot of the Save browser table state."""
         try:
-            base = self._save_browser_dir
+            base = self.files.get_save_browser_dir()
             row_count = int(getattr(table, "row_count", 0) or 0)
             cursor_row = getattr(table, "cursor_row", None)
             cursor_row_key = self._table_cursor_row_key(table)
@@ -588,245 +411,39 @@ class CairnTuiApp(App):
         except Exception:
             return
 
+    # Table operations are now delegated to TableManager
     def _color_chip(self, rgba: str) -> Text:
-        r, g, b = ColorMapper.parse_color(rgba)
-        name = ColorMapper.get_color_name(rgba).replace("-", " ").upper()
-        chip = Text("■ ", style=f"rgb({r},{g},{b})")
-        chip.append(name, style="bold")
-        return chip
+        """Create a color chip widget (delegates to TableManager)."""
+        return self.tables.color_chip(rgba)
 
     def _resolved_waypoint_icon(self, wp) -> str:
-        try:
-            props = getattr(wp, "properties", None)
-            if isinstance(props, dict):
-                ov = (props.get("cairn_onx_icon_override") or "").strip()
-                if ov:
-                    return ov
-        except Exception:
-            pass
-        title0 = str(getattr(wp, "title", "") or "")
-        desc0 = str(getattr(wp, "description", "") or "")
-        sym0 = str(getattr(wp, "symbol", "") or "")
-        return map_icon(title0, desc0, sym0, self._config)
+        """Resolve waypoint icon (delegates to TableManager)."""
+        return self.tables.resolved_waypoint_icon(wp)
 
     def _resolved_waypoint_color(self, wp, icon: str) -> str:
-        # Mirror cairn/core/writers.py policy.
-        mc_raw = str(getattr(wp, "color", "") or "").strip()
-        if mc_raw:
-            return ColorMapper.map_waypoint_color(mc_raw)
-        return get_icon_color(
-            icon,
-            default=getattr(self._config, "default_color", ColorMapper.DEFAULT_WAYPOINT_COLOR),
-        )
+        """Resolve waypoint color (delegates to TableManager)."""
+        return self.tables.resolved_waypoint_color(wp, icon)
 
     def _table_cursor_row_key(self, table: DataTable) -> Optional[str]:
-        """Best-effort current row key at cursor for version-compat."""
-        try:
-            coord = getattr(table, "cursor_coordinate", None)
-            if coord is not None and hasattr(table, "coordinate_to_cell_key"):
-                cell_key = table.coordinate_to_cell_key(coord)
-                rk = getattr(cell_key, "row_key", None)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
-        except Exception:
-            pass
-        try:
-            row_idx = getattr(table, "cursor_row", None)
-            if row_idx is not None and hasattr(table, "get_row_key"):
-                rk = table.get_row_key(row_idx)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
-        except Exception:
-            # Textual API version compatibility - fallback if cursor methods don't exist
-            pass
-        return None
+        """Get row key at cursor (delegates to TableManager)."""
+        return self.tables.cursor_row_key(table)
 
     def _datatable_clear_rows(self, table: DataTable) -> None:
-        """
-        Clear rows without forcing a full screen re-render.
+        """Clear table rows (delegates to TableManager)."""
+        return self.tables.clear_rows(table)
 
-        Textual DataTable APIs vary; we try common variants.
-        """
-        # Try newer API: clear(columns=False)
-        try:
-            table.clear(columns=False)  # type: ignore[call-arg]
-            return
-        except TypeError:
-            pass
-        except Exception:
-            # fall through
-            pass
-
-        # Try clear() (may clear columns too)
-        try:
-            table.clear()  # type: ignore[call-arg]
-            return
-        except Exception:
-            pass
-
-        # Fallback: best-effort remove rows if supported
-        try:
-            row_keys = list(getattr(table, "rows", {}).keys())  # type: ignore[attr-defined]
-            for rk in row_keys:
-                table.remove_row(rk)  # type: ignore[call-arg]
-        except Exception:
-            return
-
+    # Table refresh methods are now delegated to TableManager
     def _refresh_folder_table(self) -> Optional[int]:
-        """Refresh the folder table to show updated selection state.
-
-        Returns the target cursor row index if a row key was saved, None otherwise.
-        """
-        if self.step != "Folder":
-            return None
-        try:
-            table = self.query_one("#folder_table", DataTable)
-        except Exception:
-            return None
-        if self.model.parsed is None:
-            return None
-
-        folders = list((getattr(self.model.parsed, "folders", {}) or {}).items())
-        if not folders:
-            return None
-
-        # Save current cursor position by row key (more reliable than row index)
-        current_row_key = None
-        try:
-            current_row_key = self._table_cursor_row_key(table)
-        except Exception:
-            pass
-
-        # Clear rows
-        self._datatable_clear_rows(table)
-
-        # Ensure columns exist
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                if len(folders) > 1:
-                    table.add_columns("Selected", "Folder", "Waypoints", "Routes", "Shapes")
-                else:
-                    table.add_columns("Folder", "Waypoints", "Routes", "Shapes")
-        except Exception:
-            try:
-                if len(folders) > 1:
-                    table.add_columns("Selected", "Folder", "Waypoints", "Routes", "Shapes")
-                else:
-                    table.add_columns("Folder", "Waypoints", "Routes", "Shapes")
-            except Exception:
-                pass
-
-        # Sort folders alphabetically
-        folders = sorted(folders, key=lambda x: str((x[1] or {}).get("name") or x[0]).lower())
-
-        # Re-add rows with updated selection state
-        target_row_index = None
-        for idx, (folder_id, fd) in enumerate(folders):
-            name = str((fd or {}).get("name") or folder_id)
-            w = len((fd or {}).get("waypoints", []) or [])
-            t = len((fd or {}).get("tracks", []) or [])
-            s = len((fd or {}).get("shapes", []) or [])
-            if len(folders) > 1:
-                sel = "●" if folder_id in self._selected_folders else " "
-                table.add_row(sel, name, str(w), str(t), str(s), key=folder_id)
-            else:
-                table.add_row(name, str(w), str(t), str(s), key=folder_id)
-
-            # Track the index of the row we want to restore cursor to
-            if current_row_key and str(folder_id) == str(current_row_key):
-                target_row_index = idx
-
-        # Return target index for caller to restore cursor
-        return target_row_index if current_row_key and target_row_index is not None else None
+        """Refresh the folder table (delegates to TableManager)."""
+        return self.tables.refresh_folder_table()
 
     def _refresh_waypoints_table(self) -> None:
-        if self.step != "Waypoints":
-            return
-        try:
-            table = self.query_one("#waypoints_table", DataTable)
-        except Exception:
-            return
-        if self.model.parsed is None or not self.model.selected_folder_id:
-            return
-        fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-        waypoints = list((fd or {}).get("waypoints", []) or [])
-
-        q = (self._waypoints_filter or "").strip().lower()
-        self._datatable_clear_rows(table)
-
-        # Ensure columns exist if clear() nuked them.
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Selected", "Name", "OnX icon", "OnX color")
-        except Exception:
-            try:
-                table.add_columns("Selected", "Name", "OnX icon", "OnX color")
-            except Exception:
-                pass
-
-        # Sort waypoints alphabetically by name (case-insensitive)
-        waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
-
-        for i, wp in enumerate(waypoints):
-            key = self._feature_row_key(wp, str(i))
-            title0 = str(getattr(wp, "title", "") or "Untitled")
-            if q and q not in title0.lower():
-                continue
-            sel = "●" if key in self._selected_waypoint_keys else " "
-            mapped = self._resolved_waypoint_icon(wp)
-            rgba = self._resolved_waypoint_color(wp, mapped)
-            try:
-                table.add_row(sel, title0, mapped, self._color_chip(rgba), key=key)
-            except Exception:
-                name = ColorMapper.get_color_name(rgba).replace("-", " ").upper()
-                table.add_row(sel, title0, mapped, f"■ {name}", key=key)
+        """Refresh the waypoints table (delegates to TableManager)."""
+        return self.tables.refresh_waypoints_table()
 
     def _refresh_routes_table(self) -> None:
-        if self.step != "Routes":
-            return
-        try:
-            table = self.query_one("#routes_table", DataTable)
-        except Exception:
-            return
-        if self.model.parsed is None or not self.model.selected_folder_id:
-            return
-        fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-        tracks = list((fd or {}).get("tracks", []) or [])
-
-        q = (self._routes_filter or "").strip().lower()
-        self._datatable_clear_rows(table)
-
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Selected", "Name", "Color", "Pattern", "Width")
-        except Exception:
-            try:
-                table.add_columns("Selected", "Name", "Color", "Pattern", "Width")
-            except Exception:
-                pass
-
-        # Sort routes alphabetically by name (case-insensitive)
-        tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
-
-        for i, trk in enumerate(tracks):
-            key = self._feature_row_key(trk, str(i))
-            name = str(getattr(trk, "title", "") or "Untitled")
-            if q and q not in name.lower():
-                continue
-            sel = "●" if key in self._selected_route_keys else " "
-            rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
-            try:
-                color_cell = self._color_chip(rgba)
-            except Exception:
-                color_cell = f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}"
-            table.add_row(
-                sel,
-                name,
-                color_cell,
-                str(getattr(trk, "pattern", "") or ""),
-                str(getattr(trk, "stroke_width", "") or ""),
-                key=key,
-            )
+        """Refresh the routes table (delegates to TableManager)."""
+        return self.tables.refresh_routes_table()
 
     # (Edit_routes/Edit_waypoints steps removed; no extra edit tables needed.)
 
@@ -1076,12 +693,10 @@ class CairnTuiApp(App):
     # Navigation
     # -----------------------
     def _reset_focus_for_step(self) -> None:
-        """
-        Ensure focus is on an on-screen widget after step transitions.
+        """Ensure focus is on an on-screen widget after step transitions.
 
-        This fixes a subtle real-world issue: when we auto-advance from Select_file
-        to List_data, focus may remain on a removed widget, causing Enter key presses
-        to be swallowed / not reach the app-level flow.
+        Kept on the App (not StateManager) to maintain module boundaries:
+        focus management is a UI concern and requires Textual widgets.
         """
         try:
             if self.step == "Select_file":
@@ -1106,337 +721,55 @@ class CairnTuiApp(App):
 
     def _refresh_file_browser(self) -> None:
         """Populate Select_file file browser table with dirs + allowed extensions only."""
-        if self.step != "Select_file":
-            return
-        try:
-            table = self.query_one("#file_browser", DataTable)
-        except Exception:
-            return
-        base = self._file_browser_dir
-        if base is None:
-            return
-
-        # Clear rows without nuking columns (compat).
-        self._datatable_clear_rows(table)
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Name", "Type")
-        except Exception:
-            try:
-                table.add_columns("Name", "Type")
-            except Exception:
-                pass
-
-        # Parent entry
-        has_parent_row = False
-        try:
-            parent = base.parent
-            if parent != base:
-                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
-                has_parent_row = True
-        except Exception:
-            pass
-
-        entries: list[Path] = []
-        try:
-            entries = list(base.iterdir())
-        except Exception:
-            entries = []
-
-        dirs = sorted(
-            [p for p in entries if p.is_dir() and not p.name.startswith(".")],
-            key=lambda p: p.name.lower(),
-        )
-        files = sorted(
-            [
-                p
-                for p in entries
-                if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in _VISIBLE_INPUT_EXTS
-            ],
-            key=lambda p: p.name.lower(),
-        )
-
-        for p in dirs:
-            # Subtle distinction: folders get the muted accent; files keep base foreground.
-            table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
-        for p in files:
-            ext = p.suffix.lower().lstrip(".")
-            table.add_row(Text(p.name), Text(ext, style="dim"), key=f"file:{p}")
-
-        # Default cursor: first real entry (not the parent '..' row).
-        try:
-            if getattr(table, "row_count", 0):
-                table.cursor_row = (1 if has_parent_row and getattr(table, "row_count", 0) > 1 else 0)  # type: ignore[attr-defined]
-        except Exception:
-            pass
+        return self.files.refresh_file_browser()
 
     def _file_browser_enter(self) -> None:
         """Handle Enter on Select_file file browser table."""
-        if self.step != "Select_file":
-            return
-        base = self._file_browser_dir
-        if base is None:
-            return
-        try:
-            table = self.query_one("#file_browser", DataTable)
-        except Exception:
-            return
-        rk = self._table_cursor_row_key(table)
-        if not rk:
-            return
-        if rk == "__up__":
-            try:
-                self._file_browser_dir = base.parent if base.parent != base else base
-            except Exception:
-                self._file_browser_dir = base
-            self._refresh_file_browser()
-            return
-        if rk.startswith("dir:"):
-            p = Path(rk[4:])
-            self._file_browser_dir = p
-            self._refresh_file_browser()
-            return
-        if rk.startswith("file:"):
-            p = Path(rk[5:])
-            suf = p.suffix.lower()
-            if suf in _PARSEABLE_INPUT_EXTS and p.exists() and p.is_file():
-                self._set_input_path(p)
-                self._done_steps.add("Select_file")
-                self._goto("List_data")
-                return
-            if suf in _VISIBLE_INPUT_EXTS:
-                self.push_screen(
-                    InfoModal(
-                        "This TUI currently supports CalTopo GeoJSON inputs only (.json/.geojson).\n\n"
-                        "GPX/KML inputs are not supported in the TUI yet."
-                    )
-                )
-            return
+        return self.files.file_browser_enter()
 
     def _refresh_export_dir_table(self) -> None:
         """Populate export directory table (DataTable mode)."""
-        try:
-            table = self.query_one("#export_dir_table", DataTable)
-        except Exception:
-            return
-
-        out_dir = self.model.output_dir or Path.cwd()
-
-        self._datatable_clear_rows(table)
-
-        # Parent row
-        try:
-            parent = out_dir.parent
-            if parent != out_dir:
-                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
-        except Exception:
-            pass
-
-        # Subdirectories
-        try:
-            entries = list(out_dir.iterdir())
-            dirs = sorted([p for p in entries if p.is_dir() and not p.name.startswith(".")], key=lambda p: p.name.lower())
-            for p in dirs:
-                table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
-        except Exception:
-            pass
+        return self.files.refresh_export_dir_table()
 
     def _export_dir_table_enter(self) -> None:
         """Handle Enter on export directory table."""
-        try:
-            table = self.query_one("#export_dir_table", DataTable)
-        except Exception:
-            return
-
-        rk = self._table_cursor_row_key(table)
-        if not rk:
-            return
-
-        out_dir = self.model.output_dir or Path.cwd()
-
-        if rk == "__up__":
-            self.model.output_dir = out_dir.parent if out_dir.parent != out_dir else out_dir
-            self._refresh_export_dir_table()
-            self._render_main()
-        elif rk.startswith("dir:"):
-            self.model.output_dir = Path(rk[4:])
-            self._refresh_export_dir_table()
-            self._render_main()
+        return self.files.export_dir_table_enter()
 
     def _refresh_save_browser(self) -> None:
         """Populate Save output directory browser table (directories only)."""
-        if self.step != "Save":
-            return
-        try:
-            table = self.query_one("#save_browser", DataTable)
-        except Exception:
-            return
-
-        base = self._save_browser_dir
-        if base is None:
-            return
-
-        t0 = time.perf_counter()
-        self._dbg(event="save.refresh.start", data={"base": str(base)})
-        entries_count: int = 0
-        dirs_count: int = 0
-        entries_err: Optional[str] = None
-
-        # Prevent selection events from triggering actions while we rebuild rows / set cursor.
-        self._suppress_save_browser_select = True
-        try:
-            self._datatable_clear_rows(table)
-            try:
-                if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                    table.add_columns("Name", "Type")
-            except Exception:
-                try:
-                    table.add_columns("Name", "Type")
-                except Exception:
-                    pass
-
-            has_parent_row = False
-            try:
-                parent = base.parent
-                if parent != base:
-                    table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
-                    has_parent_row = True
-            except Exception:
-                pass
-
-            entries: list[Path] = []
-            try:
-                entries = list(base.iterdir())
-            except Exception as e:
-                entries = []
-                entries_err = str(e)
-            entries_count = int(len(entries))
-
-            dirs = sorted(
-                [p for p in entries if p.is_dir() and not p.name.startswith(".")],
-                key=lambda p: p.name.lower(),
-            )
-            dirs_count = int(len(dirs))
-            for p in dirs:
-                table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
-
-            # Action rows (kept at the bottom so the browser reads like a normal dir listing).
-            table.add_row(Text("[Use this folder]", style="bold"), Text("select", style="dim"), key="__use__")
-            table.add_row(Text("[Export]", style="bold"), Text("export", style="dim"), key="__export__")
-
-            # Default cursor: first directory entry (not the parent '..' row).
-            try:
-                if getattr(table, "row_count", 0):
-                    first_dir_row = (1 if has_parent_row else 0)
-                    if len(dirs) > 0:
-                        # Textual 6.x: cursor_row is a read-only property; use cursor_coordinate.
-                        table.cursor_coordinate = Coordinate(first_dir_row, 0)  # type: ignore[attr-defined]
-                    else:
-                        # No sub-dirs; fall back to [Use this folder] (2nd-to-last row).
-                        target = max(int(getattr(table, "row_count", 0) or 0) - 2, 0)
-                        table.cursor_coordinate = Coordinate(target, 0)  # type: ignore[attr-defined]
-            except Exception:
-                pass
-        finally:
-            self._dbg(
-                event="save.refresh.end",
-                data={
-                    "base": str(base),
-                    "entries_count": entries_count,
-                    "dirs_count": dirs_count,
-                    "duration_ms": float((time.perf_counter() - t0) * 1000.0),
-                    "error_if_any": entries_err,
-                },
-            )
-            self._suppress_save_browser_select = False
+        return self.files.refresh_save_browser()
 
     def _save_browser_enter(self) -> None:
         """Handle Enter on Save output directory browser table."""
-        if self.step != "Save":
-            return
-        base = self._save_browser_dir
-        if base is None:
-            return
-        try:
-            table = self.query_one("#save_browser", DataTable)
-        except Exception:
-            return
-        rk = self._table_cursor_row_key(table)
-        if not rk:
-            return
-
-        next_dir: Optional[str] = None
-        try:
-            if rk == "__up__":
-                try:
-                    p = base.parent if base.parent != base else base
-                except Exception:
-                    p = base
-                next_dir = str(p)
-            elif rk.startswith("dir:"):
-                next_dir = str(rk[4:])
-        except Exception:
-            next_dir = None
-        self._dbg(
-            event="save.enter",
-            data={
-                "base": str(base),
-                "rk": str(rk),
-                "next_dir": next_dir,
-                "cursor_row": getattr(table, "cursor_row", None),
-                "cursor_row_key": str(rk),
-            },
-        )
-
-        if rk == "__up__":
-            try:
-                self._save_browser_dir = base.parent if base.parent != base else base
-            except Exception:
-                self._save_browser_dir = base
-            try:
-                # Update UI in-place (avoid re-mounting widgets / DuplicateIds).
-                self._refresh_save_browser()
-            except Exception:
-                # Fallback: full re-render (best-effort).
-                self._render_main()
-            return
-        if rk == "__use__":
-            self.model.output_dir = base
-            self._render_sidebar()
-            return
-        if rk == "__export__":
-            # Export uses the global confirm modal (Enter to confirm, Esc to cancel).
-            self.action_export()
-            return
-        if rk.startswith("dir:"):
-            try:
-                p = Path(rk[4:])
-            except Exception:
-                return
-            self._save_browser_dir = p
-            try:
-                self._refresh_save_browser()
-            except Exception:
-                self._render_main()
-            return
+        return self.files.save_browser_enter()
 
     def _goto(self, step: str) -> None:
-        if step not in STEPS:
-            return
-        self.step = step
-        # Clear per-step edit hints when leaving the step.
-        if step != "Routes":
-            self._routes_edited = False
-        if step != "Waypoints":
-            self._waypoints_edited = False
-        self._render_sidebar()
-        self._render_main()
-        self._update_footer()
+        """Navigate to a step.
+
+        StateManager owns the logic-only state transition; the App owns UI updates.
+        """
+        self.state.goto(step)
+        # Sync UI for the new step.
+        try:
+            self._render_sidebar()
+        except Exception:
+            pass
+        try:
+            self._render_main()
+        except Exception:
+            pass
+        try:
+            self._update_footer()
+        except Exception:
+            pass
+        # Reset focus after step change (after render completes).
         try:
             self.call_after_refresh(self._reset_focus_for_step)
         except Exception:
-            # If call_after_refresh isn't available for some reason, fall back to best effort.
-            self._reset_focus_for_step()
+            try:
+                self._reset_focus_for_step()
+            except Exception:
+                pass
 
     def _update_footer(self) -> None:
         """Update the step-aware footer with current step's shortcuts."""
@@ -1444,7 +777,7 @@ class CairnTuiApp(App):
             footer = self.query_one("#step_footer", StepAwareFooter)
             footer.set_step(self.step)
         except Exception:
-            pass
+            return
 
     def action_back(self) -> None:
         # Overlay-aware back: if any in-screen overlay is visible, Esc/Back should
@@ -1556,75 +889,23 @@ class CairnTuiApp(App):
         return False
 
     def _infer_folder_selection(self) -> Optional[str]:
-        """
-        Best-effort: infer current folder selection from the folder table cursor.
-
-        Textual's DataTable APIs vary a bit across versions; we try a few approaches.
-        """
+        """Best-effort: infer current folder selection from the folder table cursor."""
         try:
             table = self.query_one("#folder_table", DataTable)
         except Exception:
             return None
-
-        # Attempt 1: cursor_coordinate -> row_key
         try:
-            coord = getattr(table, "cursor_coordinate", None)
-            if coord is not None and hasattr(table, "coordinate_to_cell_key"):
-                cell_key = table.coordinate_to_cell_key(coord)
-                rk = getattr(cell_key, "row_key", None)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
+            return self._table_cursor_row_key(table)
         except Exception:
-            pass
-
-        # Attempt 2: cursor_row -> row key lookup (if available)
-        try:
-            row_idx = getattr(table, "cursor_row", None)
-            if row_idx is not None and hasattr(table, "get_row_key"):
-                rk = table.get_row_key(row_idx)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
-        except Exception:
-            pass
-
-        return None
+            return None
 
     def _get_next_step_after_folder(self) -> str:
-        """Determine next step after Folder, skipping empty Routes/Waypoints steps."""
-        if self.model.parsed is None or not self.model.selected_folder_id:
-            return "Preview"
-        fd = (getattr(self.model.parsed, "folders", {}) or {}).get(self.model.selected_folder_id)
-        if not fd:
-            return "Preview"
-        tracks = list((fd or {}).get("tracks", []) or [])
-        waypoints = list((fd or {}).get("waypoints", []) or [])
-
-        # If routes exist, go to Routes
-        if tracks:
-            return "Routes"
-        # If no routes but waypoints exist, go to Waypoints
-        if waypoints:
-            return "Waypoints"
-        # Otherwise go to Preview
-        return "Preview"
+        """Determine next step after Folder, skipping empty Routes/Waypoints steps. Delegates to StateManager."""
+        return self.state.get_next_step_after_folder()
 
     def _has_real_folders(self) -> bool:
-        """Check if there are real folders (not just default folder)."""
-        if self.model.parsed is None:
-            return False
-        folders = getattr(self.model.parsed, "folders", {}) or {}
-        if not folders:
-            return False
-        # If only one folder and it's "default", treat as no folders
-        if len(folders) == 1:
-            default_id = list(folders.keys())[0]
-            if default_id == "default":
-                # Check if default folder has any content
-                fd = folders[default_id]
-                tracks = list((fd or {}).get("tracks", []) or [])
-                waypoints = list((fd or {}).get("waypoints", []) or [])
-                return len(tracks) > 0 or len(waypoints) > 0
-        return True
+        """Check if there are real folders (not just default folder). Delegates to StateManager."""
+        return self.state.has_real_folders()
 
     def action_continue(self) -> None:
         # Step-specific gating + actions.
@@ -1653,20 +934,8 @@ class CairnTuiApp(App):
             if len(folders) > 1:
                 # Multi-folder workflow: check if folders are selected
                 if not self._selected_folders:
-                    # No folders selected yet, user needs to select
-                    inferred = self._infer_folder_selection()
-                    if inferred:
-                        # Toggle selection on current folder
-                        if inferred in self._selected_folders:
-                            self._selected_folders.remove(inferred)
-                        else:
-                            self._selected_folders.add(inferred)
-                        self._refresh_folder_table()  # Refresh to show selection
-                        # Restore focus to the table
-                        try:
-                            self.query_one("#folder_table", DataTable).focus()
-                        except Exception:
-                            pass
+                    # Requirement: when multiple folders exist, user must explicitly
+                    # select/toggle at least one folder via Space before Enter can advance.
                     return
                 # Folders selected, start processing first folder
                 if not self._folders_to_process:
@@ -1690,7 +959,11 @@ class CairnTuiApp(App):
                     if inferred:
                         self.model.selected_folder_id = inferred
                     else:
-                        return
+                        # If inference fails but there's only one folder, auto-select it
+                        if folders:
+                            self.model.selected_folder_id = list(folders.keys())[0]
+                        else:
+                            return
                 self._done_steps.add("Folder")
                 next_step = self._get_next_step_after_folder()
                 self._goto(next_step)
@@ -1875,8 +1148,8 @@ class CairnTuiApp(App):
         self._routes_edited = False
         self._waypoints_edited = False
         # Reinitialize the file browser directory on re-entry.
-        self._file_browser_dir = None
-        self._save_browser_dir = None
+        self.files.set_file_browser_dir(None)
+        self.files.set_save_browser_dir(None)
         self._goto("Select_file")
 
     def action_show_help(self) -> None:
@@ -2631,50 +1904,42 @@ class CairnTuiApp(App):
             title.update("Select file")
             subtitle.update("Choose an input file (.json/.geojson/.kml/.gpx)")
             body = self._clear_main_body()
-            default_root = Path(self._state.default_root).expanduser() if self._state.default_root else Path.cwd()
 
             # Initialize file browser directory once per visit.
-            if self._file_browser_dir is None:
+            if self.files.get_file_browser_dir() is None:
+                # For table mode, use state.default_root or cwd
+                default_root = Path(self._state.default_root).expanduser() if self._state.default_root else Path.cwd()
                 try:
-                    self._file_browser_dir = default_root.resolve()
+                    self.files.set_file_browser_dir(default_root.resolve())
                 except Exception:
-                    self._file_browser_dir = default_root
+                    self.files.set_file_browser_dir(default_root)
 
             # A/B test: Choose implementation based on feature flag
             if self._use_tree_browser():
                 # NEW: DirectoryTree implementation
                 # Start from home directory by default, but use default_path from config if set.
                 # Users can navigate up to parent directories to reach any location.
-                tree_root = Path.home()
+                tree_root = self.files.get_initial_directory()
                 warning_message = None
 
-                # Check for default_path in config (takes precedence over state.default_root)
+                # Check if default_path was invalid (get_initial_directory returns home on error)
+                # We need to detect this to show a warning
                 default_path_str = getattr(self._config, 'default_path', None)
                 if default_path_str:
                     try:
                         default_path = Path(default_path_str).expanduser().resolve()
-
-                        # Validation 1: Path must exist
-                        if not default_path.exists():
-                            warning_message = f"default_path does not exist: {default_path_str}"
-                        # Validation 2: Must be a directory
-                        elif not default_path.is_dir():
-                            warning_message = f"default_path is not a directory: {default_path_str}"
-                        # Validation 3: Must be readable
-                        elif not os.access(default_path, os.R_OK):
-                            warning_message = f"default_path is not readable (permission denied): {default_path_str}"
-                        else:
-                            # Validation 4: Must be listable (can iterate contents)
-                            try:
-                                # Try to list directory to catch permission issues
-                                list(default_path.iterdir())
-                                # All validations passed - use this path
-                                tree_root = default_path
-                            except PermissionError:
-                                warning_message = f"default_path cannot be accessed (permission denied): {default_path_str}"
-                            except OSError as e:
-                                warning_message = f"default_path cannot be accessed: {default_path_str} ({e})"
-
+                        # If get_initial_directory returned home but we had a default_path, it means validation failed
+                        if tree_root == Path.home() and default_path != Path.home():
+                            # Determine which validation failed
+                            if not default_path.exists():
+                                warning_message = f"default_path does not exist: {default_path_str}"
+                            elif not default_path.is_dir():
+                                warning_message = f"default_path is not a directory: {default_path_str}"
+                            elif not os.access(default_path, os.R_OK):
+                                warning_message = f"default_path is not readable (permission denied): {default_path_str}"
+                            else:
+                                # Must be a listability issue
+                                warning_message = f"default_path cannot be accessed: {default_path_str}"
                     except Exception as e:
                         warning_message = f"Invalid default_path: {default_path_str} ({type(e).__name__}: {e})"
 

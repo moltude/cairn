@@ -14,32 +14,8 @@ from rich.text import Text
 
 from cairn.core.color_mapper import ColorMapper
 
-# region agent log
-import json
-import time
-
-_AGENT_DEBUG_LOG_PATH = "/Users/scott/_code/cairn/.cursor/debug.log"
-
-
-def _agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> None:
-    try:
-        payload = {
-            "timestamp": int(time.time() * 1000),
-            "sessionId": "debug-session",
-            "runId": "pre-fix",
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "data": data,
-        }
-        with open(_AGENT_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except Exception:
-        # Silently fail debug logging - never let it break the app
-        return
-
-
-# endregion agent log
+# Import debug utilities
+from cairn.tui.debug import agent_log as _agent_log
 
 def validate_folder_name(name: str) -> tuple[bool, Optional[str]]:
     """
@@ -355,7 +331,7 @@ class SaveTargetOverlay(Container):
             if self._use_tree:
                 # Import FilteredDirectoryTree to show only directories (no files, no hidden)
                 try:
-                    from cairn.tui.app import FilteredDirectoryTree
+                    from cairn.tui.widgets import FilteredDirectoryTree
                     yield FilteredDirectoryTree(str(Path.home()), id="save_target_browser_tree")
                 except ImportError:
                     # Fallback to base DirectoryTree if import fails
@@ -624,7 +600,7 @@ class SaveTargetOverlay(Container):
         try:
             # Import FilteredDirectoryTree to show only directories
             try:
-                from cairn.tui.app import FilteredDirectoryTree
+                from cairn.tui.widgets import FilteredDirectoryTree
                 TreeClass = FilteredDirectoryTree
             except ImportError:
                 from textual.widgets import DirectoryTree
