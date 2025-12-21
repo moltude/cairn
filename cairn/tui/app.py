@@ -1767,7 +1767,6 @@ class CairnTuiApp(App):
         if self.step == "Preview":
             # Preview is the final step; Enter-to-export is handled in on_key.
             return
-            return
 
         # Save step removed; Preview is the final step.
 
