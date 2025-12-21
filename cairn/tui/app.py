@@ -3324,6 +3324,31 @@ class CairnTuiApp(App):
                 return
             return
 
+        if event.data_table.id == "folder_table":
+            try:
+                folder_id = str(event.row_key.value)
+            except Exception:
+                folder_id = None
+
+            # In multi-folder mode, clicking a row should NOT set selected_folder_id
+            # or trigger navigation - only Spacebar should toggle selection
+            folders = getattr(self.model.parsed, "folders", {}) or {}
+            if len(folders) > 1:
+                # Multi-folder mode: don't set selected_folder_id on row selection
+                # This prevents accidental navigation when clicking rows
+                return
+
+            # Single folder mode: set selected_folder_id (existing behavior)
+            if folder_id:
+                self.model.selected_folder_id = folder_id
+            else:
+                self.model.selected_folder_id = None
+            self._dbg(
+                event="folder.row_selected",
+                data={"folder_id": self.model.selected_folder_id},
+            )
+            return
+
     def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
         """Handle file selection from DirectoryTree (A/B test tree browser)."""
         if self.step != "Select_file":
@@ -3362,31 +3387,6 @@ class CairnTuiApp(App):
                 self._render_main()
         except Exception:
             pass
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id == "folder_table":
-            try:
-                folder_id = str(event.row_key.value)
-            except Exception:
-                folder_id = None
-
-            # In multi-folder mode, clicking a row should NOT set selected_folder_id
-            # or trigger navigation - only Spacebar should toggle selection
-            folders = getattr(self.model.parsed, "folders", {}) or {}
-            if len(folders) > 1:
-                # Multi-folder mode: don't set selected_folder_id on row selection
-                # This prevents accidental navigation when clicking rows
-                return
-
-            # Single folder mode: set selected_folder_id (existing behavior)
-            if folder_id:
-                self.model.selected_folder_id = folder_id
-            else:
-                self.model.selected_folder_id = None
-            self._dbg(
-                event="folder.row_selected",
-                data={"folder_id": self.model.selected_folder_id},
-            )
 
     def action_focus_search(self) -> None:
         # Best-effort: focus the search/filter input on the current screen (including modals).
