@@ -134,45 +134,46 @@ class CairnTuiApp(App):
         self.files.set_save_browser_dir(value)
 
     # Compatibility properties for state variables (tests use these)
+    # These use mutable proxies to maintain encapsulation while supporting backward compatibility
     @property
     def _done_steps(self) -> set[str]:
-        """Compatibility property: delegate to StateManager."""
-        return self.state._done_steps
+        """Compatibility property: delegate to StateManager (returns mutable proxy for backward compatibility)."""
+        return self.state.done_steps_mutable
 
     @_done_steps.setter
     def _done_steps(self, value: set[str]) -> None:
         """Compatibility property setter: delegate to StateManager."""
-        self.state._done_steps = value
+        self.state.set_done_steps(value)
 
     @property
     def _selected_route_keys(self) -> set[str]:
-        """Compatibility property: delegate to StateManager."""
-        return self.state._selected_route_keys
+        """Compatibility property: delegate to StateManager (returns mutable proxy for backward compatibility)."""
+        return self.state.selected_route_keys_mutable
 
     @_selected_route_keys.setter
     def _selected_route_keys(self, value: set[str]) -> None:
         """Compatibility property setter: delegate to StateManager."""
-        self.state._selected_route_keys = value
+        self.state.set_selected_route_keys(value)
 
     @property
     def _selected_waypoint_keys(self) -> set[str]:
-        """Compatibility property: delegate to StateManager."""
-        return self.state._selected_waypoint_keys
+        """Compatibility property: delegate to StateManager (returns mutable proxy for backward compatibility)."""
+        return self.state.selected_waypoint_keys_mutable
 
     @_selected_waypoint_keys.setter
     def _selected_waypoint_keys(self, value: set[str]) -> None:
         """Compatibility property setter: delegate to StateManager."""
-        self.state._selected_waypoint_keys = value
+        self.state.set_selected_waypoint_keys(value)
 
     @property
     def _selected_folders(self) -> set[str]:
-        """Compatibility property: delegate to StateManager."""
-        return self.state._selected_folders
+        """Compatibility property: delegate to StateManager (returns mutable proxy for backward compatibility)."""
+        return self.state.selected_folders_mutable
 
     @_selected_folders.setter
     def _selected_folders(self, value: set[str]) -> None:
         """Compatibility property setter: delegate to StateManager."""
-        self.state._selected_folders = value
+        self.state.set_selected_folders(value)
 
     def __init__(self) -> None:
         super().__init__()
@@ -636,6 +637,48 @@ class CairnTuiApp(App):
             feats = self._selected_features(ctx)
             if feats:
                 self._show_inline_overlay(ctx=ctx, feats=feats)
+
+    def on_save_target_overlay_done(self, message: SaveTargetOverlay.Done) -> None:  # type: ignore[name-defined]
+        """Handle Done message from SaveTargetOverlay."""
+        try:
+            self.set_focus(None)  # type: ignore[arg-type]
+        except Exception:
+            pass
+
+        if getattr(message, "cancelled", False):
+            # User cancelled - no changes needed
+            return
+
+        # Update output directory and prefix from overlay
+        directory = getattr(message, "directory", None)
+        prefix = getattr(message, "prefix", "")
+
+        if directory is not None:
+            try:
+                # Ensure directory is a Path and resolve it
+                dir_path = Path(directory)
+                if dir_path.exists():
+                    self.model.output_dir = dir_path.resolve()
+                else:
+                    # Even if it doesn't exist yet, store the path
+                    try:
+                        self.model.output_dir = dir_path.expanduser().resolve()
+                    except Exception:
+                        # If resolve fails (e.g., path doesn't exist), just store as-is
+                        self.model.output_dir = dir_path.expanduser()
+            except Exception:
+                # Fallback: try to convert to Path without resolving
+                try:
+                    self.model.output_dir = Path(directory)
+                except Exception:
+                    pass
+
+        if prefix is not None:
+            self._output_prefix = str(prefix or "")
+
+        # Refresh Preview step to show updated directory/prefix
+        if self.step == "Preview":
+            self._render_main()
 
     def on_confirm_overlay_result(self, message: ConfirmOverlay.Result) -> None:  # type: ignore[name-defined]
         """Handle result from ConfirmOverlay."""
