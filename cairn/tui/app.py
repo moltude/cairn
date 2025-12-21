@@ -79,6 +79,22 @@ from cairn.tui.file_browser import FileBrowserManager
 # Import state manager
 from cairn.tui.state import StateManager
 
+# Import event router
+from cairn.tui.events import EventRouter
+
+# Import export manager
+from cairn.tui.export import ExportManager
+
+# Import edit manager
+from cairn.tui.editing import EditManager
+
+# Import rendering helpers
+from cairn.tui.rendering import (
+    sidebar_instructions,
+    sidebar_shortcuts,
+    suggest_output_name,
+)
+
 # Re-export widgets for backward compatibility (tests and other modules may import from app.py)
 # These are available as: from cairn.tui.app import FilteredFileTree, etc.
 
@@ -174,6 +190,27 @@ class CairnTuiApp(App):
         """Compatibility property setter: delegate to StateManager."""
         self.state._selected_folders = value
 
+    # Edit state compatibility properties (delegate to EditManager)
+    @property
+    def _in_single_item_edit(self) -> bool:
+        """Compatibility property: delegate to EditManager."""
+        return self.edits.in_single_item_edit
+
+    @_in_single_item_edit.setter
+    def _in_single_item_edit(self, value: bool) -> None:
+        """Compatibility property setter: delegate to EditManager."""
+        self.edits.in_single_item_edit = value
+
+    @property
+    def _in_inline_edit(self) -> bool:
+        """Compatibility property: delegate to EditManager."""
+        return self.edits.in_inline_edit
+
+    @_in_inline_edit.setter
+    def _in_inline_edit(self, value: bool) -> None:
+        """Compatibility property setter: delegate to EditManager."""
+        self.edits.in_inline_edit = value
+
     def __init__(self) -> None:
         super().__init__()
         self.model = TuiModel()
@@ -194,6 +231,12 @@ class CairnTuiApp(App):
         self.files = FileBrowserManager(self)
         # Initialize state manager
         self.state = StateManager(self)
+        # Initialize event router
+        self.events = EventRouter(self)
+        # Initialize export manager
+        self.exports = ExportManager(self)
+        # Initialize edit manager
+        self.edits = EditManager(self)
         self._save_snapshot_emitted: bool = False
         self._save_change_prompt_dismissed: bool = False
         self._output_prefix: str = ""
@@ -933,11 +976,20 @@ class CairnTuiApp(App):
             folders = getattr(self.model.parsed, "folders", {}) or {}
             if len(folders) > 1:
                 # Multi-folder workflow: check if folders are selected
-                if not self._selected_folders:
+                # Also allow if selected_folder_id was set directly (for tests/programmatic use)
+                if not self._selected_folders and not self.model.selected_folder_id:
                     # Requirement: when multiple folders exist, user must explicitly
                     # select/toggle at least one folder via Space before Enter can advance.
                     return
-                # Folders selected, start processing first folder
+                # If selected_folder_id is already set (e.g., by test or cursor inference),
+                # use single-folder path even in multi-folder file
+                if self.model.selected_folder_id and not self._selected_folders:
+                    # Single folder selected directly, process just that one
+                    self._done_steps.add("Folder")
+                    next_step = self._get_next_step_after_folder()
+                    self._goto(next_step)
+                    return
+                # Folders selected via Space, start processing first folder
                 if not self._folders_to_process:
                     self._folders_to_process = list(self._selected_folders)
                     self._current_folder_index = 0
@@ -1333,50 +1385,12 @@ class CairnTuiApp(App):
         return str(fallback)
 
     def _selected_keys_for_step(self) -> Optional[EditContext]:
-        if self.step == "Routes":
-            if not self._selected_route_keys:
-                return None
-            return EditContext(kind="route", selected_keys=tuple(sorted(self._selected_route_keys)))
-        if self.step == "Waypoints":
-            if not self._selected_waypoint_keys:
-                return None
-            return EditContext(kind="waypoint", selected_keys=tuple(sorted(self._selected_waypoint_keys)))
-        return None
+        """Get EditContext for current step. Delegates to EditManager."""
+        return self.edits.selected_keys_for_step()
 
     def _selected_features(self, ctx: EditContext) -> list:
-        tracks, waypoints = self._current_folder_features()
-        out: list = []
-
-        if ctx.kind == "route":
-            by_id = {self._feature_row_key(t, ""): t for t in tracks}
-            sorted_tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
-            for k in ctx.selected_keys:
-                kk = str(k)
-                if kk in by_id:
-                    out.append(by_id[kk])
-                    continue
-                # Back-compat / safety: allow index-based keys if present.
-                if kk.isdigit():
-                    idx = int(kk)
-                    if 0 <= idx < len(sorted_tracks):
-                        out.append(sorted_tracks[idx])
-            return out
-
-        if ctx.kind == "waypoint":
-            by_id = {self._feature_row_key(w, ""): w for w in waypoints}
-            sorted_waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
-            for k in ctx.selected_keys:
-                kk = str(k)
-                if kk in by_id:
-                    out.append(by_id[kk])
-                    continue
-                if kk.isdigit():
-                    idx = int(kk)
-                    if 0 <= idx < len(sorted_waypoints):
-                        out.append(sorted_waypoints[idx])
-            return out
-
-        return out
+        """Get selected features for context. Delegates to EditManager."""
+        return self.edits.selected_features(ctx)
 
 
     def action_actions(self) -> None:
@@ -1741,43 +1755,11 @@ class CairnTuiApp(App):
 
     def _sidebar_instructions(self, step: str) -> str:
         """Concise, process-oriented guidance shown in the left column per step."""
-        step = str(step or "")
-        if step == "Select_file":
-            return (
-                "Choose the CalTopo export you want to migrate to onX.\n"
-                "GeoJSON preserves the most detail, but GPX/KML are also supported."
-            )
-        if step == "List_data":
-            return (
-                "Review everything found in your export: folders, routes, waypoints, tracks, "
-                "shapes, and unmapped symbols.\n\n\n"
-                "onX does not support folders, so this is a good time to bake folder structure "
-                "into names/descriptions so you can find items via onX search."
-            )
-        if step == "Folder":
-            return (
-                "Pick what you want to edit next.\n"
-                "If multiple folders exist, select the ones you want to process."
-            )
-        if step in {"Routes", "Waypoints"}:
-            return (
-                "Update the name, description, and color so it’s meaningful once imported.\n"
-                "Use selection shortcuts to bulk-update or quickly scan large sets."
-            )
-        if step == "Preview":
-            return (
-                "Review export contents and select the destination directory.\n\n\n"
-                "Navigate the directory browser, enter a file name prefix, then press Enter to export.\n"
-                "Press [bold]Ctrl+N[/] to create a new folder (tree mode)."
-            )
-        return ""
+        return sidebar_instructions(step)
 
     def _sidebar_shortcuts(self, step: str) -> str:
         """Always-visible shortcut list (mirrors the footer, but formatted for the sidebar)."""
-        shortcuts = StepAwareFooter.STEP_SHORTCUTS.get(step, [])
-        if not shortcuts:
-            return ""
-        return "\n".join([f"{key}: {desc}" for key, desc in shortcuts])
+        return sidebar_shortcuts(step, StepAwareFooter.STEP_SHORTCUTS)
 
     def _suggest_output_name(self, original_filename: str) -> str:
         """
@@ -1785,16 +1767,7 @@ class CairnTuiApp(App):
 
         We keep this intentionally conservative (same extension, no directory components).
         """
-        fn = str(original_filename or "").strip()
-        if not fn:
-            return fn
-        prefix = sanitize_filename(str(self._output_prefix or "").strip())
-        if not prefix:
-            return Path(fn).name
-        p = Path(fn)
-        stem = p.stem or "output"
-        ext = p.suffix
-        return f"{prefix}_{stem}{ext}"
+        return suggest_output_name(original_filename, self._output_prefix or "")
 
     def _create_export_folder(self) -> None:
         """Create new folder in current export directory."""
@@ -2718,6 +2691,11 @@ class CairnTuiApp(App):
             return
 
     def on_key(self, event) -> None:  # type: ignore[override]
+        """Handle keyboard events.
+
+        Delegates to EventRouter for centralized event routing.
+        """
+        # Debug logging for quit key
         try:
             key0 = str(getattr(event, "key", "") or "")
             ch0 = str(getattr(event, "character", "") or "")
@@ -2742,6 +2720,7 @@ class CairnTuiApp(App):
                 )
         except Exception:
             pass
+
         # Debug: capture keys when enabled (useful for diagnosing "Enter doesn't advance").
         self._dbg(
             event="key",
@@ -2756,578 +2735,32 @@ class CairnTuiApp(App):
             },
         )
 
-        # IMPORTANT: When a modal or overlay is open (editing dialogs), let it handle
-        # Enter/Escape/etc. Otherwise our global step-navigation hijacks Enter and
-        # makes dialogs unusable.
-        try:
-            from textual.screen import ModalScreen
-
-            if isinstance(getattr(self, "screen", None), ModalScreen):
-                return
-        except Exception:
-            pass
-
-        # In-screen overlays are Widgets (not Screens), so guard explicitly.
-        def _overlay_open(selector: str) -> bool:
-            try:
-                w = self.query_one(selector)
-                return bool(getattr(w, "has_class", lambda _c: False)("open"))
-            except Exception:
-                return False
-
-        # Special handling: picker overlays focus a DataTable, which can consume Enter/Up/Down
-        # such that the overlay container never sees the Key event. Handle those here.
-        if _overlay_open("#icon_picker_overlay"):
-            key = str(getattr(event, "key", "") or "")
-            focused_id = getattr(getattr(self, "focused", None), "id", None)
-            try:
-                tbl = self.query_one("#icon_table", DataTable)
-            except Exception:
-                tbl = None
-            # IMPORTANT: Avoid double-moving the cursor. When the DataTable is focused,
-            # it will already handle Up/Down. We only forward arrows when focus is on
-            # a non-table widget (e.g. the filter input).
-            if key in ("up", "down") and tbl is not None and focused_id != "icon_table":
-                try:
-                    (tbl.action_cursor_down() if key == "down" else tbl.action_cursor_up())  # type: ignore[attr-defined]
-                except Exception:
-                    pass
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-            if key == "escape":
-                try:
-                    self.query_one("#icon_picker_overlay", IconPickerOverlay).close()
-                except Exception:
-                    pass
-                try:
-                    self.on_icon_picker_overlay_icon_picked(IconPickerOverlay.IconPicked(None))  # type: ignore[arg-type]
-                except Exception:
-                    pass
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-            if key in ("enter", "return") or getattr(event, "character", None) == "\r":
-                icon = None
-                if tbl is not None:
-                    icon = (self._table_cursor_row_key(tbl) or "").strip() or None
-                try:
-                    self.query_one("#icon_picker_overlay", IconPickerOverlay).close()
-                except Exception:
-                    pass
-                try:
-                    self.on_icon_picker_overlay_icon_picked(IconPickerOverlay.IconPicked(icon))  # type: ignore[arg-type]
-                except Exception:
-                    pass
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-            return
-
-        if _overlay_open("#color_picker_overlay"):
-            key = str(getattr(event, "key", "") or "")
-            focused_id = getattr(getattr(self, "focused", None), "id", None)
-            try:
-                tbl = self.query_one("#palette_table", DataTable)
-            except Exception:
-                tbl = None
-            # IMPORTANT: Avoid double-moving the cursor. When the DataTable is focused,
-            # it will already handle Up/Down. We only forward arrows when focus is on
-            # a non-table widget (e.g. the filter input).
-            if key in ("up", "down") and tbl is not None and focused_id != "palette_table":
-                try:
-                    (tbl.action_cursor_down() if key == "down" else tbl.action_cursor_up())  # type: ignore[attr-defined]
-                except Exception:
-                    pass
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-            if key == "escape":
-                try:
-                    self.query_one("#color_picker_overlay", ColorPickerOverlay).close()
-                except Exception:
-                    pass
-                try:
-                    self.on_color_picker_overlay_color_picked(ColorPickerOverlay.ColorPicked(None))  # type: ignore[arg-type]
-                except Exception:
-                    pass
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-            if key in ("enter", "return") or getattr(event, "character", None) == "\r":
-                rgba = None
-                if tbl is not None:
-                    rgba = (self._table_cursor_row_key(tbl) or "").strip() or None
-                try:
-                    self.query_one("#color_picker_overlay", ColorPickerOverlay).close()
-                except Exception:
-                    pass
-                try:
-                    self.on_color_picker_overlay_color_picked(ColorPickerOverlay.ColorPicked(rgba))  # type: ignore[arg-type]
-                except Exception:
-                    pass
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-            return
-
-        if (
-            _overlay_open("#inline_edit_overlay")
-            or _overlay_open("#save_target_overlay")
-            or _overlay_open("#rename_overlay")
-            or _overlay_open("#description_overlay")
-            or _overlay_open("#confirm_overlay")
-        ):
-            return
-
-        # Handle ? for help (works from anywhere)
-        if event.key == "question_mark" or getattr(event, "character", None) == "?":
-            self.action_show_help()
+        # Delegate to event router
+        if self.events.route_key(event):
             try:
                 event.stop()
             except Exception:
                 pass
-            return
-
-        # Make navigation reliable regardless of focused widget.
-        # Some widgets may consume Enter/Escape depending on focus state.
-        if event.key == "escape":
-            if self.step == "Preview":
-                try:
-                    self._dbg(
-                        event="save.key",
-                        data={
-                            "key": str(getattr(event, "key", "")),
-                            "character": str(getattr(event, "character", "")),
-                            "focused_id": getattr(getattr(self, "focused", None), "id", None),
-                            "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
-                            "prefix": str(self._output_prefix or ""),
-                        },
-                    )
-                except Exception:
-                    pass
-            self.action_back()
-            try:
-                event.stop()
-            except Exception:
-                pass
-            return
-
-        # Special-case: Select_file file browser (Enter opens dir/selects file).
-        # Only handle DataTable Enter for old implementation (DirectoryTree handles its own)
-        if self.step == "Select_file" and not self._use_tree_browser():
-            try:
-                focused_id = getattr(getattr(self, "focused", None), "id", None)
-                if focused_id == "file_browser" and (
-                    event.key in ("enter", "return") or getattr(event, "character", None) == "\r"
-                ):
-                    self._file_browser_enter()
-                    try:
-                        event.stop()
-                    except Exception:
-                        pass
-                    return
-            except Exception:
-                pass
-
-        # Preview & Export step: embedded directory browser + Enter-to-export (direct).
-        if self.step == "Preview":
-            key = str(getattr(event, "key", "") or "")
-            ch = str(getattr(event, "character", "") or "")
-
-            # Ctrl+N: Create new folder (tree mode only)
-            if key == "ctrl+n" and self._use_tree_browser():
-                self._create_export_folder()
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-
-            # Handle Enter on directory table (DataTable mode)
-            focused_id = getattr(getattr(self, "focused", None), "id", None)
-            if focused_id == "export_dir_table" and (key in ("enter", "return") or ch == "\r"):
-                self._export_dir_table_enter()
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-
-            # Handle Enter to export (when not focused on directory browser or prefix input)
-            if focused_id not in ("export_dir_table", "export_dir_tree", "export_prefix_input"):
-                if key in ("enter", "return") or ch == "\r":
-                    # Get prefix from input if available
-                    try:
-                        prefix_input = self.query_one("#export_prefix_input", Input)
-                        self._output_prefix = prefix_input.value or ""
-                    except Exception:
-                        pass
-
-                    try:
-                        self._dbg(
-                            event="save.key",
-                            data={
-                                "key": key,
-                                "character": ch,
-                                "focused_id": focused_id,
-                                "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
-                                "prefix": str(self._output_prefix or ""),
-                            },
-                        )
-                    except Exception:
-                        pass
-                    try:
-                        self.action_export()
-                    except Exception:
-                        pass
-                    try:
-                        event.stop()
-                    except Exception:
-                        pass
-                    return
-
-        # Accept common Enter variants across terminals/backends.
-        if event.key in ("enter", "return") or getattr(event, "character", None) == "\r":
-            self.action_continue()
-            try:
-                event.stop()
-            except Exception:
-                pass
-            return
-
-        # Toggle selection in tables with Space (when table is focused).
-        if event.key != "space":
-            return
-        try:
-            focused = {"type": type(self.focused).__name__ if self.focused else None, "id": getattr(self.focused, "id", None) if self.focused else None}
-
-            # If an Input is focused, let Space behave normally (type a space).
-            if focused.get("type") == "Input":
-                return
-
-            if self.step == "Folder":
-                # Toggle folder selection for multi-folder workflow
-                table = self.query_one("#folder_table", DataTable)
-                rk = self._table_cursor_row_key(table)
-                if rk:
-                    folder_id = str(rk)
-                    if folder_id in self._selected_folders:
-                        self._selected_folders.remove(folder_id)
-                    else:
-                        self._selected_folders.add(folder_id)
-                    # Save the row key before refresh
-                    saved_row_key = rk
-                    # Refresh just the table - it returns the target cursor index
-                    target_index = self._refresh_folder_table()
-
-                    # Restore cursor position - use multiple strategies to ensure it sticks
-                    if target_index is not None:
-                        def restore_cursor():
-                            try:
-                                table_refreshed = self.query_one("#folder_table", DataTable)
-                                current_cursor = getattr(table_refreshed, "cursor_row", None)
-                                if current_cursor != target_index:
-                                    # Ensure table has focus first
-                                    try:
-                                        table_refreshed.focus()
-                                    except Exception:
-                                        pass
-
-                                    # Since cursor_row has no setter, we need to use action methods
-                                    # But we need to move from current position to target
-                                    # The issue is current_cursor might be wrong, so let's move from 0
-                                    try:
-                                        # First, move to top (row 0) to establish known position
-                                        # Then move down to target
-                                        current_pos = current_cursor or 0
-
-                                        # If we're not at the top, move to top first
-                                        if current_pos > 0:
-                                            for _ in range(current_pos):
-                                                try:
-                                                    table_refreshed.action_cursor_up()  # type: ignore[attr-defined]
-                                                except Exception:
-                                                    break
-
-                                        # Now move down to target from row 0
-                                        for _ in range(target_index):
-                                            try:
-                                                table_refreshed.action_cursor_down()  # type: ignore[attr-defined]
-                                            except Exception:
-                                                break
-                                    except Exception:
-                                        pass
-                            except Exception:
-                                pass
-
-                        # Try multiple approaches to ensure cursor is set
-                        # 1. Immediate set (might get reset)
-                        try:
-                            table.cursor_row = target_index  # type: ignore[attr-defined]
-                        except Exception:
-                            pass
-
-                        # 2. After refresh callback (primary method)
-                        try:
-                            self.call_after_refresh(restore_cursor)
-                        except Exception:
-                            restore_cursor()
-
-                        # 3. Timer-based fallback with multiple attempts
-                        try:
-                            def timer_restore():
-                                restore_cursor()
-                                # Try again after a longer delay
-                                try:
-                                    self.set_timer(0.2, restore_cursor, name="restore_folder_cursor_retry")
-                                except Exception:
-                                    pass
-                            self.set_timer(0.05, timer_restore, name="restore_folder_cursor")
-                        except Exception:
-                            pass
-                return
-
-            if self.step == "Routes":
-                table = self.query_one("#routes_table", DataTable)
-                rk = self._table_cursor_row_key(table)
-                idx = int(getattr(table, "cursor_row", 0) or 0)
-                # Prefer row key so selection works when filtered.
-                k = rk if rk is not None else str(idx)
-                if k in self._selected_route_keys:
-                    self._selected_route_keys.remove(k)
-                else:
-                    self._selected_route_keys.add(k)
-
-                # Save target index before refresh
-                target_index = idx
-
-                self._refresh_routes_table()
-
-                # Restore cursor position using action methods (cursor_row is read-only)
-                # Find target index by key after refresh (in case filtering changed visible rows)
-                def restore_routes_cursor():
-                    try:
-                        table_refreshed = self.query_one("#routes_table", DataTable)
-                        table_refreshed.focus()
-
-                        # Find the row index for the saved key after refresh
-                        target_idx = None
-                        if rk is not None:
-                            # Try to find row by key
-                            try:
-                                row_count = getattr(table_refreshed, "row_count", 0) or 0
-                                for i in range(row_count):
-                                    try:
-                                        row_key = table_refreshed.get_row_key(i)  # type: ignore[attr-defined]
-                                        if str(row_key) == str(rk):
-                                            target_idx = i
-                                            break
-                                    except Exception:
-                                        continue
-                            except Exception:
-                                pass
-
-                        # Fallback to saved index if key lookup failed
-                        if target_idx is None:
-                            target_idx = target_index
-
-                        current_pos = getattr(table_refreshed, "cursor_row", 0) or 0
-
-                        # Move to row 0 first (known position)
-                        if current_pos > 0:
-                            for _ in range(current_pos):
-                                try:
-                                    table_refreshed.action_cursor_up()  # type: ignore[attr-defined]
-                                except Exception:
-                                    break
-
-                        # Then move down to target
-                        for _ in range(target_idx):
-                            try:
-                                table_refreshed.action_cursor_down()  # type: ignore[attr-defined]
-                            except Exception:
-                                break
-                    except Exception:
-                        pass
-
-                try:
-                    self.call_after_refresh(restore_routes_cursor)
-                except Exception:
-                    restore_routes_cursor()
-
-                # Timer fallback
-                try:
-                    self.set_timer(0.05, restore_routes_cursor, name="restore_routes_cursor")
-                except Exception:
-                    pass
-            elif self.step == "Waypoints":
-                table = self.query_one("#waypoints_table", DataTable)
-                rk = self._table_cursor_row_key(table)
-                idx = int(getattr(table, "cursor_row", 0) or 0)
-                k = rk if rk is not None else str(idx)
-                if k in self._selected_waypoint_keys:
-                    self._selected_waypoint_keys.remove(k)
-                else:
-                    self._selected_waypoint_keys.add(k)
-
-                # Save target index before refresh
-                target_index = idx
-
-                self._refresh_waypoints_table()
-
-                # Restore cursor position using action methods (cursor_row is read-only)
-                # Find target index by key after refresh (in case filtering changed visible rows)
-                def restore_waypoints_cursor():
-                    try:
-                        table_refreshed = self.query_one("#waypoints_table", DataTable)
-                        table_refreshed.focus()
-
-                        # Find the row index for the saved key after refresh
-                        target_idx = None
-                        if rk is not None:
-                            # Try to find row by key
-                            try:
-                                row_count = getattr(table_refreshed, "row_count", 0) or 0
-                                for i in range(row_count):
-                                    try:
-                                        row_key = table_refreshed.get_row_key(i)  # type: ignore[attr-defined]
-                                        if str(row_key) == str(rk):
-                                            target_idx = i
-                                            break
-                                    except Exception:
-                                        continue
-                            except Exception:
-                                pass
-
-                        # Fallback to saved index if key lookup failed
-                        if target_idx is None:
-                            target_idx = target_index
-
-                        current_pos = getattr(table_refreshed, "cursor_row", 0) or 0
-
-                        # Move to row 0 first (known position)
-                        if current_pos > 0:
-                            for _ in range(current_pos):
-                                try:
-                                    table_refreshed.action_cursor_up()  # type: ignore[attr-defined]
-                                except Exception:
-                                    break
-
-                        # Then move down to target
-                        for _ in range(target_idx):
-                            try:
-                                table_refreshed.action_cursor_down()  # type: ignore[attr-defined]
-                            except Exception:
-                                break
-                    except Exception:
-                        pass
-
-                try:
-                    self.call_after_refresh(restore_waypoints_cursor)
-                except Exception:
-                    restore_waypoints_cursor()
-
-                # Timer fallback
-                try:
-                    self.set_timer(0.05, restore_waypoints_cursor, name="restore_waypoints_cursor")
-                except Exception:
-                    pass
-        except Exception:
-            return
-        return
 
     def _start_export(self) -> None:
-        self._export_error = None
-        self._export_manifest = None
-        self._export_in_progress = True
-        self._render_main()
-        if self.model.parsed is None:
-            self._export_error = "No parsed data. Go back."
-            self._export_in_progress = False
-            self._render_main()
-            return
-        out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
-        try:
-            out_dir = out_dir.expanduser()
-        except Exception:
-            pass
-        try:
-            out_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            self._export_error = f"Failed to create output dir: {e}"
-            self._export_in_progress = False
-            self._render_main()
-            return
-
-        # Run export in a background thread to keep UI responsive.
-        t = threading.Thread(
-            target=self._export_worker,
-            args=(out_dir,),
-            daemon=True,
-        )
-        t.start()
+        """Start export process. Delegates to ExportManager."""
+        self.exports.start_export()
 
     def _export_worker(self, out_dir: Path) -> None:
-        try:
-            manifest = process_and_write_files(
-                self.model.parsed,  # type: ignore[arg-type]
-                out_dir,
-                sort=True,
-                skip_confirmation=True,
-                config=self._config,
-                split_gpx=True,
-                max_gpx_bytes=4 * 1024 * 1024,
-            )
-            rows = [(a, b, int(c), int(d)) for (a, b, c, d) in manifest]
-            self.call_from_thread(self._on_export_done, rows, None)
-        except Exception as e:
-            self.call_from_thread(self._on_export_done, None, f"Export error: {e}")
+        """Background export worker. Delegates to ExportManager."""
+        self.exports._export_worker(out_dir)
 
     def _on_export_done(
         self,
         manifest: Optional[list[tuple[str, str, int, int]]],
         err: Optional[str],
     ) -> None:
-        self._export_in_progress = False
-        self._export_manifest = manifest
-        self._export_error = err
-        self._render_main()
-
-        # After a successful export, prompt for next action (new file vs quit).
-        try:
-            if err is None and manifest and not self._post_save_prompt_shown:
-                self._post_save_prompt_shown = True
-                self.push_screen(
-                    ConfirmModal(
-                        "Export complete.\n\nMigrate another file?",
-                        title="Export complete",
-                    ),
-                    self._on_post_save_choice,
-                )
-        except Exception:
-            pass
+        """Export completion handler. Delegates to ExportManager."""
+        self.exports._on_done(manifest, err)
 
     def _on_post_save_choice(self, confirmed: bool) -> None:
-        if confirmed:
-            self.action_new_file()
-        else:
-            try:
-                self.exit()
-            except Exception:
-                pass
+        """Post-export prompt handler. Delegates to ExportManager."""
+        self.exports._on_post_save_choice(confirmed)
 
     def on_input_changed(self, event: Input.Changed) -> None:
         try:

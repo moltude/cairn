@@ -200,6 +200,21 @@ def move_datatable_cursor_to_row_key(app: Any, *, table_id: str, target_row_key:
         return
 
 
+# Optional fixtures for direct manager access in tests.
+# These can be used with pytest to access managers directly:
+#
+#   @pytest.fixture
+#   def tui_state(tui_app):
+#       return tui_app.state
+#
+#   @pytest.fixture
+#   def tui_tables(tui_app):
+#       return tui_app.tables
+#
+# Note: These are documented here for future use. The actual pytest fixtures
+# would be defined in conftest.py when needed.
+
+
 @dataclass
 class ArtifactRecorder:
     scenario: str
