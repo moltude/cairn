@@ -5,7 +5,7 @@ from cairn.core.color_mapper import ColorMapper
 
 def test_track_color_exact_match_roundtrips():
     # Test that exact track colors round-trip correctly
-    assert ColorMapper.map_track_color("rgba(255,51,0,1)") == "rgba(255,51,0,1)"  # red-orange
+    assert ColorMapper.map_track_color("rgba(255,51,0,1)") == "rgba(255,51,0,1)"  # orange
     assert ColorMapper.map_track_color("rgba(8,122,255,1)") == "rgba(8,122,255,1)"  # blue
     assert ColorMapper.map_track_color("rgba(255,0,255,1)") == "rgba(255,0,255,1)"  # fuchsia (track-only)
 

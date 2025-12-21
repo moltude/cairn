@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Callable, TextIO
+from typing import Optional, Callable, TextIO, Iterable
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import DataTable, Header, Input, Static
+from textual.widgets import DataTable, DirectoryTree, Header, Input, Static
 import threading
 import os
 import time
@@ -43,9 +43,11 @@ from cairn.tui.edit_screens import (
     IconPickerOverlay,
     InlineEditOverlay,
     InfoModal,
+    NewFolderModal,
     SaveTargetOverlay,
     RenameOverlay,
     UnmappedSymbolModal,
+    validate_folder_name,
 )
 
 # region agent log
@@ -66,6 +68,7 @@ def _agent_log(*, hypothesisId: str, location: str, message: str, data: dict) ->
         with open(_AGENT_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception:
+        # Silently fail debug logging - never let it break the app
         return
 
 
@@ -76,13 +79,52 @@ _VISIBLE_INPUT_EXTS = {".json", ".geojson", ".kml", ".gpx"}
 _PARSEABLE_INPUT_EXTS = {".json", ".geojson"}
 
 
+class FilteredFileTree(DirectoryTree):
+    """DirectoryTree that filters to show only allowed file extensions.
+
+    This is used for the A/B test of tree-based file browser vs. table-based.
+    Filters out hidden directories and shows only files with allowed extensions.
+    """
+
+    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
+        """Filter paths to show only directories and allowed file extensions."""
+        allowed_extensions = _VISIBLE_INPUT_EXTS
+        filtered = []
+        for path in paths:
+            # Always show directories
+            if path.is_dir():
+                # Skip hidden directories (starting with .)
+                if not path.name.startswith("."):
+                    filtered.append(path)
+            # Show files with allowed extensions (but hide dotfiles - hide always wins)
+            elif path.is_file() and not path.name.startswith(".") and path.suffix.lower() in allowed_extensions:
+                filtered.append(path)
+        return filtered
+
+
+class FilteredDirectoryTree(DirectoryTree):
+    """DirectoryTree that shows only directories (no files).
+
+    Used for the A/B test of tree-based save directory browser.
+    Filters out hidden directories.
+    """
+
+    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
+        """Filter paths to show only non-hidden directories."""
+        filtered = []
+        for path in paths:
+            if path.is_dir() and not path.name.startswith("."):
+                filtered.append(path)
+        return filtered
+
+
 STEPS = [
     "Select_file",
     "List_data",
     "Folder",
     "Routes",
     "Waypoints",
-    "Preview",
+    "Preview",  # Preview is now the final step with embedded export
 ]
 
 # Display labels for steps (internal names use underscores for code references)
@@ -189,10 +231,10 @@ class StepAwareFooter(Static):
             ("q", "Quit"),
         ],
         "Preview": [
+            ("↑↓", "Navigate"),
             ("Enter", "Export"),
-            ("y", "Change target"),
+            ("Ctrl+N", "New folder"),
             ("r", "Apply names"),
-            ("Ctrl+N", "New file"),
             ("Tab", "Next field"),
             ("Esc", "Back"),
             ("?", "Help"),
@@ -286,6 +328,26 @@ class CairnTuiApp(App):
         self._current_folder_index: int = 0
         self._selected_folders: set[str] = set()  # Folders selected for processing
 
+    def _use_tree_browser(self) -> bool:
+        """Check if DirectoryTree browser should be used (A/B test flag).
+
+        Set CAIRN_USE_TREE_BROWSER=1 to enable the tree-based file browser.
+        Default is the table-based browser for backwards compatibility.
+        """
+        return os.getenv("CAIRN_USE_TREE_BROWSER", "").lower() in ("1", "true", "yes")
+
+    def _dismiss_warning(self, warning_id: str) -> None:
+        """Dismiss a temporary warning widget.
+
+        Args:
+            warning_id: ID of the warning widget to remove
+        """
+        try:
+            widget = self.query_one(f"#{warning_id}")
+            widget.remove()
+        except Exception:
+            pass  # Widget already removed or doesn't exist
+
     def _set_input_path(self, p: Path) -> None:
         """
         Set a new input path and reset all derived UI/model state.
@@ -297,8 +359,10 @@ class CairnTuiApp(App):
             try:
                 p = p.resolve()
             except Exception:
+                # Path resolution can fail for broken symlinks or permission issues
                 pass
         except Exception:
+            # Path expansion/validation can fail for invalid paths
             pass
 
         # If it's the same file, don't thrash state.
@@ -308,6 +372,7 @@ class CairnTuiApp(App):
                 try:
                     cur = cur.resolve()
                 except Exception:
+                    # Path resolution can fail for broken symlinks or permission issues
                     pass
             if cur is not None and str(cur) == str(p):
                 self.model.input_path = p
@@ -572,6 +637,7 @@ class CairnTuiApp(App):
                 if rk is not None:
                     return str(getattr(rk, "value", rk))
         except Exception:
+            # Textual API version compatibility - fallback if cursor methods don't exist
             pass
         return None
 
@@ -788,7 +854,7 @@ class CairnTuiApp(App):
                 yield Container(id="main_body")
                 # True popup overlay (stays within the current screen, doesn't navigate).
                 yield InlineEditOverlay()
-                yield SaveTargetOverlay()
+                yield SaveTargetOverlay(use_tree=self._use_tree_browser())
                 yield ColorPickerOverlay()
                 yield IconPickerOverlay()
                 yield RenameOverlay()
@@ -1018,6 +1084,12 @@ class CairnTuiApp(App):
         to be swallowed / not reach the app-level flow.
         """
         try:
+            if self.step == "Select_file":
+                if self._use_tree_browser():
+                    self.query_one("#file_browser", FilteredFileTree).focus()
+                else:
+                    self.query_one("#file_browser", DataTable).focus()
+                return
             if self.step == "List_data":
                 # Clear focus so Enter/Escape route to app handlers.
                 self.set_focus(None)  # type: ignore[arg-type]
@@ -1079,7 +1151,7 @@ class CairnTuiApp(App):
             [
                 p
                 for p in entries
-                if p.is_file() and p.suffix.lower() in _VISIBLE_INPUT_EXTS
+                if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in _VISIBLE_INPUT_EXTS
             ],
             key=lambda p: p.name.lower(),
         )
@@ -1140,6 +1212,56 @@ class CairnTuiApp(App):
                     )
                 )
             return
+
+    def _refresh_export_dir_table(self) -> None:
+        """Populate export directory table (DataTable mode)."""
+        try:
+            table = self.query_one("#export_dir_table", DataTable)
+        except Exception:
+            return
+
+        out_dir = self.model.output_dir or Path.cwd()
+
+        self._datatable_clear_rows(table)
+
+        # Parent row
+        try:
+            parent = out_dir.parent
+            if parent != out_dir:
+                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
+        except Exception:
+            pass
+
+        # Subdirectories
+        try:
+            entries = list(out_dir.iterdir())
+            dirs = sorted([p for p in entries if p.is_dir() and not p.name.startswith(".")], key=lambda p: p.name.lower())
+            for p in dirs:
+                table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
+        except Exception:
+            pass
+
+    def _export_dir_table_enter(self) -> None:
+        """Handle Enter on export directory table."""
+        try:
+            table = self.query_one("#export_dir_table", DataTable)
+        except Exception:
+            return
+
+        rk = self._table_cursor_row_key(table)
+        if not rk:
+            return
+
+        out_dir = self.model.output_dir or Path.cwd()
+
+        if rk == "__up__":
+            self.model.output_dir = out_dir.parent if out_dir.parent != out_dir else out_dir
+            self._refresh_export_dir_table()
+            self._render_main()
+        elif rk.startswith("dir:"):
+            self.model.output_dir = Path(rk[4:])
+            self._refresh_export_dir_table()
+            self._render_main()
 
     def _refresh_save_browser(self) -> None:
         """Populate Save output directory browser table (directories only)."""
@@ -1645,27 +1767,23 @@ class CairnTuiApp(App):
         if self.step == "Preview":
             # Preview is the final step; Enter-to-export is handled in on_key.
             return
-            return
 
         # Save step removed; Preview is the final step.
 
     def action_export(self) -> None:
-        if self.step in {"Preview"}:
-            # Show confirmation before export
-            out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
-            prefix = str(self._output_prefix or "").strip()
-            self.push_screen(
-                ConfirmModal(
-                    "Confirm export:\n\n"
-                    f"Directory: {out_dir}\n"
-                    f"Filename prefix: {prefix or '(none)'}\n\n"
-                    "Note: export may produce multiple files depending on size.\n",
-                    title="Confirm Export",
-                ),
-                self._on_export_confirmed,
-            )
+        if self.step == "Preview":
+            # Get prefix from input if available
+            try:
+                prefix_input = self.query_one("#export_prefix_input", Input)
+                self._output_prefix = prefix_input.value or ""
+            except Exception:
+                pass
+
+            # Export directly (no confirmation)
+            self._start_export()
 
     def _on_export_confirmed(self, confirmed: bool) -> None:
+        # Legacy method - kept for compatibility but no longer used
         if confirmed:
             self._start_export()
 
@@ -2084,12 +2202,16 @@ class CairnTuiApp(App):
                     (p.rgba, (p.name or "").replace("-", " ").upper())
                     for p in ColorMapper.TRACK_PALETTE
                 ]
+                # Sort palette alphabetically by name
+                palette = sorted(palette, key=lambda x: x[1])
                 picker.open(title="Select route color", palette=palette)
             elif ctx.kind == "waypoint":
                 palette = [
                     (p.rgba, (p.name or "").replace("-", " ").upper())
                     for p in ColorMapper.WAYPOINT_PALETTE
                 ]
+                # Sort palette alphabetically by name
+                palette = sorted(palette, key=lambda x: x[1])
                 picker.open(title="Select waypoint color", palette=palette)
         elif field_key == "icon" and ctx.kind == "waypoint":
             try:
@@ -2371,8 +2493,9 @@ class CairnTuiApp(App):
             )
         if step == "Preview":
             return (
-                "Confirm the exact output target (directory + base name), then review what will be exported.\n\n\n"
-                "Press [bold]y[/] to change location/name, or Enter to export (with confirmation)."
+                "Review export contents and select the destination directory.\n\n\n"
+                "Navigate the directory browser, enter a file name prefix, then press Enter to export.\n"
+                "Press [bold]Ctrl+N[/] to create a new folder (tree mode)."
             )
         return ""
 
@@ -2399,6 +2522,60 @@ class CairnTuiApp(App):
         stem = p.stem or "output"
         ext = p.suffix
         return f"{prefix}_{stem}{ext}"
+
+    def _create_export_folder(self) -> None:
+        """Create new folder in current export directory."""
+        def handle_folder_name(folder_name: Optional[str]) -> None:
+            if not folder_name:
+                return
+
+            # Validate folder name for security
+            is_valid, error_msg = validate_folder_name(folder_name)
+            if not is_valid:
+                self.push_screen(InfoModal(f"Invalid folder name: {error_msg}"))
+                return
+
+            folder_name = folder_name.strip()
+            out_dir = self.model.output_dir or Path.cwd()
+            new_path = out_dir / folder_name
+
+            try:
+                new_path.mkdir(parents=False, exist_ok=False)
+                # Success - update directory and reload tree
+                self.model.output_dir = new_path
+                self._reload_export_tree()
+            except FileExistsError:
+                self.push_screen(InfoModal(f"Folder '{folder_name}' already exists."))
+            except PermissionError:
+                self.push_screen(InfoModal(f"Permission denied: cannot create folder in {out_dir}"))
+            except OSError as e:
+                # Catch filesystem-specific errors (invalid names, etc.)
+                self.push_screen(InfoModal(f"Cannot create folder: {e}"))
+            except Exception as e:
+                # Unexpected errors - log details but show generic message
+                import logging
+                logging.error(f"Unexpected error creating folder '{folder_name}': {e}")
+                self.push_screen(InfoModal("An unexpected error occurred while creating the folder."))
+
+        self.push_screen(NewFolderModal(), handle_folder_name)
+
+    def _reload_export_tree(self) -> None:
+        """Reload the export directory tree."""
+        try:
+            tree = self.query_one("#export_dir_tree")
+            tree.remove()
+
+            out_dir = self.model.output_dir or Path.cwd()
+            new_tree = FilteredDirectoryTree(str(out_dir), id="export_dir_tree")
+
+            export_section = self.query_one("#export_target_section")
+            # Mount after the "Export Location" label
+            label = export_section.query_one(Static)
+            export_section.mount(new_tree, after=label)
+
+            new_tree.focus()
+        except Exception:
+            pass
 
     def _clear_main_body(self) -> Container:
         body = self.query_one("#main_body", Container)
@@ -2455,7 +2632,7 @@ class CairnTuiApp(App):
             subtitle.update("Choose an input file (.json/.geojson/.kml/.gpx)")
             body = self._clear_main_body()
             default_root = Path(self._state.default_root).expanduser() if self._state.default_root else Path.cwd()
-            body.mount(Static("Pick a file:", classes="muted"))
+
             # Initialize file browser directory once per visit.
             if self._file_browser_dir is None:
                 try:
@@ -2463,17 +2640,87 @@ class CairnTuiApp(App):
                 except Exception:
                     self._file_browser_dir = default_root
 
-            # Simple in-app file browser: dirs + allowed extensions only.
-            table = DataTable(id="file_browser")
-            table.add_columns("Name", "Type")
-            body.mount(table)
-            self._refresh_file_browser()
-            body.mount(Static("Enter: open/select", classes="muted"))
-            # Prefer focusing the tree so arrow keys + Enter work immediately.
-            try:
-                self.call_after_refresh(table.focus)
-            except Exception:
-                pass
+            # A/B test: Choose implementation based on feature flag
+            if self._use_tree_browser():
+                # NEW: DirectoryTree implementation
+                # Start from home directory by default, but use default_path from config if set.
+                # Users can navigate up to parent directories to reach any location.
+                tree_root = Path.home()
+                warning_message = None
+
+                # Check for default_path in config (takes precedence over state.default_root)
+                default_path_str = getattr(self._config, 'default_path', None)
+                if default_path_str:
+                    try:
+                        default_path = Path(default_path_str).expanduser().resolve()
+
+                        # Validation 1: Path must exist
+                        if not default_path.exists():
+                            warning_message = f"default_path does not exist: {default_path_str}"
+                        # Validation 2: Must be a directory
+                        elif not default_path.is_dir():
+                            warning_message = f"default_path is not a directory: {default_path_str}"
+                        # Validation 3: Must be readable
+                        elif not os.access(default_path, os.R_OK):
+                            warning_message = f"default_path is not readable (permission denied): {default_path_str}"
+                        else:
+                            # Validation 4: Must be listable (can iterate contents)
+                            try:
+                                # Try to list directory to catch permission issues
+                                list(default_path.iterdir())
+                                # All validations passed - use this path
+                                tree_root = default_path
+                            except PermissionError:
+                                warning_message = f"default_path cannot be accessed (permission denied): {default_path_str}"
+                            except OSError as e:
+                                warning_message = f"default_path cannot be accessed: {default_path_str} ({e})"
+
+                    except Exception as e:
+                        warning_message = f"Invalid default_path: {default_path_str} ({type(e).__name__}: {e})"
+
+                try:
+                    # Check if tree already exists (to avoid recreating on re-render)
+                    tree = self.query_one("#file_browser", FilteredFileTree)
+                    # DirectoryTree doesn't support changing root path after creation
+                    # So we only update if the tree doesn't exist yet
+                except Exception:
+                    # Create new tree starting from configured/default directory
+                    tree = FilteredFileTree(str(tree_root), id="file_browser")
+                    body.mount(tree)
+
+                # Show temporary warning above tree if default_path was invalid
+                if warning_message:
+                    warning_widget = Static(
+                        f"⚠ {warning_message}. Using home directory.",
+                        classes="warn",
+                        id="default_path_warning"
+                    )
+                    body.mount(warning_widget)
+                    # Schedule warning dismissal after 8 seconds
+                    try:
+                        self.set_timer(8.0, lambda: self._dismiss_warning("default_path_warning"))
+                    except Exception:
+                        pass
+
+                body.mount(Static("Enter: open/select  Space: expand/collapse", classes="muted"))
+
+                # Focus the tree
+                try:
+                    self.call_after_refresh(tree.focus)
+                except Exception:
+                    pass
+            else:
+                # EXISTING: DataTable implementation (default)
+                body.mount(Static("Pick a file:", classes="muted"))
+                table = DataTable(id="file_browser")
+                table.add_columns("Name", "Type")
+                body.mount(table)
+                self._refresh_file_browser()
+                body.mount(Static("Enter: open/select", classes="muted"))
+                try:
+                    self.call_after_refresh(table.focus)
+                except Exception:
+                    pass
             return
 
         if self.step == "List_data":
@@ -2703,14 +2950,38 @@ class CairnTuiApp(App):
 
                 preview_root.mount(Static("", id="preview_folder_label", classes="ok"))
 
-                save_root = Container(id="save_root")
-                preview_root.mount(save_root)
-                save_root.mount(Static("", id="save_dir", classes="muted"))
-                save_root.mount(Static("", id="save_prefix", classes="muted"))
-                save_root.mount(Static("", id="save_change_prompt", classes="muted"))
-                save_root.mount(Static("Enter: export (confirmation will appear).", id="save_export_hint", classes="muted"))
-                save_root.mount(Static("", id="save_status", classes="muted"))
-                save_root.mount(Container(id="save_post"))
+                # Export target section with embedded directory browser
+                export_target = Container(id="export_target_section")
+                preview_root.mount(export_target)
+
+                export_target.mount(Static("Export Location", classes="accent"))
+
+                # A/B test: embed tree or table browser
+                if self._use_tree_browser():
+                    # Tree browser for directory selection
+                    try:
+                        tree = FilteredDirectoryTree(str(out_dir), id="export_dir_tree")
+                        export_target.mount(tree)
+                    except Exception:
+                        # Fallback to simple display
+                        export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
+                else:
+                    # Table browser for directory selection
+                    export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
+                    dir_table = DataTable(id="export_dir_table")
+                    dir_table.add_columns("Name", "Type")
+                    export_target.mount(dir_table)
+                    # Populate table with current directory contents
+                    self._refresh_export_dir_table()
+
+                # File prefix input
+                export_target.mount(Static("File name prefix:", classes="accent"))
+                prefix_input = Input(value=self._output_prefix or "", placeholder="Prefix", id="export_prefix_input")
+                export_target.mount(prefix_input)
+
+                export_target.mount(Static("Enter: export  •  Ctrl+N: new folder (tree mode)", id="save_export_hint", classes="muted"))
+                export_target.mount(Static("", id="save_status", classes="muted"))
+                export_target.mount(Container(id="save_post"))
 
                 preview_root.mount(Static("Export contents:", classes="accent"))
                 preview_root.mount(Static("", id="preview_waypoints_title", classes="accent"))
@@ -2723,29 +2994,22 @@ class CairnTuiApp(App):
                 trk_table.add_columns("Name", "OnX color", "Description")
                 preview_root.mount(trk_table)
 
-            # Update export target summary
+            # Update export target display
             try:
                 out_dir2 = self.model.output_dir
-                prefix2 = str(self._output_prefix or "")
-                save_as = ""
+                if not self._use_tree_browser():
+                    # Update directory display for table mode
+                    try:
+                        self.query_one("#export_dir_display", Static).update(f"Directory: {out_dir2}")
+                    except Exception:
+                        pass
+                # Update prefix input
                 try:
-                    if out_dir2 is not None and prefix2:
-                        save_as = str(Path(out_dir2) / prefix2)
-                    elif out_dir2 is not None:
-                        save_as = str(Path(out_dir2))
-                    else:
-                        save_as = prefix2
+                    prefix_input = self.query_one("#export_prefix_input", Input)
+                    if prefix_input.value != (self._output_prefix or ""):
+                        prefix_input.value = self._output_prefix or ""
                 except Exception:
-                    save_as = f"{out_dir2}/{prefix2}".strip("/")
-                self.query_one("#save_dir", Static).update(f"Save as: {save_as}")
-            except Exception:
-                pass
-            try:
-                self.query_one("#save_prefix", Static).update("")
-            except Exception:
-                pass
-            try:
-                self.query_one("#save_change_prompt", Static).update("Change location or name? y")
+                    pass
             except Exception:
                 pass
 
@@ -2991,184 +3255,6 @@ class CairnTuiApp(App):
                     pass
             return
 
-        if self.step == "Save":
-            title.update("Save")
-            subtitle.update("")
-
-            # Default output directory: <project_dir>/onx_ready
-            out_dir = self.model.output_dir
-            if out_dir is None:
-                try:
-                    out_dir = (Path.cwd() / "onx_ready").resolve()
-                except Exception:
-                    out_dir = Path.cwd() / "onx_ready"
-                self.model.output_dir = out_dir
-
-            # Default prefix: input file stem (sanitized)
-            if not (self._output_prefix or "").strip():
-                try:
-                    if self.model.input_path:
-                        self._output_prefix = sanitize_filename(self.model.input_path.stem)
-                except Exception:
-                    pass
-
-            # Build Save UI once; subsequent updates should be in-place to avoid DuplicateIds.
-            try:
-                save_root = self.query_one("#save_root", Container)
-            except Exception:
-                save_root = None
-
-            if save_root is None:
-                body = self._clear_main_body()
-                save_root = Container(id="save_root")
-                body.mount(save_root)
-                save_root.mount(Static("", id="save_dir", classes="muted"))
-                save_root.mount(Static("", id="save_prefix", classes="muted"))
-                save_root.mount(Static("", id="save_change_prompt", classes="muted"))
-                save_root.mount(Static("Enter: export (confirmation will appear).", id="save_export_hint", classes="muted"))
-                save_root.mount(Static("", id="save_status", classes="muted"))
-                save_root.mount(Container(id="save_post"))
-
-            # Update summary text
-            try:
-                out_dir2 = self.model.output_dir
-                prefix2 = str(self._output_prefix or "")
-                save_as = ""
-                try:
-                    if out_dir2 is not None and prefix2:
-                        save_as = str(Path(out_dir2) / prefix2)
-                    elif out_dir2 is not None:
-                        save_as = str(Path(out_dir2))
-                    else:
-                        save_as = prefix2
-                except Exception:
-                    save_as = f"{out_dir2}/{prefix2}".strip("/")
-                self.query_one("#save_dir", Static).update(f"Save as: {save_as}")
-            except Exception:
-                pass
-            try:
-                # Spacer line (keeps consistent vertical rhythm).
-                self.query_one("#save_prefix", Static).update("")
-            except Exception:
-                pass
-            try:
-                self.query_one("#save_change_prompt", Static).update("Change location or name? y/n")
-            except Exception:
-                pass
-
-            # Update status + post-export UI (manifest + rename inputs)
-            try:
-                status = self.query_one("#save_status", Static)
-            except Exception:
-                status = None
-            if status is not None:
-                try:
-                    if self._export_in_progress:
-                        status.update("Exporting… (please wait)")
-                    elif self._export_error:
-                        status.update(str(self._export_error))
-                    elif self._export_manifest:
-                        status.update("Export complete. Review outputs below (optional rename: press [bold]r[/]).")
-                    else:
-                        status.update("")
-                except Exception:
-                    pass
-
-            try:
-                post = self.query_one("#save_post", Container)
-            except Exception:
-                post = None
-
-            if post is not None and self._export_manifest:
-                # Detect split parts so we can explain why multiple files exist.
-                split_base_counts: dict[str, int] = {}
-                for fn, fmt, cnt, sz in self._export_manifest:
-                    p = Path(fn)
-                    m = re.match(r"^(?P<base>.+)_(?P<num>\d+)$", p.stem)
-                    if m:
-                        base = f"{m.group('base')}{p.suffix.lower()}"
-                        split_base_counts[base] = split_base_counts.get(base, 0) + 1
-
-                try:
-                    manifest_tbl = self.query_one("#manifest", DataTable)
-                except Exception:
-                    manifest_tbl = None
-                if manifest_tbl is None:
-                    manifest_tbl = DataTable(id="manifest")
-                    try:
-                        manifest_tbl.add_columns("File", "Format", "Items", "Bytes", "Note")
-                    except Exception:
-                        pass
-                    try:
-                        post.mount(manifest_tbl)
-                    except Exception:
-                        pass
-                try:
-                    self._datatable_clear_rows(manifest_tbl)
-                except Exception:
-                    pass
-                for fn, fmt, cnt, sz in self._export_manifest:
-                    note = ""
-                    p = Path(fn)
-                    m = re.match(r"^(?P<base>.+)_(?P<num>\d+)$", p.stem)
-                    if m:
-                        base = f"{m.group('base')}{p.suffix.lower()}"
-                        if split_base_counts.get(base, 0) > 1:
-                            note = "Split (4 MB limit)"
-                    try:
-                        manifest_tbl.add_row(fn, fmt, str(cnt), str(sz), note)
-                    except Exception:
-                        pass
-
-                try:
-                    rename_help = self.query_one("#save_rename_help", Static)
-                except Exception:
-                    rename_help = None
-                if rename_help is None:
-                    rename_help = Static(
-                        "Rename outputs (optional): edit names below, then press [bold]r[/] to apply.",
-                        id="save_rename_help",
-                        classes="muted",
-                    )
-                    try:
-                        post.mount(rename_help)
-                    except Exception:
-                        pass
-
-                for i, (fn, fmt, cnt, sz) in enumerate(self._export_manifest):
-                    desired = self._rename_overrides_by_idx.get(i)
-                    if desired is None:
-                        desired = self._suggest_output_name(fn)
-                        self._rename_overrides_by_idx[i] = desired
-                    try:
-                        inp = self.query_one(f"#rename_{i}", Input)
-                    except Exception:
-                        inp = None
-                    if inp is None:
-                        row = Horizontal(id=f"rename_row_{i}")
-                        try:
-                            post.mount(row)
-                        except Exception:
-                            row = None
-                        if row is not None:
-                            try:
-                                row.mount(Static(fn, classes="muted"))
-                            except Exception:
-                                row.mount(Static(str(fn), classes="muted"))
-                            inp = Input(placeholder="New filename", id=f"rename_{i}")
-                            try:
-                                inp.value = desired
-                            except Exception:
-                                pass
-                            row.mount(inp)
-                    else:
-                        try:
-                            inp.value = desired
-                        except Exception:
-                            pass
-
-            return
-
     # -----------------------
     # Events
     # -----------------------
@@ -3261,6 +3347,46 @@ class CairnTuiApp(App):
                 event="folder.row_selected",
                 data={"folder_id": self.model.selected_folder_id},
             )
+            return
+
+    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+        """Handle file selection from DirectoryTree (A/B test tree browser)."""
+        if self.step != "Select_file":
+            return
+
+        selected_path = Path(event.path)
+        suf = selected_path.suffix.lower()
+
+        # Check if it's a parseable file type
+        if suf in _PARSEABLE_INPUT_EXTS and selected_path.exists() and selected_path.is_file():
+            self._set_input_path(selected_path)
+            self._done_steps.add("Select_file")
+            self._goto("List_data")
+            return
+
+        # Show info modal for non-parseable but visible file types
+        if suf in _VISIBLE_INPUT_EXTS:
+            self.push_screen(
+                InfoModal(
+                    "This TUI currently supports CalTopo GeoJSON inputs only (.json/.geojson).\n\n"
+                    "GPX/KML inputs are not supported in the TUI yet."
+                )
+            )
+
+    def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
+        """Handle directory selection from export tree browser."""
+        if self.step != "Preview":
+            return
+
+        # Check if this is the export directory tree
+        try:
+            tree = self.query_one("#export_dir_tree")
+            if tree is event.directory_tree:
+                self.model.output_dir = Path(event.path)
+                # Update display
+                self._render_main()
+        except Exception:
+            pass
 
     def action_focus_search(self) -> None:
         # Best-effort: focus the search/filter input on the current screen (including modals).
@@ -3289,10 +3415,13 @@ class CairnTuiApp(App):
     # (EditMoreModal prompts removed; selection workflow is handled via 'x' to clear selection.)
 
     def action_focus_table(self) -> None:
-        """Focus the main table for the current step (so Space toggles selection)."""
+        """Focus the main table/tree for the current step (so Space toggles selection)."""
         try:
             if self.step == "Select_file":
-                self.query_one("#file_browser", DataTable).focus()
+                if self._use_tree_browser():
+                    self.query_one("#file_browser", FilteredFileTree).focus()
+                else:
+                    self.query_one("#file_browser", DataTable).focus()
             elif self.step == "Folder":
                 self.query_one("#folder_table", DataTable).focus()
             elif self.step == "Routes":
@@ -3532,7 +3661,8 @@ class CairnTuiApp(App):
             return
 
         # Special-case: Select_file file browser (Enter opens dir/selects file).
-        if self.step == "Select_file":
+        # Only handle DataTable Enter for old implementation (DirectoryTree handles its own)
+        if self.step == "Select_file" and not self._use_tree_browser():
             try:
                 focused_id = getattr(getattr(self, "focused", None), "id", None)
                 if focused_id == "file_browser" and (
@@ -3547,49 +3677,62 @@ class CairnTuiApp(App):
             except Exception:
                 pass
 
-        # Preview & Export step: y prompt + Enter-to-export (with confirmation).
+        # Preview & Export step: embedded directory browser + Enter-to-export (direct).
         if self.step == "Preview":
             key = str(getattr(event, "key", "") or "")
             ch = str(getattr(event, "character", "") or "")
-            if ch.lower() == "y":
-                try:
-                    out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
-                    self.query_one("#save_target_overlay", SaveTargetOverlay).open(
-                        directory=out_dir,
-                        prefix=str(self._output_prefix or ""),
-                    )
-                except Exception:
-                    pass
+
+            # Ctrl+N: Create new folder (tree mode only)
+            if key == "ctrl+n" and self._use_tree_browser():
+                self._create_export_folder()
                 try:
                     event.stop()
                 except Exception:
                     pass
                 return
 
-            focused_type = type(self.focused).__name__ if self.focused else None
-            if focused_type != "Input" and (key in ("enter", "return") or ch == "\r"):
-                try:
-                    self._dbg(
-                        event="save.key",
-                        data={
-                            "key": key,
-                            "character": ch,
-                            "focused_id": getattr(getattr(self, "focused", None), "id", None),
-                            "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
-                            "prefix": str(self._output_prefix or ""),
-                        },
-                    )
-                except Exception:
-                    pass
-                try:
-                    self.action_export()
-                except Exception:
-                    pass
+            # Handle Enter on directory table (DataTable mode)
+            focused_id = getattr(getattr(self, "focused", None), "id", None)
+            if focused_id == "export_dir_table" and (key in ("enter", "return") or ch == "\r"):
+                self._export_dir_table_enter()
                 try:
                     event.stop()
                 except Exception:
                     pass
                 return
+
+            # Handle Enter to export (when not focused on directory browser or prefix input)
+            if focused_id not in ("export_dir_table", "export_dir_tree", "export_prefix_input"):
+                if key in ("enter", "return") or ch == "\r":
+                    # Get prefix from input if available
+                    try:
+                        prefix_input = self.query_one("#export_prefix_input", Input)
+                        self._output_prefix = prefix_input.value or ""
+                    except Exception:
+                        pass
+
+                    try:
+                        self._dbg(
+                            event="save.key",
+                            data={
+                                "key": key,
+                                "character": ch,
+                                "focused_id": focused_id,
+                                "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
+                                "prefix": str(self._output_prefix or ""),
+                            },
+                        )
+                    except Exception:
+                        pass
+                    try:
+                        self.action_export()
+                    except Exception:
+                        pass
+                    try:
+                        event.stop()
+                    except Exception:
+                        pass
+                    return
 
         # Accept common Enter variants across terminals/backends.
         if event.key in ("enter", "return") or getattr(event, "character", None) == "\r":

@@ -96,6 +96,32 @@ DataTable > .datatable--cursor {
   background: #563C27;
 }
 
+/* DirectoryTree - match warm earth tone theme */
+
+DirectoryTree {
+  border: solid #563C27;
+  background: #1F1513;
+  color: #E0DBB7;
+}
+
+DirectoryTree > .tree--cursor {
+  background: #563C27;
+  color: #FFF9D5;
+}
+
+DirectoryTree > .tree--highlight {
+  background: #3A2A24;
+}
+
+DirectoryTree > .directory-tree--folder {
+  color: #C48A4A;
+  text-style: bold;
+}
+
+DirectoryTree > .directory-tree--file {
+  color: #E0DBB7;
+}
+
 /* Inline edit overlay (true popup, doesn't navigate Screens) */
 
 #inline_edit_overlay {
@@ -193,4 +219,26 @@ DataTable > .datatable--cursor {
   border: solid #563C27;
   background: #241A18;
   padding: 1 2;
+}
+
+/* Save target browser tree styling */
+
+#save_target_browser_tree {
+  height: auto;
+  border: solid #8B6F47;
+  background: #2C2416;
+}
+
+#save_target_browser_tree:focus {
+  border: solid #C48A4A;
+}
+
+/* New folder modal styling */
+
+#new_folder_modal {
+  width: 50;
+  height: auto;
+  padding: 1 2;
+  background: #2C2416;
+  border: solid #C48A4A;
 }
