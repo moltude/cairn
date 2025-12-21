@@ -11,7 +11,10 @@ import time
 from typing import Optional, TextIO
 
 
-_AGENT_DEBUG_LOG_PATH = "/Users/scott/_code/cairn/.cursor/debug.log"
+_AGENT_DEBUG_LOG_PATH = os.environ.get(
+    "AGENT_DEBUG_LOG_PATH",
+    os.path.join(os.path.expanduser("~"), ".cursor", "debug.log"),
+)
 
 
 def agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> None:

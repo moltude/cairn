@@ -6,7 +6,6 @@ testability and separation of concerns.
 
 from typing import Optional
 from textual.widgets import DataTable
-from textual.coordinate import Coordinate
 from rich.text import Text
 
 from cairn.core.color_mapper import ColorMapper
