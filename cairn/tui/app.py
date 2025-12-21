@@ -50,210 +50,28 @@ from cairn.tui.edit_screens import (
     validate_folder_name,
 )
 
-# region agent log
-_AGENT_DEBUG_LOG_PATH = "/Users/scott/_code/cairn/.cursor/debug.log"
+# Import debug utilities
+from cairn.tui.debug import DebugLogger, agent_log as _agent_log
 
+# Import constants and models from models.py
+from cairn.tui.models import (
+    STEPS,
+    STEP_LABELS,
+    TuiModel,
+    _PARSEABLE_INPUT_EXTS,
+    _VISIBLE_INPUT_EXTS,
+)
 
-def _agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> None:
-    try:
-        payload = {
-            "timestamp": int(time.time() * 1000),
-            "sessionId": "debug-session",
-            "runId": "pre-fix",
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "data": data,
-        }
-        with open(_AGENT_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except Exception:
-        # Silently fail debug logging - never let it break the app
-        return
+# Import widgets from widgets.py
+from cairn.tui.widgets import (
+    FilteredFileTree,
+    FilteredDirectoryTree,
+    Stepper,
+    StepAwareFooter,
+)
 
-
-# endregion agent log
-
-# File types shown in Select_file tree. (Parsing support may be narrower than visibility.)
-_VISIBLE_INPUT_EXTS = {".json", ".geojson", ".kml", ".gpx"}
-_PARSEABLE_INPUT_EXTS = {".json", ".geojson"}
-
-
-class FilteredFileTree(DirectoryTree):
-    """DirectoryTree that filters to show only allowed file extensions.
-
-    This is used for the A/B test of tree-based file browser vs. table-based.
-    Filters out hidden directories and shows only files with allowed extensions.
-    """
-
-    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
-        """Filter paths to show only directories and allowed file extensions."""
-        allowed_extensions = _VISIBLE_INPUT_EXTS
-        filtered = []
-        for path in paths:
-            # Always show directories
-            if path.is_dir():
-                # Skip hidden directories (starting with .)
-                if not path.name.startswith("."):
-                    filtered.append(path)
-            # Show files with allowed extensions (but hide dotfiles - hide always wins)
-            elif path.is_file() and not path.name.startswith(".") and path.suffix.lower() in allowed_extensions:
-                filtered.append(path)
-        return filtered
-
-
-class FilteredDirectoryTree(DirectoryTree):
-    """DirectoryTree that shows only directories (no files).
-
-    Used for the A/B test of tree-based save directory browser.
-    Filters out hidden directories.
-    """
-
-    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
-        """Filter paths to show only non-hidden directories."""
-        filtered = []
-        for path in paths:
-            if path.is_dir() and not path.name.startswith("."):
-                filtered.append(path)
-        return filtered
-
-
-STEPS = [
-    "Select_file",
-    "List_data",
-    "Folder",
-    "Routes",
-    "Waypoints",
-    "Preview",  # Preview is now the final step with embedded export
-]
-
-# Display labels for steps (internal names use underscores for code references)
-STEP_LABELS = {
-    "Select_file": "Select file",
-    "List_data": "Summary of mapping data",
-    "Folder": "Folder",
-    "Routes": "Routes",
-    "Waypoints": "Waypoints",
-    "Preview": "Preview & Export",
-}
-
-
-@dataclass
-class TuiModel:
-    input_path: Optional[Path] = None
-    output_dir: Optional[Path] = None
-    parsed: Optional[ParsedData] = None
-    selected_folder_id: Optional[str] = None
-
-
-class Stepper(Static):
-    """Left-side stepper with current step highlighted."""
-
-    def __init__(self, *, steps: list[str], **kwargs) -> None:
-        # Accept standard Textual widget kwargs (id, classes, name, etc.).
-        super().__init__(**kwargs)
-        self.steps = steps
-        self.current: str = steps[0]
-        self.done: set[str] = set()
-
-    def set_state(self, *, current: str, done: set[str]) -> None:
-        self.current = current
-        self.done = set(done)
-        self.refresh()
-
-    def render(self) -> str:
-        lines: list[str] = []
-        for s in self.steps:
-            label = STEP_LABELS.get(s, s)
-            if s == self.current:
-                lines.append(f" ▸ {label}")
-            elif s in self.done:
-                lines.append(f" ✓ {label}")
-            else:
-                lines.append(f"   {label}")
-        return "\n".join(lines)
-
-
-class StepAwareFooter(Static):
-    """Dynamic footer showing step-specific keyboard shortcuts."""
-
-    # Define shortcuts for each step
-    STEP_SHORTCUTS = {
-        "Select_file": [
-            ("↑↓", "Navigate"),
-            ("Enter", "Select"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "List_data": [
-            ("m", "Map unmapped"),
-            ("Enter", "Continue"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Folder": [
-            ("↑↓", "Navigate"),
-            ("Space", "Toggle (multi-folder)"),
-            ("Enter", "Select"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Routes": [
-            ("↑↓", "Navigate"),
-            ("Space", "Toggle"),
-            ("Ctrl+A", "Toggle all"),
-            ("/", "Search"),
-            ("Tab", "Next field"),
-            ("a", "Edit"),
-            ("x", "Clear"),
-            ("Enter", "Continue"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Waypoints": [
-            ("↑↓", "Navigate"),
-            ("Space", "Toggle"),
-            ("Ctrl+A", "Toggle all"),
-            ("/", "Search"),
-            ("Tab", "Next field"),
-            ("a", "Edit"),
-            ("x", "Clear"),
-            ("Enter", "Continue"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-        "Preview": [
-            ("↑↓", "Navigate"),
-            ("Enter", "Export"),
-            ("Ctrl+N", "New folder"),
-            ("r", "Apply names"),
-            ("Tab", "Next field"),
-            ("Esc", "Back"),
-            ("?", "Help"),
-            ("q", "Quit"),
-        ],
-    }
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.current_step: str = "Select_file"
-
-    def set_step(self, step: str) -> None:
-        self.current_step = step
-        self.refresh()
-
-    def render(self) -> str:
-        shortcuts = self.STEP_SHORTCUTS.get(self.current_step, [])
-        parts = [f"[bold]{key}[/] {desc}" for key, desc in shortcuts]
-        return "  ".join(parts)
+# Re-export widgets for backward compatibility (tests and other modules may import from app.py)
+# These are available as: from cairn.tui.app import FilteredFileTree, etc.
 
 
 class CairnTuiApp(App):
@@ -299,10 +117,8 @@ class CairnTuiApp(App):
         self._routes_filter: str = ""
         self._waypoints_filter: str = ""
         self._ui_error: Optional[str] = None
-        self._debug_events: list[dict[str, object]] = []
-        self._debug_file_path: Optional[str] = None
-        self._debug_file: Optional[TextIO] = None
-        self._debug_file_lock = threading.Lock()
+        # Initialize debug logger
+        self._debug_logger = DebugLogger(self)
         self._save_snapshot_emitted: bool = False
         self._save_change_prompt_dismissed: bool = False
         # Select_file browser state
@@ -411,75 +227,12 @@ class CairnTuiApp(App):
         self._waypoints_edited: bool = False
 
     def _dbg(self, *, event: str, data: Optional[dict[str, object]] = None) -> None:
-        """
-        Best-effort debug event sink.
-
-        This app uses `_dbg(...)` from various event handlers / error paths; it must
-        never crash the UI if debug logging isn't configured.
-        """
-        try:
-            enabled = os.getenv("CAIRN_TUI_DEBUG") or os.getenv("CAIRN_TUI_ARTIFACTS")
-            if not enabled:
-                return
-            payload: dict[str, object] = {
-                "t": float(time.time()),
-                "event": str(event),
-                "step": str(getattr(self, "step", "")),
-                "data": data or {},
-            }
-            self._debug_events.append(payload)
-            # Prevent unbounded growth during long sessions/tests.
-            if len(self._debug_events) > 500:
-                self._debug_events = self._debug_events[-250:]
-
-            # Optional: also stream each event as NDJSON for reproducible traces.
-            debug_file_path = os.getenv("CAIRN_TUI_DEBUG_FILE")
-            if debug_file_path:
-                with self._debug_file_lock:
-                    try:
-                        if self._debug_file is None or self._debug_file_path != debug_file_path:
-                            # Close any prior file handle first (best-effort).
-                            try:
-                                if self._debug_file is not None:
-                                    self._debug_file.flush()
-                                    self._debug_file.close()
-                            except Exception:
-                                pass
-                            self._debug_file_path = debug_file_path
-                            # Line-buffered append; still flush explicitly below for durability.
-                            self._debug_file = open(debug_file_path, "a", encoding="utf-8", buffering=1)
-                        line = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-                        self._debug_file.write(line + "\n")
-                        # Best-effort: flush so crashes / terminal corruption still preserve logs.
-                        try:
-                            self._debug_file.flush()
-                        except Exception:
-                            pass
-                    except Exception:
-                        # Never let debug logging break the UI.
-                        return
-        except Exception:
-            return
+        """Best-effort debug event sink (delegates to DebugLogger)."""
+        self._debug_logger.log(event=event, data=data)
 
     def _close_debug_file(self) -> None:
         """Best-effort: flush/close debug file handle (if open)."""
-        try:
-            with self._debug_file_lock:
-                try:
-                    if self._debug_file is not None:
-                        try:
-                            self._debug_file.flush()
-                        except Exception:
-                            pass
-                        try:
-                            self._debug_file.close()
-                        except Exception:
-                            pass
-                finally:
-                    self._debug_file = None
-                    self._debug_file_path = None
-        except Exception:
-            return
+        self._debug_logger.close_debug_file()
 
     async def action_quit(self) -> None:
         """Quit the app (best-effort flush of debug logs first)."""
