@@ -331,7 +331,7 @@ class SaveTargetOverlay(Container):
             if self._use_tree:
                 # Import FilteredDirectoryTree to show only directories (no files, no hidden)
                 try:
-                    from cairn.tui.app import FilteredDirectoryTree
+                    from cairn.tui.widgets import FilteredDirectoryTree
                     yield FilteredDirectoryTree(str(Path.home()), id="save_target_browser_tree")
                 except ImportError:
                     # Fallback to base DirectoryTree if import fails
@@ -600,7 +600,7 @@ class SaveTargetOverlay(Container):
         try:
             # Import FilteredDirectoryTree to show only directories
             try:
-                from cairn.tui.app import FilteredDirectoryTree
+                from cairn.tui.widgets import FilteredDirectoryTree
                 TreeClass = FilteredDirectoryTree
             except ImportError:
                 from textual.widgets import DirectoryTree

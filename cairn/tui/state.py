@@ -4,12 +4,9 @@ This module manages workflow state, navigation, and selection tracking.
 The reactive `step` property remains on CairnTuiApp for automatic UI updates.
 """
 
-from typing import Optional, Set
-from textual.widgets import DataTable
+from typing import Set
 
 from cairn.tui.models import STEPS
-from cairn.tui.debug import agent_log
-from cairn.tui.widgets import FilteredFileTree, StepAwareFooter
 
 
 class StateManager:
@@ -17,6 +14,9 @@ class StateManager:
 
     Key constraint: The reactive `step` property MUST stay on CairnTuiApp
     for automatic UI updates. StateManager handles logic; App holds the reactive property.
+
+    Import-direction rule: this module must remain logic-only (no Textual/widget imports).
+    UI concerns like rendering, focus management, and footer updates must live on the App.
     """
 
     def __init__(self, app):
@@ -52,91 +52,6 @@ class StateManager:
             self.app._routes_edited = False
         if step != "Waypoints":
             self.app._waypoints_edited = False
-
-        # Sync UI
-        self.app._render_sidebar()
-        self.app._render_main()
-        self.update_footer()
-
-        # Reset focus after step change
-        try:
-            self.app.call_after_refresh(self.reset_focus_for_step)
-        except Exception:
-            # If call_after_refresh isn't available for some reason, fall back to best effort.
-            self.reset_focus_for_step()
-
-    def reset_focus_for_step(self) -> None:
-        """Set focus to appropriate widget for current step.
-
-        Ensures focus is on an on-screen widget after step transitions.
-        This fixes a subtle real-world issue: when we auto-advance from Select_file
-        to List_data, focus may remain on a removed widget, causing Enter key presses
-        to be swallowed / not reach the app-level flow.
-        """
-        try:
-            if self.app.step == "Select_file":
-                if self.app._use_tree_browser():
-                    self.app.query_one("#file_browser", FilteredFileTree).focus()
-                else:
-                    self.app.query_one("#file_browser", DataTable).focus()
-                return
-            if self.app.step == "List_data":
-                # Clear focus so Enter/Escape route to app handlers.
-                self.app.set_focus(None)  # type: ignore[arg-type]
-                return
-            if self.app.step == "Folder":
-                self.app.query_one("#folder_table", DataTable).focus()
-                return
-            if self.app.step == "Preview":
-                # Preview uses read-only tables; avoid focusing them so Enter/q reach app handlers.
-                self.app.set_focus(None)  # type: ignore[arg-type]
-                return
-        except Exception:
-            return
-
-    def update_footer(self) -> None:
-        """Update the step-aware footer with current step's shortcuts."""
-        try:
-            footer = self.app.query_one("#step_footer", StepAwareFooter)
-            footer.set_step(self.app.step)
-        except Exception:
-            pass
-
-    def infer_folder_selection(self) -> Optional[str]:
-        """Best-effort: infer current folder selection from the folder table cursor.
-
-        Textual's DataTable APIs vary a bit across versions; we try a few approaches.
-
-        Returns:
-            Folder ID string if found, None otherwise
-        """
-        try:
-            table = self.app.query_one("#folder_table", DataTable)
-        except Exception:
-            return None
-
-        # Attempt 1: cursor_coordinate -> row_key
-        try:
-            coord = getattr(table, "cursor_coordinate", None)
-            if coord is not None and hasattr(table, "coordinate_to_cell_key"):
-                cell_key = table.coordinate_to_cell_key(coord)
-                rk = getattr(cell_key, "row_key", None)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
-        except Exception:
-            pass
-
-        # Attempt 2: cursor_row -> row key lookup (if available)
-        try:
-            row_idx = getattr(table, "cursor_row", None)
-            if row_idx is not None and hasattr(table, "get_row_key"):
-                rk = table.get_row_key(row_idx)
-                if rk is not None:
-                    return str(getattr(rk, "value", rk))
-        except Exception:
-            pass
-
-        return None
 
     def get_next_step_after_folder(self) -> str:
         """Determine next step after Folder, skipping empty Routes/Waypoints steps.

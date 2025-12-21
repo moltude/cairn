@@ -693,8 +693,31 @@ class CairnTuiApp(App):
     # Navigation
     # -----------------------
     def _reset_focus_for_step(self) -> None:
-        """Ensure focus is on an on-screen widget after step transitions. Delegates to StateManager."""
-        self.state.reset_focus_for_step()
+        """Ensure focus is on an on-screen widget after step transitions.
+
+        Kept on the App (not StateManager) to maintain module boundaries:
+        focus management is a UI concern and requires Textual widgets.
+        """
+        try:
+            if self.step == "Select_file":
+                if self._use_tree_browser():
+                    self.query_one("#file_browser", FilteredFileTree).focus()
+                else:
+                    self.query_one("#file_browser", DataTable).focus()
+                return
+            if self.step == "List_data":
+                # Clear focus so Enter/Escape route to app handlers.
+                self.set_focus(None)  # type: ignore[arg-type]
+                return
+            if self.step == "Folder":
+                self.query_one("#folder_table", DataTable).focus()
+                return
+            if self.step == "Preview":
+                # Preview uses read-only tables; avoid focusing them so Enter/q reach app handlers.
+                self.set_focus(None)  # type: ignore[arg-type]
+                return
+        except Exception:
+            return
 
     def _refresh_file_browser(self) -> None:
         """Populate Select_file file browser table with dirs + allowed extensions only."""
@@ -721,12 +744,40 @@ class CairnTuiApp(App):
         return self.files.save_browser_enter()
 
     def _goto(self, step: str) -> None:
-        """Navigate to a step. Delegates to StateManager."""
+        """Navigate to a step.
+
+        StateManager owns the logic-only state transition; the App owns UI updates.
+        """
         self.state.goto(step)
+        # Sync UI for the new step.
+        try:
+            self._render_sidebar()
+        except Exception:
+            pass
+        try:
+            self._render_main()
+        except Exception:
+            pass
+        try:
+            self._update_footer()
+        except Exception:
+            pass
+        # Reset focus after step change (after render completes).
+        try:
+            self.call_after_refresh(self._reset_focus_for_step)
+        except Exception:
+            try:
+                self._reset_focus_for_step()
+            except Exception:
+                pass
 
     def _update_footer(self) -> None:
-        """Update the step-aware footer with current step's shortcuts. Delegates to StateManager."""
-        self.state.update_footer()
+        """Update the step-aware footer with current step's shortcuts."""
+        try:
+            footer = self.query_one("#step_footer", StepAwareFooter)
+            footer.set_step(self.step)
+        except Exception:
+            return
 
     def action_back(self) -> None:
         # Overlay-aware back: if any in-screen overlay is visible, Esc/Back should
@@ -838,8 +889,15 @@ class CairnTuiApp(App):
         return False
 
     def _infer_folder_selection(self) -> Optional[str]:
-        """Best-effort: infer current folder selection from the folder table cursor. Delegates to StateManager."""
-        return self.state.infer_folder_selection()
+        """Best-effort: infer current folder selection from the folder table cursor."""
+        try:
+            table = self.query_one("#folder_table", DataTable)
+        except Exception:
+            return None
+        try:
+            return self._table_cursor_row_key(table)
+        except Exception:
+            return None
 
     def _get_next_step_after_folder(self) -> str:
         """Determine next step after Folder, skipping empty Routes/Waypoints steps. Delegates to StateManager."""
@@ -876,20 +934,8 @@ class CairnTuiApp(App):
             if len(folders) > 1:
                 # Multi-folder workflow: check if folders are selected
                 if not self._selected_folders:
-                    # No folders selected yet, user needs to select
-                    inferred = self._infer_folder_selection()
-                    if inferred:
-                        # Toggle selection on current folder
-                        if inferred in self._selected_folders:
-                            self._selected_folders.remove(inferred)
-                        else:
-                            self._selected_folders.add(inferred)
-                        self._refresh_folder_table()  # Refresh to show selection
-                        # Restore focus to the table
-                        try:
-                            self.query_one("#folder_table", DataTable).focus()
-                        except Exception:
-                            pass
+                    # Requirement: when multiple folders exist, user must explicitly
+                    # select/toggle at least one folder via Space before Enter can advance.
                     return
                 # Folders selected, start processing first folder
                 if not self._folders_to_process:
