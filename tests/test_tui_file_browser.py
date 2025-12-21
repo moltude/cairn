@@ -378,3 +378,66 @@ def test_filtered_file_tree_hides_dotfiles(tmp_path: Path) -> None:
         f"Expected 5 visible items (3 files + 2 dirs), got {len(filtered_paths)}. "
         f"Visible: {filtered_names}"
     )
+
+
+def test_filtered_directory_tree_hides_dotfiles_and_files(tmp_path: Path) -> None:
+    """Test that FilteredDirectoryTree hides dotfiles and all regular files (shows only directories)."""
+    from cairn.tui.app import FilteredDirectoryTree
+
+    # Create test directory structure
+    test_dir = tmp_path / "test_project"
+    test_dir.mkdir()
+
+    # Create visible files (should ALL be hidden - FilteredDirectoryTree only shows dirs)
+    (test_dir / "map.json").write_text("{}", encoding="utf-8")
+    (test_dir / "README.md").write_text("# Test", encoding="utf-8")
+    (test_dir / "data.txt").write_text("test", encoding="utf-8")
+
+    # Create dotfiles (should be hidden)
+    (test_dir / ".gitignore").write_text("*", encoding="utf-8")
+    (test_dir / ".env").write_text("SECRET=123", encoding="utf-8")
+
+    # Create visible directories (should be shown)
+    (test_dir / "maps").mkdir()
+    (test_dir / "data").mkdir()
+    (test_dir / "output").mkdir()
+
+    # Create dot directories (should be hidden)
+    (test_dir / ".git").mkdir()
+    (test_dir / ".cursor").mkdir()
+    (test_dir / ".vscode").mkdir()
+
+    # Create the FilteredDirectoryTree and test filtering
+    tree = FilteredDirectoryTree(str(test_dir))
+
+    # Get all paths in the directory
+    all_paths = list(test_dir.iterdir())
+
+    # Apply the filter
+    filtered_paths = list(tree.filter_paths(all_paths))
+    filtered_names = {p.name for p in filtered_paths}
+
+    # Verify visible directories are included
+    assert "maps" in filtered_names, "maps/ directory should be visible"
+    assert "data" in filtered_names, "data/ directory should be visible"
+    assert "output" in filtered_names, "output/ directory should be visible"
+
+    # Verify ALL files are hidden (FilteredDirectoryTree only shows directories)
+    assert "map.json" not in filtered_names, "map.json should be hidden (files not shown)"
+    assert "README.md" not in filtered_names, "README.md should be hidden (files not shown)"
+    assert "data.txt" not in filtered_names, "data.txt should be hidden (files not shown)"
+
+    # Verify dotfiles are hidden
+    assert ".gitignore" not in filtered_names, ".gitignore should be hidden"
+    assert ".env" not in filtered_names, ".env should be hidden"
+
+    # Verify dot directories are hidden
+    assert ".git" not in filtered_names, ".git/ directory should be hidden"
+    assert ".cursor" not in filtered_names, ".cursor/ directory should be hidden"
+    assert ".vscode" not in filtered_names, ".vscode/ directory should be hidden"
+
+    # Verify we have exactly 3 visible items (only the 3 non-dot directories)
+    assert len(filtered_paths) == 3, (
+        f"Expected 3 visible directories, got {len(filtered_paths)}. "
+        f"Visible: {filtered_names}"
+    )

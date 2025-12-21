@@ -35,10 +35,81 @@ def _agent_log(*, hypothesisId: str, location: str, message: str, data: dict) ->
         with open(_AGENT_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception:
+        # Silently fail debug logging - never let it break the app
         return
 
 
 # endregion agent log
+
+def validate_folder_name(name: str) -> tuple[bool, Optional[str]]:
+    """
+    Validate folder name for security and filesystem compatibility.
+
+    Returns:
+        (is_valid, error_message) - error_message is None if valid
+    """
+    if not name or not name.strip():
+        return False, "Folder name cannot be empty"
+
+    # Check for leading/trailing spaces or dots BEFORE stripping (problematic on some filesystems)
+    if name != name.strip() or name.strip().startswith('.') or name.strip().endswith('.'):
+        return False, "Folder name cannot start/end with spaces or dots"
+
+    name = name.strip()
+
+    # Check for path traversal attempts
+    if ".." in name:
+        return False, "Folder name cannot contain '..'"
+
+    # Check for path separators (both Unix and Windows)
+    if "/" in name or "\\" in name:
+        return False, "Folder name cannot contain path separators (/ or \\)"
+
+    # Check for other problematic characters
+    invalid_chars = ['<', '>', ':', '"', '|', '?', '*']
+    for char in invalid_chars:
+        if char in name:
+            return False, f"Folder name cannot contain '{char}'"
+
+    # Check for names that are reserved on Windows
+    reserved_names = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4',
+                      'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2',
+                      'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9']
+    if name.upper() in reserved_names:
+        return False, f"'{name}' is a reserved name and cannot be used"
+
+    return True, None
+
+
+from textual.widgets import Button
+
+
+class NewFolderModal(ModalScreen[Optional[str]]):
+    """Modal dialog for creating a new folder with validation."""
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="new_folder_modal"):
+            yield Static("Create New Folder", classes="title")
+            yield Input(placeholder="Folder name", id="new_folder_input")
+            with Horizontal():
+                yield Button("Create", variant="primary", id="create_btn")
+                yield Button("Cancel", id="cancel_btn")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "create_btn":
+            inp = self.query_one("#new_folder_input", Input)
+            self.dismiss(inp.value)
+        else:
+            self.dismiss(None)
+
+    def on_key(self, event) -> None:  # type: ignore[override]
+        if event.key == "escape":
+            self.dismiss(None)
+        elif event.key in ("enter", "return"):
+            inp = self.query_one("#new_folder_input", Input)
+            if inp.value:
+                self.dismiss(inp.value)
+
 
 @dataclass(frozen=True)
 class EditContext:
@@ -513,34 +584,14 @@ class SaveTargetOverlay(Container):
 
     def _create_new_folder(self) -> None:
         """Prompt user to create a new folder in the current directory."""
-        from textual.widgets import Button
-
-        class NewFolderModal(ModalScreen[Optional[str]]):
-            def compose(self) -> ComposeResult:
-                with Vertical(id="new_folder_modal"):
-                    yield Static("Create New Folder", classes="title")
-                    yield Input(placeholder="Folder name", id="new_folder_input")
-                    with Horizontal():
-                        yield Button("Create", variant="primary", id="create_btn")
-                        yield Button("Cancel", id="cancel_btn")
-
-            def on_button_pressed(self, event: Button.Pressed) -> None:
-                if event.button.id == "create_btn":
-                    inp = self.query_one("#new_folder_input", Input)
-                    self.dismiss(inp.value)
-                else:
-                    self.dismiss(None)
-
-            def on_key(self, event) -> None:  # type: ignore[override]
-                if event.key == "escape":
-                    self.dismiss(None)
-                elif event.key in ("enter", "return"):
-                    inp = self.query_one("#new_folder_input", Input)
-                    if inp.value:
-                        self.dismiss(inp.value)
-
         def handle_folder_name(folder_name: Optional[str]) -> None:
-            if not folder_name or not folder_name.strip():
+            if not folder_name:
+                return
+
+            # Validate folder name for security
+            is_valid, error_msg = validate_folder_name(folder_name)
+            if not is_valid:
+                self.app.push_screen(InfoModal(f"Invalid folder name: {error_msg}"))
                 return
 
             folder_name = folder_name.strip()
@@ -551,12 +602,17 @@ class SaveTargetOverlay(Container):
                 # Success - reload tree to show new folder
                 self._reload_tree(new_path)
             except FileExistsError:
-                # Show error modal
                 self.app.push_screen(InfoModal(f"Folder '{folder_name}' already exists."))
             except PermissionError:
                 self.app.push_screen(InfoModal(f"Permission denied: cannot create folder in {self._cur_dir}"))
+            except OSError as e:
+                # Catch filesystem-specific errors (invalid names, etc.)
+                self.app.push_screen(InfoModal(f"Cannot create folder: {e}"))
             except Exception as e:
-                self.app.push_screen(InfoModal(f"Error creating folder: {e}"))
+                # Unexpected errors - log details but show generic message
+                import logging
+                logging.error(f"Unexpected error creating folder '{folder_name}': {e}")
+                self.app.push_screen(InfoModal("An unexpected error occurred while creating the folder."))
 
         self.app.push_screen(NewFolderModal(), handle_folder_name)
 
