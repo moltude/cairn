@@ -7,10 +7,11 @@ def test_no_circular_imports():
     import cairn.tui.widgets
     import cairn.tui.debug
     import cairn.tui.tables
+    import cairn.tui.file_browser
     import cairn.tui.app
     import cairn.tui.edit_screens
-    # Add new modules as they're created (Phase 4+):
-    # import cairn.tui.file_browser
+    # Add new modules as they're created (Phase 5+):
+    # import cairn.tui.state
     # etc.
 
     # If we get here, no circular import was detected

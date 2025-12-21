@@ -73,6 +73,9 @@ from cairn.tui.widgets import (
 # Import table manager
 from cairn.tui.tables import TableManager
 
+# Import file browser manager
+from cairn.tui.file_browser import FileBrowserManager
+
 # Re-export widgets for backward compatibility (tests and other modules may import from app.py)
 # These are available as: from cairn.tui.app import FilteredFileTree, etc.
 
@@ -105,6 +108,28 @@ class CairnTuiApp(App):
 
     step: reactive[str] = reactive(STEPS[0])
 
+    # Compatibility properties for backward compatibility (tests use these)
+    # These delegate to FileBrowserManager
+    @property
+    def _file_browser_dir(self) -> Optional[Path]:
+        """Compatibility property: delegate to FileBrowserManager."""
+        return self.files.get_file_browser_dir()
+
+    @_file_browser_dir.setter
+    def _file_browser_dir(self, value: Optional[Path]) -> None:
+        """Compatibility property setter: delegate to FileBrowserManager."""
+        self.files.set_file_browser_dir(value)
+
+    @property
+    def _save_browser_dir(self) -> Optional[Path]:
+        """Compatibility property: delegate to FileBrowserManager."""
+        return self.files.get_save_browser_dir()
+
+    @_save_browser_dir.setter
+    def _save_browser_dir(self, value: Optional[Path]) -> None:
+        """Compatibility property setter: delegate to FileBrowserManager."""
+        self.files.set_save_browser_dir(value)
+
     def __init__(self) -> None:
         super().__init__()
         self.model = TuiModel()
@@ -124,12 +149,10 @@ class CairnTuiApp(App):
         self._debug_logger = DebugLogger(self)
         # Initialize table manager
         self.tables = TableManager(self)
+        # Initialize file browser manager
+        self.files = FileBrowserManager(self)
         self._save_snapshot_emitted: bool = False
         self._save_change_prompt_dismissed: bool = False
-        # Select_file browser state
-        self._file_browser_dir: Optional[Path] = None
-        # Save browser state (output directory picker)
-        self._save_browser_dir: Optional[Path] = None
         self._output_prefix: str = ""
         self._rename_overrides_by_idx: dict[int, str] = {}
         self._post_save_prompt_shown: bool = False
@@ -221,7 +244,7 @@ class CairnTuiApp(App):
         self._export_in_progress = False
         self._rename_overrides_by_idx.clear()
         self._output_prefix = ""
-        self._save_browser_dir = None
+        self.files.set_save_browser_dir(None)
         self._post_save_prompt_shown = False
         self._save_snapshot_emitted = False
 
@@ -294,7 +317,7 @@ class CairnTuiApp(App):
     def _emit_save_browser_snapshot(self, table: DataTable) -> None:
         """Best-effort one-time snapshot of the Save browser table state."""
         try:
-            base = self._save_browser_dir
+            base = self.files.get_save_browser_dir()
             row_count = int(getattr(table, "row_count", 0) or 0)
             cursor_row = getattr(table, "cursor_row", None)
             cursor_row_key = self._table_cursor_row_key(table)
@@ -658,319 +681,27 @@ class CairnTuiApp(App):
 
     def _refresh_file_browser(self) -> None:
         """Populate Select_file file browser table with dirs + allowed extensions only."""
-        if self.step != "Select_file":
-            return
-        try:
-            table = self.query_one("#file_browser", DataTable)
-        except Exception:
-            return
-        base = self._file_browser_dir
-        if base is None:
-            return
-
-        # Clear rows without nuking columns (compat).
-        self._datatable_clear_rows(table)
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Name", "Type")
-        except Exception:
-            try:
-                table.add_columns("Name", "Type")
-            except Exception:
-                pass
-
-        # Parent entry
-        has_parent_row = False
-        try:
-            parent = base.parent
-            if parent != base:
-                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
-                has_parent_row = True
-        except Exception:
-            pass
-
-        entries: list[Path] = []
-        try:
-            entries = list(base.iterdir())
-        except Exception:
-            entries = []
-
-        dirs = sorted(
-            [p for p in entries if p.is_dir() and not p.name.startswith(".")],
-            key=lambda p: p.name.lower(),
-        )
-        files = sorted(
-            [
-                p
-                for p in entries
-                if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in _VISIBLE_INPUT_EXTS
-            ],
-            key=lambda p: p.name.lower(),
-        )
-
-        for p in dirs:
-            # Subtle distinction: folders get the muted accent; files keep base foreground.
-            table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
-        for p in files:
-            ext = p.suffix.lower().lstrip(".")
-            table.add_row(Text(p.name), Text(ext, style="dim"), key=f"file:{p}")
-
-        # Default cursor: first real entry (not the parent '..' row).
-        try:
-            if getattr(table, "row_count", 0):
-                table.cursor_row = (1 if has_parent_row and getattr(table, "row_count", 0) > 1 else 0)  # type: ignore[attr-defined]
-        except Exception:
-            pass
+        return self.files.refresh_file_browser()
 
     def _file_browser_enter(self) -> None:
         """Handle Enter on Select_file file browser table."""
-        if self.step != "Select_file":
-            return
-        base = self._file_browser_dir
-        if base is None:
-            return
-        try:
-            table = self.query_one("#file_browser", DataTable)
-        except Exception:
-            return
-        rk = self._table_cursor_row_key(table)
-        if not rk:
-            return
-        if rk == "__up__":
-            try:
-                self._file_browser_dir = base.parent if base.parent != base else base
-            except Exception:
-                self._file_browser_dir = base
-            self._refresh_file_browser()
-            return
-        if rk.startswith("dir:"):
-            p = Path(rk[4:])
-            self._file_browser_dir = p
-            self._refresh_file_browser()
-            return
-        if rk.startswith("file:"):
-            p = Path(rk[5:])
-            suf = p.suffix.lower()
-            if suf in _PARSEABLE_INPUT_EXTS and p.exists() and p.is_file():
-                self._set_input_path(p)
-                self._done_steps.add("Select_file")
-                self._goto("List_data")
-                return
-            if suf in _VISIBLE_INPUT_EXTS:
-                self.push_screen(
-                    InfoModal(
-                        "This TUI currently supports CalTopo GeoJSON inputs only (.json/.geojson).\n\n"
-                        "GPX/KML inputs are not supported in the TUI yet."
-                    )
-                )
-            return
+        return self.files.file_browser_enter()
 
     def _refresh_export_dir_table(self) -> None:
         """Populate export directory table (DataTable mode)."""
-        try:
-            table = self.query_one("#export_dir_table", DataTable)
-        except Exception:
-            return
-
-        out_dir = self.model.output_dir or Path.cwd()
-
-        self._datatable_clear_rows(table)
-
-        # Parent row
-        try:
-            parent = out_dir.parent
-            if parent != out_dir:
-                table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
-        except Exception:
-            pass
-
-        # Subdirectories
-        try:
-            entries = list(out_dir.iterdir())
-            dirs = sorted([p for p in entries if p.is_dir() and not p.name.startswith(".")], key=lambda p: p.name.lower())
-            for p in dirs:
-                table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
-        except Exception:
-            pass
+        return self.files.refresh_export_dir_table()
 
     def _export_dir_table_enter(self) -> None:
         """Handle Enter on export directory table."""
-        try:
-            table = self.query_one("#export_dir_table", DataTable)
-        except Exception:
-            return
-
-        rk = self._table_cursor_row_key(table)
-        if not rk:
-            return
-
-        out_dir = self.model.output_dir or Path.cwd()
-
-        if rk == "__up__":
-            self.model.output_dir = out_dir.parent if out_dir.parent != out_dir else out_dir
-            self._refresh_export_dir_table()
-            self._render_main()
-        elif rk.startswith("dir:"):
-            self.model.output_dir = Path(rk[4:])
-            self._refresh_export_dir_table()
-            self._render_main()
+        return self.files.export_dir_table_enter()
 
     def _refresh_save_browser(self) -> None:
         """Populate Save output directory browser table (directories only)."""
-        if self.step != "Save":
-            return
-        try:
-            table = self.query_one("#save_browser", DataTable)
-        except Exception:
-            return
-
-        base = self._save_browser_dir
-        if base is None:
-            return
-
-        t0 = time.perf_counter()
-        self._dbg(event="save.refresh.start", data={"base": str(base)})
-        entries_count: int = 0
-        dirs_count: int = 0
-        entries_err: Optional[str] = None
-
-        # Prevent selection events from triggering actions while we rebuild rows / set cursor.
-        self._suppress_save_browser_select = True
-        try:
-            self._datatable_clear_rows(table)
-            try:
-                if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                    table.add_columns("Name", "Type")
-            except Exception:
-                try:
-                    table.add_columns("Name", "Type")
-                except Exception:
-                    pass
-
-            has_parent_row = False
-            try:
-                parent = base.parent
-                if parent != base:
-                    table.add_row(Text("..", style="dim"), Text("dir", style="dim"), key="__up__")
-                    has_parent_row = True
-            except Exception:
-                pass
-
-            entries: list[Path] = []
-            try:
-                entries = list(base.iterdir())
-            except Exception as e:
-                entries = []
-                entries_err = str(e)
-            entries_count = int(len(entries))
-
-            dirs = sorted(
-                [p for p in entries if p.is_dir() and not p.name.startswith(".")],
-                key=lambda p: p.name.lower(),
-            )
-            dirs_count = int(len(dirs))
-            for p in dirs:
-                table.add_row(Text(p.name, style="bold #C48A4A"), Text("dir", style="dim"), key=f"dir:{p}")
-
-            # Action rows (kept at the bottom so the browser reads like a normal dir listing).
-            table.add_row(Text("[Use this folder]", style="bold"), Text("select", style="dim"), key="__use__")
-            table.add_row(Text("[Export]", style="bold"), Text("export", style="dim"), key="__export__")
-
-            # Default cursor: first directory entry (not the parent '..' row).
-            try:
-                if getattr(table, "row_count", 0):
-                    first_dir_row = (1 if has_parent_row else 0)
-                    if len(dirs) > 0:
-                        # Textual 6.x: cursor_row is a read-only property; use cursor_coordinate.
-                        table.cursor_coordinate = Coordinate(first_dir_row, 0)  # type: ignore[attr-defined]
-                    else:
-                        # No sub-dirs; fall back to [Use this folder] (2nd-to-last row).
-                        target = max(int(getattr(table, "row_count", 0) or 0) - 2, 0)
-                        table.cursor_coordinate = Coordinate(target, 0)  # type: ignore[attr-defined]
-            except Exception:
-                pass
-        finally:
-            self._dbg(
-                event="save.refresh.end",
-                data={
-                    "base": str(base),
-                    "entries_count": entries_count,
-                    "dirs_count": dirs_count,
-                    "duration_ms": float((time.perf_counter() - t0) * 1000.0),
-                    "error_if_any": entries_err,
-                },
-            )
-            self._suppress_save_browser_select = False
+        return self.files.refresh_save_browser()
 
     def _save_browser_enter(self) -> None:
         """Handle Enter on Save output directory browser table."""
-        if self.step != "Save":
-            return
-        base = self._save_browser_dir
-        if base is None:
-            return
-        try:
-            table = self.query_one("#save_browser", DataTable)
-        except Exception:
-            return
-        rk = self._table_cursor_row_key(table)
-        if not rk:
-            return
-
-        next_dir: Optional[str] = None
-        try:
-            if rk == "__up__":
-                try:
-                    p = base.parent if base.parent != base else base
-                except Exception:
-                    p = base
-                next_dir = str(p)
-            elif rk.startswith("dir:"):
-                next_dir = str(rk[4:])
-        except Exception:
-            next_dir = None
-        self._dbg(
-            event="save.enter",
-            data={
-                "base": str(base),
-                "rk": str(rk),
-                "next_dir": next_dir,
-                "cursor_row": getattr(table, "cursor_row", None),
-                "cursor_row_key": str(rk),
-            },
-        )
-
-        if rk == "__up__":
-            try:
-                self._save_browser_dir = base.parent if base.parent != base else base
-            except Exception:
-                self._save_browser_dir = base
-            try:
-                # Update UI in-place (avoid re-mounting widgets / DuplicateIds).
-                self._refresh_save_browser()
-            except Exception:
-                # Fallback: full re-render (best-effort).
-                self._render_main()
-            return
-        if rk == "__use__":
-            self.model.output_dir = base
-            self._render_sidebar()
-            return
-        if rk == "__export__":
-            # Export uses the global confirm modal (Enter to confirm, Esc to cancel).
-            self.action_export()
-            return
-        if rk.startswith("dir:"):
-            try:
-                p = Path(rk[4:])
-            except Exception:
-                return
-            self._save_browser_dir = p
-            try:
-                self._refresh_save_browser()
-            except Exception:
-                self._render_main()
-            return
+        return self.files.save_browser_enter()
 
     def _goto(self, step: str) -> None:
         if step not in STEPS:
@@ -1427,8 +1158,8 @@ class CairnTuiApp(App):
         self._routes_edited = False
         self._waypoints_edited = False
         # Reinitialize the file browser directory on re-entry.
-        self._file_browser_dir = None
-        self._save_browser_dir = None
+        self.files.set_file_browser_dir(None)
+        self.files.set_save_browser_dir(None)
         self._goto("Select_file")
 
     def action_show_help(self) -> None:
@@ -2183,50 +1914,42 @@ class CairnTuiApp(App):
             title.update("Select file")
             subtitle.update("Choose an input file (.json/.geojson/.kml/.gpx)")
             body = self._clear_main_body()
-            default_root = Path(self._state.default_root).expanduser() if self._state.default_root else Path.cwd()
 
             # Initialize file browser directory once per visit.
-            if self._file_browser_dir is None:
+            if self.files.get_file_browser_dir() is None:
+                # For table mode, use state.default_root or cwd
+                default_root = Path(self._state.default_root).expanduser() if self._state.default_root else Path.cwd()
                 try:
-                    self._file_browser_dir = default_root.resolve()
+                    self.files.set_file_browser_dir(default_root.resolve())
                 except Exception:
-                    self._file_browser_dir = default_root
+                    self.files.set_file_browser_dir(default_root)
 
             # A/B test: Choose implementation based on feature flag
             if self._use_tree_browser():
                 # NEW: DirectoryTree implementation
                 # Start from home directory by default, but use default_path from config if set.
                 # Users can navigate up to parent directories to reach any location.
-                tree_root = Path.home()
+                tree_root = self.files.get_initial_directory()
                 warning_message = None
 
-                # Check for default_path in config (takes precedence over state.default_root)
+                # Check if default_path was invalid (get_initial_directory returns home on error)
+                # We need to detect this to show a warning
                 default_path_str = getattr(self._config, 'default_path', None)
                 if default_path_str:
                     try:
                         default_path = Path(default_path_str).expanduser().resolve()
-
-                        # Validation 1: Path must exist
-                        if not default_path.exists():
-                            warning_message = f"default_path does not exist: {default_path_str}"
-                        # Validation 2: Must be a directory
-                        elif not default_path.is_dir():
-                            warning_message = f"default_path is not a directory: {default_path_str}"
-                        # Validation 3: Must be readable
-                        elif not os.access(default_path, os.R_OK):
-                            warning_message = f"default_path is not readable (permission denied): {default_path_str}"
-                        else:
-                            # Validation 4: Must be listable (can iterate contents)
-                            try:
-                                # Try to list directory to catch permission issues
-                                list(default_path.iterdir())
-                                # All validations passed - use this path
-                                tree_root = default_path
-                            except PermissionError:
-                                warning_message = f"default_path cannot be accessed (permission denied): {default_path_str}"
-                            except OSError as e:
-                                warning_message = f"default_path cannot be accessed: {default_path_str} ({e})"
-
+                        # If get_initial_directory returned home but we had a default_path, it means validation failed
+                        if tree_root == Path.home() and default_path != Path.home():
+                            # Determine which validation failed
+                            if not default_path.exists():
+                                warning_message = f"default_path does not exist: {default_path_str}"
+                            elif not default_path.is_dir():
+                                warning_message = f"default_path is not a directory: {default_path_str}"
+                            elif not os.access(default_path, os.R_OK):
+                                warning_message = f"default_path is not readable (permission denied): {default_path_str}"
+                            else:
+                                # Must be a listability issue
+                                warning_message = f"default_path cannot be accessed: {default_path_str}"
                     except Exception as e:
                         warning_message = f"Invalid default_path: {default_path_str} ({type(e).__name__}: {e})"
 
