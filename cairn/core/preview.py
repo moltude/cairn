@@ -159,8 +159,8 @@ def _match_palette_color_choice(raw: str, palette: tuple) -> Optional[str]:
             by_name[key] = getattr(p, "rgba", "")
 
     # Common user-friendly aliases.
-    if "REDORANGE" in by_name:
-        by_name.setdefault("ORANGE", by_name["REDORANGE"])
+    if "ORANGE" in by_name:
+        by_name.setdefault("REDORANGE", by_name["ORANGE"])
     # Back-compat: older docs/UI used "LIME" for the OnX green swatch.
     if "GREEN" in by_name:
         by_name.setdefault("LIME", by_name["GREEN"])
