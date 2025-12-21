@@ -6,10 +6,10 @@ def test_no_circular_imports():
     import cairn.tui.models
     import cairn.tui.widgets
     import cairn.tui.debug
+    import cairn.tui.tables
     import cairn.tui.app
     import cairn.tui.edit_screens
-    # Add new modules as they're created (Phase 3+):
-    # import cairn.tui.tables
+    # Add new modules as they're created (Phase 4+):
     # import cairn.tui.file_browser
     # etc.
 
