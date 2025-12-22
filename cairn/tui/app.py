@@ -10,6 +10,7 @@ from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import Button, DataTable, DirectoryTree, Header, Input, Static
+import copy
 import threading
 import os
 import time
@@ -1017,7 +1018,7 @@ class CairnTuiApp(App):
                 "description": getattr(wp, "description", ""),
                 "color": getattr(wp, "color", ""),
                 "symbol": getattr(wp, "symbol", ""),
-                "properties": dict(getattr(wp, "properties", {}) or {}),
+                "properties": copy.deepcopy(dict(getattr(wp, "properties", {}) or {})),
             }
             snapshot["waypoints"].append(wp_snapshot)
 
@@ -1031,7 +1032,7 @@ class CairnTuiApp(App):
                 "stroke": getattr(trk, "stroke", ""),
                 "stroke_width": getattr(trk, "stroke_width", 4),
                 "pattern": getattr(trk, "pattern", "solid"),
-                "properties": dict(getattr(trk, "properties", {}) or {}),
+                "properties": copy.deepcopy(dict(getattr(trk, "properties", {}) or {})),
             }
             snapshot["tracks"].append(trk_snapshot)
 
@@ -1070,7 +1071,7 @@ class CairnTuiApp(App):
                 props = getattr(wp, "properties", None)
                 if isinstance(props, dict):
                     props.clear()
-                    props.update(wp_snap.get("properties", {}))
+                    props.update(copy.deepcopy(wp_snap.get("properties", {})))
 
         # Revert tracks
         tracks = list((fd or {}).get("tracks", []) or [])
@@ -1088,7 +1089,7 @@ class CairnTuiApp(App):
                 props = getattr(trk, "properties", None)
                 if isinstance(props, dict):
                     props.clear()
-                    props.update(trk_snap.get("properties", {}))
+                    props.update(copy.deepcopy(trk_snap.get("properties", {})))
 
     def action_continue(self) -> None:
         # Step-specific gating + actions.
