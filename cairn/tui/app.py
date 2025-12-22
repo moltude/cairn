@@ -496,19 +496,6 @@ class CairnTuiApp(App):
         with profile_operation("on_mount"):
             self._goto("Select_file")
 
-    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
-        """
-        Handle selection events from the in-screen inline editor overlay.
-
-        We route back into the existing edit flow, but without Screen navigation.
-        """
-        field_key = getattr(message, "field_key", None)
-        if field_key is None:
-            # Done / Esc
-            self._on_inline_edit_action(None)
-            return
-        self._on_inline_edit_action(field_key)
-
     def on_color_picker_overlay_color_picked(self, message: ColorPickerOverlay.ColorPicked) -> None:  # type: ignore[name-defined]
         """Handle apply/cancel from ColorPickerOverlay."""
         # Ensure focus doesn't remain on the (now hidden) picker table.
@@ -534,53 +521,6 @@ class CairnTuiApp(App):
         feats = self._selected_features(ctx)
         if feats:
             self._show_inline_overlay(ctx=ctx, feats=feats)
-
-    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
-        """Handle field selection from InlineEditOverlay - opens appropriate editor."""
-        field_key = getattr(message, "field_key", None)
-        if not field_key:
-            # Done or cancelled - just return
-            return
-
-        ctx = self._selected_keys_for_step()
-        if ctx is None:
-            return
-
-        if field_key == "icon":
-            # Open icon picker
-            try:
-                icons = get_all_onx_icons()
-                overlay = self.query_one("#icon_picker_overlay", IconPickerOverlay)
-                overlay.open(icons=icons)
-            except Exception:
-                pass
-        elif field_key == "color":
-            # Open color picker
-            try:
-                if ctx.kind == "waypoint":
-                    palette = ColorMapper.WAYPOINT_PALETTE
-                    title = "Select waypoint color"
-                else:
-                    palette = ColorMapper.TRACK_PALETTE
-                    title = "Select route color"
-                overlay = self.query_one("#color_picker_overlay", ColorPickerOverlay)
-                overlay.open(title=title, palette=palette)
-            except Exception:
-                pass
-        elif field_key == "name":
-            # Open rename overlay
-            try:
-                overlay = self.query_one("#rename_overlay", RenameOverlay)
-                overlay.open(ctx=ctx, title="Rename")
-            except Exception:
-                pass
-        elif field_key == "description":
-            # Open description overlay
-            try:
-                overlay = self.query_one("#description_overlay", DescriptionOverlay)
-                overlay.open(ctx=ctx)
-            except Exception:
-                pass
 
     def on_icon_picker_overlay_icon_picked(self, message: IconPickerOverlay.IconPicked) -> None:  # type: ignore[name-defined]
         """Handle apply/cancel from IconPickerOverlay."""
@@ -1478,6 +1418,11 @@ class CairnTuiApp(App):
         if not feats:
             return
         self._show_inline_overlay(ctx=ctx, feats=feats)
+
+    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
+        """Handle FieldChosen message from InlineEditOverlay."""
+        field_key = getattr(message, "field_key", None)
+        self._on_inline_edit_action(field_key)
 
     def _on_inline_edit_action(self, field: object) -> None:
         """Handle field selection from inline overlay."""
