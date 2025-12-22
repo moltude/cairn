@@ -194,7 +194,3 @@ def merge_onx_gpx_and_kml(
     out.metadata["merged_kml"] = True
     out.metadata["kml_path"] = str(kml.metadata.get("path", ""))
     return out
-
-
-# Backward-compatible alias (deprecated): keep to avoid breaking older callers/tests.
-merge_OnX_gpx_and_kml = merge_onx_gpx_and_kml  # noqa: N816

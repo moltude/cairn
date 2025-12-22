@@ -550,12 +550,6 @@ class CairnTuiApp(App):
         self._in_single_item_edit = len(feats) == 1
         self._in_inline_edit = True
 
-        def get_route_color(feat):
-            stroke = str(getattr(feat, "stroke", "") or "")
-            if stroke:
-                return ColorMapper.map_track_color(stroke)
-            return ColorMapper.DEFAULT_TRACK_COLOR
-
         try:
             overlay = self.query_one("#inline_edit_overlay", InlineEditOverlay)
         except Exception:
@@ -566,7 +560,7 @@ class CairnTuiApp(App):
             get_color_chip=self._color_chip,
             get_waypoint_icon=self._resolved_waypoint_icon,
             get_waypoint_color=self._resolved_waypoint_color,
-            get_route_color=get_route_color,
+            get_route_color=self._get_route_color,
         )
         # Harden focus: ensure the fields DataTable regains focus after the overlay is
         # visually open (important after canceling sub-overlays like Rename).
@@ -821,6 +815,13 @@ class CairnTuiApp(App):
         except Exception:
             return False
 
+    def _get_route_color(self, feat) -> str:
+        """Helper method to get route color from feature."""
+        stroke = str(getattr(feat, "stroke", "") or "")
+        if stroke:
+            return ColorMapper.map_track_color(stroke)
+        return ColorMapper.DEFAULT_TRACK_COLOR
+
     def _focus_inline_fields_table(self) -> None:
         """Best-effort: ensure the inline fields DataTable has focus when overlay is open."""
         if not self._overlay_open("#inline_edit_overlay"):
@@ -1066,18 +1067,6 @@ class CairnTuiApp(App):
             return
 
         # Save step removed; Preview is the final step.
-
-    def action_export(self) -> None:
-        if self.step == "Preview":
-            # Get prefix from input if available
-            try:
-                prefix_input = self.query_one("#export_prefix_input", Input)
-                self._output_prefix = prefix_input.value or ""
-            except Exception:
-                pass
-
-            # Export directly (no confirmation)
-            self._start_export()
 
     def _on_export_confirmed(self, confirmed: bool) -> None:
         # Legacy method - kept for compatibility but no longer used
@@ -1532,12 +1521,6 @@ class CairnTuiApp(App):
         if ctx is not None:
             feats = self._selected_features(ctx)
             if feats:
-                def get_route_color(feat):
-                    stroke = str(getattr(feat, "stroke", "") or "")
-                    if stroke:
-                        return ColorMapper.map_track_color(stroke)
-                    return ColorMapper.DEFAULT_TRACK_COLOR
-
                 try:
                     overlay = self.query_one("#inline_edit_overlay", InlineEditOverlay)
                 except Exception:
@@ -1548,7 +1531,7 @@ class CairnTuiApp(App):
                     get_color_chip=self._color_chip,
                     get_waypoint_icon=self._resolved_waypoint_icon,
                     get_waypoint_color=self._resolved_waypoint_color,
-                    get_route_color=get_route_color,
+                    get_route_color=self._get_route_color,
                 )
 
     # Legacy: previously we used an action-list modal.
@@ -2800,16 +2783,9 @@ class CairnTuiApp(App):
             pass
 
         # In-screen overlays are Widgets (not Screens), so guard explicitly.
-        def _overlay_open(selector: str) -> bool:
-            try:
-                w = self.query_one(selector)
-                return bool(getattr(w, "has_class", lambda _c: False)("open"))
-            except Exception:
-                return False
-
         # Special handling: picker overlays focus a DataTable, which can consume Enter/Up/Down
         # such that the overlay container never sees the Key event. Handle those here.
-        if _overlay_open("#icon_picker_overlay"):
+        if self._overlay_open("#icon_picker_overlay"):
             key = str(getattr(event, "key", "") or "")
             focused_id = getattr(getattr(self, "focused", None), "id", None)
             try:
@@ -2862,7 +2838,7 @@ class CairnTuiApp(App):
                 return
             return
 
-        if _overlay_open("#color_picker_overlay"):
+        if self._overlay_open("#color_picker_overlay"):
             key = str(getattr(event, "key", "") or "")
             focused_id = getattr(getattr(self, "focused", None), "id", None)
             try:
@@ -2916,11 +2892,11 @@ class CairnTuiApp(App):
             return
 
         if (
-            _overlay_open("#inline_edit_overlay")
-            or _overlay_open("#save_target_overlay")
-            or _overlay_open("#rename_overlay")
-            or _overlay_open("#description_overlay")
-            or _overlay_open("#confirm_overlay")
+            self._overlay_open("#inline_edit_overlay")
+            or self._overlay_open("#save_target_overlay")
+            or self._overlay_open("#rename_overlay")
+            or self._overlay_open("#description_overlay")
+            or self._overlay_open("#confirm_overlay")
         ):
             return
 
