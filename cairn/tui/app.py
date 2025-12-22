@@ -1038,6 +1038,54 @@ class CairnTuiApp(App):
 
         self._folder_snapshots[folder_id] = snapshot
 
+    def _handle_folder_selection_change_during_iteration(
+        self, current_selected: set[str], previously_processing: set[str]
+    ) -> None:
+        """Handle folder selection changes while in iteration mode.
+        
+        Reverts deselected folders and adds newly selected folders in alphabetical order,
+        adjusting the current folder index as needed.
+        
+        Args:
+            current_selected: Currently selected folder IDs
+            previously_processing: Previously processing folder IDs
+        """
+        # Revert deselected folders
+        deselected = previously_processing - current_selected
+        for folder_id in deselected:
+            self._revert_folder_to_snapshot(folder_id)
+            # Remove from processing list
+            if folder_id in self._folders_to_process:
+                idx = self._folders_to_process.index(folder_id)
+                self._folders_to_process.remove(folder_id)
+                # Adjust current index if needed
+                if self._current_folder_index > idx:
+                    self._current_folder_index -= 1
+                elif self._current_folder_index == idx and self._current_folder_index >= len(self._folders_to_process):
+                    # We were on the deselected folder, move to previous or next
+                    if self._current_folder_index > 0:
+                        self._current_folder_index -= 1
+                    else:
+                        self._current_folder_index = 0
+
+        # Add newly selected folders (alphabetically sorted)
+        newly_selected = current_selected - previously_processing
+        for folder_id in newly_selected:
+            self._snapshot_folder_state(folder_id)
+            # Insert in alphabetical order
+            folder_name = str(self._folder_name_by_id.get(folder_id, folder_id)).lower()
+            insert_pos = 0
+            for i, existing_id in enumerate(self._folders_to_process):
+                existing_name = str(self._folder_name_by_id.get(existing_id, existing_id)).lower()
+                if folder_name < existing_name:
+                    insert_pos = i
+                    break
+                insert_pos = i + 1
+            self._folders_to_process.insert(insert_pos, folder_id)
+            # Adjust current index if we inserted before it
+            if insert_pos <= self._current_folder_index:
+                self._current_folder_index += 1
+
     def _revert_folder_to_snapshot(self, folder_id: str) -> None:
         """Revert a folder to its original snapshot state.
 
@@ -1137,42 +1185,7 @@ class CairnTuiApp(App):
                     # Folder selection changed while in iteration mode - handle deselection/re-selection
                     current_selected = set(self._selected_folders)
                     previously_processing = set(self._folders_to_process)
-
-                    # Revert deselected folders
-                    deselected = previously_processing - current_selected
-                    for folder_id in deselected:
-                        self._revert_folder_to_snapshot(folder_id)
-                        # Remove from processing list
-                        if folder_id in self._folders_to_process:
-                            idx = self._folders_to_process.index(folder_id)
-                            self._folders_to_process.remove(folder_id)
-                            # Adjust current index if needed
-                            if self._current_folder_index > idx:
-                                self._current_folder_index -= 1
-                            elif self._current_folder_index == idx and self._current_folder_index >= len(self._folders_to_process):
-                                # We were on the deselected folder, move to previous or next
-                                if self._current_folder_index > 0:
-                                    self._current_folder_index -= 1
-                                else:
-                                    self._current_folder_index = 0
-
-                    # Add newly selected folders (alphabetically sorted)
-                    newly_selected = current_selected - previously_processing
-                    for folder_id in newly_selected:
-                        self._snapshot_folder_state(folder_id)
-                        # Insert in alphabetical order
-                        folder_name = str(self._folder_name_by_id.get(folder_id, folder_id)).lower()
-                        insert_pos = 0
-                        for i, existing_id in enumerate(self._folders_to_process):
-                            existing_name = str(self._folder_name_by_id.get(existing_id, existing_id)).lower()
-                            if folder_name < existing_name:
-                                insert_pos = i
-                                break
-                            insert_pos = i + 1
-                        self._folders_to_process.insert(insert_pos, folder_id)
-                        # Adjust current index if we inserted before it
-                        if insert_pos <= self._current_folder_index:
-                            self._current_folder_index += 1
+                    self._handle_folder_selection_change_during_iteration(current_selected, previously_processing)
                 else:
                     # _folders_to_process exists but we're not in iteration mode - reset it
                     # This can happen if we're starting fresh after a previous multi-folder session
