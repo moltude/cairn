@@ -2355,12 +2355,12 @@ class CairnTuiApp(App):
                 # Action buttons - mount container first, then add children
                 button_container = Horizontal(id="export_buttons")
                 export_target.mount(button_container)
-                change_button = Button("[Change]", id="change_export_settings", variant="primary")
-                export_button = Button("[Export]", id="export_button", variant="success")
+                change_button = Button("Change", id="change_export_settings", variant="primary")
+                export_button = Button("Export", id="export_button", variant="success")
                 button_container.mount(change_button)
                 button_container.mount(export_button)
 
-                export_target.mount(Static("c: change settings  •  Enter: export", id="save_export_hint", classes="muted"))
+                # export_target.mount(Static("c: change settings  •  Enter: export", id="save_export_hint", classes="muted"))
                 export_target.mount(Static("", id="save_status", classes="muted"))
                 export_target.mount(Container(id="save_post"))
 

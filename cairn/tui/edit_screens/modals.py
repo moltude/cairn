@@ -853,3 +853,4 @@ class UnmappedSymbolModal(ModalScreen[Optional[str]]):
             except Exception:
                 pass
             return
+
