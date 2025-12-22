@@ -12,7 +12,17 @@ from pathlib import Path
 
 from cairn.tui.app import CairnTuiApp
 from textual.widgets import DataTable
-from tests.tui_harness import copy_fixture_to_tmp
+from tests.tui_harness import copy_fixture_to_tmp, select_folder_for_test
+
+
+def _select_first_folder(app) -> str:
+    """Pick and select the first folder (handles multi-folder datasets)."""
+    assert app.model.parsed is not None, "Expected parsed data"
+    folders = getattr(app.model.parsed, "folders", {}) or {}
+    assert folders, "Expected at least one folder"
+    folder_id = next(iter(folders.keys()))
+    select_folder_for_test(app, folder_id)
+    return folder_id
 
 
 def _rendered_svg(app) -> str:
@@ -36,12 +46,7 @@ class TestInlineEditOverlayRendering:
                 app._goto("List_data")
                 await pilot.pause()
 
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    folder_ids = list(folders.keys())
-                    if folder_ids:
-                        app.model.selected_folder_id = folder_ids[0]
-
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
                 assert app.step == "Waypoints"
@@ -119,12 +124,7 @@ class TestInlineEditOverlayRendering:
                 app._goto("List_data")
                 await pilot.pause()
 
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    folder_ids = list(folders.keys())
-                    if folder_ids:
-                        app.model.selected_folder_id = folder_ids[0]
-
+                _select_first_folder(app)
                 app._goto("Routes")
                 await pilot.pause()
                 assert app.step == "Routes"
@@ -163,10 +163,7 @@ class TestInlineEditOverlayRendering:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    fid = list(folders.keys())[0]
-                    app.model.selected_folder_id = fid
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
 
@@ -177,6 +174,14 @@ class TestInlineEditOverlayRendering:
                 await pilot.press("a")
                 await pilot.pause()
 
+                # Verify inline edit overlay is open
+                try:
+                    inline_overlay = app.query_one("#inline_edit_overlay")
+                except Exception:
+                    inline_overlay = None
+                assert inline_overlay is not None
+                assert inline_overlay.has_class("open")
+
                 # Move to Color row and open picker
                 await pilot.press("down")
                 await pilot.press("down")
@@ -185,7 +190,10 @@ class TestInlineEditOverlayRendering:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                # Overlay should be open
+                # Verify inline edit overlay closed (proves FieldChosen message was sent)
+                assert not inline_overlay.has_class("open")
+
+                # Verify color picker overlay opened (proves message handler processed message)
                 try:
                     picker = app.query_one("#color_picker_overlay")
                 except Exception:
@@ -199,6 +207,66 @@ class TestInlineEditOverlayRendering:
                 # Picker-specific tokens (SVG may split text nodes; avoid full-string matches)
                 assert "Color" in svg
                 assert "BLUE" in svg
+
+        asyncio.run(_run())
+
+    def test_color_field_opens_picker_via_message_handler(self, tmp_path: Path) -> None:
+        """Verify that pressing ENTER on Color field triggers FieldChosen message handler."""
+        fixture_copy = copy_fixture_to_tmp(tmp_path)
+
+        async def _run() -> None:
+            app = CairnTuiApp()
+            app.model.input_path = fixture_copy
+
+            async with app.run_test() as pilot:
+                # Navigate to waypoints
+                app._goto("List_data")
+                await pilot.pause()
+                _select_first_folder(app)
+                app._goto("Waypoints")
+                await pilot.pause()
+
+                # Select waypoint and open edit overlay
+                app.action_focus_table()
+                await pilot.pause()
+                await pilot.press("space")
+                await pilot.pause()
+                await pilot.press("a")
+                await pilot.pause()
+
+                # Verify inline edit overlay is open
+                try:
+                    inline_overlay = app.query_one("#inline_edit_overlay")
+                except Exception:
+                    inline_overlay = None
+                assert inline_overlay is not None
+                assert inline_overlay.has_class("open")
+
+                # Move to Color field and press ENTER
+                # Navigation: Name -> Description -> Icon -> Color
+                await pilot.press("down")  # Name -> Description
+                await pilot.pause()
+                await pilot.press("down")  # Description -> Icon
+                await pilot.pause()
+                await pilot.press("down")  # Icon -> Color
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Verify color picker opened (proves message handler worked)
+                try:
+                    picker = app.query_one("#color_picker_overlay")
+                except Exception:
+                    picker = None
+                assert picker is not None
+                assert picker.has_class("open")
+
+                # Verify inline edit overlay closed (proves message was sent)
+                assert not inline_overlay.has_class("open")
+
+                # Verify underlying screen still visible (overlay behavior)
+                svg = app.export_screenshot()
+                assert "Waypoints" in svg
 
         asyncio.run(_run())
 
@@ -217,10 +285,7 @@ class TestInlineEditOverlayRendering:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    fid = list(folders.keys())[0]
-                    app.model.selected_folder_id = fid
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
 
@@ -262,10 +327,7 @@ class TestInlineEditOverlayRendering:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    fid = list(folders.keys())[0]
-                    app.model.selected_folder_id = fid
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
 

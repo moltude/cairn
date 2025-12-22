@@ -54,7 +54,6 @@ class WidgetIds:
     OUTPUT_PREFIX = "output_prefix"
     EXPORT_DIR_TREE = "export_dir_tree"
     EXPORT_TARGET_SECTION = "export_target_section"
-    SAVE_BROWSER = "save_browser"
     SAVE_TARGET_OVERLAY = "save_target_overlay"
 
     # Overlays

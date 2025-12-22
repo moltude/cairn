@@ -261,6 +261,7 @@ def process_and_write_files(
     *,
     split_gpx: bool = True,
     max_gpx_bytes: Optional[int] = None,
+    prefix: Optional[str] = None,
 ) -> list:
     """
     Process folders and write output files.
@@ -293,6 +294,10 @@ def process_and_write_files(
     for folder_id, folder_data in parsed_data.folders.items():
         folder_name = folder_data["name"]
         safe_name = sanitize_filename(folder_name)
+        # Apply prefix if provided
+        if prefix and prefix.strip():
+            prefix_safe = sanitize_filename(prefix.strip())
+            safe_name = f"{prefix_safe}_{safe_name}"
 
         waypoints = folder_data["waypoints"]
         tracks = folder_data["tracks"]

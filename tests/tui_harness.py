@@ -59,6 +59,27 @@ def copy_fixture_to_tmp(tmp_path: Path, *, min_bytes: int = 1_000_000) -> Path:
     return dst
 
 
+def select_folder_for_test(app: Any, folder_id: str) -> None:
+    """Select a folder for testing in multi-folder datasets.
+
+    This helper properly sets up folder selection for both single-folder
+    and multi-folder datasets. For multi-folder datasets, the app requires
+    folders to be added to _selected_folders before Enter can advance from
+    the Folder step.
+
+    Args:
+        app: The CairnTuiApp instance
+        folder_id: The folder ID to select
+    """
+    app.model.selected_folder_id = folder_id
+    # For multi-folder datasets, also add to _selected_folders
+    folders = getattr(getattr(app, "model", None), "parsed", None)
+    if folders is not None:
+        folders_dict = getattr(folders, "folders", {}) or {}
+        if len(folders_dict) > 1:
+            app._selected_folders.add(folder_id)
+
+
 def _renderable_to_str(obj: Any) -> str:
     if obj is None:
         return ""

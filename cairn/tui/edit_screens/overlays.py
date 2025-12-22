@@ -89,11 +89,19 @@ class SaveTargetOverlay(Container):
             message="open_called",
             data={"directory": str(directory), "prefix": str(prefix), "prior_classes": str(getattr(self, "classes", None))},
         )
-        try:
-            self._cur_dir = Path(directory).expanduser()
-        except Exception:
-            self._cur_dir = directory
-        self._prefix = str(prefix or "")
+        # Initialize _cur_dir with defensive checks
+        if directory is None:
+            self._cur_dir = Path.cwd()
+        else:
+            try:
+                self._cur_dir = Path(directory).expanduser().resolve()
+            except Exception:
+                try:
+                    self._cur_dir = Path(directory).expanduser()
+                except Exception:
+                    self._cur_dir = Path.cwd()
+        # Initialize _prefix with defensive checks
+        self._prefix = str(prefix or "").strip()
         try:
             self.add_class("open")
         except Exception:
@@ -197,24 +205,45 @@ class SaveTargetOverlay(Container):
         self._reload_tree()
 
     def _apply_done(self) -> None:
+        # Capture prefix from input field
         try:
-            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
+            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "").strip()
         except Exception:
             pass
+
+        # Ensure _cur_dir is properly set (defensive check)
+        if not hasattr(self, "_cur_dir") or self._cur_dir is None:
+            self._cur_dir = Path.cwd()
+
+        # Send Done message with current directory and prefix
         self.post_message(self.Done(directory=self._cur_dir, prefix=self._prefix, cancelled=False))
         self.close()
 
     def activate(self) -> None:
         """Deterministic activation used by tests (same as Enter on the browser)."""
-        try:
-            tbl = self.query_one("#save_target_browser", DataTable)
-        except Exception:
-            return
         # Preserve any typed prefix while navigating the directory browser.
         try:
             self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
         except Exception:
             pass
+
+        # Handle tree mode (DirectoryTree)
+        if self._use_tree:
+            try:
+                tree = self.query_one("#save_target_browser_tree")
+                # In tree mode, selection is handled by DirectoryTree.DirectorySelected events
+                # activate() is mainly for DataTable mode, but we can handle Enter on tree
+                # by getting the currently selected path if available
+                # For now, tree mode navigation is handled via event handlers
+                return
+            except Exception:
+                return
+
+        # Handle table mode (DataTable)
+        try:
+            tbl = self.query_one("#save_target_browser", DataTable)
+        except Exception:
+            return
         rk = _table_cursor_row_key(tbl)
         if not rk:
             return
@@ -231,8 +260,22 @@ class SaveTargetOverlay(Container):
             return
         if rk.startswith("dir:"):
             try:
-                self._cur_dir = Path(rk[4:])
-            except Exception:
+                new_path = Path(rk[4:])
+                # Resolve the path to ensure it's absolute and normalized
+                try:
+                    self._cur_dir = new_path.resolve()
+                except Exception:
+                    # If resolve fails (e.g., path doesn't exist), use expanduser
+                    try:
+                        self._cur_dir = new_path.expanduser()
+                    except Exception:
+                        self._cur_dir = new_path
+            except Exception as e:
+                # Log error but don't crash
+                try:
+                    getattr(self.app, "_dbg")(event="save.change.navigate.error", data={"rk": rk, "error": str(e)})
+                except Exception:
+                    pass
                 return
             try:
                 getattr(self.app, "_dbg")(event="save.change.navigate", data={"rk": rk, "dir": str(self._cur_dir)})
@@ -362,9 +405,18 @@ class SaveTargetOverlay(Container):
         if not self._use_tree:
             return
 
-        # Update current directory
+        # Update current directory with proper resolution
         try:
-            self._cur_dir = Path(event.path)
+            new_path = Path(event.path)
+            # Resolve the path to ensure it's absolute and normalized
+            try:
+                self._cur_dir = new_path.resolve()
+            except Exception:
+                # If resolve fails (e.g., path doesn't exist), use expanduser
+                try:
+                    self._cur_dir = new_path.expanduser()
+                except Exception:
+                    self._cur_dir = new_path
         except Exception:
             return
 
@@ -1040,7 +1092,9 @@ class ConfirmOverlay(Container):
             yield Static("", id="confirm_title", classes="title")
             yield Static("", id="confirm_message")
             yield Static("")
-            yield Static("y/Enter: Yes    n/Esc: No", classes="muted")
+            with Horizontal(classes="confirm_buttons"):
+                yield Button("Yes (Enter)", id="confirm_yes_btn", classes="confirm_button")
+                yield Button("No (Esc)", id="confirm_no_btn", classes="confirm_button")
 
     def open(self, *, title: str, message: str) -> None:
         self._title = str(title or "Confirm")
@@ -1051,9 +1105,22 @@ class ConfirmOverlay(Container):
         except Exception:
             pass
         self.add_class("open")
+        # Use call_after_refresh to ensure the overlay is fully rendered before setting focus
         try:
-            # Focus this container so it receives key events.
-            self.focus()
+            def _set_focus_after_refresh():
+                try:
+                    yes_btn = self.query_one("#confirm_yes_btn", Button)
+                    yes_btn.focus()
+                except Exception:
+                    pass
+
+            self.call_after_refresh(_set_focus_after_refresh)
+            # Also try immediately in case call_after_refresh doesn't fire soon enough
+            try:
+                yes_btn = self.query_one("#confirm_yes_btn", Button)
+                yes_btn.focus()
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -1073,11 +1140,70 @@ class ConfirmOverlay(Container):
         except Exception:
             pass
 
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "confirm_yes_btn":
+            self.close()
+            self._send(self.Result(True))
+        elif event.button.id == "confirm_no_btn":
+            self.close()
+            self._send(self.Result(False))
+
     def on_key(self, event) -> None:  # type: ignore[override]
         if not self.has_class("open"):
             return
         key = str(getattr(event, "key", "") or "")
         char = str(getattr(event, "character", "") or "")
+
+        # Handle TAB to switch focus between buttons
+        if key == "tab":
+            try:
+                # Get the focused widget from the app, not from self
+                app = getattr(self, "app", None)
+                if app is None:
+                    return
+                focused = getattr(app, "focused", None)
+                if focused and focused.id == "confirm_yes_btn":
+                    # Switch to No button
+                    no_btn = self.query_one("#confirm_no_btn", Button)
+                    no_btn.focus()
+                elif focused and focused.id == "confirm_no_btn":
+                    # Switch back to Yes button
+                    yes_btn = self.query_one("#confirm_yes_btn", Button)
+                    yes_btn.focus()
+                else:
+                    # If nothing focused or something else, focus Yes button
+                    self.query_one("#confirm_yes_btn", Button).focus()
+            except Exception:
+                pass
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+
+        # Handle SPACE to activate the focused button
+        if key == "space":
+            try:
+                # Get the focused widget from the app, not from self
+                app = getattr(self, "app", None)
+                if app is None:
+                    return
+                focused = getattr(app, "focused", None)
+                if focused and focused.id == "confirm_yes_btn":
+                    self.close()
+                    self._send(self.Result(True))
+                elif focused and focused.id == "confirm_no_btn":
+                    self.close()
+                    self._send(self.Result(False))
+            except Exception:
+                pass
+            try:
+                event.stop()
+            except Exception:
+                pass
+            return
+
+        # Handle Escape or 'n' for No
         if key == "escape" or char.lower() == "n":
             self.close()
             self._send(self.Result(False))
@@ -1086,6 +1212,8 @@ class ConfirmOverlay(Container):
             except Exception:
                 pass
             return
+
+        # Handle Enter or 'y' for Yes
         if key in ("enter", "return") or char == "\r" or char.lower() == "y":
             self.close()
             self._send(self.Result(True))

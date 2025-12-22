@@ -9,7 +9,7 @@ from textual.binding import Binding
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import DataTable, DirectoryTree, Header, Input, Static
+from textual.widgets import Button, DataTable, DirectoryTree, Header, Input, Static
 import threading
 import os
 import time
@@ -126,22 +126,46 @@ class CairnTuiApp(App):
         """Compatibility property setter: delegate to FileBrowserManager."""
         self.files.set_file_browser_dir(value)
 
-    @property
-    def _save_browser_dir(self) -> Optional[Path]:
-        """Compatibility property: delegate to FileBrowserManager."""
-        return self.files.get_save_browser_dir()
-
-    @_save_browser_dir.setter
-    def _save_browser_dir(self, value: Optional[Path]) -> None:
-        """Compatibility property setter: delegate to FileBrowserManager."""
-        self.files.set_save_browser_dir(value)
-
     # Compatibility properties for state variables (tests use these)
     # These use mutable proxies to maintain encapsulation while supporting backward compatibility
     @property
     def _done_steps(self) -> set[str]:
         """Compatibility property: delegate to StateManager (returns mutable proxy for backward compatibility)."""
-        return self.state.done_steps_mutable
+        # #region agent log
+        try:
+            import json
+            import time
+            has_state = hasattr(self, "state")
+            state_is_none = getattr(self, "state", None) is None if has_state else "no_state_attr"
+            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:134","message":"_done_steps getter called","data":{"has_state":has_state,"state_is_none":str(state_is_none)},"timestamp":int(time.time()*1000)})+"\n")
+        except Exception:
+            pass
+        # #endregion
+        if not hasattr(self, "state") or self.state is None:
+            # Defensive: return empty set if state not initialized
+            result = set()
+            # #region agent log
+            try:
+                import json
+                import time
+                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:142","message":"_done_steps returning empty set","data":{"result_type":type(result).__name__},"timestamp":int(time.time()*1000)})+"\n")
+            except Exception:
+                pass
+            # #endregion
+            return result
+        result = self.state.done_steps_mutable
+        # #region agent log
+        try:
+            import json
+            import time
+            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:150","message":"_done_steps returning state.done_steps_mutable","data":{"result_type":type(result).__name__,"has_add":hasattr(result,"add")},"timestamp":int(time.time()*1000)})+"\n")
+        except Exception:
+            pass
+        # #endregion
+        return result
 
     @_done_steps.setter
     def _done_steps(self, value: set[str]) -> None:
@@ -213,7 +237,6 @@ class CairnTuiApp(App):
             self._post_save_prompt_shown: bool = False
             # Guard: DataTable selection events can fire during cursor restoration / re-render;
             # suppress Save browser actions while we are rebuilding the table.
-            self._suppress_save_browser_select: bool = False
             # Unmapped symbol mapping state
             self._unmapped_symbols: list[tuple[str, dict]] = []  # [(symbol, info), ...]
             self._unmapped_index: int = 0
@@ -298,12 +321,16 @@ class CairnTuiApp(App):
         self._export_in_progress = False
         self._rename_overrides_by_idx.clear()
         self._output_prefix = ""
-        self.files.set_save_browser_dir(None)
         self._post_save_prompt_shown = False
         self._save_snapshot_emitted = False
 
         # Reset progress indicator.
-        self._done_steps.clear()
+        try:
+            self._done_steps.clear()
+        except Exception:
+            # Defensive: if state isn't initialized yet, create empty set
+            if hasattr(self, "state") and self.state is not None:
+                self.state.set_done_steps(set())
         # Track whether edits were applied since last selection clear, to show a hint.
         self._routes_edited: bool = False
         self._waypoints_edited: bool = False
@@ -368,60 +395,6 @@ class CairnTuiApp(App):
         except Exception:
             return
 
-    def _emit_save_browser_snapshot(self, table: DataTable) -> None:
-        """Best-effort one-time snapshot of the Save browser table state."""
-        try:
-            base = self.files.get_save_browser_dir()
-            row_count = int(getattr(table, "row_count", 0) or 0)
-            cursor_row = getattr(table, "cursor_row", None)
-            cursor_row_key = self._table_cursor_row_key(table)
-
-            rows: list[dict[str, object]] = []
-            for i in range(row_count):
-                rk: Optional[str] = None
-                try:
-                    ck = table.coordinate_to_cell_key(Coordinate(i, 0))  # type: ignore[arg-type]
-                    rk_obj = getattr(ck, "row_key", None)
-                    rk = str(getattr(rk_obj, "value", rk_obj))
-                except Exception:
-                    rk = None
-
-                name_cell_text: Optional[str] = None
-                type_cell_text: Optional[str] = None
-                try:
-                    row = table.get_row_at(i)  # type: ignore[attr-defined]
-                    if isinstance(row, list) and len(row) >= 2:
-                        try:
-                            name_cell_text = str(row[0])
-                        except Exception:
-                            name_cell_text = None
-                        try:
-                            type_cell_text = str(row[1])
-                        except Exception:
-                            type_cell_text = None
-                except Exception:
-                    pass
-
-                rows.append(
-                    {
-                        "row_key": rk,
-                        "name_cell_text": name_cell_text,
-                        "type_cell_text": type_cell_text,
-                    }
-                )
-
-            self._dbg(
-                event="save.snapshot",
-                data={
-                    "save_browser_dir": str(base) if base is not None else None,
-                    "row_count": row_count,
-                    "rows": rows,
-                    "cursor_row": cursor_row,
-                    "cursor_row_key": cursor_row_key,
-                },
-            )
-        except Exception:
-            return
 
     # Table operations are now delegated to TableManager
     def _color_chip(self, rgba: str) -> Text:
@@ -496,19 +469,6 @@ class CairnTuiApp(App):
         with profile_operation("on_mount"):
             self._goto("Select_file")
 
-    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
-        """
-        Handle selection events from the in-screen inline editor overlay.
-
-        We route back into the existing edit flow, but without Screen navigation.
-        """
-        field_key = getattr(message, "field_key", None)
-        if field_key is None:
-            # Done / Esc
-            self._on_inline_edit_action(None)
-            return
-        self._on_inline_edit_action(field_key)
-
     def on_color_picker_overlay_color_picked(self, message: ColorPickerOverlay.ColorPicked) -> None:  # type: ignore[name-defined]
         """Handle apply/cancel from ColorPickerOverlay."""
         # Ensure focus doesn't remain on the (now hidden) picker table.
@@ -534,53 +494,6 @@ class CairnTuiApp(App):
         feats = self._selected_features(ctx)
         if feats:
             self._show_inline_overlay(ctx=ctx, feats=feats)
-
-    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
-        """Handle field selection from InlineEditOverlay - opens appropriate editor."""
-        field_key = getattr(message, "field_key", None)
-        if not field_key:
-            # Done or cancelled - just return
-            return
-
-        ctx = self._selected_keys_for_step()
-        if ctx is None:
-            return
-
-        if field_key == "icon":
-            # Open icon picker
-            try:
-                icons = get_all_onx_icons()
-                overlay = self.query_one("#icon_picker_overlay", IconPickerOverlay)
-                overlay.open(icons=icons)
-            except Exception:
-                pass
-        elif field_key == "color":
-            # Open color picker
-            try:
-                if ctx.kind == "waypoint":
-                    palette = ColorMapper.WAYPOINT_PALETTE
-                    title = "Select waypoint color"
-                else:
-                    palette = ColorMapper.TRACK_PALETTE
-                    title = "Select route color"
-                overlay = self.query_one("#color_picker_overlay", ColorPickerOverlay)
-                overlay.open(title=title, palette=palette)
-            except Exception:
-                pass
-        elif field_key == "name":
-            # Open rename overlay
-            try:
-                overlay = self.query_one("#rename_overlay", RenameOverlay)
-                overlay.open(ctx=ctx, title="Rename")
-            except Exception:
-                pass
-        elif field_key == "description":
-            # Open description overlay
-            try:
-                overlay = self.query_one("#description_overlay", DescriptionOverlay)
-                overlay.open(ctx=ctx)
-            except Exception:
-                pass
 
     def on_icon_picker_overlay_icon_picked(self, message: IconPickerOverlay.IconPicked) -> None:  # type: ignore[name-defined]
         """Handle apply/cancel from IconPickerOverlay."""
@@ -610,12 +523,6 @@ class CairnTuiApp(App):
         self._in_single_item_edit = len(feats) == 1
         self._in_inline_edit = True
 
-        def get_route_color(feat):
-            stroke = str(getattr(feat, "stroke", "") or "")
-            if stroke:
-                return ColorMapper.map_track_color(stroke)
-            return ColorMapper.DEFAULT_TRACK_COLOR
-
         try:
             overlay = self.query_one("#inline_edit_overlay", InlineEditOverlay)
         except Exception:
@@ -626,7 +533,7 @@ class CairnTuiApp(App):
             get_color_chip=self._color_chip,
             get_waypoint_icon=self._resolved_waypoint_icon,
             get_waypoint_color=self._resolved_waypoint_color,
-            get_route_color=get_route_color,
+            get_route_color=self._get_route_color,
         )
         # Harden focus: ensure the fields DataTable regains focus after the overlay is
         # visually open (important after canceling sub-overlays like Rename).
@@ -711,7 +618,6 @@ class CairnTuiApp(App):
         # Update output directory and prefix from overlay
         directory = getattr(message, "directory", None)
         prefix = getattr(message, "prefix", "")
-
         if directory is not None:
             try:
                 # Ensure directory is a Path and resolve it
@@ -750,6 +656,87 @@ class CairnTuiApp(App):
         except Exception:
             try:
                 self.set_focus(None)  # type: ignore[arg-type]
+            except Exception:
+                pass
+
+    def _validate_export_settings(self) -> tuple[bool, list[str]]:
+        """Validate export directory and prefix settings.
+
+        Returns:
+            Tuple of (is_valid, errors_list)
+        """
+        errors: list[str] = []
+
+        # Validate directory
+        out_dir = self.model.output_dir or Path.cwd()
+        try:
+            out_dir = out_dir.expanduser()
+        except Exception:
+            pass
+
+        if not out_dir.exists():
+            errors.append(f"Directory does not exist: {out_dir}")
+        elif not out_dir.is_dir():
+            errors.append(f"Path is not a directory: {out_dir}")
+        else:
+            # Check if directory is writable
+            try:
+                test_file = out_dir / ".cairn_write_test"
+                try:
+                    test_file.touch()
+                    test_file.unlink()
+                except Exception as e:
+                    errors.append(f"Directory is not writable: {out_dir} ({e})")
+            except Exception as e:
+                errors.append(f"Cannot write to directory: {out_dir} ({e})")
+
+        # Validate prefix (if provided)
+        prefix = (self._output_prefix or "").strip()
+        if prefix:
+            try:
+                # Test sanitization to ensure it's valid
+                sanitized = sanitize_filename(prefix)
+                if not sanitized or sanitized == "Untitled":
+                    errors.append("Prefix is not a valid filename")
+            except Exception as e:
+                errors.append(f"Invalid prefix: {e}")
+
+        return (len(errors) == 0, errors)
+
+    def _open_save_target_overlay(self) -> None:
+        """Open SaveTargetOverlay to change export directory and prefix."""
+        try:
+            overlay = self.query_one("#save_target_overlay", SaveTargetOverlay)
+        except Exception:
+            return
+
+        # Get current directory and prefix
+        current_dir = self.model.output_dir or Path.cwd()
+        current_prefix = self._output_prefix or ""
+
+        # Open overlay with current values
+        overlay.open(directory=current_dir, prefix=current_prefix)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:  # type: ignore[name-defined]
+        """Handle button press events."""
+        button_id = getattr(event.button, "id", None)
+        if button_id == "change_export_settings":
+            self._open_save_target_overlay()
+            try:
+                event.stop()
+            except Exception:
+                pass
+        elif button_id == "export_button":
+            if self.step == "Preview":
+                # Capture prefix before exporting
+                try:
+                    prefix_input = self.query_one("#export_prefix_input", Input)
+                    self._output_prefix = prefix_input.value or ""
+                except Exception:
+                    pass
+                self.action_export()
+            try:
+                event.stop()
             except Exception:
                 pass
 
@@ -797,8 +784,44 @@ class CairnTuiApp(App):
                 self.query_one("#folder_table", DataTable).focus()
                 return
             if self.step == "Preview":
-                # Preview uses read-only tables; avoid focusing them so Enter/q reach app handlers.
-                self.set_focus(None)  # type: ignore[arg-type]
+                # When tree mode is enabled, focus the tree so it can receive keyboard input
+                if self._use_tree_browser():
+                    # #region agent log
+                    try:
+                        import json
+                        import time
+                        with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                            f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1","location":"app.py:788","message":"_reset_focus_for_step Preview: tree mode enabled","data":{"step":self.step,"use_tree_browser":self._use_tree_browser()},"timestamp":int(time.time()*1000)})+"\n")
+                    except Exception:
+                        pass
+                    # #endregion
+                    try:
+                        tree = self.query_one("#export_dir_tree", FilteredDirectoryTree)
+                        # #region agent log
+                        try:
+                            import json
+                            import time
+                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1","location":"app.py:791","message":"Tree found, calling focus()","data":{"tree_id":getattr(tree,"id",None),"tree_type":type(tree).__name__},"timestamp":int(time.time()*1000)})+"\n")
+                        except Exception:
+                            pass
+                        # #endregion
+                        tree.focus()
+                    except Exception as e:
+                        # #region agent log
+                        try:
+                            import json
+                            import time
+                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1,H2","location":"app.py:793","message":"Tree not found or focus failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
+                        except Exception:
+                            pass
+                        # #endregion
+                        # Fallback: clear focus if tree not found
+                        self.set_focus(None)  # type: ignore[arg-type]
+                else:
+                    # Preview uses read-only tables; avoid focusing them so Enter/q reach app handlers.
+                    self.set_focus(None)  # type: ignore[arg-type]
                 return
         except Exception:
             return
@@ -811,21 +834,7 @@ class CairnTuiApp(App):
         """Handle Enter on Select_file file browser table."""
         return self.files.file_browser_enter()
 
-    def _refresh_export_dir_table(self) -> None:
-        """Populate export directory table (DataTable mode)."""
-        return self.files.refresh_export_dir_table()
 
-    def _export_dir_table_enter(self) -> None:
-        """Handle Enter on export directory table."""
-        return self.files.export_dir_table_enter()
-
-    def _refresh_save_browser(self) -> None:
-        """Populate Save output directory browser table (directories only)."""
-        return self.files.refresh_save_browser()
-
-    def _save_browser_enter(self) -> None:
-        """Handle Enter on Save output directory browser table."""
-        return self.files.save_browser_enter()
 
     def _goto(self, step: str) -> None:
         """Navigate to a step.
@@ -880,6 +889,13 @@ class CairnTuiApp(App):
             return bool(getattr(w, "has_class", lambda _c: False)("open"))
         except Exception:
             return False
+
+    def _get_route_color(self, feat) -> str:
+        """Helper method to get route color from feature."""
+        stroke = str(getattr(feat, "stroke", "") or "")
+        if stroke:
+            return ColorMapper.map_track_color(stroke)
+        return ColorMapper.DEFAULT_TRACK_COLOR
 
     def _focus_inline_fields_table(self) -> None:
         """Best-effort: ensure the inline fields DataTable has focus when overlay is open."""
@@ -1127,18 +1143,6 @@ class CairnTuiApp(App):
 
         # Save step removed; Preview is the final step.
 
-    def action_export(self) -> None:
-        if self.step == "Preview":
-            # Get prefix from input if available
-            try:
-                prefix_input = self.query_one("#export_prefix_input", Input)
-                self._output_prefix = prefix_input.value or ""
-            except Exception:
-                pass
-
-            # Export directly (no confirmation)
-            self._start_export()
-
     def _on_export_confirmed(self, confirmed: bool) -> None:
         # Legacy method - kept for compatibility but no longer used
         if confirmed:
@@ -1233,7 +1237,6 @@ class CairnTuiApp(App):
         self._waypoints_edited = False
         # Reinitialize the file browser directory on re-entry.
         self.files.set_file_browser_dir(None)
-        self.files.set_save_browser_dir(None)
         self._goto("Select_file")
 
     def action_show_help(self) -> None:
@@ -1479,6 +1482,11 @@ class CairnTuiApp(App):
             return
         self._show_inline_overlay(ctx=ctx, feats=feats)
 
+    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
+        """Handle FieldChosen message from InlineEditOverlay."""
+        field_key = getattr(message, "field_key", None)
+        self._on_inline_edit_action(field_key)
+
     def _on_inline_edit_action(self, field: object) -> None:
         """Handle field selection from inline overlay."""
         if field is None:
@@ -1587,12 +1595,6 @@ class CairnTuiApp(App):
         if ctx is not None:
             feats = self._selected_features(ctx)
             if feats:
-                def get_route_color(feat):
-                    stroke = str(getattr(feat, "stroke", "") or "")
-                    if stroke:
-                        return ColorMapper.map_track_color(stroke)
-                    return ColorMapper.DEFAULT_TRACK_COLOR
-
                 try:
                     overlay = self.query_one("#inline_edit_overlay", InlineEditOverlay)
                 except Exception:
@@ -1603,7 +1605,7 @@ class CairnTuiApp(App):
                     get_color_chip=self._color_chip,
                     get_waypoint_icon=self._resolved_waypoint_icon,
                     get_waypoint_color=self._resolved_waypoint_color,
-                    get_route_color=get_route_color,
+                    get_route_color=self._get_route_color,
                 )
 
     # Legacy: previously we used an action-list modal.
@@ -2309,26 +2311,56 @@ class CairnTuiApp(App):
                 if self._use_tree_browser():
                     # Tree browser for directory selection
                     try:
+                        # #region agent log
+                        try:
+                            import json
+                            import time
+                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2287","message":"Creating export_dir_tree","data":{"out_dir":str(out_dir),"out_dir_resolved":str(out_dir.resolve())},"timestamp":int(time.time()*1000)})+"\n")
+                        except Exception:
+                            pass
+                        # #endregion
                         tree = FilteredDirectoryTree(str(out_dir), id="export_dir_tree")
                         export_target.mount(tree)
-                    except Exception:
+                        # #region agent log
+                        try:
+                            import json
+                            import time
+                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2288","message":"Tree mounted successfully","data":{"tree_id":getattr(tree,"id",None),"tree_type":type(tree).__name__},"timestamp":int(time.time()*1000)})+"\n")
+                        except Exception:
+                            pass
+                        # #endregion
+                    except Exception as e:
+                        # #region agent log
+                        try:
+                            import json
+                            import time
+                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2289","message":"Tree creation failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
+                        except Exception:
+                            pass
+                        # #endregion
                         # Fallback to simple display
                         export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
                 else:
-                    # Table browser for directory selection
+                    # Show directory as static text (directory changes via overlay)
                     export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
-                    dir_table = DataTable(id="export_dir_table")
-                    dir_table.add_columns("Name", "Type")
-                    export_target.mount(dir_table)
-                    # Populate table with current directory contents
-                    self._refresh_export_dir_table()
 
-                # File prefix input
+                # File prefix input (read-only display)
                 export_target.mount(Static("File name prefix:", classes="accent"))
-                prefix_input = Input(value=self._output_prefix or "", placeholder="Prefix", id="export_prefix_input")
+                prefix_input = Input(value=self._output_prefix or "", placeholder="Prefix", id="export_prefix_input", disabled=True)
                 export_target.mount(prefix_input)
 
-                export_target.mount(Static("Enter: export  •  Ctrl+N: new folder (tree mode)", id="save_export_hint", classes="muted"))
+                # Action buttons - mount container first, then add children
+                button_container = Horizontal(id="export_buttons")
+                export_target.mount(button_container)
+                change_button = Button("[Change]", id="change_export_settings", variant="primary")
+                export_button = Button("[Export]", id="export_button", variant="success")
+                button_container.mount(change_button)
+                button_container.mount(export_button)
+
+                export_target.mount(Static("c: change settings  •  Enter: export", id="save_export_hint", classes="muted"))
                 export_target.mount(Static("", id="save_status", classes="muted"))
                 export_target.mount(Container(id="save_post"))
 
@@ -2372,6 +2404,7 @@ class CairnTuiApp(App):
                     if self._export_in_progress:
                         status.update("Exporting… (please wait)")
                     elif self._export_error:
+                        # Show validation errors or export errors
                         status.update(str(self._export_error))
                     elif self._export_manifest:
                         status.update("Export complete. Review outputs below (optional rename: press [bold]r[/]).")
@@ -2644,38 +2677,6 @@ class CairnTuiApp(App):
                 pass
             return
 
-        if event.data_table.id == "save_browser":
-            # Save browser should be fully operable via Enter even if DataTable consumes Key events.
-            if self.step != "Preview":
-                return
-            try:
-                event_row_key = None
-                try:
-                    event_row_key = str(getattr(getattr(event, "row_key", None), "value", getattr(event, "row_key", None)))
-                except Exception:
-                    event_row_key = None
-                self._dbg(
-                    event="save.row_selected",
-                    data={
-                        "event_row_key": event_row_key,
-                        "suppress_flag": bool(getattr(self, "_suppress_save_browser_select", False)),
-                        "cursor_row_key": self._table_cursor_row_key(event.data_table),
-                    },
-                )
-            except Exception:
-                pass
-            if getattr(self, "_suppress_save_browser_select", False):
-                return
-            try:
-                self._save_browser_enter()
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-            except Exception:
-                return
-            return
-
         if event.data_table.id == "folder_table":
             try:
                 folder_id = str(event.row_key.value)
@@ -2712,7 +2713,39 @@ class CairnTuiApp(App):
         # Check if it's a parseable file type
         if suf in _PARSEABLE_INPUT_EXTS and selected_path.exists() and selected_path.is_file():
             self._set_input_path(selected_path)
-            self._done_steps.add("Select_file")
+            # #region agent log
+            try:
+                import json
+                import time
+                done_steps_obj = self._done_steps
+                done_steps_type = type(done_steps_obj).__name__
+                done_steps_repr = repr(done_steps_obj)
+                has_add = hasattr(done_steps_obj, "add")
+                add_attr_type = type(getattr(done_steps_obj, "add", None)).__name__ if has_add else "no_add"
+                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2624","message":"before _done_steps.add","data":{"done_steps_type":done_steps_type,"done_steps_repr":done_steps_repr,"has_add":has_add,"add_attr_type":add_attr_type},"timestamp":int(time.time()*1000)})+"\n")
+            except Exception as e:
+                try:
+                    import json
+                    import time
+                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2624","message":"error getting _done_steps info","data":{"error":str(e)},"timestamp":int(time.time()*1000)})+"\n")
+                except Exception:
+                    pass
+            # #endregion
+            try:
+                self._done_steps.add("Select_file")
+            except Exception as e:
+                # #region agent log
+                try:
+                    import json
+                    import time
+                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2635","message":"error calling _done_steps.add","data":{"error_type":type(e).__name__,"error_msg":str(e)},"timestamp":int(time.time()*1000)})+"\n")
+                except Exception:
+                    pass
+                # #endregion
+                raise
             self._goto("List_data")
             return
 
@@ -2727,17 +2760,69 @@ class CairnTuiApp(App):
 
     def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
         """Handle directory selection from export tree browser."""
+        # #region agent log
+        try:
+            import json
+            import time
+            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H3","location":"app.py:2707","message":"on_directory_tree_directory_selected called","data":{"step":self.step,"event_path":str(getattr(event,"path",None))},"timestamp":int(time.time()*1000)})+"\n")
+        except Exception:
+            pass
+        # #endregion
         if self.step != "Preview":
             return
 
-        # Check if this is the export directory tree
+        # In Preview step, there's only one directory tree (export_dir_tree), so we can safely update output_dir
         try:
+            # Verify the export tree exists (defensive check)
             tree = self.query_one("#export_dir_tree")
-            if tree is event.directory_tree:
-                self.model.output_dir = Path(event.path)
-                # Update display
-                self._render_main()
-        except Exception:
+            # #region agent log
+            try:
+                import json
+                import time
+                old_output_dir = str(self.model.output_dir) if self.model.output_dir else None
+                event_path = str(getattr(event, "path", None))
+                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H3,H4","location":"app.py:2714","message":"Before updating output_dir","data":{"old_output_dir":old_output_dir,"event_path":event_path,"tree_id":getattr(tree,"id",None)},"timestamp":int(time.time()*1000)})+"\n")
+            except Exception:
+                pass
+            # #endregion
+
+            # Update output_dir with proper path resolution
+            new_path = Path(event.path)
+            try:
+                # Resolve the path to ensure it's absolute and normalized
+                self.model.output_dir = new_path.resolve()
+            except Exception:
+                # If resolve fails (e.g., path doesn't exist), use expanduser
+                try:
+                    self.model.output_dir = new_path.expanduser()
+                except Exception:
+                    self.model.output_dir = new_path
+
+            # #region agent log
+            try:
+                import json
+                import time
+                new_output_dir = str(self.model.output_dir) if self.model.output_dir else None
+                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H3,H4","location":"app.py:2720","message":"After updating output_dir","data":{"new_output_dir":new_output_dir},"timestamp":int(time.time()*1000)})+"\n")
+            except Exception:
+                pass
+            # #endregion
+
+            # Update display
+            self._render_main()
+        except Exception as e:
+            # #region agent log
+            try:
+                import json
+                import time
+                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2,H3","location":"app.py:2730","message":"Exception in on_directory_tree_directory_selected","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
+            except Exception:
+                pass
+            # #endregion
             pass
 
     def action_focus_search(self) -> None:
@@ -2783,8 +2868,16 @@ class CairnTuiApp(App):
                 tbl = self.query_one("#waypoints_table", DataTable)
                 tbl.focus()
             elif self.step == "Preview":
-                # Preview & Export is summary-driven; keep focus clear so Enter routes reliably to app handlers.
-                self.set_focus(None)  # type: ignore[arg-type]
+                # When tree mode is enabled, focus the tree so it can receive keyboard input
+                if self._use_tree_browser():
+                    try:
+                        self.query_one("#export_dir_tree", FilteredDirectoryTree).focus()
+                    except Exception:
+                        # Fallback: clear focus if tree not found
+                        self.set_focus(None)  # type: ignore[arg-type]
+                else:
+                    # Preview & Export is summary-driven; keep focus clear so Enter routes reliably to app handlers.
+                    self.set_focus(None)  # type: ignore[arg-type]
         except Exception as e:
             return
 
@@ -2855,16 +2948,9 @@ class CairnTuiApp(App):
             pass
 
         # In-screen overlays are Widgets (not Screens), so guard explicitly.
-        def _overlay_open(selector: str) -> bool:
-            try:
-                w = self.query_one(selector)
-                return bool(getattr(w, "has_class", lambda _c: False)("open"))
-            except Exception:
-                return False
-
         # Special handling: picker overlays focus a DataTable, which can consume Enter/Up/Down
         # such that the overlay container never sees the Key event. Handle those here.
-        if _overlay_open("#icon_picker_overlay"):
+        if self._overlay_open("#icon_picker_overlay"):
             key = str(getattr(event, "key", "") or "")
             focused_id = getattr(getattr(self, "focused", None), "id", None)
             try:
@@ -2917,7 +3003,7 @@ class CairnTuiApp(App):
                 return
             return
 
-        if _overlay_open("#color_picker_overlay"):
+        if self._overlay_open("#color_picker_overlay"):
             key = str(getattr(event, "key", "") or "")
             focused_id = getattr(getattr(self, "focused", None), "id", None)
             try:
@@ -2971,11 +3057,11 @@ class CairnTuiApp(App):
             return
 
         if (
-            _overlay_open("#inline_edit_overlay")
-            or _overlay_open("#save_target_overlay")
-            or _overlay_open("#rename_overlay")
-            or _overlay_open("#description_overlay")
-            or _overlay_open("#confirm_overlay")
+            self._overlay_open("#inline_edit_overlay")
+            or self._overlay_open("#save_target_overlay")
+            or self._overlay_open("#rename_overlay")
+            or self._overlay_open("#description_overlay")
+            or self._overlay_open("#confirm_overlay")
         ):
             return
 
@@ -3016,8 +3102,26 @@ class CairnTuiApp(App):
         # Only handle DataTable Enter for old implementation (DirectoryTree handles its own)
         if self.step == "Select_file" and not self._use_tree_browser():
             try:
-                focused_id = getattr(getattr(self, "focused", None), "id", None)
-                if focused_id == "file_browser" and (
+                focused = getattr(self, "focused", None)
+                focused_id = getattr(focused, "id", None) if focused else None
+                # Check if focused widget is the file_browser table or a child of it
+                is_file_browser = False
+                if focused_id == "file_browser":
+                    is_file_browser = True
+                else:
+                    # Check if focused widget is inside the file_browser table
+                    try:
+                        if focused:
+                            parent = getattr(focused, "parent", None)
+                            while parent:
+                                if getattr(parent, "id", None) == "file_browser":
+                                    is_file_browser = True
+                                    break
+                                parent = getattr(parent, "parent", None)
+                    except Exception:
+                        pass
+
+                if is_file_browser and (
                     event.key in ("enter", "return") or getattr(event, "character", None) == "\r"
                 ):
                     self._file_browser_enter()
@@ -3034,6 +3138,30 @@ class CairnTuiApp(App):
             key = str(getattr(event, "key", "") or "")
             ch = str(getattr(event, "character", "") or "")
 
+            # Get focused widget ID
+            try:
+                focused = getattr(self, "focused", None)
+                focused_id = getattr(focused, "id", None) if focused else None
+            except Exception:
+                focused_id = None
+
+            # When tree is focused, let it handle navigation keys (arrows, Enter for selection)
+            if self._use_tree_browser() and focused_id == "export_dir_tree":
+                # Let the tree handle its own navigation (arrow keys, Enter for directory selection)
+                # Only intercept specific keys we need to handle at app level
+                if key not in ("ctrl+n",) and ch.lower() != "c":
+                    # Let tree handle arrow keys, Enter, and other navigation
+                    return
+
+            # 'c' key: Open overlay to change export settings
+            if ch.lower() == "c" and focused_id not in ("export_prefix_input",):
+                self._open_save_target_overlay()
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
+
             # Ctrl+N: Create new folder (tree mode only)
             if key == "ctrl+n" and self._use_tree_browser():
                 self._create_export_folder()
@@ -3043,18 +3171,9 @@ class CairnTuiApp(App):
                     pass
                 return
 
-            # Handle Enter on directory table (DataTable mode)
-            focused_id = getattr(getattr(self, "focused", None), "id", None)
-            if focused_id == "export_dir_table" and (key in ("enter", "return") or ch == "\r"):
-                self._export_dir_table_enter()
-                try:
-                    event.stop()
-                except Exception:
-                    pass
-                return
-
-            # Handle Enter to export (when not focused on directory browser or prefix input)
-            if focused_id not in ("export_dir_table", "export_dir_tree", "export_prefix_input"):
+            # Handle Enter to export (when NOT focused on directory tree or prefix input)
+            # When tree is focused, Enter is handled by the tree for directory selection
+            if focused_id not in ("export_dir_tree", "export_prefix_input"):
                 if key in ("enter", "return") or ch == "\r":
                     # Get prefix from input if available
                     try:
@@ -3338,9 +3457,37 @@ class CairnTuiApp(App):
 
     def action_export(self) -> None:
         """Action method to trigger export (called from Enter key handler)."""
+        # #region agent log
+        import json
+        with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3283","message":"action_export called","data":{"step":self.step,"prefix_before":str(self._output_prefix or "")},"timestamp":int(__import__("time").time()*1000)})+"\n")
+        # #endregion
         with profile_operation("action_export"):
             if self._export_in_progress:
                 return
+            # Capture prefix from input field before exporting
+            # This ensures the prefix is captured even when action_export() is called
+            # directly (e.g., from button clicks or RowSelected events) rather than
+            # through the on_key handler.
+            if self.step == "Preview":
+                try:
+                    prefix_input = self.query_one("#export_prefix_input", Input)
+                    input_value = prefix_input.value or ""
+                    # #region agent log
+                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3298","message":"prefix input queried","data":{"input_value":str(input_value),"stored_prefix":str(self._output_prefix or "")},"timestamp":int(__import__("time").time()*1000)})+"\n")
+                    # #endregion
+                    self._output_prefix = input_value
+                    # #region agent log
+                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3305","message":"prefix captured","data":{"prefix_after":str(self._output_prefix or "")},"timestamp":int(__import__("time").time()*1000)})+"\n")
+                    # #endregion
+                except Exception as e:
+                    # #region agent log
+                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3308","message":"prefix capture failed","data":{"error":str(e)},"timestamp":int(__import__("time").time()*1000)})+"\n")
+                    # #endregion
+                    pass
             self._start_export()
 
     def _start_export(self) -> None:
@@ -3384,6 +3531,7 @@ class CairnTuiApp(App):
                 config=self._config,
                 split_gpx=True,
                 max_gpx_bytes=4 * 1024 * 1024,
+                prefix=self._output_prefix or None,
             )
             rows = [(a, b, int(c), int(d)) for (a, b, c, d) in manifest]
             self.call_from_thread(self._on_export_done, rows, None)
@@ -3404,17 +3552,30 @@ class CairnTuiApp(App):
         try:
             if err is None and manifest and not self._post_save_prompt_shown:
                 self._post_save_prompt_shown = True
-                self.push_screen(
-                    ConfirmModal(
-                        "Export complete.\n\nMigrate another file?",
+                try:
+                    overlay = self.query_one("#confirm_overlay", ConfirmOverlay)
+                    overlay.open(
                         title="Export complete",
-                    ),
-                    self._on_post_save_choice,
-                )
+                        message="Migrate another file?",
+                    )
+                except Exception:
+                    pass
         except Exception:
             pass
 
+    def on_confirm_overlay_result(self, message: ConfirmOverlay.Result) -> None:  # type: ignore[name-defined]
+        """Handle Result message from ConfirmOverlay."""
+        confirmed = getattr(message, "confirmed", False)
+        if confirmed:
+            self.action_new_file()
+        else:
+            try:
+                self.exit()
+            except Exception:
+                pass
+
     def _on_post_save_choice(self, confirmed: bool) -> None:
+        """Legacy callback for backward compatibility (not used with overlay)."""
         if confirmed:
             self.action_new_file()
         else:

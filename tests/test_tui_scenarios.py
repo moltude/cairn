@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from tests.tui_harness import ArtifactRecorder, copy_fixture_to_tmp, get_bitterroots_complete_fixture
+from tests.tui_harness import ArtifactRecorder, copy_fixture_to_tmp, get_bitterroots_complete_fixture, select_folder_for_test
 
 
 def _pick_first_folder_id(app) -> str:
@@ -11,6 +11,13 @@ def _pick_first_folder_id(app) -> str:
     folders = getattr(app.model.parsed, "folders", {}) or {}
     assert folders, "Expected at least one folder in Bitterroots Complete fixture"
     return next(iter(folders.keys()))
+
+
+def _select_first_folder(app) -> str:
+    """Pick and select the first folder (handles multi-folder datasets)."""
+    folder_id = _pick_first_folder_id(app)
+    select_folder_for_test(app, folder_id)
+    return folder_id
 
 
 def test_tui_bitterroots_complete_fixture_is_present_and_large() -> None:
@@ -50,13 +57,7 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
             rec.snapshot(app, label="folder")
 
             # Select a folder deterministically (avoid relying on DataTable cursor inference).
-            fid = _pick_first_folder_id(app)
-            app.model.selected_folder_id = fid
-            # In multi-folder mode, Folder step advances only when at least one folder is selected.
-            try:
-                app._selected_folders.add(fid)
-            except Exception:
-                pass
+            _select_first_folder(app)
             await pilot.press("enter")  # -> Routes
             await pilot.pause()
             rec.snapshot(app, label="routes")
@@ -82,9 +83,7 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
 
             # Real export into tmp_path.
             app.model.output_dir = out_dir
-            await pilot.press("enter")  # open Confirm Export modal
-            await pilot.pause()
-            await pilot.press("enter")  # confirm export
+            await pilot.press("enter")  # Trigger export
             await pilot.pause()
             rec.snapshot(app, label="export_started")
 
@@ -132,12 +131,7 @@ def test_tui_export_error_when_output_path_is_a_file(tmp_path: Path) -> None:
             await pilot.pause()
             await pilot.press("enter")  # -> Folder
             await pilot.pause()
-            fid = _pick_first_folder_id(app)
-            app.model.selected_folder_id = fid
-            try:
-                app._selected_folders.add(fid)
-            except Exception:
-                pass
+            _select_first_folder(app)
             await pilot.press("enter")  # -> Routes
             await pilot.pause()
             await pilot.press("enter")  # -> Waypoints
