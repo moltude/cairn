@@ -137,7 +137,6 @@ class CairnTuiApp(App):
         """Compatibility property: delegate to StateManager (returns mutable proxy for backward compatibility)."""
         # #region agent log
         try:
-            import json
             import time
             has_state = hasattr(self, "state")
             state_is_none = getattr(self, "state", None) is None if has_state else "no_state_attr"
@@ -151,7 +150,6 @@ class CairnTuiApp(App):
             result = set()
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:142","message":"_done_steps returning empty set","data":{"result_type":type(result).__name__},"timestamp":int(time.time()*1000)})+"\n")
@@ -162,7 +160,6 @@ class CairnTuiApp(App):
         result = self.state.done_steps_mutable
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:150","message":"_done_steps returning state.done_steps_mutable","data":{"result_type":type(result).__name__,"has_add":hasattr(result,"add")},"timestamp":int(time.time()*1000)})+"\n")
@@ -795,7 +792,6 @@ class CairnTuiApp(App):
                 if self._use_tree_browser():
                     # #region agent log
                     try:
-                        import json
                         import time
                         with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                             f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1","location":"app.py:788","message":"_reset_focus_for_step Preview: tree mode enabled","data":{"step":self.step,"use_tree_browser":self._use_tree_browser()},"timestamp":int(time.time()*1000)})+"\n")
@@ -806,7 +802,6 @@ class CairnTuiApp(App):
                         tree = self.query_one("#export_dir_tree", FilteredDirectoryTree)
                         # #region agent log
                         try:
-                            import json
                             import time
                             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                                 f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1","location":"app.py:791","message":"Tree found, calling focus()","data":{"tree_id":getattr(tree,"id",None),"tree_type":type(tree).__name__},"timestamp":int(time.time()*1000)})+"\n")
@@ -817,7 +812,6 @@ class CairnTuiApp(App):
                     except Exception as e:
                         # #region agent log
                         try:
-                            import json
                             import time
                             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                                 f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1,H2","location":"app.py:793","message":"Tree not found or focus failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
@@ -1444,7 +1438,6 @@ class CairnTuiApp(App):
         """Toggle select-all in the current Routes/Waypoints table (respects filter)."""
         # #region agent log
         try:
-            import json
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 json.dump({
                     "id": f"log_{int(time.time() * 1000)}",
@@ -1484,7 +1477,6 @@ class CairnTuiApp(App):
                 visible.add(self._feature_row_key(trk, str(i)))
             # #region agent log
             try:
-                import json
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     json.dump({
                         "id": f"log_{int(time.time() * 1000)}",
@@ -1532,7 +1524,6 @@ class CairnTuiApp(App):
                 visible.add(self._feature_row_key(wp, str(i)))
             # #region agent log
             try:
-                import json
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     json.dump({
                         "id": f"log_{int(time.time() * 1000)}",
@@ -1701,7 +1692,6 @@ class CairnTuiApp(App):
     def _selected_features(self, ctx: EditContext) -> list:
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_selected_features","message":"_selected_features_called","data":{"ctx_kind":getattr(ctx,"kind",None),"ctx_selected_keys":list(getattr(ctx,"selected_keys",[]))},"timestamp":int(time.time()*1000)})+"\n")
@@ -1726,7 +1716,6 @@ class CairnTuiApp(App):
                         out.append(sorted_tracks[idx])
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_selected_features","message":"_selected_features_route_result","data":{"selected_count":len(out),"total_tracks":len(tracks),"by_id_keys":list(by_id.keys())[:5]},"timestamp":int(time.time()*1000)})+"\n")
@@ -1749,7 +1738,6 @@ class CairnTuiApp(App):
                         out.append(sorted_waypoints[idx])
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_selected_features","message":"_selected_features_waypoint_result","data":{"selected_count":len(out),"total_waypoints":len(waypoints),"by_id_keys":list(by_id.keys())[:5]},"timestamp":int(time.time()*1000)})+"\n")
@@ -1916,7 +1904,6 @@ class CairnTuiApp(App):
         """
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"_apply_edit_payload_called","data":{"payload_type":type(payload).__name__,"is_dict":isinstance(payload,dict)},"timestamp":int(time.time()*1000)})+"\n")
@@ -1926,7 +1913,6 @@ class CairnTuiApp(App):
         if not isinstance(payload, dict):
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"payload_not_dict","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -1943,7 +1929,6 @@ class CairnTuiApp(App):
             if ctx2 is None:
                 # #region agent log
                 try:
-                    import json
                     import time
                     with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                         f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_apply_edit_payload","message":"ctx_is_none_after_fallback","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -1957,7 +1942,6 @@ class CairnTuiApp(App):
         if not feats:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_apply_edit_payload","message":"no_features_selected","data":{"ctx_kind":getattr(ctx,"kind",None),"ctx_selected_keys":list(getattr(ctx,"selected_keys",[]))},"timestamp":int(time.time()*1000)})+"\n")
@@ -1973,7 +1957,6 @@ class CairnTuiApp(App):
             if not new_title:
                 # #region agent log
                 try:
-                    import json
                     import time
                     with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                         f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"rename_new_title_empty","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -1985,7 +1968,6 @@ class CairnTuiApp(App):
             if len(ctx.selected_keys) > 1:
                 # #region agent log
                 try:
-                    import json
                     import time
                     with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                         f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_edit_payload","message":"rename_multi_confirming","data":{"selected_count":len(ctx.selected_keys),"new_title":new_title},"timestamp":int(time.time()*1000)})+"\n")
@@ -2002,7 +1984,6 @@ class CairnTuiApp(App):
                 return
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"rename_single_applying","data":{"feats_count":len(feats),"new_title":new_title},"timestamp":int(time.time()*1000)})+"\n")
@@ -2103,7 +2084,6 @@ class CairnTuiApp(App):
         """Apply a multi-rename after the confirmation overlay returns."""
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_rename_confirmed","message":"_apply_rename_confirmed_called","data":{"confirmed":confirmed,"feats_count":len(feats) if feats else 0,"new_title":new_title},"timestamp":int(time.time()*1000)})+"\n")
@@ -2113,7 +2093,6 @@ class CairnTuiApp(App):
         if not confirmed:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_rename_confirmed","message":"rename_not_confirmed","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -2144,7 +2123,6 @@ class CairnTuiApp(App):
                 continue
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_rename_confirmed","message":"rename_applied","data":{"renamed_count":renamed_count,"feats_count":len(feats) if feats else 0},"timestamp":int(time.time()*1000)})+"\n")
@@ -2702,7 +2680,6 @@ class CairnTuiApp(App):
                     try:
                         # #region agent log
                         try:
-                            import json
                             import time
                             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                                 f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2287","message":"Creating export_dir_tree","data":{"out_dir":str(out_dir),"out_dir_resolved":str(out_dir.resolve())},"timestamp":int(time.time()*1000)})+"\n")
@@ -2713,7 +2690,6 @@ class CairnTuiApp(App):
                         export_target.mount(tree)
                         # #region agent log
                         try:
-                            import json
                             import time
                             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                                 f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2288","message":"Tree mounted successfully","data":{"tree_id":getattr(tree,"id",None),"tree_type":type(tree).__name__},"timestamp":int(time.time()*1000)})+"\n")
@@ -2723,7 +2699,6 @@ class CairnTuiApp(App):
                     except Exception as e:
                         # #region agent log
                         try:
-                            import json
                             import time
                             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                                 f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2289","message":"Tree creation failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
@@ -3104,7 +3079,6 @@ class CairnTuiApp(App):
             self._set_input_path(selected_path)
             # #region agent log
             try:
-                import json
                 import time
                 done_steps_obj = self._done_steps
                 done_steps_type = type(done_steps_obj).__name__
@@ -3115,7 +3089,6 @@ class CairnTuiApp(App):
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2624","message":"before _done_steps.add","data":{"done_steps_type":done_steps_type,"done_steps_repr":done_steps_repr,"has_add":has_add,"add_attr_type":add_attr_type},"timestamp":int(time.time()*1000)})+"\n")
             except Exception as e:
                 try:
-                    import json
                     import time
                     with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                         f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2624","message":"error getting _done_steps info","data":{"error":str(e)},"timestamp":int(time.time()*1000)})+"\n")
@@ -3127,7 +3100,6 @@ class CairnTuiApp(App):
             except Exception as e:
                 # #region agent log
                 try:
-                    import json
                     import time
                     with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                         f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2635","message":"error calling _done_steps.add","data":{"error_type":type(e).__name__,"error_msg":str(e)},"timestamp":int(time.time()*1000)})+"\n")
@@ -3151,7 +3123,6 @@ class CairnTuiApp(App):
         """Handle directory selection from export tree browser."""
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H3","location":"app.py:2707","message":"on_directory_tree_directory_selected called","data":{"step":self.step,"event_path":str(getattr(event,"path",None))},"timestamp":int(time.time()*1000)})+"\n")
@@ -3167,7 +3138,6 @@ class CairnTuiApp(App):
             tree = self.query_one("#export_dir_tree")
             # #region agent log
             try:
-                import json
                 import time
                 old_output_dir = str(self.model.output_dir) if self.model.output_dir else None
                 event_path = str(getattr(event, "path", None))
@@ -3191,7 +3161,6 @@ class CairnTuiApp(App):
 
             # #region agent log
             try:
-                import json
                 import time
                 new_output_dir = str(self.model.output_dir) if self.model.output_dir else None
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
@@ -3205,7 +3174,6 @@ class CairnTuiApp(App):
         except Exception as e:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2,H3","location":"app.py:2730","message":"Exception in on_directory_tree_directory_selected","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
@@ -3727,7 +3695,6 @@ class CairnTuiApp(App):
     def action_export(self) -> None:
         """Action method to trigger export (called from Enter key handler)."""
         # #region agent log
-        import json
         with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
             f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3283","message":"action_export called","data":{"step":self.step,"prefix_before":str(self._output_prefix or "")},"timestamp":int(__import__("time").time()*1000)})+"\n")
         # #endregion
@@ -3829,7 +3796,6 @@ class CairnTuiApp(App):
                 used_dir = getattr(self, "_export_out_dir_used", None)
                 desired_dir = getattr(self.model, "output_dir", None)
                 if used_dir and desired_dir and Path(desired_dir) != Path(used_dir):
-                    import json
                     import time
                     import shutil
 
@@ -3893,7 +3859,6 @@ class CairnTuiApp(App):
         """Open a confirmation overlay and store the callback for when the result comes back."""
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_confirm","message":"_confirm_called","data":{"title":title,"has_callback":callback is not None},"timestamp":int(time.time()*1000)})+"\n")
@@ -3908,7 +3873,6 @@ class CairnTuiApp(App):
         except Exception:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_confirm","message":"overlay_not_found","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -3927,7 +3891,6 @@ class CairnTuiApp(App):
         confirmed = getattr(message, "confirmed", False)
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:on_confirm_overlay_result","message":"confirm_overlay_result_received","data":{"confirmed":confirmed,"has_callback":hasattr(self,"_confirm_callback") and self._confirm_callback is not None},"timestamp":int(time.time()*1000)})+"\n")
@@ -3941,7 +3904,6 @@ class CairnTuiApp(App):
             self._confirm_callback = None  # Clear it
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:on_confirm_overlay_result","message":"calling_confirm_callback","data":{"confirmed":confirmed},"timestamp":int(time.time()*1000)})+"\n")
@@ -3953,7 +3915,6 @@ class CairnTuiApp(App):
             except Exception as e:
                 # #region agent log
                 try:
-                    import json
                     import time
                     with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                         f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:on_confirm_overlay_result","message":"callback_error","data":{"error":str(e)},"timestamp":int(time.time()*1000)})+"\n")
@@ -3976,7 +3937,6 @@ class CairnTuiApp(App):
         """Handle Submitted message from RenameOverlay."""
         # #region agent log
         try:
-            import json
             import time
             ctx = getattr(message, "ctx", None)
             value = getattr(message, "value", None)
@@ -3990,7 +3950,6 @@ class CairnTuiApp(App):
         if ctx is None:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_rename_overlay_submitted","message":"ctx_is_none","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -4001,7 +3960,6 @@ class CairnTuiApp(App):
         if value is None:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_rename_overlay_submitted","message":"value_is_none_cancelled","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -4021,7 +3979,6 @@ class CairnTuiApp(App):
         payload = {"action": "rename", "value": value, "ctx": ctx}
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_rename_overlay_submitted","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action"),"payload_value":str(payload.get("value"))},"timestamp":int(time.time()*1000)})+"\n")
@@ -4074,7 +4031,6 @@ class CairnTuiApp(App):
         """Handle ColorPicked message from ColorPickerOverlay."""
         # #region agent log
         try:
-            import json
             import time
             rgba = getattr(message, "rgba", None)
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
@@ -4087,7 +4043,6 @@ class CairnTuiApp(App):
         if ctx is None:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:on_color_picker_overlay_color_picked","message":"ctx_is_none_no_selection","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -4098,7 +4053,6 @@ class CairnTuiApp(App):
         if rgba is None:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_color_picker_overlay_color_picked","message":"rgba_is_none_cancelled","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -4118,7 +4072,6 @@ class CairnTuiApp(App):
         payload = {"action": "color", "value": rgba, "ctx": ctx}
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_color_picker_overlay_color_picked","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action"),"payload_value":str(payload.get("value"))},"timestamp":int(time.time()*1000)})+"\n")
@@ -4140,7 +4093,6 @@ class CairnTuiApp(App):
         """Handle IconPicked message from IconPickerOverlay."""
         # #region agent log
         try:
-            import json
             import time
             icon = getattr(message, "icon", None)
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
@@ -4153,7 +4105,6 @@ class CairnTuiApp(App):
         if ctx is None:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:on_icon_picker_overlay_icon_picked","message":"ctx_is_none_no_selection","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -4164,7 +4115,6 @@ class CairnTuiApp(App):
         if icon is None:
             # #region agent log
             try:
-                import json
                 import time
                 with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_icon_picker_overlay_icon_picked","message":"icon_is_none_cancelled","data":{},"timestamp":int(time.time()*1000)})+"\n")
@@ -4184,7 +4134,6 @@ class CairnTuiApp(App):
         payload = {"action": "icon", "value": icon, "ctx": ctx}
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_icon_picker_overlay_icon_picked","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action"),"payload_value":str(payload.get("value"))},"timestamp":int(time.time()*1000)})+"\n")
@@ -4206,7 +4155,6 @@ class CairnTuiApp(App):
         """Handle Submitted message from DescriptionOverlay."""
         # #region agent log
         try:
-            import json
             import time
             ctx = getattr(message, "ctx", None)
             value = getattr(message, "value", None)
@@ -4233,7 +4181,6 @@ class CairnTuiApp(App):
         payload = {"action": "description", "value": value, "ctx": ctx}
         # #region agent log
         try:
-            import json
             import time
             with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
                 f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_description_overlay_submitted","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action")},"timestamp":int(time.time()*1000)})+"\n")
