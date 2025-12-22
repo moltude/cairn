@@ -21,7 +21,7 @@ from textual.widgets import DataTable, Input
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.config import get_all_onx_icons, normalize_onx_icon_name
 
-from tests.tui_harness import copy_fixture_to_tmp
+from tests.tui_harness import copy_fixture_to_tmp, select_folder_for_test
 
 
 def _pick_folder_id_by_index(app, index: int = 0) -> str:
@@ -31,6 +31,13 @@ def _pick_folder_id_by_index(app, index: int = 0) -> str:
     folder_ids = list(folders.keys())
     assert len(folder_ids) > index, f"Need at least {index + 1} folders"
     return folder_ids[index]
+
+
+def _select_folder_by_index(app, index: int = 0) -> str:
+    """Pick and select a folder by index (handles multi-folder datasets)."""
+    folder_id = _pick_folder_id_by_index(app, index)
+    select_folder_for_test(app, folder_id)
+    return folder_id
 
 
 def _pick_folder_id_with_min_counts(
@@ -47,6 +54,17 @@ def _pick_folder_id_with_min_counts(
     assert (
         False
     ), f"No folder found with >= {min_waypoints} waypoints and >= {min_tracks} tracks"
+
+
+def _select_folder_with_min_counts(
+    app, *, min_waypoints: int = 0, min_tracks: int = 0
+) -> str:
+    """Pick and select a folder with min counts (handles multi-folder datasets)."""
+    folder_id = _pick_folder_id_with_min_counts(
+        app, min_waypoints=min_waypoints, min_tracks=min_tracks
+    )
+    select_folder_for_test(app, folder_id)
+    return folder_id
 
 
 def _get_folder_name(app, folder_id: str) -> str:
@@ -157,7 +175,7 @@ class TestSingleItemEditing:
                 # Navigate to waypoints
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
+                _select_folder_by_index(app, 0)
                 await pilot.press("enter")  # -> Folder
                 await pilot.pause()
                 await pilot.press("enter")  # -> Routes
@@ -196,13 +214,13 @@ class TestSingleItemEditing:
                 assert any(getattr(w, "title", "") == NEW_NAME for w in waypoints)
 
                 # Continue to Preview (Preview & Export) and export
-                await pilot.press("enter")  # -> Preview
+                # Use _goto to avoid DuplicateIds issues with re-rendering
+                app._goto("Preview")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("enter")  # open Confirm Export modal
-                await pilot.pause()
-                await pilot.press("enter")  # Confirm export
+                # Trigger export directly (no confirm modal anymore)
+                app.action_export()
                 await pilot.pause()
 
                 # Wait for export
@@ -211,8 +229,8 @@ class TestSingleItemEditing:
                         break
                     await asyncio.sleep(0.05)
 
-                assert app._export_error is None
-                assert out_dir.exists()
+                assert app._export_error is None, f"Export error: {app._export_error}"
+                assert out_dir.exists(), f"Output directory {out_dir} should exist"
 
                 # Validate GPX output
                 gpx_files = list(out_dir.glob("*.gpx"))
@@ -245,7 +263,7 @@ class TestSingleItemEditing:
                 # Navigate to waypoints
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
+                _select_folder_by_index(app, 0)
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -284,14 +302,12 @@ class TestSingleItemEditing:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                # Export
-                await pilot.press("enter")  # -> Preview
+                # Export - use _goto to avoid DuplicateIds issues
+                app._goto("Preview")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")
+                app.action_export()
                 await pilot.pause()
 
                 for _ in range(300):
@@ -299,7 +315,7 @@ class TestSingleItemEditing:
                         break
                     await asyncio.sleep(0.05)
 
-                assert app._export_error is None
+                assert app._export_error is None, f"Export error: {app._export_error}"
 
                 # Validate GPX
                 gpx_files = list(out_dir.glob("*.gpx"))
@@ -334,7 +350,7 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
+                _select_folder_by_index(app, 0)
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -372,14 +388,12 @@ class TestMultiSelectEditing:
                 renamed = [w for w in waypoints_after if getattr(w, "title", "") == BULK_NAME]
                 assert len(renamed) == num_to_select, f"Expected {num_to_select} renamed, got {len(renamed)}"
 
-                # Export
-                await pilot.press("enter")  # Preview
+                # Export - use _goto to avoid DuplicateIds issues
+                app._goto("Preview")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")
+                app.action_export()
                 await pilot.pause()
 
                 for _ in range(300):
@@ -387,7 +401,7 @@ class TestMultiSelectEditing:
                         break
                     await asyncio.sleep(0.05)
 
-                assert app._export_error is None
+                assert app._export_error is None, f"Export error: {app._export_error}"
 
                 # Validate
                 gpx_files = list(out_dir.glob("*.gpx"))
@@ -415,9 +429,7 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_with_min_counts(
-                    app, min_tracks=2
-                )
+                _select_folder_with_min_counts(app, min_tracks=2)
                 app._goto("Routes")
                 await pilot.pause()
 
@@ -482,9 +494,7 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_with_min_counts(
-                    app, min_waypoints=3
-                )
+                _select_folder_with_min_counts(app, min_waypoints=3)
                 app._goto("Waypoints")
                 await pilot.pause()
 
@@ -570,7 +580,7 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_with_min_counts(app, min_waypoints=3)
+                _select_folder_with_min_counts(app, min_waypoints=3)
                 app._goto("Waypoints")
                 await pilot.pause()
 
@@ -626,9 +636,7 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_with_min_counts(
-                    app, min_tracks=2
-                )
+                _select_folder_with_min_counts(app, min_tracks=2)
                 app._goto("Routes")
                 await pilot.pause()
 
@@ -712,7 +720,7 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
+                _select_folder_by_index(app, 0)
                 # Navigate deterministically; step skipping can vary by folder contents.
                 app._goto("Waypoints")
                 await pilot.pause()
@@ -811,7 +819,7 @@ class TestSelectAllEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
+                _select_folder_by_index(app, 0)
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -884,7 +892,7 @@ class TestDifferentFolders:
                     return
 
                 # Select second folder
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 1)
+                _select_folder_by_index(app, 1)
                 folder_name = _get_folder_name(app, app.model.selected_folder_id)
 
                 await pilot.press("enter")
@@ -983,7 +991,7 @@ class TestNavigation:
                 # Forward again
                 await pilot.press("enter")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
+                _select_folder_by_index(app, 0)
 
                 # Forward to Routes
                 await pilot.press("enter")
@@ -1010,7 +1018,8 @@ class TestNavigation:
                 await pilot.pause()
                 await pilot.press("enter")  # -> Waypoints
                 await pilot.pause()
-                await pilot.press("enter")  # -> Preview
+                # Use _goto to avoid DuplicateIds issues with re-rendering
+                app._goto("Preview")
                 await pilot.pause()
                 assert app.step == "Preview"
 
@@ -1035,7 +1044,7 @@ class TestNavigation:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                app.model.selected_folder_id = _pick_folder_id_by_index(app, 0)
+                _select_folder_by_index(app, 0)
                 await pilot.press("enter")
                 await pilot.pause()
                 await pilot.press("enter")

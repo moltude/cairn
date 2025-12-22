@@ -5,7 +5,7 @@ from pathlib import Path
 
 from textual.widgets import Input
 
-from tests.tui_harness import get_tui_two_waypoints_fixture
+from tests.tui_harness import get_tui_two_waypoints_fixture, select_folder_for_test
 
 
 def _pick_first_folder_id(app) -> str:
@@ -13,6 +13,13 @@ def _pick_first_folder_id(app) -> str:
     folders = getattr(app.model.parsed, "folders", {}) or {}
     assert folders, "Expected at least one folder in parsed data"
     return next(iter(folders.keys()))
+
+
+def _select_first_folder(app) -> str:
+    """Pick and select the first folder (handles multi-folder datasets)."""
+    folder_id = _pick_first_folder_id(app)
+    select_folder_for_test(app, folder_id)
+    return folder_id
 
 
 async def _wait_for_open_class(app, selector: str, *, max_steps: int = 60) -> None:
@@ -59,7 +66,7 @@ def test_multi_waypoint_rename_cancel_restores_inline_field_focus(tmp_path: Path
             # Parse so folders/waypoints are available.
             app._goto("List_data")
             await pilot.pause()
-            app.model.selected_folder_id = _pick_first_folder_id(app)
+            _select_first_folder(app)
 
             app._goto("Waypoints")
             await pilot.pause()
@@ -145,7 +152,7 @@ def test_escape_does_not_navigate_steps_when_inline_overlay_visible_and_unfocuse
         async with app.run_test() as pilot:
             app._goto("List_data")
             await pilot.pause()
-            app.model.selected_folder_id = _pick_first_folder_id(app)
+            _select_first_folder(app)
 
             app._goto("Waypoints")
             await pilot.pause()

@@ -12,7 +12,17 @@ from pathlib import Path
 
 from cairn.tui.app import CairnTuiApp
 from textual.widgets import DataTable
-from tests.tui_harness import copy_fixture_to_tmp
+from tests.tui_harness import copy_fixture_to_tmp, select_folder_for_test
+
+
+def _select_first_folder(app) -> str:
+    """Pick and select the first folder (handles multi-folder datasets)."""
+    assert app.model.parsed is not None, "Expected parsed data"
+    folders = getattr(app.model.parsed, "folders", {}) or {}
+    assert folders, "Expected at least one folder"
+    folder_id = next(iter(folders.keys()))
+    select_folder_for_test(app, folder_id)
+    return folder_id
 
 
 def _rendered_svg(app) -> str:
@@ -36,12 +46,7 @@ class TestInlineEditOverlayRendering:
                 app._goto("List_data")
                 await pilot.pause()
 
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    folder_ids = list(folders.keys())
-                    if folder_ids:
-                        app.model.selected_folder_id = folder_ids[0]
-
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
                 assert app.step == "Waypoints"
@@ -119,12 +124,7 @@ class TestInlineEditOverlayRendering:
                 app._goto("List_data")
                 await pilot.pause()
 
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    folder_ids = list(folders.keys())
-                    if folder_ids:
-                        app.model.selected_folder_id = folder_ids[0]
-
+                _select_first_folder(app)
                 app._goto("Routes")
                 await pilot.pause()
                 assert app.step == "Routes"
@@ -163,10 +163,7 @@ class TestInlineEditOverlayRendering:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    fid = list(folders.keys())[0]
-                    app.model.selected_folder_id = fid
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
 
@@ -225,10 +222,7 @@ class TestInlineEditOverlayRendering:
                 # Navigate to waypoints
                 app._goto("List_data")
                 await pilot.pause()
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    fid = list(folders.keys())[0]
-                    app.model.selected_folder_id = fid
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
 
@@ -291,10 +285,7 @@ class TestInlineEditOverlayRendering:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    fid = list(folders.keys())[0]
-                    app.model.selected_folder_id = fid
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
 
@@ -336,10 +327,7 @@ class TestInlineEditOverlayRendering:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                if app.model.parsed:
-                    folders = getattr(app.model.parsed, "folders", {}) or {}
-                    fid = list(folders.keys())[0]
-                    app.model.selected_folder_id = fid
+                _select_first_folder(app)
                 app._goto("Waypoints")
                 await pilot.pause()
 

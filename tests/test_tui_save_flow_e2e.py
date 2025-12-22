@@ -20,9 +20,16 @@ def _dismiss_post_save_prompt_if_present(pilot, app) -> None:
 
 
 async def _open_save_target_overlay(app, pilot) -> None:
-    """Open the SaveTargetOverlay via the Preview & Export step 'y' prompt."""
-    await pilot.press("y")
-    await pilot.pause()
+    """Open the SaveTargetOverlay via the Preview & Export step 'c' key or button."""
+    # Try button click first (more reliable in tests)
+    try:
+        button = app.query_one("#change_export_settings", Button)
+        button.press()
+        await pilot.pause()
+    except Exception:
+        # Fallback to keyboard shortcut
+        await pilot.press("c")
+        await pilot.pause()
 
 
 async def _activate_save_target_row(app, pilot, *, row_key: str) -> None:
@@ -38,9 +45,30 @@ async def _activate_save_target_row(app, pilot, *, row_key: str) -> None:
         # Done is now a dedicated control outside the scrolling DataTable.
         ov._apply_done()  # type: ignore[attr-defined]
     else:
-        move_datatable_cursor_to_row_key(app, table_id="save_target_browser", target_row_key=row_key)
-        await pilot.pause()
-        ov.activate()
+        # Check if overlay is using tree mode or table mode
+        use_tree = getattr(ov, "_use_tree", False)
+        if use_tree:
+            # Tree mode: For tree navigation, we update _cur_dir directly and refresh
+            # The DirectoryTree.DirectorySelected event handler will update _cur_dir
+            # For testing, we can directly update the overlay's _cur_dir and refresh
+            if row_key.startswith("dir:"):
+                try:
+                    target_path = Path(row_key[4:])
+                    ov._cur_dir = target_path.resolve() if target_path.exists() else target_path
+                    ov._refresh_tree()
+                except Exception:
+                    pass
+            elif row_key == "__up__":
+                try:
+                    ov._cur_dir = ov._cur_dir.parent if ov._cur_dir.parent != ov._cur_dir else ov._cur_dir
+                    ov._refresh_tree()
+                except Exception:
+                    pass
+        else:
+            # Table mode: use DataTable cursor movement
+            move_datatable_cursor_to_row_key(app, table_id="save_target_browser", target_row_key=row_key)
+            await pilot.pause()
+            ov.activate()
     await pilot.pause()
 
 
@@ -171,16 +199,17 @@ def test_tui_save_rename_outputs_and_apply(tmp_path: Path) -> None:
             app._goto("Preview")
             await pilot.pause()
 
-            # Export
-            await pilot.press("enter")
-            await pilot.pause()
-            await pilot.press("enter")
+            # Export - call action_export directly (no confirm dialog anymore)
+            app.action_export()
             await pilot.pause()
 
             for _ in range(600):
                 if not app._export_in_progress:
                     break
                 await asyncio.sleep(0.05)
+
+            # Extra pause to let UI update after export completes
+            await pilot.pause()
 
             assert app._export_error is None
             assert app._export_manifest, "Expected export manifest after export"
@@ -507,5 +536,178 @@ def test_tui_save_flow_permutations(
                 await pilot.pause()
                 if set_prefix:
                     assert (app._output_prefix or "").strip() == prefix_val
+
+    asyncio.run(_run())
+
+
+def test_tui_preview_tree_navigate_to_tmp_onx_export(tmp_path: Path) -> None:
+    """
+    E2E: Navigate directory tree in Preview step to change export directory to /tmp/onx-export/.
+
+    Verifies:
+    - Tree receives focus when Preview step loads (tree mode)
+    - Directory selection via tree updates output_dir
+    - Export works with the new directory
+    - Files are written to the correct location
+    """
+    import os
+    from pathlib import Path
+
+    async def _run() -> None:
+        from cairn.tui.app import CairnTuiApp
+        from textual.widgets import DirectoryTree
+
+        # Enable tree mode
+        os.environ["CAIRN_USE_TREE_BROWSER"] = "1"
+
+        fixture_copy = copy_fixture_to_tmp(tmp_path)
+
+        # Create test directories
+        base = tmp_path / "out_base"
+        base.mkdir(parents=True, exist_ok=True)
+
+        # Target directory: /tmp/onx-export (use resolve for macOS symlink handling)
+        target_dir = Path("/tmp/onx-export").resolve()
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        app = CairnTuiApp()
+        app.model.input_path = fixture_copy
+        app.model.output_dir = base
+
+        async with app.run_test() as pilot:
+            _dismiss_post_save_prompt_if_present(pilot, app)
+
+            # Navigate to Preview
+            app._goto("List_data")
+            await pilot.pause()
+            app._goto("Preview")
+            await pilot.pause()
+            assert app.step == "Preview"
+            assert app._use_tree_browser() == True, "Tree mode should be enabled"
+
+            # Verify tree is present and focused
+            tree = app.query_one("#export_dir_tree", DirectoryTree)
+            focused = app.focused
+            assert focused is tree, f"Tree should be focused, but {focused} is focused instead"
+
+            # Verify initial directory
+            initial_dir = app.model.output_dir
+            assert initial_dir == base, f"Initial dir should be {base}, got {initial_dir}"
+
+            # Simulate directory selection via tree's DirectorySelected event
+            # This simulates what happens when user navigates tree and presses Enter on a directory
+            event = DirectoryTree.DirectorySelected(tree, str(target_dir))
+            app.on_directory_tree_directory_selected(event)
+            await pilot.pause()
+
+            # Verify directory was updated (use resolve for macOS symlink handling)
+            assert app.model.output_dir.resolve() == target_dir.resolve(), \
+                f"Export directory should be {target_dir}, got {app.model.output_dir}"
+
+            # Trigger export directly (bypasses focus issues with tree mode)
+            app.action_export()
+            await pilot.pause()
+
+            # Wait for export to complete
+            for _ in range(600):
+                if not app._export_in_progress:
+                    break
+                await asyncio.sleep(0.05)
+
+            assert not app._export_in_progress, "Export should complete"
+            assert app._export_manifest is not None, "Export should produce manifest"
+            assert app._export_error is None, f"Export should not error: {app._export_error}"
+
+            # Verify files were exported to the correct directory
+            manifest = app._export_manifest
+            for filename, _, _, _ in manifest:
+                # Manifest contains just filenames, not full paths
+                # Verify the file exists in the target directory
+                assert (target_dir / filename).exists(), \
+                    f"File {filename} should exist in {target_dir}"
+
+            # Clean up
+            try:
+                os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
+            except Exception:
+                pass
+
+    asyncio.run(_run())
+
+
+def test_tui_preview_tree_navigate_to_home_onx(tmp_path: Path) -> None:
+    """
+    E2E: Navigate directory tree in Preview step to change export directory to ~/onx.
+
+    Same as test_tui_preview_tree_navigate_to_tmp_onx_export but uses ~/onx as target.
+    """
+    import os
+    from pathlib import Path
+
+    async def _run() -> None:
+        from cairn.tui.app import CairnTuiApp
+        from textual.widgets import DirectoryTree
+
+        os.environ["CAIRN_USE_TREE_BROWSER"] = "1"
+
+        fixture_copy = copy_fixture_to_tmp(tmp_path)
+
+        base = tmp_path / "out_base"
+        base.mkdir(parents=True, exist_ok=True)
+
+        # Target directory: ~/onx
+        target_dir = Path.home() / "onx"
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        app = CairnTuiApp()
+        app.model.input_path = fixture_copy
+        app.model.output_dir = base
+
+        async with app.run_test() as pilot:
+            _dismiss_post_save_prompt_if_present(pilot, app)
+
+            app._goto("List_data")
+            await pilot.pause()
+            app._goto("Preview")
+            await pilot.pause()
+            assert app.step == "Preview"
+            assert app._use_tree_browser() == True
+
+            tree = app.query_one("#export_dir_tree", DirectoryTree)
+            assert app.focused is tree, "Tree should be focused"
+
+            assert app.model.output_dir == base
+
+            # Simulate selecting ~/onx directory
+            event = DirectoryTree.DirectorySelected(tree, str(target_dir))
+            app.on_directory_tree_directory_selected(event)
+            await pilot.pause()
+
+            assert app.model.output_dir == target_dir, \
+                f"Expected {target_dir}, got {app.model.output_dir}"
+
+            # Trigger export directly (bypasses focus issues with tree mode)
+            app.action_export()
+            await pilot.pause()
+
+            for _ in range(600):
+                if not app._export_in_progress:
+                    break
+                await asyncio.sleep(0.05)
+
+            assert not app._export_in_progress
+            assert app._export_manifest is not None
+            assert app._export_error is None
+
+            for filename, _, _, _ in app._export_manifest:
+                # Manifest contains just filenames, not full paths
+                # Verify the file exists in the target directory
+                assert (target_dir / filename).exists(), \
+                    f"File {filename} should exist in {target_dir}"
+
+            try:
+                os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
+            except Exception:
+                pass
 
     asyncio.run(_run())

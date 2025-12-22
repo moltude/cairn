@@ -197,36 +197,12 @@ class FileBrowserManagerProtocol(Protocol):
         """Set current file browser directory."""
         ...
 
-    def get_save_browser_dir(self) -> Optional[Path]:
-        """Get current save browser directory."""
-        ...
-
-    def set_save_browser_dir(self, path: Optional[Path]) -> None:
-        """Set current save browser directory."""
-        ...
-
     def refresh_file_browser(self) -> None:
         """Populate Select_file file browser table."""
         ...
 
     def file_browser_enter(self) -> None:
         """Handle Enter on Select_file file browser table."""
-        ...
-
-    def refresh_export_dir_table(self) -> None:
-        """Populate export directory table."""
-        ...
-
-    def export_dir_table_enter(self) -> None:
-        """Handle Enter on export directory table."""
-        ...
-
-    def refresh_save_browser(self) -> None:
-        """Populate Save output directory browser table."""
-        ...
-
-    def save_browser_enter(self) -> None:
-        """Handle Enter on Save output directory browser table."""
         ...
 
 

@@ -8,7 +8,7 @@ from textual.widgets import Input
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.config import get_all_onx_icons, normalize_onx_icon_name
 
-from tests.tui_harness import ArtifactRecorder, copy_fixture_to_tmp
+from tests.tui_harness import ArtifactRecorder, copy_fixture_to_tmp, select_folder_for_test
 
 
 def _pick_first_folder_id(app) -> str:
@@ -16,6 +16,14 @@ def _pick_first_folder_id(app) -> str:
     folders = getattr(app.model.parsed, "folders", {}) or {}
     assert folders, "Expected at least one folder in fixture"
     return next(iter(folders.keys()))
+
+
+def _select_first_folder(app) -> str:
+    """Pick and select the first folder (handles multi-folder datasets)."""
+    folder_id = _pick_first_folder_id(app)
+    select_folder_for_test(app, folder_id)
+    return folder_id
+
 
 def _pick_folder_id_with_min_waypoints(app, *, min_waypoints: int = 2) -> str:
     assert app.model.parsed is not None, "Expected parsed data after List_data render"
@@ -25,6 +33,13 @@ def _pick_folder_id_with_min_waypoints(app, *, min_waypoints: int = 2) -> str:
         if len(waypoints) >= int(min_waypoints):
             return str(folder_id)
     assert False, f"No folder found with >= {min_waypoints} waypoints"
+
+
+def _select_folder_with_min_waypoints(app, *, min_waypoints: int = 2) -> str:
+    """Pick and select a folder with min waypoints (handles multi-folder datasets)."""
+    folder_id = _pick_folder_id_with_min_waypoints(app, min_waypoints=min_waypoints)
+    select_folder_for_test(app, folder_id)
+    return folder_id
 
 
 def _pick_preferred_icon() -> str:
@@ -84,7 +99,7 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             rec.snapshot(app, label="folder")
 
             # Deterministically pick a folder.
-            app.model.selected_folder_id = _pick_first_folder_id(app)
+            _select_first_folder(app)
             app._goto("Routes")
             await pilot.pause()
             rec.snapshot(app, label="routes")
@@ -243,11 +258,9 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
             rec.snapshot(app, label="preview")
             assert app.step == "Preview"
 
-            # Export into tmp output dir.
+            # Export into tmp output dir (no confirm modal anymore)
             app.model.output_dir = out_dir
-            await pilot.press("enter")  # open Confirm Export modal
-            await pilot.pause()
-            await pilot.press("enter")  # confirm export
+            app.action_export()
             await pilot.pause()
             rec.snapshot(app, label="export_started")
 
@@ -308,7 +321,7 @@ def test_tui_e2e_multiselect_waypoint_color_and_focus_not_frozen(tmp_path: Path)
             rec.snapshot(app, label="folder")
 
             # Pick a folder with enough waypoints for multi-select.
-            app.model.selected_folder_id = _pick_folder_id_with_min_waypoints(app, min_waypoints=3)
+            _select_folder_with_min_waypoints(app, min_waypoints=3)
 
             # Jump to Waypoints deterministically (routes may be skipped depending on folder).
             app._goto("Waypoints")

@@ -221,6 +221,50 @@ DirectoryTree > .directory-tree--file {
   padding: 1 2;
 }
 
+/* Confirm overlay buttons */
+.confirm_buttons {
+  align: center middle;
+  height: auto;
+  margin: 1 0;
+}
+
+/* Base styles for both buttons - dark background when unfocused */
+/* Target by ID with highest specificity, no Button type selector needed */
+#confirm_yes_btn, #confirm_no_btn {
+  width: 16;
+  height: 3;
+  margin: 0 1;
+  border: solid #563C27;
+  background: #1F1513;
+  color: #E0DBB7;
+}
+
+/* Override any primary variant styles that might be applied */
+#confirm_yes_btn.--primary, #confirm_no_btn.--primary {
+  background: #1F1513;
+  color: #E0DBB7;
+  border: solid #563C27;
+}
+
+/* Focus state - light brown background for whichever button has focus */
+#confirm_yes_btn:focus, #confirm_no_btn:focus {
+  background: #563C27;
+  color: #FFF9D5;
+  border: solid #C48A4A;
+}
+
+/* Ensure focused state overrides variant styles */
+#confirm_yes_btn.--primary:focus, #confirm_no_btn.--primary:focus {
+  background: #563C27;
+  color: #FFF9D5;
+  border: solid #C48A4A;
+}
+
+/* Also handle hover state to match focus */
+#confirm_yes_btn:hover, #confirm_no_btn:hover {
+  border: solid #C48A4A;
+}
+
 /* Save target browser tree styling */
 
 #save_target_browser_tree {
