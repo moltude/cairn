@@ -4,7 +4,7 @@ This module manages DataTable operations extracted from app.py for better
 testability and separation of concerns.
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING, Any
 from textual.widgets import DataTable
 from rich.text import Text
 
@@ -12,17 +12,27 @@ from cairn.core.color_mapper import ColorMapper
 from cairn.core.mapper import map_icon
 from cairn.core.config import get_icon_color
 
+if TYPE_CHECKING:
+    from cairn.tui.app import CairnTuiApp
+
+# Import profiling
+try:
+    from cairn.tui.profiling import profile_operation
+except ImportError:
+    # Fallback if profiling module not available
+    from contextlib import nullcontext as profile_operation
+
 
 class TableManager:
     """Manages DataTable operations for the TUI."""
 
-    def __init__(self, app):
+    def __init__(self, app: "CairnTuiApp") -> None:
         """Initialize table manager.
 
         Args:
             app: The CairnTuiApp instance (for accessing model, config, etc.)
         """
-        self.app = app
+        self.app: "CairnTuiApp" = app
 
     @staticmethod
     def cursor_row_key(table: DataTable) -> Optional[str]:
@@ -106,13 +116,13 @@ class TableManager:
         chip.append(name, style="bold")
         return chip
 
-    def resolved_waypoint_icon(self, wp) -> str:
+    def resolved_waypoint_icon(self, wp: Any) -> str:
         """Resolve the OnX icon for a waypoint.
 
         Checks for override in properties, otherwise uses mapping logic.
 
         Args:
-            wp: Waypoint feature object
+            wp: Waypoint feature object (ParsedFeature or similar)
 
         Returns:
             Icon name string
@@ -130,13 +140,13 @@ class TableManager:
         sym0 = str(getattr(wp, "symbol", "") or "")
         return map_icon(title0, desc0, sym0, self.app._config)
 
-    def resolved_waypoint_color(self, wp, icon: str) -> str:
+    def resolved_waypoint_color(self, wp: Any, icon: str) -> str:
         """Resolve the OnX color for a waypoint.
 
         Mirrors cairn/core/writers.py policy.
 
         Args:
-            wp: Waypoint feature object
+            wp: Waypoint feature object (ParsedFeature or similar)
             icon: Icon name (used for default color lookup)
 
         Returns:
@@ -151,13 +161,13 @@ class TableManager:
             default=getattr(self.app._config, "default_color", ColorMapper.DEFAULT_WAYPOINT_COLOR),
         )
 
-    def _feature_row_key(self, feat, index: str) -> str:
+    def _feature_row_key(self, feat: Any, index: str) -> str:
         """Generate a stable row key for a feature.
 
         Creates a unique key for table row identification.
 
         Args:
-            feat: Feature object (route or waypoint)
+            feat: Feature object (route or waypoint, ParsedFeature or similar)
             index: Index string (for uniqueness)
 
         Returns:
@@ -184,158 +194,161 @@ class TableManager:
 
         Returns the target cursor row index if a row key was saved, None otherwise.
         """
-        if self.app.step != "Folder":
-            return None
-        try:
-            table = self.app.query_one("#folder_table", DataTable)
-        except Exception:
-            return None
-        if self.app.model.parsed is None:
-            return None
-
-        folders = list((getattr(self.app.model.parsed, "folders", {}) or {}).items())
-        if not folders:
-            return None
-
-        # Save current cursor position by row key (more reliable than row index)
-        current_row_key = None
-        try:
-            current_row_key = self.cursor_row_key(table)
-        except Exception:
-            pass
-
-        # Clear rows
-        self.clear_rows(table)
-
-        # Ensure columns exist
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                if len(folders) > 1:
-                    table.add_columns("Selected", "Folder", "Waypoints", "Routes", "Shapes")
-                else:
-                    table.add_columns("Folder", "Waypoints", "Routes", "Shapes")
-        except Exception:
+        with profile_operation("table_refresh_folder"):
+            if self.app.step != "Folder":
+                return None
             try:
-                if len(folders) > 1:
-                    table.add_columns("Selected", "Folder", "Waypoints", "Routes", "Shapes")
-                else:
-                    table.add_columns("Folder", "Waypoints", "Routes", "Shapes")
+                table = self.app.query_one("#folder_table", DataTable)
+            except Exception:
+                return None
+            if self.app.model.parsed is None:
+                return None
+
+            folders = list((getattr(self.app.model.parsed, "folders", {}) or {}).items())
+            if not folders:
+                return None
+
+            # Save current cursor position by row key (more reliable than row index)
+            current_row_key = None
+            try:
+                current_row_key = self.cursor_row_key(table)
             except Exception:
                 pass
 
-        # Sort folders alphabetically
-        folders = sorted(folders, key=lambda x: str((x[1] or {}).get("name") or x[0]).lower())
+            # Clear rows
+            self.clear_rows(table)
 
-        # Re-add rows with updated selection state
-        target_row_index = None
-        for idx, (folder_id, fd) in enumerate(folders):
-            name = str((fd or {}).get("name") or folder_id)
-            w = len((fd or {}).get("waypoints", []) or [])
-            t = len((fd or {}).get("tracks", []) or [])
-            s = len((fd or {}).get("shapes", []) or [])
-            if len(folders) > 1:
-                sel = "●" if folder_id in self.app._selected_folders else " "
-                table.add_row(sel, name, str(w), str(t), str(s), key=folder_id)
-            else:
-                table.add_row(name, str(w), str(t), str(s), key=folder_id)
+            # Ensure columns exist
+            try:
+                if not getattr(table, "columns", None):  # type: ignore[attr-defined]
+                    if len(folders) > 1:
+                        table.add_columns("Selected", "Folder", "Waypoints", "Routes", "Shapes")
+                    else:
+                        table.add_columns("Folder", "Waypoints", "Routes", "Shapes")
+            except Exception:
+                try:
+                    if len(folders) > 1:
+                        table.add_columns("Selected", "Folder", "Waypoints", "Routes", "Shapes")
+                    else:
+                        table.add_columns("Folder", "Waypoints", "Routes", "Shapes")
+                except Exception:
+                    pass
 
-            # Track the index of the row we want to restore cursor to
-            if current_row_key and str(folder_id) == str(current_row_key):
-                target_row_index = idx
+            # Sort folders alphabetically
+            folders = sorted(folders, key=lambda x: str((x[1] or {}).get("name") or x[0]).lower())
 
-        # Return target index for caller to restore cursor
-        return target_row_index if current_row_key and target_row_index is not None else None
+            # Re-add rows with updated selection state
+            target_row_index = None
+            for idx, (folder_id, fd) in enumerate(folders):
+                name = str((fd or {}).get("name") or folder_id)
+                w = len((fd or {}).get("waypoints", []) or [])
+                t = len((fd or {}).get("tracks", []) or [])
+                s = len((fd or {}).get("shapes", []) or [])
+                if len(folders) > 1:
+                    sel = "●" if folder_id in self.app._selected_folders else " "
+                    table.add_row(sel, name, str(w), str(t), str(s), key=folder_id)
+                else:
+                    table.add_row(name, str(w), str(t), str(s), key=folder_id)
+
+                # Track the index of the row we want to restore cursor to
+                if current_row_key and str(folder_id) == str(current_row_key):
+                    target_row_index = idx
+
+            # Return target index for caller to restore cursor
+            return target_row_index if current_row_key and target_row_index is not None else None
 
     def refresh_waypoints_table(self) -> None:
         """Refresh the waypoints table with current data and filters."""
-        if self.app.step != "Waypoints":
-            return
-        try:
-            table = self.app.query_one("#waypoints_table", DataTable)
-        except Exception:
-            return
-        if self.app.model.parsed is None or not self.app.model.selected_folder_id:
-            return
-        fd = (getattr(self.app.model.parsed, "folders", {}) or {}).get(self.app.model.selected_folder_id)
-        waypoints = list((fd or {}).get("waypoints", []) or [])
-
-        q = (self.app._waypoints_filter or "").strip().lower()
-        self.clear_rows(table)
-
-        # Ensure columns exist if clear() nuked them.
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Selected", "Name", "OnX icon", "OnX color")
-        except Exception:
+        with profile_operation("table_refresh_waypoints"):
+            if self.app.step != "Waypoints":
+                return
             try:
-                table.add_columns("Selected", "Name", "OnX icon", "OnX color")
+                table = self.app.query_one("#waypoints_table", DataTable)
             except Exception:
-                pass
+                return
+            if self.app.model.parsed is None or not self.app.model.selected_folder_id:
+                return
+            fd = (getattr(self.app.model.parsed, "folders", {}) or {}).get(self.app.model.selected_folder_id)
+            waypoints = list((fd or {}).get("waypoints", []) or [])
 
-        # Sort waypoints alphabetically by name (case-insensitive)
-        waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
+            q = (self.app._waypoints_filter or "").strip().lower()
+            self.clear_rows(table)
 
-        for i, wp in enumerate(waypoints):
-            key = self._feature_row_key(wp, str(i))
-            title0 = str(getattr(wp, "title", "") or "Untitled")
-            if q and q not in title0.lower():
-                continue
-            sel = "●" if key in self.app._selected_waypoint_keys else " "
-            mapped = self.resolved_waypoint_icon(wp)
-            rgba = self.resolved_waypoint_color(wp, mapped)
+            # Ensure columns exist if clear() nuked them.
             try:
-                table.add_row(sel, title0, mapped, self.color_chip(rgba), key=key)
+                if not getattr(table, "columns", None):  # type: ignore[attr-defined]
+                    table.add_columns("Selected", "Name", "OnX icon", "OnX color")
             except Exception:
-                name = ColorMapper.get_color_name(rgba).replace("-", " ").upper()
-                table.add_row(sel, title0, mapped, f"■ {name}", key=key)
+                try:
+                    table.add_columns("Selected", "Name", "OnX icon", "OnX color")
+                except Exception:
+                    pass
+
+            # Sort waypoints alphabetically by name (case-insensitive)
+            waypoints = sorted(waypoints, key=lambda wp: str(getattr(wp, "title", "") or "Untitled").lower())
+
+            for i, wp in enumerate(waypoints):
+                key = self._feature_row_key(wp, str(i))
+                title0 = str(getattr(wp, "title", "") or "Untitled")
+                if q and q not in title0.lower():
+                    continue
+                sel = "●" if key in self.app._selected_waypoint_keys else " "
+                mapped = self.resolved_waypoint_icon(wp)
+                rgba = self.resolved_waypoint_color(wp, mapped)
+                try:
+                    table.add_row(sel, title0, mapped, self.color_chip(rgba), key=key)
+                except Exception:
+                    name = ColorMapper.get_color_name(rgba).replace("-", " ").upper()
+                    table.add_row(sel, title0, mapped, f"■ {name}", key=key)
 
     def refresh_routes_table(self) -> None:
         """Refresh the routes table with current data and filters."""
-        if self.app.step != "Routes":
-            return
-        try:
-            table = self.app.query_one("#routes_table", DataTable)
-        except Exception:
-            return
-        if self.app.model.parsed is None or not self.app.model.selected_folder_id:
-            return
-        fd = (getattr(self.app.model.parsed, "folders", {}) or {}).get(self.app.model.selected_folder_id)
-        tracks = list((fd or {}).get("tracks", []) or [])
-
-        q = (self.app._routes_filter or "").strip().lower()
-        self.clear_rows(table)
-
-        try:
-            if not getattr(table, "columns", None):  # type: ignore[attr-defined]
-                table.add_columns("Selected", "Name", "Color", "Pattern", "Width")
-        except Exception:
+        with profile_operation("table_refresh_routes"):
+            if self.app.step != "Routes":
+                return
             try:
-                table.add_columns("Selected", "Name", "Color", "Pattern", "Width")
+                table = self.app.query_one("#routes_table", DataTable)
             except Exception:
-                pass
+                return
+            if self.app.model.parsed is None or not self.app.model.selected_folder_id:
+                return
+            fd = (getattr(self.app.model.parsed, "folders", {}) or {}).get(self.app.model.selected_folder_id)
+            tracks = list((fd or {}).get("tracks", []) or [])
 
-        # Sort routes alphabetically by name (case-insensitive)
-        tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
+            q = (self.app._routes_filter or "").strip().lower()
+            self.clear_rows(table)
 
-        for i, trk in enumerate(tracks):
-            key = self._feature_row_key(trk, str(i))
-            name = str(getattr(trk, "title", "") or "Untitled")
-            if q and q not in name.lower():
-                continue
-            sel = "●" if key in self.app._selected_route_keys else " "
-            rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
             try:
-                color_cell = self.color_chip(rgba)
+                if not getattr(table, "columns", None):  # type: ignore[attr-defined]
+                    table.add_columns("Selected", "Name", "Color", "Pattern", "Width")
             except Exception:
-                color_cell = f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}"
-            table.add_row(
-                sel,
-                name,
-                color_cell,
-                str(getattr(trk, "pattern", "") or ""),
-                str(getattr(trk, "stroke_width", "") or ""),
-                key=key,
-            )
+                try:
+                    table.add_columns("Selected", "Name", "Color", "Pattern", "Width")
+                except Exception:
+                    pass
+
+            # Sort routes alphabetically by name (case-insensitive)
+            tracks = sorted(tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
+
+            for i, trk in enumerate(tracks):
+                key = self._feature_row_key(trk, str(i))
+                name = str(getattr(trk, "title", "") or "Untitled")
+                if q and q not in name.lower():
+                    continue
+                sel = "●" if key in self.app._selected_route_keys else " "
+                rgba = ColorMapper.map_track_color(str(getattr(trk, "stroke", "") or ""))
+                try:
+                    color_cell = self.color_chip(rgba)
+                except Exception:
+                    color_cell = f"■ {ColorMapper.get_color_name(rgba).replace('-', ' ').upper()}"
+                table.add_row(
+                    sel,
+                    name,
+                    color_cell,
+                    str(getattr(trk, "pattern", "") or ""),
+                    str(getattr(trk, "stroke_width", "") or ""),
+                    key=key,
+                )
 
 
 __all__ = ["TableManager"]

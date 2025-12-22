@@ -79,6 +79,9 @@ from cairn.tui.file_browser import FileBrowserManager
 # Import state manager
 from cairn.tui.state import StateManager
 
+# Import profiling infrastructure
+from cairn.tui.profiling import profile_operation, profile_method
+
 # Re-export widgets for backward compatibility (tests and other modules may import from app.py)
 # These are available as: from cairn.tui.app import FilteredFileTree, etc.
 
@@ -176,44 +179,52 @@ class CairnTuiApp(App):
         self.state.set_selected_folders(value)
 
     def __init__(self) -> None:
-        super().__init__()
-        self.model = TuiModel()
-        self._state: UIState = load_state()
-        self._config = load_config(None)
-        self._folder_name_by_id: dict[str, str] = {}
-        self._export_manifest: Optional[list[tuple[str, str, int, int]]] = None
-        self._export_error: Optional[str] = None
-        self._export_in_progress: bool = False
-        self._routes_filter: str = ""
-        self._waypoints_filter: str = ""
-        self._ui_error: Optional[str] = None
-        # Initialize debug logger
-        self._debug_logger = DebugLogger(self)
-        # Initialize table manager
-        self.tables = TableManager(self)
-        # Initialize file browser manager
-        self.files = FileBrowserManager(self)
-        # Initialize state manager
-        self.state = StateManager(self)
-        self._save_snapshot_emitted: bool = False
-        self._save_change_prompt_dismissed: bool = False
-        self._output_prefix: str = ""
-        self._rename_overrides_by_idx: dict[int, str] = {}
-        self._post_save_prompt_shown: bool = False
-        # Guard: DataTable selection events can fire during cursor restoration / re-render;
-        # suppress Save browser actions while we are rebuilding the table.
-        self._suppress_save_browser_select: bool = False
-        # Unmapped symbol mapping state
-        self._unmapped_symbols: list[tuple[str, dict]] = []  # [(symbol, info), ...]
-        self._unmapped_index: int = 0
-        # Edit flow state
-        self._in_single_item_edit: bool = False  # Track if we're editing a single item
-        self._in_inline_edit: bool = False  # Track if we're in inline edit mode (single or multiple)
-        self._confirm_callback: Optional[Callable[[bool], None]] = None
-        # Multi-folder workflow state
-        self._folder_iteration_mode: bool = False
-        self._folders_to_process: list[str] = []
-        self._current_folder_index: int = 0
+        with profile_operation("app_init"):
+            super().__init__()
+            with profile_operation("app_init_model"):
+                self.model = TuiModel()
+            with profile_operation("app_init_state"):
+                self._state: UIState = load_state()
+            with profile_operation("app_init_config"):
+                self._config = load_config(None)
+            self._folder_name_by_id: dict[str, str] = {}
+            self._export_manifest: Optional[list[tuple[str, str, int, int]]] = None
+            self._export_error: Optional[str] = None
+            self._export_in_progress: bool = False
+            self._routes_filter: str = ""
+            self._waypoints_filter: str = ""
+            self._ui_error: Optional[str] = None
+            # Initialize debug logger
+            with profile_operation("app_init_debug_logger"):
+                self._debug_logger = DebugLogger(self)
+            # Initialize table manager
+            with profile_operation("app_init_table_manager"):
+                self.tables = TableManager(self)
+            # Initialize file browser manager
+            with profile_operation("app_init_file_browser_manager"):
+                self.files = FileBrowserManager(self)
+            # Initialize state manager
+            with profile_operation("app_init_state_manager"):
+                self.state = StateManager(self)
+            self._save_snapshot_emitted: bool = False
+            self._save_change_prompt_dismissed: bool = False
+            self._output_prefix: str = ""
+            self._rename_overrides_by_idx: dict[int, str] = {}
+            self._post_save_prompt_shown: bool = False
+            # Guard: DataTable selection events can fire during cursor restoration / re-render;
+            # suppress Save browser actions while we are rebuilding the table.
+            self._suppress_save_browser_select: bool = False
+            # Unmapped symbol mapping state
+            self._unmapped_symbols: list[tuple[str, dict]] = []  # [(symbol, info), ...]
+            self._unmapped_index: int = 0
+            # Edit flow state
+            self._in_single_item_edit: bool = False  # Track if we're editing a single item
+            self._in_inline_edit: bool = False  # Track if we're in inline edit mode (single or multiple)
+            self._confirm_callback: Optional[Callable[[bool], None]] = None
+            # Multi-folder workflow state
+            self._folder_iteration_mode: bool = False
+            self._folders_to_process: list[str] = []
+            self._current_folder_index: int = 0
 
     def _use_tree_browser(self) -> bool:
         """Check if DirectoryTree browser should be used (A/B test flag).
@@ -452,36 +463,38 @@ class CairnTuiApp(App):
     # Compose
     # -----------------------
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=False)
-        with Horizontal():
-            with Vertical(classes="sidebar"):
-                yield Static("CAIRN", classes="title")
-                yield Static("CalTopo → OnX (TUI v1)", classes="muted")
-                yield Static("", id="status", classes="muted")
-                yield Static("")
-                yield Stepper(steps=STEPS, id="stepper")
-                yield Static("")
-                yield Static("Instructions", classes="muted")
-                yield Static("", id="sidebar_instructions")
-                yield Static("")
-                yield Static("Shortcuts", classes="muted")
-                yield Static("", id="sidebar_shortcuts", classes="muted")
-            with Container(classes="main"):
-                yield Static("", id="main_title", classes="title")
-                yield Static("", id="main_subtitle", classes="muted")
-                yield Container(id="main_body")
-                # True popup overlay (stays within the current screen, doesn't navigate).
-                yield InlineEditOverlay()
-                yield SaveTargetOverlay(use_tree=self._use_tree_browser())
-                yield ColorPickerOverlay()
-                yield IconPickerOverlay()
-                yield RenameOverlay()
-                yield DescriptionOverlay()
-                yield ConfirmOverlay()
-        yield StepAwareFooter(id="step_footer", classes="footer")
+        with profile_operation("compose"):
+            yield Header(show_clock=False)
+            with Horizontal():
+                with Vertical(classes="sidebar"):
+                    yield Static("CAIRN", classes="title")
+                    yield Static("CalTopo → OnX (TUI v1)", classes="muted")
+                    yield Static("", id="status", classes="muted")
+                    yield Static("")
+                    yield Stepper(steps=STEPS, id="stepper")
+                    yield Static("")
+                    yield Static("Instructions", classes="muted")
+                    yield Static("", id="sidebar_instructions")
+                    yield Static("")
+                    yield Static("Shortcuts", classes="muted")
+                    yield Static("", id="sidebar_shortcuts", classes="muted")
+                with Container(classes="main"):
+                    yield Static("", id="main_title", classes="title")
+                    yield Static("", id="main_subtitle", classes="muted")
+                    yield Container(id="main_body")
+                    # True popup overlay (stays within the current screen, doesn't navigate).
+                    yield InlineEditOverlay()
+                    yield SaveTargetOverlay(use_tree=self._use_tree_browser())
+                    yield ColorPickerOverlay()
+                    yield IconPickerOverlay()
+                    yield RenameOverlay()
+                    yield DescriptionOverlay()
+                    yield ConfirmOverlay()
+            yield StepAwareFooter(id="step_footer", classes="footer")
 
     def on_mount(self) -> None:
-        self._goto("Select_file")
+        with profile_operation("on_mount"):
+            self._goto("Select_file")
 
     def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
         """
@@ -521,6 +534,53 @@ class CairnTuiApp(App):
         feats = self._selected_features(ctx)
         if feats:
             self._show_inline_overlay(ctx=ctx, feats=feats)
+
+    def on_inline_edit_overlay_field_chosen(self, message: InlineEditOverlay.FieldChosen) -> None:  # type: ignore[name-defined]
+        """Handle field selection from InlineEditOverlay - opens appropriate editor."""
+        field_key = getattr(message, "field_key", None)
+        if not field_key:
+            # Done or cancelled - just return
+            return
+
+        ctx = self._selected_keys_for_step()
+        if ctx is None:
+            return
+
+        if field_key == "icon":
+            # Open icon picker
+            try:
+                icons = get_all_onx_icons()
+                overlay = self.query_one("#icon_picker_overlay", IconPickerOverlay)
+                overlay.open(icons=icons)
+            except Exception:
+                pass
+        elif field_key == "color":
+            # Open color picker
+            try:
+                if ctx.kind == "waypoint":
+                    palette = ColorMapper.WAYPOINT_PALETTE
+                    title = "Select waypoint color"
+                else:
+                    palette = ColorMapper.TRACK_PALETTE
+                    title = "Select route color"
+                overlay = self.query_one("#color_picker_overlay", ColorPickerOverlay)
+                overlay.open(title=title, palette=palette)
+            except Exception:
+                pass
+        elif field_key == "name":
+            # Open rename overlay
+            try:
+                overlay = self.query_one("#rename_overlay", RenameOverlay)
+                overlay.open(ctx=ctx, title="Rename")
+            except Exception:
+                pass
+        elif field_key == "description":
+            # Open description overlay
+            try:
+                overlay = self.query_one("#description_overlay", DescriptionOverlay)
+                overlay.open(ctx=ctx)
+            except Exception:
+                pass
 
     def on_icon_picker_overlay_icon_picked(self, message: IconPickerOverlay.IconPicked) -> None:  # type: ignore[name-defined]
         """Handle apply/cancel from IconPickerOverlay."""
@@ -640,13 +700,12 @@ class CairnTuiApp(App):
 
     def on_save_target_overlay_done(self, message: SaveTargetOverlay.Done) -> None:  # type: ignore[name-defined]
         """Handle Done message from SaveTargetOverlay."""
-        try:
-            self.set_focus(None)  # type: ignore[arg-type]
-        except Exception:
-            pass
-
         if getattr(message, "cancelled", False):
             # User cancelled - no changes needed
+            try:
+                self.set_focus(None)  # type: ignore[arg-type]
+            except Exception:
+                pass
             return
 
         # Update output directory and prefix from overlay
@@ -669,16 +728,30 @@ class CairnTuiApp(App):
             except Exception:
                 # Fallback: try to convert to Path without resolving
                 try:
-                    self.model.output_dir = Path(directory)
+                    self.model.output_dir = Path(directory).expanduser()
                 except Exception:
                     pass
 
         if prefix is not None:
             self._output_prefix = str(prefix or "")
 
+        # Mark that save change prompt has been dismissed
+        self._save_change_prompt_dismissed = True
+
         # Refresh Preview step to show updated directory/prefix
-        if self.step == "Preview":
+        try:
             self._render_main()
+        except Exception:
+            pass
+
+        # Clear focus so Enter on the Save screen routes reliably to export.
+        try:
+            self.call_after_refresh(lambda: self.set_focus(None))  # type: ignore[arg-type]
+        except Exception:
+            try:
+                self.set_focus(None)  # type: ignore[arg-type]
+            except Exception:
+                pass
 
     def on_confirm_overlay_result(self, message: ConfirmOverlay.Result) -> None:  # type: ignore[name-defined]
         """Handle result from ConfirmOverlay."""
@@ -690,38 +763,6 @@ class CairnTuiApp(App):
             cb(bool(getattr(message, "confirmed", False)))
         except Exception:
             pass
-
-    def on_save_target_overlay_done(self, message: SaveTargetOverlay.Done) -> None:  # type: ignore[name-defined]
-        """Apply Save directory/prefix changes from SaveTargetOverlay."""
-        if getattr(message, "cancelled", False):
-            try:
-                self.set_focus(None)  # type: ignore[arg-type]
-            except Exception:
-                pass
-            return
-        try:
-            d = getattr(message, "directory", None)
-            if d is not None:
-                self.model.output_dir = Path(d).expanduser()
-        except Exception:
-            pass
-        try:
-            self._output_prefix = str(getattr(message, "prefix", "") or "")
-        except Exception:
-            pass
-        self._save_change_prompt_dismissed = True
-        try:
-            self._render_main()
-        except Exception:
-            pass
-        # Clear focus so Enter on the Save screen routes reliably to export.
-        try:
-            self.call_after_refresh(lambda: self.set_focus(None))  # type: ignore[arg-type]
-        except Exception:
-            try:
-                self.set_focus(None)  # type: ignore[arg-type]
-            except Exception:
-                pass
 
     def _confirm(self, *, title: str, message: str, callback: Callable[[bool], None]) -> None:
         """Show an in-screen confirm overlay and run callback with result."""
@@ -2384,6 +2425,9 @@ class CairnTuiApp(App):
                     self._datatable_clear_rows(manifest_tbl)
                 except Exception:
                     pass
+                if self._export_manifest is None:
+                    # Manifest not yet populated (export hasn't completed)
+                    return
                 for fn, fmt, cnt, sz in self._export_manifest:
                     note = ""
                     p = Path(fn)
@@ -2567,7 +2611,7 @@ class CairnTuiApp(App):
     # Events
     # -----------------------
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if event.input.id == "output_prefix":
+        if event.input.id == "output_prefix" or event.input.id == "export_prefix_input":
             self._output_prefix = str(event.value or "")
             # Re-render to update suggested rename defaults (if any).
             self._render_sidebar()
@@ -3292,6 +3336,13 @@ class CairnTuiApp(App):
             return
         return
 
+    def action_export(self) -> None:
+        """Action method to trigger export (called from Enter key handler)."""
+        with profile_operation("action_export"):
+            if self._export_in_progress:
+                return
+            self._start_export()
+
     def _start_export(self) -> None:
         self._export_error = None
         self._export_manifest = None
@@ -3380,7 +3431,7 @@ class CairnTuiApp(App):
             elif event.input.id == "waypoints_search":
                 self._waypoints_filter = event.value or ""
                 self._refresh_waypoints_table()
-            elif event.input.id == "output_prefix":
+            elif event.input.id == "output_prefix" or event.input.id == "export_prefix_input":
                 # Keep in sync while typing; pressing Enter will also commit.
                 self._output_prefix = str(event.value or "")
             elif str(event.input.id or "").startswith("rename_"):

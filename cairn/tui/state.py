@@ -4,20 +4,37 @@ This module manages workflow state, navigation, and selection tracking.
 The reactive `step` property remains on CairnTuiApp for automatic UI updates.
 """
 
-from typing import Set
+from typing import Set, TYPE_CHECKING, Callable
 from collections.abc import MutableSet
 
 from cairn.tui.models import STEPS
 
+if TYPE_CHECKING:
+    from cairn.tui.app import CairnTuiApp
 
-class _MutableSetProxy(MutableSet):
+# Import profiling (only when not in TYPE_CHECKING to avoid circular import)
+try:
+    from cairn.tui.profiling import profile_operation
+except ImportError:
+    # Fallback if profiling module not available
+    from contextlib import nullcontext as profile_operation
+
+
+class _MutableSetProxy(MutableSet[str]):
     """Proxy for a set that forwards mutations to StateManager methods.
 
     This allows the compatibility layer to maintain encapsulation (read-only
     via properties) while still supporting mutations for backward compatibility.
     """
 
-    def __init__(self, manager, getter_name: str, add_method, remove_method, clear_method):
+    def __init__(
+        self,
+        manager: "StateManager",
+        getter_name: str,
+        add_method: Callable[[str], None],
+        remove_method: Callable[[str], None],
+        clear_method: Callable[[], None],
+    ) -> None:
         """Initialize proxy.
 
         Args:
@@ -33,46 +50,46 @@ class _MutableSetProxy(MutableSet):
         self._remove_method = remove_method
         self._clear_method = clear_method
 
-    def __contains__(self, item):
+    def __contains__(self, item: object) -> bool:
         return item in getattr(self._manager, self._getter_name)
 
     def __iter__(self):
         return iter(getattr(self._manager, self._getter_name))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(getattr(self._manager, self._getter_name))
 
-    def add(self, item):
+    def add(self, item: str) -> None:
         """Add an item to the set."""
         self._add_method(item)
 
-    def discard(self, item):
+    def discard(self, item: str) -> None:
         """Remove an item from the set if present."""
         self._remove_method(item)
 
-    def remove(self, item):
+    def remove(self, item: str) -> None:
         """Remove an item from the set, raising KeyError if not present."""
         if item not in self:
             raise KeyError(item)
         self._remove_method(item)
 
-    def clear(self):
+    def clear(self) -> None:
         """Remove all items from the set."""
         self._clear_method()
 
-    def update(self, other):
+    def update(self, other: Set[str]) -> None:
         """Update the set with items from other."""
         for item in other:
             self._add_method(item)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(getattr(self._manager, self._getter_name))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Compare with another set."""
         return getattr(self._manager, self._getter_name) == other
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         """Compare with another set."""
         return not (self == other)
 
@@ -87,13 +104,13 @@ class StateManager:
     UI concerns like rendering, focus management, and footer updates must live on the App.
     """
 
-    def __init__(self, app):
+    def __init__(self, app: "CairnTuiApp") -> None:
         """Initialize state manager.
 
         Args:
             app: The CairnTuiApp instance (for accessing model, config, etc.)
         """
-        self.app = app
+        self.app: "CairnTuiApp" = app
         self._done_steps: Set[str] = set()
         self._selected_route_keys: Set[str] = set()
         self._selected_waypoint_keys: Set[str] = set()
@@ -105,21 +122,22 @@ class StateManager:
         Args:
             step: Step name to navigate to (must be in STEPS)
         """
-        if step not in STEPS:
-            return
+        with profile_operation(f"step_transition_{step}"):
+            if step not in STEPS:
+                return
 
-        # Mark current as done
-        if self.app.step in STEPS:
-            self._done_steps.add(self.app.step)
+            # Mark current as done
+            if self.app.step in STEPS:
+                self._done_steps.add(self.app.step)
 
-        # Update reactive (triggers UI refresh)
-        self.app.step = step
+            # Update reactive (triggers UI refresh)
+            self.app.step = step
 
-        # Clear per-step edit hints when leaving the step.
-        if step != "Routes":
-            self.app._routes_edited = False
-        if step != "Waypoints":
-            self.app._waypoints_edited = False
+            # Clear per-step edit hints when leaving the step.
+            if step != "Routes":
+                self.app._routes_edited = False
+            if step != "Waypoints":
+                self.app._waypoints_edited = False
 
     def get_next_step_after_folder(self) -> str:
         """Determine next step after Folder, skipping empty Routes/Waypoints steps.
