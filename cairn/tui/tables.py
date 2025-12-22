@@ -201,6 +201,53 @@ class TableManager:
             "#save_target_overlay",
         )
 
+    def _is_overlay_open(self) -> bool:
+        """Check if any overlay is currently open."""
+        try:
+            return any(
+                self.app._overlay_open(sel)
+                for sel in self._get_overlay_selectors()
+            )
+        except Exception:
+            return False
+
+    def _find_row_index_by_key(self, table: DataTable, row_key: str, row_count: int) -> Optional[int]:
+        """Find row index by row key in the table."""
+        try:
+            if hasattr(table, "get_row_key"):
+                for i in range(row_count):
+                    try:
+                        rk = table.get_row_key(i)  # type: ignore[attr-defined]
+                        rk_val = str(getattr(rk, "value", rk))
+                        if rk_val == str(row_key):
+                            return i
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+        return None
+
+    def _move_cursor_to_index(self, table: DataTable, target_idx: int) -> None:
+        """Move cursor to the specified index using action methods."""
+        try:
+            current_pos = int(getattr(table, "cursor_row", 0) or 0)
+        except Exception:
+            current_pos = 0
+
+        # Move to top first (known position)
+        if current_pos > 0:
+            for _ in range(current_pos):
+                try:
+                    table.action_cursor_up()  # type: ignore[attr-defined]
+                except Exception:
+                    break
+        # Move down to target from row 0
+        for _ in range(target_idx):
+            try:
+                table.action_cursor_down()  # type: ignore[attr-defined]
+            except Exception:
+                break
+
     def _restore_cursor_after_refresh(
         self,
         table: DataTable,
@@ -219,18 +266,9 @@ class TableManager:
 
         def _restore() -> None:
             try:
-                # Never steal focus away from an in-screen overlay. This restore is
-                # scheduled after refresh and via a timer; by the time it runs,
-                # the user/test may have opened an overlay (inline edit, picker, confirm).
-                # In that case, leave focus alone to avoid breaking Enter/Esc flows.
-                try:
-                    if any(
-                        self.app._overlay_open(sel)
-                        for sel in self._get_overlay_selectors()
-                    ):
-                        return
-                except Exception:
-                    pass
+                # Never steal focus away from an in-screen overlay.
+                if self._is_overlay_open():
+                    return
 
                 table_refreshed = table
                 try:
@@ -245,20 +283,7 @@ class TableManager:
                 target_idx: Optional[int] = None
 
                 if desired_row_key:
-                    try:
-                        # Find row by key on the refreshed table.
-                        if hasattr(table_refreshed, "get_row_key"):
-                            for i in range(row_count):
-                                try:
-                                    rk = table_refreshed.get_row_key(i)  # type: ignore[attr-defined]
-                                    rk_val = str(getattr(rk, "value", rk))
-                                    if rk_val == str(desired_row_key):
-                                        target_idx = i
-                                        break
-                                except Exception:
-                                    continue
-                    except Exception:
-                        target_idx = None
+                    target_idx = self._find_row_index_by_key(table_refreshed, desired_row_key, row_count)
 
                 if target_idx is None and desired_index_fallback is not None:
                     try:
@@ -269,23 +294,7 @@ class TableManager:
                 if target_idx is None:
                     return
 
-                # Move cursor via action methods (cursor_row may be read-only on some versions).
-                try:
-                    current_pos = int(getattr(table_refreshed, "cursor_row", 0) or 0)
-                except Exception:
-                    current_pos = 0
-
-                if current_pos > 0:
-                    for _ in range(current_pos):
-                        try:
-                            table_refreshed.action_cursor_up()  # type: ignore[attr-defined]
-                        except Exception:
-                            break
-                for _ in range(target_idx):
-                    try:
-                        table_refreshed.action_cursor_down()  # type: ignore[attr-defined]
-                    except Exception:
-                        break
+                self._move_cursor_to_index(table_refreshed, target_idx)
             except Exception:
                 return
 
