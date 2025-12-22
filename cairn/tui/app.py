@@ -3492,6 +3492,8 @@ class CairnTuiApp(App):
         # If output_dir was changed while export was running, copy the produced files
         # into the new directory as well. This makes automated tests (which often set
         # model.output_dir programmatically) robust against early export triggers.
+        # NOTE: This assumes output_dir does not change during an active export in normal usage.
+        # If this assumption is violated, files may be copied to unexpected locations.
         try:
             if err is None and manifest:
                 used_dir = getattr(self, "_export_out_dir_used", None)
