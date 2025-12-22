@@ -75,7 +75,7 @@ class SaveTargetOverlay(Container):
 
             yield Static("File name prefix", classes="accent")
             yield Input(placeholder="Filename prefix", id="save_target_prefix")
-            yield self._DoneControl("[Done]", id="save_target_done", classes="accent")
+            yield self._DoneControl("Done", id="save_target_done", classes="accent")
 
             if self._use_tree:
                 yield Static("Enter: select  •  Ctrl+N: new folder  •  d/Tab→Enter: done  •  Esc: cancel", classes="muted")
