@@ -189,6 +189,18 @@ class TableManager:
         except Exception:
             return f"feature_{index}"
 
+    def _get_overlay_selectors(self) -> tuple[str, ...]:
+        """Return tuple of overlay selectors that should prevent cursor restoration."""
+        return (
+            "#inline_edit_overlay",
+            "#rename_overlay",
+            "#description_overlay",
+            "#color_picker_overlay",
+            "#icon_picker_overlay",
+            "#confirm_overlay",
+            "#save_target_overlay",
+        )
+
     def _restore_cursor_after_refresh(
         self,
         table: DataTable,
@@ -214,15 +226,7 @@ class TableManager:
                 try:
                     if any(
                         self.app._overlay_open(sel)
-                        for sel in (
-                            "#inline_edit_overlay",
-                            "#rename_overlay",
-                            "#description_overlay",
-                            "#color_picker_overlay",
-                            "#icon_picker_overlay",
-                            "#confirm_overlay",
-                            "#save_target_overlay",
-                        )
+                        for sel in self._get_overlay_selectors()
                     ):
                         return
                 except Exception:
