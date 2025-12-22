@@ -3338,6 +3338,12 @@ class CairnTuiApp(App):
                         else:
                             if not bool(getattr(self, "_default_export_armed", False)):
                                 setattr(self, "_default_export_armed", True)
+                                # Show user feedback that a second Enter is required
+                                try:
+                                    footer = self.query_one("#step_footer", Static)
+                                    footer.update("Press Enter again to export to default directory (onx_ready/)")
+                                except Exception:
+                                    pass
                                 try:
                                     event.stop()
                                 except Exception:
@@ -3345,6 +3351,11 @@ class CairnTuiApp(App):
                                 return
                             # Second Enter: proceed with export to default.
                             setattr(self, "_default_export_armed", False)
+                            # Clear the feedback message by restoring footer
+                            try:
+                                self._update_footer()
+                            except Exception:
+                                pass
                     except Exception:
                         pass
 
