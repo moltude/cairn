@@ -135,37 +135,11 @@ class CairnTuiApp(App):
     @property
     def _done_steps(self) -> set[str]:
         """Compatibility property: delegate to StateManager (returns mutable proxy for backward compatibility)."""
-        # #region agent log
-        try:
-            import time
-            has_state = hasattr(self, "state")
-            state_is_none = getattr(self, "state", None) is None if has_state else "no_state_attr"
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:134","message":"_done_steps getter called","data":{"has_state":has_state,"state_is_none":str(state_is_none)},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         if not hasattr(self, "state") or self.state is None:
             # Defensive: return empty set if state not initialized
             result = set()
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:142","message":"_done_steps returning empty set","data":{"result_type":type(result).__name__},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return result
         result = self.state.done_steps_mutable
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps_getter","location":"app.py:150","message":"_done_steps returning state.done_steps_mutable","data":{"result_type":type(result).__name__,"has_add":hasattr(result,"add")},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         return result
 
     @_done_steps.setter
@@ -790,34 +764,10 @@ class CairnTuiApp(App):
             if self.step == "Preview":
                 # When tree mode is enabled, focus the tree so it can receive keyboard input
                 if self._use_tree_browser():
-                    # #region agent log
-                    try:
-                        import time
-                        with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                            f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1","location":"app.py:788","message":"_reset_focus_for_step Preview: tree mode enabled","data":{"step":self.step,"use_tree_browser":self._use_tree_browser()},"timestamp":int(time.time()*1000)})+"\n")
-                    except Exception:
-                        pass
-                    # #endregion
                     try:
                         tree = self.query_one("#export_dir_tree", FilteredDirectoryTree)
-                        # #region agent log
-                        try:
-                            import time
-                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1","location":"app.py:791","message":"Tree found, calling focus()","data":{"tree_id":getattr(tree,"id",None),"tree_type":type(tree).__name__},"timestamp":int(time.time()*1000)})+"\n")
-                        except Exception:
-                            pass
-                        # #endregion
                         tree.focus()
                     except Exception as e:
-                        # #region agent log
-                        try:
-                            import time
-                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H1,H2","location":"app.py:793","message":"Tree not found or focus failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
-                        except Exception:
-                            pass
-                        # #endregion
                         # Fallback: clear focus if tree not found
                         self.set_focus(None)  # type: ignore[arg-type]
                 else:
@@ -1436,28 +1386,6 @@ class CairnTuiApp(App):
 
     def action_select_all(self) -> None:
         """Toggle select-all in the current Routes/Waypoints table (respects filter)."""
-        # #region agent log
-        try:
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                json.dump({
-                    "id": f"log_{int(time.time() * 1000)}",
-                    "timestamp": int(time.time() * 1000),
-                    "location": "app.py:1246",
-                    "message": "action_select_all entry",
-                    "data": {
-                        "step": self.step,
-                        "selected_route_keys_type": str(type(self._selected_route_keys)),
-                        "has_difference_update": hasattr(self._selected_route_keys, "difference_update"),
-                        "selected_route_keys_len": len(self._selected_route_keys),
-                    },
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "A"
-                }, f)
-                f.write("\n")
-        except Exception:
-            pass
-        # #endregion
         if self.step == "Routes":
             if self.model.parsed is None or not self.model.selected_folder_id:
                 return
@@ -1475,29 +1403,6 @@ class CairnTuiApp(App):
                 if q and q not in name.lower():
                     continue
                 visible.add(self._feature_row_key(trk, str(i)))
-            # #region agent log
-            try:
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    json.dump({
-                        "id": f"log_{int(time.time() * 1000)}",
-                        "timestamp": int(time.time() * 1000),
-                        "location": "app.py:1265",
-                        "message": "before difference_update call",
-                        "data": {
-                            "visible_len": len(visible),
-                            "visible_issubset": visible.issubset(self._selected_route_keys) if visible else False,
-                            "selected_route_keys_type": str(type(self._selected_route_keys)),
-                            "has_difference_update": hasattr(self._selected_route_keys, "difference_update"),
-                            "methods": [m for m in dir(self._selected_route_keys) if not m.startswith("_")],
-                        },
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "A"
-                    }, f)
-                    f.write("\n")
-            except Exception:
-                pass
-            # #endregion
             if visible and visible.issubset(self._selected_route_keys):
                 # All visible already selected -> deselect them.
                 self._selected_route_keys.difference_update(visible)
@@ -1522,29 +1427,6 @@ class CairnTuiApp(App):
                 if q and q not in name.lower():
                     continue
                 visible.add(self._feature_row_key(wp, str(i)))
-            # #region agent log
-            try:
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    json.dump({
-                        "id": f"log_{int(time.time() * 1000)}",
-                        "timestamp": int(time.time() * 1000),
-                        "location": "app.py:1289",
-                        "message": "before waypoint difference_update call",
-                        "data": {
-                            "visible_len": len(visible),
-                            "visible_issubset": visible.issubset(self._selected_waypoint_keys) if visible else False,
-                            "selected_waypoint_keys_type": str(type(self._selected_waypoint_keys)),
-                            "has_difference_update": hasattr(self._selected_waypoint_keys, "difference_update"),
-                            "methods": [m for m in dir(self._selected_waypoint_keys) if not m.startswith("_")],
-                        },
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "A"
-                    }, f)
-                    f.write("\n")
-            except Exception:
-                pass
-            # #endregion
             if visible and visible.issubset(self._selected_waypoint_keys):
                 self._selected_waypoint_keys.difference_update(visible)
             else:
@@ -1690,14 +1572,6 @@ class CairnTuiApp(App):
         return None
 
     def _selected_features(self, ctx: EditContext) -> list:
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_selected_features","message":"_selected_features_called","data":{"ctx_kind":getattr(ctx,"kind",None),"ctx_selected_keys":list(getattr(ctx,"selected_keys",[]))},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         tracks, waypoints = self._current_folder_features()
         out: list = []
 
@@ -1714,14 +1588,6 @@ class CairnTuiApp(App):
                     idx = int(kk)
                     if 0 <= idx < len(sorted_tracks):
                         out.append(sorted_tracks[idx])
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_selected_features","message":"_selected_features_route_result","data":{"selected_count":len(out),"total_tracks":len(tracks),"by_id_keys":list(by_id.keys())[:5]},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return out
 
         if ctx.kind == "waypoint":
@@ -1736,14 +1602,6 @@ class CairnTuiApp(App):
                     idx = int(kk)
                     if 0 <= idx < len(sorted_waypoints):
                         out.append(sorted_waypoints[idx])
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_selected_features","message":"_selected_features_waypoint_result","data":{"selected_count":len(out),"total_waypoints":len(waypoints),"by_id_keys":list(by_id.keys())[:5]},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return out
 
         return out
@@ -1902,23 +1760,7 @@ class CairnTuiApp(App):
         payload shape:
           {"action": "...", "value": "...", "ctx": EditContext(...)}
         """
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"_apply_edit_payload_called","data":{"payload_type":type(payload).__name__,"is_dict":isinstance(payload,dict)},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         if not isinstance(payload, dict):
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"payload_not_dict","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return
         action = str(payload.get("action") or "").strip().lower()
         value = payload.get("value")
@@ -1927,27 +1769,11 @@ class CairnTuiApp(App):
             # Defensive: older tests may pass ctx separately.
             ctx2 = self._selected_keys_for_step()
             if ctx2 is None:
-                # #region agent log
-                try:
-                    import time
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_apply_edit_payload","message":"ctx_is_none_after_fallback","data":{},"timestamp":int(time.time()*1000)})+"\n")
-                except Exception:
-                    pass
-                # #endregion
                 return
             ctx = ctx2
 
         feats = self._selected_features(ctx)
         if not feats:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:_apply_edit_payload","message":"no_features_selected","data":{"ctx_kind":getattr(ctx,"kind",None),"ctx_selected_keys":list(getattr(ctx,"selected_keys",[]))},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return
 
         changed = False
@@ -1955,25 +1781,9 @@ class CairnTuiApp(App):
         if action == "rename":
             new_title = str(value or "").strip()
             if not new_title:
-                # #region agent log
-                try:
-                    import time
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"rename_new_title_empty","data":{},"timestamp":int(time.time()*1000)})+"\n")
-                except Exception:
-                    pass
-                # #endregion
                 return
             # Prompt for confirmation if changing name for multiple records
             if len(ctx.selected_keys) > 1:
-                # #region agent log
-                try:
-                    import time
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_edit_payload","message":"rename_multi_confirming","data":{"selected_count":len(ctx.selected_keys),"new_title":new_title},"timestamp":int(time.time()*1000)})+"\n")
-                except Exception:
-                    pass
-                # #endregion
                 self._confirm(
                     title="Confirm Name Change",
                     message="You are changing the name for multiple records. Apply this name change to all selected records?",
@@ -1982,14 +1792,6 @@ class CairnTuiApp(App):
                     ),
                 )
                 return
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H3","location":"app.py:_apply_edit_payload","message":"rename_single_applying","data":{"feats_count":len(feats),"new_title":new_title},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             for f in feats:
                 setattr(f, "title", new_title)
             changed = True
@@ -2082,23 +1884,7 @@ class CairnTuiApp(App):
 
     def _apply_rename_confirmed(self, confirmed: bool, ctx: EditContext, feats: list, new_title: str) -> None:
         """Apply a multi-rename after the confirmation overlay returns."""
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_rename_confirmed","message":"_apply_rename_confirmed_called","data":{"confirmed":confirmed,"feats_count":len(feats) if feats else 0,"new_title":new_title},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         if not confirmed:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_rename_confirmed","message":"rename_not_confirmed","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             # If we were editing via overlay, return to it so user isn't stranded.
             if self._in_inline_edit:
                 try:
@@ -2121,14 +1907,6 @@ class CairnTuiApp(App):
                 renamed_count += 1
             except Exception:
                 continue
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_apply_rename_confirmed","message":"rename_applied","data":{"renamed_count":renamed_count,"feats_count":len(feats) if feats else 0},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
 
         # Mark edited + refresh table.
         if ctx.kind == "route":
@@ -2678,33 +2456,9 @@ class CairnTuiApp(App):
                 if self._use_tree_browser():
                     # Tree browser for directory selection
                     try:
-                        # #region agent log
-                        try:
-                            import time
-                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2287","message":"Creating export_dir_tree","data":{"out_dir":str(out_dir),"out_dir_resolved":str(out_dir.resolve())},"timestamp":int(time.time()*1000)})+"\n")
-                        except Exception:
-                            pass
-                        # #endregion
                         tree = FilteredDirectoryTree(str(out_dir), id="export_dir_tree")
                         export_target.mount(tree)
-                        # #region agent log
-                        try:
-                            import time
-                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2288","message":"Tree mounted successfully","data":{"tree_id":getattr(tree,"id",None),"tree_type":type(tree).__name__},"timestamp":int(time.time()*1000)})+"\n")
-                        except Exception:
-                            pass
-                        # #endregion
                     except Exception as e:
-                        # #region agent log
-                        try:
-                            import time
-                            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2","location":"app.py:2289","message":"Tree creation failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
-                        except Exception:
-                            pass
-                        # #endregion
                         # Fallback to simple display
                         export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
                 else:
@@ -3077,35 +2831,9 @@ class CairnTuiApp(App):
         # Check if it's a parseable file type
         if suf in _PARSEABLE_INPUT_EXTS and selected_path.exists() and selected_path.is_file():
             self._set_input_path(selected_path)
-            # #region agent log
-            try:
-                import time
-                done_steps_obj = self._done_steps
-                done_steps_type = type(done_steps_obj).__name__
-                done_steps_repr = repr(done_steps_obj)
-                has_add = hasattr(done_steps_obj, "add")
-                add_attr_type = type(getattr(done_steps_obj, "add", None)).__name__ if has_add else "no_add"
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2624","message":"before _done_steps.add","data":{"done_steps_type":done_steps_type,"done_steps_repr":done_steps_repr,"has_add":has_add,"add_attr_type":add_attr_type},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception as e:
-                try:
-                    import time
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2624","message":"error getting _done_steps info","data":{"error":str(e)},"timestamp":int(time.time()*1000)})+"\n")
-                except Exception:
-                    pass
-            # #endregion
             try:
                 self._done_steps.add("Select_file")
             except Exception as e:
-                # #region agent log
-                try:
-                    import time
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_done_steps","location":"app.py:2635","message":"error calling _done_steps.add","data":{"error_type":type(e).__name__,"error_msg":str(e)},"timestamp":int(time.time()*1000)})+"\n")
-                except Exception:
-                    pass
-                # #endregion
                 raise
             self._goto("List_data")
             return
@@ -3121,14 +2849,6 @@ class CairnTuiApp(App):
 
     def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
         """Handle directory selection from export tree browser."""
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H3","location":"app.py:2707","message":"on_directory_tree_directory_selected called","data":{"step":self.step,"event_path":str(getattr(event,"path",None))},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         if self.step != "Preview":
             return
 
@@ -3136,16 +2856,6 @@ class CairnTuiApp(App):
         try:
             # Verify the export tree exists (defensive check)
             tree = self.query_one("#export_dir_tree")
-            # #region agent log
-            try:
-                import time
-                old_output_dir = str(self.model.output_dir) if self.model.output_dir else None
-                event_path = str(getattr(event, "path", None))
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H3,H4","location":"app.py:2714","message":"Before updating output_dir","data":{"old_output_dir":old_output_dir,"event_path":event_path,"tree_id":getattr(tree,"id",None)},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
 
             # Update output_dir with proper path resolution
             new_path = Path(event.path)
@@ -3159,27 +2869,9 @@ class CairnTuiApp(App):
                 except Exception:
                     self.model.output_dir = new_path
 
-            # #region agent log
-            try:
-                import time
-                new_output_dir = str(self.model.output_dir) if self.model.output_dir else None
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H3,H4","location":"app.py:2720","message":"After updating output_dir","data":{"new_output_dir":new_output_dir},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
-
             # Update display
             self._render_main()
         except Exception as e:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"test-failures","hypothesisId":"H2,H3","location":"app.py:2730","message":"Exception in on_directory_tree_directory_selected","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             pass
 
     def action_focus_search(self) -> None:
@@ -3694,10 +3386,6 @@ class CairnTuiApp(App):
 
     def action_export(self) -> None:
         """Action method to trigger export (called from Enter key handler)."""
-        # #region agent log
-        with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3283","message":"action_export called","data":{"step":self.step,"prefix_before":str(self._output_prefix or "")},"timestamp":int(__import__("time").time()*1000)})+"\n")
-        # #endregion
         with profile_operation("action_export"):
             if self._export_in_progress:
                 return
@@ -3709,20 +3397,8 @@ class CairnTuiApp(App):
                 try:
                     prefix_input = self.query_one("#export_prefix_input", Input)
                     input_value = prefix_input.value or ""
-                    # #region agent log
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3298","message":"prefix input queried","data":{"input_value":str(input_value),"stored_prefix":str(self._output_prefix or "")},"timestamp":int(__import__("time").time()*1000)})+"\n")
-                    # #endregion
                     self._output_prefix = input_value
-                    # #region agent log
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3305","message":"prefix captured","data":{"prefix_after":str(self._output_prefix or "")},"timestamp":int(__import__("time").time()*1000)})+"\n")
-                    # #endregion
                 except Exception as e:
-                    # #region agent log
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H_export","location":"app.py:3308","message":"prefix capture failed","data":{"error":str(e)},"timestamp":int(__import__("time").time()*1000)})+"\n")
-                    # #endregion
                     pass
             self._start_export()
 
@@ -3796,7 +3472,6 @@ class CairnTuiApp(App):
                 used_dir = getattr(self, "_export_out_dir_used", None)
                 desired_dir = getattr(self.model, "output_dir", None)
                 if used_dir and desired_dir and Path(desired_dir) != Path(used_dir):
-                    import time
                     import shutil
 
                     desired = Path(desired_dir).expanduser()
@@ -3807,27 +3482,6 @@ class CairnTuiApp(App):
                         desired = None
 
                     if desired is not None:
-                        with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                            f.write(
-                                json.dumps(
-                                    {
-                                        "sessionId": "debug-session",
-                                        "runId": "pre-fix",
-                                        "hypothesisId": "H_export",
-                                        "location": "app.py:_on_export_done",
-                                        "message": "mirroring_export_outputs_to_new_output_dir",
-                                        "data": {
-                                            "used_dir": str(used_dir),
-                                            "desired_dir": str(desired),
-                                            "files": [row[0] for row in manifest[:25]],
-                                            "files_truncated": len(manifest) > 25,
-                                        },
-                                        "timestamp": int(time.time() * 1000),
-                                    }
-                                )
-                                + "\n"
-                            )
-
                         for filename, _fmt, _cnt, _sz in manifest:
                             try:
                                 src = Path(used_dir) / str(filename)
@@ -3857,28 +3511,12 @@ class CairnTuiApp(App):
 
     def _confirm(self, *, title: str, message: str, callback: Optional[Callable[[bool], None]] = None) -> None:
         """Open a confirmation overlay and store the callback for when the result comes back."""
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_confirm","message":"_confirm_called","data":{"title":title,"has_callback":callback is not None},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         # Store the callback so we can call it when the confirmation result arrives
         self._confirm_callback = callback
         try:
             overlay = self.query_one("#confirm_overlay", ConfirmOverlay)
             overlay.open(title=title, message=message)
         except Exception:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:_confirm","message":"overlay_not_found","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             # If overlay doesn't exist, call callback with False (cancelled)
             if callback:
                 try:
@@ -3889,38 +3527,14 @@ class CairnTuiApp(App):
     def on_confirm_overlay_result(self, message: ConfirmOverlay.Result) -> None:  # type: ignore[name-defined]
         """Handle Result message from ConfirmOverlay."""
         confirmed = getattr(message, "confirmed", False)
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:on_confirm_overlay_result","message":"confirm_overlay_result_received","data":{"confirmed":confirmed,"has_callback":hasattr(self,"_confirm_callback") and self._confirm_callback is not None},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
 
         # Check if there's a pending callback (for rename confirmations, etc.)
         if hasattr(self, "_confirm_callback") and self._confirm_callback is not None:
             callback = self._confirm_callback
             self._confirm_callback = None  # Clear it
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:on_confirm_overlay_result","message":"calling_confirm_callback","data":{"confirmed":confirmed},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             try:
                 callback(confirmed)
             except Exception as e:
-                # #region agent log
-                try:
-                    import time
-                    with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H4","location":"app.py:on_confirm_overlay_result","message":"callback_error","data":{"error":str(e)},"timestamp":int(time.time()*1000)})+"\n")
-                except Exception:
-                    pass
-                # #endregion
                 pass
             return
 
@@ -3935,37 +3549,11 @@ class CairnTuiApp(App):
 
     def on_rename_overlay_submitted(self, message: RenameOverlay.Submitted) -> None:  # type: ignore[name-defined]
         """Handle Submitted message from RenameOverlay."""
-        # #region agent log
-        try:
-            import time
-            ctx = getattr(message, "ctx", None)
-            value = getattr(message, "value", None)
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_rename_overlay_submitted","message":"rename_overlay_submitted_handler_called","data":{"value":str(value) if value else None,"ctx_kind":getattr(ctx,"kind",None) if ctx else None,"ctx_selected_keys":list(getattr(ctx,"selected_keys",[])) if ctx else None},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         ctx = getattr(message, "ctx", None)
         value = getattr(message, "value", None)
         if ctx is None:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_rename_overlay_submitted","message":"ctx_is_none","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return
         if value is None:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_rename_overlay_submitted","message":"value_is_none_cancelled","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             # User cancelled - return to inline overlay if applicable
             if self._in_inline_edit:
                 try:
@@ -3977,14 +3565,6 @@ class CairnTuiApp(App):
             return
         # Apply the rename via the standard edit payload mechanism
         payload = {"action": "rename", "value": value, "ctx": ctx}
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_rename_overlay_submitted","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action"),"payload_value":str(payload.get("value"))},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         self._apply_edit_payload(payload)
         # If this triggered a confirmation overlay (multi-rename), don't steal focus by
         # reopening the inline overlay yet; `_apply_rename_confirmed` will bring us back.
@@ -4029,36 +3609,11 @@ class CairnTuiApp(App):
 
     def on_color_picker_overlay_color_picked(self, message: ColorPickerOverlay.ColorPicked) -> None:  # type: ignore[name-defined]
         """Handle ColorPicked message from ColorPickerOverlay."""
-        # #region agent log
-        try:
-            import time
-            rgba = getattr(message, "rgba", None)
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_color_picker_overlay_color_picked","message":"color_picker_overlay_color_picked_handler_called","data":{"rgba":str(rgba) if rgba else None},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         rgba = getattr(message, "rgba", None)
         ctx = self._selected_keys_for_step()
         if ctx is None:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:on_color_picker_overlay_color_picked","message":"ctx_is_none_no_selection","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return
         if rgba is None:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_color_picker_overlay_color_picked","message":"rgba_is_none_cancelled","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             # User cancelled - return to inline overlay if applicable
             if self._in_inline_edit:
                 try:
@@ -4070,14 +3625,6 @@ class CairnTuiApp(App):
             return
         # Apply the color via the standard edit payload mechanism
         payload = {"action": "color", "value": rgba, "ctx": ctx}
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_color_picker_overlay_color_picked","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action"),"payload_value":str(payload.get("value"))},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         self._apply_edit_payload(payload)
         # Return to the inline overlay after applying a pick. InlineEditOverlay is closed
         # while the picker is open; tests expect to land back in the inline overlay.
@@ -4091,36 +3638,11 @@ class CairnTuiApp(App):
 
     def on_icon_picker_overlay_icon_picked(self, message: IconPickerOverlay.IconPicked) -> None:  # type: ignore[name-defined]
         """Handle IconPicked message from IconPickerOverlay."""
-        # #region agent log
-        try:
-            import time
-            icon = getattr(message, "icon", None)
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_icon_picker_overlay_icon_picked","message":"icon_picker_overlay_icon_picked_handler_called","data":{"icon":str(icon) if icon else None},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         icon = getattr(message, "icon", None)
         ctx = self._selected_keys_for_step()
         if ctx is None:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H2","location":"app.py:on_icon_picker_overlay_icon_picked","message":"ctx_is_none_no_selection","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             return
         if icon is None:
-            # #region agent log
-            try:
-                import time
-                with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1","location":"app.py:on_icon_picker_overlay_icon_picked","message":"icon_is_none_cancelled","data":{},"timestamp":int(time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
             # User cancelled - return to inline overlay if applicable
             if self._in_inline_edit:
                 try:
@@ -4132,14 +3654,6 @@ class CairnTuiApp(App):
             return
         # Apply the icon via the standard edit payload mechanism
         payload = {"action": "icon", "value": icon, "ctx": ctx}
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_icon_picker_overlay_icon_picked","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action"),"payload_value":str(payload.get("value"))},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         self._apply_edit_payload(payload)
         # Return to the inline overlay after applying a pick. InlineEditOverlay is closed
         # while the picker is open; tests expect to land back in the inline overlay.
@@ -4153,16 +3667,6 @@ class CairnTuiApp(App):
 
     def on_description_overlay_submitted(self, message: DescriptionOverlay.Submitted) -> None:  # type: ignore[name-defined]
         """Handle Submitted message from DescriptionOverlay."""
-        # #region agent log
-        try:
-            import time
-            ctx = getattr(message, "ctx", None)
-            value = getattr(message, "value", None)
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_description_overlay_submitted","message":"description_overlay_submitted_handler_called","data":{"value":str(value) if value else None,"ctx_kind":getattr(ctx,"kind",None) if ctx else None},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         ctx = getattr(message, "ctx", None)
         value = getattr(message, "value", None)
         if ctx is None:
@@ -4179,14 +3683,6 @@ class CairnTuiApp(App):
             return
         # Apply the description via the standard edit payload mechanism
         payload = {"action": "description", "value": value, "ctx": ctx}
-        # #region agent log
-        try:
-            import time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"pre-fix","hypothesisId":"H1,H3","location":"app.py:on_description_overlay_submitted","message":"calling_apply_edit_payload","data":{"payload_action":payload.get("action")},"timestamp":int(time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         self._apply_edit_payload(payload)
         # Return to inline overlay after applying (InlineEditOverlay is closed while this
         # sub-editor is open).

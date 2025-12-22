@@ -82,33 +82,11 @@ class _MutableSetProxy(MutableSet[str]):
         for item in other:
             self._add_method(item)
 
-    # #region agent log
     def difference_update(self, other: Set[str]) -> None:
         """Update the set, removing elements found in other."""
-        try:
-            import json, time
-            with open("/Users/scott/_code/cairn/.cursor/debug.log", "a") as f:
-                json.dump({
-                    "id": f"log_{int(time.time() * 1000)}",
-                    "timestamp": int(time.time() * 1000),
-                    "location": "state.py:difference_update",
-                    "message": "difference_update called",
-                    "data": {
-                        "other_len": len(other),
-                        "getter_name": self._getter_name,
-                        "current_len": len(self),
-                    },
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "A"
-                }, f)
-                f.write("\n")
-        except Exception:
-            pass
         # Remove all items in other from this set
         for item in other:
             self._remove_method(item)
-    # #endregion
 
     def __repr__(self) -> str:
         return repr(getattr(self._manager, self._getter_name))
