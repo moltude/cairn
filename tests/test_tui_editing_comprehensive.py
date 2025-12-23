@@ -390,16 +390,23 @@ class TestMultiSelectEditing:
             async with app.run_test() as pilot:
                 app._goto("List_data")
                 await pilot.pause()
-                _select_folder_by_index(app, 0)
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")
+                _select_folder_with_min_counts(app, min_waypoints=3)
+                app._goto("Waypoints")
                 await pilot.pause()
 
                 # Ensure we're on Waypoints step
                 assert app.step == "Waypoints", f"Expected Waypoints step, got {app.step}"
+
+                # Wait for waypoints table to be ready
+                from textual.widgets import DataTable
+                for _ in range(20):
+                    try:
+                        table = app.query_one("#waypoints_table", DataTable)
+                        if getattr(table, "row_count", 0) > 0:
+                            break
+                    except Exception:
+                        pass
+                    await pilot.pause()
 
                 # Select first waypoint using UI (same as working test)
                 app.action_focus_table()
@@ -444,6 +451,14 @@ class TestMultiSelectEditing:
                 await pilot.pause()
                 # If multiple items selected, confirmation overlay appears - confirm it
                 if num_to_select > 1:
+                    # Wait for confirmation overlay to appear
+                    for _ in range(20):
+                        try:
+                            if app._overlay_open("#confirm_overlay"):
+                                break
+                        except Exception:
+                            pass
+                        await pilot.pause()
                     await pilot.press("y")  # Confirm the multi-rename
                     await pilot.pause()
 
