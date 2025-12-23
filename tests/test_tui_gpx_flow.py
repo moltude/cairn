@@ -11,6 +11,9 @@ import tempfile
 
 import pytest
 
+# Test fixtures directory
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "bitterroots"
+
 
 class TestTuiGpxFolderSkip:
     """Test that folder step is skipped for GPX imports."""
@@ -54,18 +57,18 @@ class TestTuiGpxFolderSkip:
         from cairn.core.parser import parse_geojson
         from cairn.tui.state import StateManager
 
-        json_path = Path("demo/bitterroots/bitterroots_subset.json")
+        json_path = FIXTURES_DIR / "bitterroots_subset.json"
         if not json_path.exists():
-            pytest.skip("Demo JSON file not found")
+            pytest.skip("Fixture JSON file not found")
 
         parsed = parse_geojson(json_path)
-        
+
         # JSON should have one named folder (not "default")
         folders = getattr(parsed, "folders", {}) or {}
         assert len(folders) == 1
         folder_id = list(folders.keys())[0]
         assert folder_id != "default", "JSON folder should have UUID, not 'default'"
-        
+
         # Note: has_real_folders() requires an app instance which is complex to set up
         # For now, we just verify the folder structure is correct
 
@@ -77,16 +80,16 @@ class TestTuiGpxParsing:
         """Test that GPX parser creates a default folder structure."""
         from cairn.io.caltopo_gpx import parse_caltopo_gpx
 
-        gpx_path = Path("demo/bitterroots/bitterroots_subet.gpx")
+        gpx_path = FIXTURES_DIR / "bitterroots_subet.gpx"
         if not gpx_path.exists():
-            pytest.skip("Demo GPX file not found")
+            pytest.skip("Fixture GPX file not found")
 
         parsed = parse_caltopo_gpx(gpx_path)
-        
+
         # Should have default folder
         folders = getattr(parsed, "folders", {}) or {}
         assert "default" in folders, "Should have default folder"
-        
+
         # Should have waypoints
         stats = parsed.get_folder_stats("default")
         assert stats["waypoints"] > 0, "Should have waypoints"
@@ -100,9 +103,9 @@ class TestTuiGpxOnxDefaults:
         from cairn.core.mapper import map_icon
         from cairn.io.caltopo_gpx import parse_caltopo_gpx
 
-        gpx_path = Path("demo/bitterroots/bitterroots_subet.gpx")
+        gpx_path = FIXTURES_DIR / "bitterroots_subet.gpx"
         if not gpx_path.exists():
-            pytest.skip("Demo GPX file not found")
+            pytest.skip("Fixture GPX file not found")
 
         parsed = parse_caltopo_gpx(gpx_path)
         folder = parsed.folders["default"]
@@ -119,9 +122,9 @@ class TestTuiGpxOnxDefaults:
         from cairn.core.mapper import map_icon
         from cairn.io.caltopo_gpx import parse_caltopo_gpx
 
-        gpx_path = Path("demo/bitterroots/bitterroots_subet.gpx")
+        gpx_path = FIXTURES_DIR / "bitterroots_subet.gpx"
         if not gpx_path.exists():
-            pytest.skip("Demo GPX file not found")
+            pytest.skip("Fixture GPX file not found")
 
         parsed = parse_caltopo_gpx(gpx_path)
         folder = parsed.folders["default"]
@@ -172,4 +175,3 @@ class TestTuiGpxWorkflow:
                         f"Should reach Preview step, but step is: {app.step}"
 
         asyncio.run(_run())
-
