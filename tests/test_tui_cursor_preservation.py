@@ -183,3 +183,4 @@ def test_waypoints_cursor_preserved_on_space_toggle_single_folder_fixture(tmp_pa
     asyncio.run(_run())
 
 
+
