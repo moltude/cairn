@@ -215,19 +215,33 @@ class TestSingleItemEditing:
                 await pilot.press("enter")  # Rename is first option
                 await pilot.pause()
 
-                # Set new name
-                try:
-                    inp = app.query_one("#rename_value", Input)
-                    inp.value = NEW_NAME
-                except Exception:
-                    pass
+                # Set new name - wait for rename overlay input to be available
+                from textual.widgets import Input
+                for _ in range(20):
+                    try:
+                        inp = app.query_one("#rename_value", Input)
+                        break
+                    except Exception:
+                        await pilot.pause()
+                
+                # Set the value directly (matching pattern from test_tui_editing_e2e.py)
+                inp = app.query_one("#rename_value", Input)
+                inp.value = NEW_NAME
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
+                
+                # Wait for rename to apply and table to refresh (call_after_refresh is async)
+                for _ in range(50):
+                    _, waypoints = app._current_folder_features()
+                    if any(getattr(w, "title", "") == NEW_NAME for w in waypoints):
+                        break
+                    await pilot.pause()
 
                 # Verify in memory
                 _, waypoints = app._current_folder_features()
-                assert any(getattr(w, "title", "") == NEW_NAME for w in waypoints)
+                assert any(getattr(w, "title", "") == NEW_NAME for w in waypoints), \
+                    f"Expected waypoint with title '{NEW_NAME}', but found: {[getattr(w, 'title', '') for w in waypoints[:5]]}"
 
                 # Continue to Preview (Preview & Export) and export
                 # Use _goto to avoid DuplicateIds issues with re-rendering
@@ -384,12 +398,16 @@ class TestMultiSelectEditing:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                # Use programmatic selection for reliability - select first 3 waypoints
-                # This bypasses UI timing issues while still testing the bulk edit feature
-                _, waypoints = app._current_folder_features()
-                num_to_select = min(3, len(waypoints))
-                for i in range(num_to_select):
-                    app._selected_waypoint_keys.add(str(i))
+                # Select first 3 waypoints using UI (more reliable than programmatic selection)
+                app.action_focus_table()
+                await pilot.pause()
+                num_to_select = min(3, len(app._current_folder_features()[1]))
+                for _ in range(num_to_select):
+                    await pilot.press("space")
+                    await pilot.pause(0.05)
+                    if _ < num_to_select - 1:  # Don't move down after last selection
+                        await pilot.press("down")
+                        await pilot.pause(0.05)
 
                 num_selected = len(app._selected_waypoint_keys)
                 assert num_selected == num_to_select, f"Expected {num_to_select} selected, got {num_selected}"
@@ -400,52 +418,66 @@ class TestMultiSelectEditing:
                 await pilot.press("enter")
                 await pilot.pause()
 
+            # Wait for rename overlay input to be available
+            inp = None
+            for _ in range(20):
                 try:
                     inp = app.query_one("#rename_value", Input)
-                    inp.value = BULK_NAME
+                    break
                 except Exception:
-                    pass
-                await pilot.pause()
-                await pilot.press("enter")
-                await pilot.pause()
-                # If multiple items selected, confirmation overlay appears - confirm it
-                if num_to_select > 1:
-                    await pilot.press("y")  # Confirm the multi-rename
                     await pilot.pause()
+            
+            assert inp is not None, "Rename overlay input not found"
+            inp.value = BULK_NAME
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause()
+            # If multiple items selected, confirmation overlay appears - confirm it
+            if num_to_select > 1:
+                await pilot.press("y")  # Confirm the multi-rename
+                await pilot.pause()
 
-                # Verify in memory before export
+            # Wait for rename to apply and table to refresh
+            for _ in range(50):
                 _, waypoints_after = app._current_folder_features()
                 renamed = [w for w in waypoints_after if getattr(w, "title", "") == BULK_NAME]
-                assert len(renamed) == num_to_select, f"Expected {num_to_select} renamed, got {len(renamed)}"
-
-                # Export - use _goto to avoid DuplicateIds issues
-                app._goto("Preview")
+                if len(renamed) == num_to_select:
+                    break
                 await pilot.pause()
 
-                app.model.output_dir = out_dir
-                # Set filename before exporting
-                from textual.widgets import Input
-                filename_input = app.query_one("#export_filename_input", Input)
-                filename_input.value = "test_export"
-                await pilot.pause()
-                app.action_export()
-                await pilot.pause()
+            # Verify in memory before export
+            _, waypoints_after = app._current_folder_features()
+            renamed = [w for w in waypoints_after if getattr(w, "title", "") == BULK_NAME]
+            assert len(renamed) == num_to_select, f"Expected {num_to_select} renamed, got {len(renamed)}"
 
-                for _ in range(300):
-                    if not app._export_in_progress:
-                        break
-                    await asyncio.sleep(0.05)
+            # Export - use _goto to avoid DuplicateIds issues
+            app._goto("Preview")
+            await pilot.pause()
 
-                assert app._export_error is None, f"Export error: {app._export_error}"
+            app.model.output_dir = out_dir
+            # Set filename before exporting
+            from textual.widgets import Input
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
+            await pilot.pause()
+            app.action_export()
+            await pilot.pause()
 
-                # Validate
-                gpx_files = list(out_dir.glob("*.gpx"))
-                all_waypoints = []
-                for gpx in gpx_files:
-                    all_waypoints.extend(_parse_gpx_waypoints(gpx))
+            for _ in range(300):
+                if not app._export_in_progress:
+                    break
+                await asyncio.sleep(0.05)
 
-                bulk_named = [w for w in all_waypoints if w["name"] == BULK_NAME]
-                assert len(bulk_named) == num_to_select, f"Expected {num_to_select} waypoints named {BULK_NAME}, got {len(bulk_named)}"
+            assert app._export_error is None, f"Export error: {app._export_error}"
+
+            # Validate
+            gpx_files = list(out_dir.glob("*.gpx"))
+            all_waypoints = []
+            for gpx in gpx_files:
+                all_waypoints.extend(_parse_gpx_waypoints(gpx))
+
+            bulk_named = [w for w in all_waypoints if w["name"] == BULK_NAME]
+            assert len(bulk_named) == num_to_select, f"Expected {num_to_select} waypoints named {BULK_NAME}, got {len(bulk_named)}"
 
         asyncio.run(_run())
 
@@ -795,14 +827,28 @@ class TestMultiSelectEditing:
                 await pilot.pause()
 
                 NEW_NAME = "SORTING_TEST_WP"
-                try:
-                    inp = app.query_one("#rename_value", Input)
-                    inp.value = NEW_NAME
-                except Exception:
-                    pass
+                # Wait for rename overlay input to be available
+                inp = None
+                for _ in range(20):
+                    try:
+                        inp = app.query_one("#rename_value", Input)
+                        break
+                    except Exception:
+                        await pilot.pause()
+                
+                assert inp is not None, "Rename overlay input not found"
+                inp.value = NEW_NAME
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
+
+                # Wait for rename to apply and table to refresh
+                for _ in range(50):
+                    _, waypoints_after = app._current_folder_features()
+                    renamed = [w for w in waypoints_after if getattr(w, "title", "") == NEW_NAME]
+                    if len(renamed) == 1:
+                        break
+                    await pilot.pause()
 
                 # Verify the correct waypoint was renamed
                 _, waypoints_after = app._current_folder_features()
@@ -956,14 +1002,27 @@ class TestDifferentFolders:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                try:
-                    inp = app.query_one("#rename_value", Input)
-                    inp.value = SECOND_FOLDER_NAME
-                except Exception:
-                    pass
+                # Wait for rename overlay input to be available
+                inp = None
+                for _ in range(20):
+                    try:
+                        inp = app.query_one("#rename_value", Input)
+                        break
+                    except Exception:
+                        await pilot.pause()
+                
+                assert inp is not None, "Rename overlay input not found"
+                inp.value = SECOND_FOLDER_NAME
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
+                
+                # Wait for rename to apply and table to refresh
+                for _ in range(50):
+                    _, waypoints_check = app._current_folder_features()
+                    if any(getattr(w, "title", "") == SECOND_FOLDER_NAME for w in waypoints_check):
+                        break
+                    await pilot.pause()
 
                 # Navigate to Preview
                 app._goto("Preview")

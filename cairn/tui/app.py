@@ -3589,66 +3589,6 @@ class CairnTuiApp(App):
             except Exception:
                 pass
 
-    def on_rename_overlay_submitted(self, message: RenameOverlay.Submitted) -> None:  # type: ignore[name-defined]
-        """Handle Submitted message from RenameOverlay."""
-        ctx = getattr(message, "ctx", None)
-        value = getattr(message, "value", None)
-        if ctx is None:
-            return
-        if value is None:
-            # User cancelled - return to inline overlay if applicable
-            if self._in_inline_edit:
-                try:
-                    feats = self._selected_features(ctx)
-                    if feats:
-                        self._show_inline_overlay(ctx=ctx, feats=feats)
-                except Exception:
-                    pass
-            return
-        # Apply the rename via the standard edit payload mechanism
-        payload = {"action": "rename", "value": value, "ctx": ctx}
-        self._apply_edit_payload(payload)
-        # If this triggered a confirmation overlay (multi-rename), don't steal focus by
-        # reopening the inline overlay yet; `_apply_rename_confirmed` will bring us back.
-        try:
-            if self.query_one("#confirm_overlay", ConfirmOverlay).has_class("open"):
-                return
-        except Exception:
-            pass
-        # Heuristic for test stability / UX: if the current folder only has a single
-        # waypoint and we just renamed it, assume the user is "done editing" and let
-        # Enter advance the stepper (rather than leaving the inline overlay open and
-        # keeping selection active, which would cause Enter to reopen actions).
-        try:
-            if getattr(ctx, "kind", None) == "waypoint":
-                _tracks, _waypoints = self._current_folder_features()
-                if len(getattr(ctx, "selected_keys", []) or []) == 1 and len(_waypoints) <= 1:
-                    try:
-                        self._in_single_item_edit = False
-                        self._in_inline_edit = False
-                    except Exception:
-                        pass
-                    try:
-                        self._selected_waypoint_keys.clear()
-                        self._refresh_waypoints_table()
-                    except Exception:
-                        pass
-                    try:
-                        self.call_after_refresh(self.action_focus_table)
-                    except Exception:
-                        self.action_focus_table()
-                    return
-        except Exception:
-            pass
-
-        if self._in_inline_edit:
-            try:
-                feats = self._selected_features(ctx)
-                if feats:
-                    self._show_inline_overlay(ctx=ctx, feats=feats)
-            except Exception:
-                pass
-
     def on_color_picker_overlay_color_picked(self, message: ColorPickerOverlay.ColorPicked) -> None:  # type: ignore[name-defined]
         """Handle ColorPicked message from ColorPickerOverlay."""
         rgba = getattr(message, "rgba", None)
