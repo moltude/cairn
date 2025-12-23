@@ -97,7 +97,8 @@ STEP_LABELS = {
 
 # File types shown in Select_file tree. (Parsing support may be narrower than visibility.)
 _VISIBLE_INPUT_EXTS = {".json", ".geojson", ".kml", ".gpx"}
-_PARSEABLE_INPUT_EXTS = {".json", ".geojson"}
+# GPX support: CalTopo GPX exports contain only coordinates and names (no icons/colors/folders)
+_PARSEABLE_INPUT_EXTS = {".json", ".geojson", ".gpx"}
 
 
 @dataclass
