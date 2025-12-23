@@ -398,12 +398,15 @@ class TestMultiSelectEditing:
                 await pilot.press("enter")
                 await pilot.pause()
 
+                # Ensure we're on Waypoints step
+                assert app.step == "Waypoints", f"Expected Waypoints step, got {app.step}"
+
                 # Select first waypoint using UI (same as working test)
                 app.action_focus_table()
                 await pilot.pause()
                 await pilot.press("space")
                 await pilot.pause()
-                
+
                 # For multi-select, select 2 more waypoints
                 num_to_select = 3
                 for _ in range(2):
@@ -432,7 +435,7 @@ class TestMultiSelectEditing:
                         break
                     except Exception:
                         await pilot.pause()
-                
+
                 # Set the value directly (matching pattern from working test)
                 inp = app.query_one("#rename_value", Input)
                 inp.value = BULK_NAME
@@ -842,7 +845,7 @@ class TestMultiSelectEditing:
                         break
                     except Exception:
                         await pilot.pause()
-                
+
                 # Set the value directly (matching pattern from working test)
                 inp = app.query_one("#rename_value", Input)
                 inp.value = NEW_NAME
@@ -1018,14 +1021,14 @@ class TestDifferentFolders:
                         break
                     except Exception:
                         await pilot.pause()
-                
+
                 # Set the value directly (matching pattern from working test)
                 inp = app.query_one("#rename_value", Input)
                 inp.value = SECOND_FOLDER_NAME
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
-                
+
                 # Wait for rename to apply and table to refresh
                 for _ in range(50):
                     _, waypoints_check = app._current_folder_features()
