@@ -9,6 +9,7 @@ from typing import Any, Optional
 
 
 BITTERROOTS_COMPLETE_FIXTURE_REL = Path("tests/fixtures/bitterroots/Bitterroots__Complete_.json")
+BITTERROOTS_GPX_FIXTURE_REL = Path("tests/fixtures/bitterroots/bitterroots_subet.gpx")
 TUI_TWO_WAYPOINTS_FIXTURE_REL = Path("tests/fixtures/tui/two_waypoints.json")
 
 
@@ -50,6 +51,29 @@ def get_tui_two_waypoints_fixture(*, min_bytes: int = 100) -> Path:
     sz = p.stat().st_size
     assert sz >= min_bytes, f"Fixture too small ({sz} bytes): {p}"
     return p
+
+
+def get_bitterroots_gpx_fixture(*, min_bytes: int = 500) -> Path:
+    """
+    CalTopo GPX export fixture for GPX import testing.
+
+    This is a CalTopo GPX export which contains only coordinates and names
+    (no icons, colors, or folder structure).
+    """
+    p = repo_root() / BITTERROOTS_GPX_FIXTURE_REL
+    assert p.exists(), f"Missing GPX fixture: {p}"
+    assert p.is_file(), f"GPX fixture path is not a file: {p}"
+    sz = p.stat().st_size
+    assert sz >= min_bytes, f"GPX fixture too small ({sz} bytes): {p}"
+    return p
+
+
+def copy_gpx_fixture_to_tmp(tmp_path: Path, *, min_bytes: int = 500) -> Path:
+    """Copy the GPX fixture to a temp directory for testing."""
+    src = get_bitterroots_gpx_fixture(min_bytes=min_bytes)
+    dst = tmp_path / "bitterroots_test.gpx"
+    shutil.copy2(src, dst)
+    return dst
 
 
 def copy_fixture_to_tmp(tmp_path: Path, *, min_bytes: int = 1_000_000) -> Path:

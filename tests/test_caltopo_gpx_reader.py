@@ -75,7 +75,7 @@ class TestCaltopoGpxJsonParity:
         """Test that GPX and JSON have the same number of waypoints."""
         gpx_path = FIXTURES_DIR / "bitterroots_subet.gpx"
         json_path = FIXTURES_DIR / "bitterroots_subset.json"
-        
+
         if not gpx_path.exists() or not json_path.exists():
             pytest.skip("Fixture files not found")
 
@@ -96,7 +96,7 @@ class TestCaltopoGpxJsonParity:
         """Test that GPX and JSON have the same waypoint names."""
         gpx_path = FIXTURES_DIR / "bitterroots_subet.gpx"
         json_path = FIXTURES_DIR / "bitterroots_subset.json"
-        
+
         if not gpx_path.exists() or not json_path.exists():
             pytest.skip("Fixture files not found")
 
@@ -116,7 +116,7 @@ class TestCaltopoGpxJsonParity:
         """Test that JSON has icons but GPX does not."""
         gpx_path = FIXTURES_DIR / "bitterroots_subet.gpx"
         json_path = FIXTURES_DIR / "bitterroots_subset.json"
-        
+
         if not gpx_path.exists() or not json_path.exists():
             pytest.skip("Fixture files not found")
 
