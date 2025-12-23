@@ -230,10 +230,10 @@ class CairnTuiApp(App):
     def _use_tree_browser(self) -> bool:
         """Check if DirectoryTree browser should be used (A/B test flag).
 
-        Set CAIRN_USE_TREE_BROWSER=1 to enable the tree-based file browser.
-        Default is the table-based browser for backwards compatibility.
+        Set CAIRN_USE_TREE_BROWSER=0 to disable the tree-based file browser.
+        Default is the tree-based browser.
         """
-        return os.getenv("CAIRN_USE_TREE_BROWSER", "").lower() in ("1", "true", "yes")
+        return os.getenv("CAIRN_USE_TREE_BROWSER", "1").lower() in ("1", "true", "yes")
 
     def _dismiss_warning(self, warning_id: str) -> None:
         """Dismiss a temporary warning widget.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 from textual.widgets import DataTable
@@ -21,6 +22,8 @@ def _get_table_row_count(app, table_id: str) -> int:
 
 def test_tui_file_browser_shows_directories_and_files(tmp_path: Path) -> None:
     """Test that the file browser shows directories and valid input files."""
+    # Disable tree mode for this test (uses table mode)
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -54,10 +57,13 @@ def test_tui_file_browser_shows_directories_and_files(tmp_path: Path) -> None:
             assert row_count >= 4, f"Expected at least 4 entries (parent + subdir + 3 map files), got {row_count}"
 
     asyncio.run(_run())
+    os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
 
 
 def test_tui_file_browser_navigate_into_directory(tmp_path: Path) -> None:
     """Test navigating into a subdirectory."""
+    # Disable tree mode for this test (uses table mode)
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -93,10 +99,13 @@ def test_tui_file_browser_navigate_into_directory(tmp_path: Path) -> None:
             )
 
     asyncio.run(_run())
+    os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
 
 
 def test_tui_file_browser_navigate_up(tmp_path: Path) -> None:
     """Test navigating up to parent directory."""
+    # Disable tree mode for this test (uses table mode)
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -127,10 +136,13 @@ def test_tui_file_browser_navigate_up(tmp_path: Path) -> None:
             )
 
     asyncio.run(_run())
+    os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
 
 
 def test_tui_file_browser_select_json_file_advances_step(tmp_path: Path) -> None:
     """Test that selecting a .json file advances to List_data step."""
+    # Disable tree mode for this test (uses table mode)
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -175,10 +187,13 @@ def test_tui_file_browser_select_json_file_advances_step(tmp_path: Path) -> None
             assert app.model.input_path is not None
 
     asyncio.run(_run())
+    os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
 
 
 def test_tui_file_browser_gpx_is_selectable() -> None:
     """Test that selecting a .gpx file is accepted (CalTopo GPX support)."""
+    # Disable tree mode for this test (uses table mode)
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -216,10 +231,13 @@ def test_tui_file_browser_gpx_is_selectable() -> None:
                 assert app.model.input_path.suffix == ".gpx"
 
     asyncio.run(_run())
+    os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
 
 
 def test_tui_file_browser_excludes_non_map_files(tmp_path: Path) -> None:
     """Test that the file browser only shows map file extensions."""
+    # Disable tree mode for this test (uses table mode)
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -256,10 +274,13 @@ def test_tui_file_browser_excludes_non_map_files(tmp_path: Path) -> None:
             )
 
     asyncio.run(_run())
+    os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
 
 
 def test_tui_file_browser_hides_dot_directories(tmp_path: Path) -> None:
     """Test that directories starting with . are hidden in the file browser."""
+    # Disable tree mode for this test (uses table mode)
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
@@ -320,6 +341,7 @@ def test_tui_file_browser_hides_dot_directories(tmp_path: Path) -> None:
                 assert ".vscode" not in entry, f"Found .vscode in entries: {visible_entries}"
 
     asyncio.run(_run())
+    os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
 
 
 def test_filtered_file_tree_hides_dotfiles(tmp_path: Path) -> None:
