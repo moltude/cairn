@@ -122,6 +122,41 @@ DirectoryTree > .directory-tree--file {
   color: #E0DBB7;
 }
 
+/* Preview screen layout - prioritize directory tree */
+
+#preview_root {
+  height: auto;
+}
+
+#export_dir_tree {
+  /* Fixed height for consistent layout - 10 visible rows */
+  height: 12;
+}
+
+#export_target_section {
+  height: auto;
+}
+
+#export_buttons {
+  /* Constrain button row height */
+  height: 3;
+}
+
+#save_post {
+  /* Constrain post-save area */
+  height: 1;
+}
+
+#export_contents_section {
+  height: auto;
+}
+
+/* Preview DataTables - auto height with reasonable limits */
+#preview_waypoints, #preview_routes {
+  height: auto;
+  max-height: 10;
+}
+
 /* Inline edit overlay (true popup, doesn't navigate Screens) */
 
 #inline_edit_overlay {

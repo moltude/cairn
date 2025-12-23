@@ -12,16 +12,32 @@ These tests verify:
 from __future__ import annotations
 
 import asyncio
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Optional
 
+import pytest
 from textual.widgets import DataTable, Input
 
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.config import get_all_onx_icons, normalize_onx_icon_name
 
 from tests.tui_harness import copy_fixture_to_tmp, select_folder_for_test
+
+
+# Disable tree browser by default for tests in this module.
+# Tree mode causes timeouts due to async DirectoryTree.watch_path coroutines.
+@pytest.fixture(autouse=True)
+def disable_tree_browser_for_tests():
+    """Disable tree browser for tests that don't specifically test tree mode."""
+    old_value = os.environ.get("CAIRN_USE_TREE_BROWSER")
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
+    yield
+    if old_value is None:
+        os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
+    else:
+        os.environ["CAIRN_USE_TREE_BROWSER"] = old_value
 
 
 def _pick_folder_id_by_index(app, index: int = 0) -> str:

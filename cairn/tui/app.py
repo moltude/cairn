@@ -7,7 +7,7 @@ from typing import Optional, Callable, TextIO, Iterable, Any
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.coordinate import Coordinate
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.reactive import reactive
 from textual.widgets import Button, DataTable, DirectoryTree, Header, Input, Static
 import copy
@@ -730,6 +730,29 @@ class CairnTuiApp(App):
         except Exception:
             pass
 
+    def on_directory_tree_directory_selected(self, event) -> None:  # type: ignore[override]
+        """Handle directory selection from export_dir_tree on Preview screen."""
+        # Only handle events from export_dir_tree widget
+        try:
+            tree_id = getattr(event.node.tree, "id", None)
+        except Exception:
+            tree_id = None
+
+        if tree_id != "export_dir_tree":
+            return
+
+        # Only process on Preview step
+        if self.step != "Preview":
+            return
+
+        # Update the output directory
+        try:
+            selected_path = Path(event.path)
+            if selected_path.is_dir():
+                self.model.output_dir = selected_path.resolve()
+        except Exception:
+            pass
+
     def _confirm(self, *, title: str, message: str, callback: Callable[[bool], None]) -> None:
         """Show an in-screen confirm overlay and run callback with result."""
         self._confirm_callback = callback
@@ -1312,7 +1335,10 @@ class CairnTuiApp(App):
         if not self._export_manifest:
             return
 
-        out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
+        out_dir = self.model.output_dir
+        if out_dir is None:
+            # No output directory selected - can't apply renames
+            return
         try:
             out_dir = out_dir.expanduser()
         except Exception:
@@ -2435,14 +2461,12 @@ class CairnTuiApp(App):
                 body.mount(Static("No parsed data. Go back.", classes="err"))
                 return
 
-            # Default output directory: <project_dir>/onx_ready
+            # Output directory: user must select from tree (no default)
+            # Start with home directory if not set
             out_dir = self.model.output_dir
             if out_dir is None:
-                try:
-                    out_dir = (Path.cwd() / "onx_ready").resolve()
-                except Exception:
-                    out_dir = Path.cwd() / "onx_ready"
-                self.model.output_dir = out_dir
+                out_dir = Path.home()
+                # Don't set model.output_dir yet - user must select from tree
 
             # Default prefix: input file stem (sanitized)
             if not (self._output_prefix or "").strip():
@@ -2454,13 +2478,14 @@ class CairnTuiApp(App):
 
             # Build the Preview & Export screen once; subsequent updates should be in-place to avoid DuplicateIds.
             try:
-                preview_root = self.query_one("#preview_root", Container)
+                preview_root = self.query_one("#preview_root", VerticalScroll)
             except Exception:
                 preview_root = None
 
             if preview_root is None:
                 body = self._clear_main_body()
-                preview_root = Container(id="preview_root")
+                # Use VerticalScroll so entire preview content can scroll if needed
+                preview_root = VerticalScroll(id="preview_root")
                 body.mount(preview_root)
 
                 preview_root.mount(Static("", id="preview_folder_label", classes="ok"))
@@ -2471,13 +2496,14 @@ class CairnTuiApp(App):
 
                 export_target.mount(Static("Export Location", classes="accent"))
 
-                # A/B test: embed tree or table browser
+                # Embed tree or table browser based on config
                 if self._use_tree_browser():
-                    # Tree browser for directory selection
+                    # Tree browser for directory selection - start at home
+                    # Tree gets priority sizing via CSS (min-height: 10 lines)
                     try:
-                        tree = FilteredDirectoryTree(str(out_dir), id="export_dir_tree")
+                        tree = FilteredDirectoryTree(str(Path.home()), id="export_dir_tree")
                         export_target.mount(tree)
-                    except Exception as e:
+                    except Exception:
                         # Fallback to simple display
                         export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
                 else:
@@ -2501,16 +2527,20 @@ class CairnTuiApp(App):
                 export_target.mount(Static("", id="save_status", classes="muted"))
                 export_target.mount(Container(id="save_post"))
 
-                preview_root.mount(Static("Export contents:", classes="accent"))
-                preview_root.mount(Static("", id="preview_waypoints_title", classes="accent"))
+                # Export contents section
+                export_contents = Container(id="export_contents_section")
+                preview_root.mount(export_contents)
+
+                export_contents.mount(Static("Export contents:", classes="accent"))
+                export_contents.mount(Static("", id="preview_waypoints_title", classes="accent"))
                 wp_table = DataTable(id="preview_waypoints")
                 wp_table.add_columns("Name", "OnX color", "OnX icon", "Description")
-                preview_root.mount(wp_table)
+                export_contents.mount(wp_table)
 
-                preview_root.mount(Static("", id="preview_routes_title", classes="accent"))
+                export_contents.mount(Static("", id="preview_routes_title", classes="accent"))
                 trk_table = DataTable(id="preview_routes")
                 trk_table.add_columns("Name", "OnX color", "Description")
-                preview_root.mount(trk_table)
+                export_contents.mount(trk_table)
 
             # Update export target display
             try:
@@ -3285,12 +3315,12 @@ class CairnTuiApp(App):
             except Exception:
                 focused_id = None
 
-            # When tree is focused, let it handle navigation keys (arrows, Enter for selection)
+            # When tree is focused, let it handle navigation keys (arrows, Enter for dir expansion)
             if self._use_tree_browser() and focused_id == "export_dir_tree":
-                # Let the tree handle its own navigation (arrow keys, Enter for directory selection)
-                # Only intercept specific keys we need to handle at app level
-                if key not in ("ctrl+n",) and ch.lower() != "c":
-                    # Let tree handle arrow keys, Enter, and other navigation
+                # Let the tree handle its own navigation (arrow keys AND Enter for directory expansion)
+                # User exports by pressing 'e', or opens overlay with 'c', or uses Ctrl+N for new folder
+                if key not in ("ctrl+n",) and ch.lower() not in ("c", "e"):
+                    # Let tree handle arrow keys, Enter for dir expansion, and other navigation
                     return
 
             # 'c' key: Open overlay to change export settings
@@ -3311,58 +3341,30 @@ class CairnTuiApp(App):
                     pass
                 return
 
-            # Handle Enter to export (unless the prefix input is focused).
-            # Tests and the footer contract expect Enter to export even when the directory tree
-            # is focused; directory selection is handled via tree events.
-            if focused_id != "export_prefix_input":
-                if key in ("enter", "return") or ch == "\r":
-                    # Guard: when output_dir is still the default (cwd/onx_ready), require a
-                    # second Enter to actually export. This prevents accidental exports to the
-                    # repo default directory in tests that set model.output_dir immediately after
-                    # arriving on Preview.
-                    try:
-                        from pathlib import Path as _Path
+            # Handle export via 'e' key OR Enter (when tree is not focused).
+            # When tree is focused: Enter navigates tree, 'e' exports
+            # When tree is not focused: Enter exports
+            is_export_key = ch.lower() == "e" or (key in ("enter", "return") or ch == "\r")
+            if focused_id != "export_prefix_input" and is_export_key:
+                # Skip if tree focused and Enter pressed (tree handles Enter for navigation)
+                if self._use_tree_browser() and focused_id == "export_dir_tree" and (key in ("enter", "return") or ch == "\r"):
+                    # This shouldn't be reached due to early return above, but guard just in case
+                    return
 
-                        cur_out = getattr(self.model, "output_dir", None)
-                        default_out = (_Path.cwd() / "onx_ready")
+                # Check if user has selected an output directory
+                    cur_out = getattr(self.model, "output_dir", None)
+                    if cur_out is None:
+                        # User must select a directory first
                         try:
-                            cur_norm = _Path(cur_out).expanduser().resolve() if cur_out is not None else None
+                            footer = self.query_one("#step_footer", Static)
+                            footer.update("Select an output directory from the tree first (Enter to select)")
                         except Exception:
-                            try:
-                                cur_norm = _Path(cur_out).expanduser() if cur_out is not None else None
-                            except Exception:
-                                cur_norm = None
+                            pass
                         try:
-                            def_norm = default_out.expanduser().resolve()
+                            event.stop()
                         except Exception:
-                            def_norm = default_out.expanduser()
-
-                        if cur_norm is not None and str(cur_norm) != str(def_norm):
-                            # Non-default output dir: always export immediately.
-                            setattr(self, "_default_export_armed", False)
-                        else:
-                            if not bool(getattr(self, "_default_export_armed", False)):
-                                setattr(self, "_default_export_armed", True)
-                                # Show user feedback that a second Enter is required
-                                try:
-                                    footer = self.query_one("#step_footer", Static)
-                                    footer.update("Press Enter again to export to default directory (onx_ready/)")
-                                except Exception:
-                                    pass
-                                try:
-                                    event.stop()
-                                except Exception:
-                                    pass
-                                return
-                            # Second Enter: proceed with export to default.
-                            setattr(self, "_default_export_armed", False)
-                            # Clear the feedback message by restoring footer
-                            try:
-                                self._update_footer()
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
+                            pass
+                        return
 
                     # Get prefix from input if available
                     try:
@@ -3442,7 +3444,12 @@ class CairnTuiApp(App):
             self._export_in_progress = False
             self._render_main()
             return
-        out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
+        out_dir = self.model.output_dir
+        if out_dir is None:
+            self._export_error = "No output directory selected. Select a directory from the tree."
+            self._export_in_progress = False
+            self._render_main()
+            return
         try:
             out_dir = out_dir.expanduser()
         except Exception:

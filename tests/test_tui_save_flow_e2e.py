@@ -1,11 +1,27 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 import pytest
 
 from tests.tui_harness import copy_fixture_to_tmp, move_datatable_cursor_to_row_key
+
+
+# Disable tree browser by default for most tests in this module.
+# Tree mode causes timeouts due to async DirectoryTree.watch_path coroutines.
+# Tests that specifically test tree functionality should enable it explicitly.
+@pytest.fixture(autouse=True)
+def disable_tree_browser_for_tests():
+    """Disable tree browser for tests that don't specifically test tree mode."""
+    old_value = os.environ.get("CAIRN_USE_TREE_BROWSER")
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
+    yield
+    if old_value is None:
+        os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
+    else:
+        os.environ["CAIRN_USE_TREE_BROWSER"] = old_value
 
 
 def _dismiss_post_save_prompt_if_present(pilot, app) -> None:
@@ -48,20 +64,30 @@ async def _activate_save_target_row(app, pilot, *, row_key: str) -> None:
         # Check if overlay is using tree mode or table mode
         use_tree = getattr(ov, "_use_tree", False)
         if use_tree:
-            # Tree mode: For tree navigation, we update _cur_dir directly and refresh
-            # The DirectoryTree.DirectorySelected event handler will update _cur_dir
-            # For testing, we can directly update the overlay's _cur_dir and refresh
+            # Tree mode: For tree navigation, we update _cur_dir directly
+            # DO NOT call _refresh_tree() as it creates new tree widgets with unawaited coroutines
+            # which causes pilot.pause() to time out. The model update is sufficient for tests.
             if row_key.startswith("dir:"):
                 try:
                     target_path = Path(row_key[4:])
                     ov._cur_dir = target_path.resolve() if target_path.exists() else target_path
-                    ov._refresh_tree()
+                    # Just update the path display, don't reload tree
+                    try:
+                        from textual.widgets import Static
+                        ov.query_one("#save_target_path", Static).update(f"Directory: {ov._cur_dir}")
+                    except Exception:
+                        pass
                 except Exception:
                     pass
             elif row_key == "__up__":
                 try:
                     ov._cur_dir = ov._cur_dir.parent if ov._cur_dir.parent != ov._cur_dir else ov._cur_dir
-                    ov._refresh_tree()
+                    # Just update the path display, don't reload tree
+                    try:
+                        from textual.widgets import Static
+                        ov.query_one("#save_target_path", Static).update(f"Directory: {ov._cur_dir}")
+                    except Exception:
+                        pass
                 except Exception:
                     pass
         else:

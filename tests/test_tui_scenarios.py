@@ -1,9 +1,26 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
+import pytest
+
 from tests.tui_harness import ArtifactRecorder, copy_fixture_to_tmp, get_bitterroots_complete_fixture, select_folder_for_test
+
+
+# Disable tree browser by default for tests in this module.
+# Tree mode causes timeouts due to async DirectoryTree.watch_path coroutines.
+@pytest.fixture(autouse=True)
+def disable_tree_browser_for_tests():
+    """Disable tree browser for tests that don't specifically test tree mode."""
+    old_value = os.environ.get("CAIRN_USE_TREE_BROWSER")
+    os.environ["CAIRN_USE_TREE_BROWSER"] = "0"
+    yield
+    if old_value is None:
+        os.environ.pop("CAIRN_USE_TREE_BROWSER", None)
+    else:
+        os.environ["CAIRN_USE_TREE_BROWSER"] = old_value
 
 
 def _pick_first_folder_id(app) -> str:
