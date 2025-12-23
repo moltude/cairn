@@ -100,6 +100,11 @@ def test_tui_e2e_export_real_bitterroots_complete(tmp_path: Path) -> None:
 
             # Real export into tmp_path.
             app.model.output_dir = out_dir
+            # Set filename before exporting
+            from textual.widgets import Input
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "bitterroots_export"
+            await pilot.pause()
             await pilot.press("enter")  # Trigger export
             await pilot.pause()
             rec.snapshot(app, label="export_started")
@@ -159,7 +164,10 @@ def test_tui_export_error_when_output_path_is_a_file(tmp_path: Path) -> None:
             rec.snapshot(app, label="preview")
 
             app.model.output_dir = not_a_dir
-            await pilot.press("enter")
+            # Set filename before exporting
+            from textual.widgets import Input
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
             await pilot.pause()
             await pilot.press("enter")
             await pilot.pause()

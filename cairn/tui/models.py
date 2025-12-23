@@ -51,7 +51,7 @@ class WidgetIds:
     PREVIEW_WAYPOINTS_TITLE = "preview_waypoints_title"
     PREVIEW_ROUTES = "preview_routes"
     PREVIEW_ROUTES_TITLE = "preview_routes_title"
-    OUTPUT_PREFIX = "output_prefix"
+    OUTPUT_FILENAME = "export_filename_input"
     EXPORT_DIR_TREE = "export_dir_tree"
     EXPORT_TARGET_SECTION = "export_target_section"
     SAVE_TARGET_OVERLAY = "save_target_overlay"

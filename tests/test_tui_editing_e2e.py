@@ -260,6 +260,10 @@ def test_tui_e2e_editing_then_export_real(tmp_path: Path) -> None:
 
             # Export into tmp output dir (no confirm modal anymore)
             app.model.output_dir = out_dir
+            # Set filename before exporting
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
+            await pilot.pause()
             app.action_export()
             await pilot.pause()
             rec.snapshot(app, label="export_started")

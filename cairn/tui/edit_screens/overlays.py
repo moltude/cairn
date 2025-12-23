@@ -24,18 +24,18 @@ from cairn.tui.edit_screens.shared import (
 
 class SaveTargetOverlay(Container):
     """
-    Save target editor overlay (directory browser + filename prefix).
+    Save target editor overlay (directory browser only).
 
-    Opened from the Save step via the inline \"Change? Y/n\" prompt.
+    Opened from the Preview step via the 'c' key to change export directory.
+    Filename is handled in the main Preview UI, not in this overlay.
     """
 
     class Done(Message):
         bubble = True
 
-        def __init__(self, *, directory: Path, prefix: str, cancelled: bool = False) -> None:
+        def __init__(self, *, directory: Path, cancelled: bool = False) -> None:
             super().__init__()
             self.directory = directory
-            self.prefix = prefix
             self.cancelled = cancelled
 
     class _DoneControl(Static):
@@ -46,7 +46,6 @@ class SaveTargetOverlay(Container):
     def __init__(self, *, id: str = "save_target_overlay", classes: str = "", use_tree: bool = False) -> None:
         super().__init__(id=id, classes=classes)
         self._cur_dir: Path = Path.cwd()
-        self._prefix: str = ""
         self._use_tree: bool = use_tree
 
     def compose(self) -> ComposeResult:
@@ -73,8 +72,6 @@ class SaveTargetOverlay(Container):
                 tbl.add_columns("Name", "Type")
                 yield tbl
 
-            yield Static("File name prefix", classes="accent")
-            yield Input(placeholder="Filename prefix", id="save_target_prefix")
             yield self._DoneControl("Done", id="save_target_done", classes="accent")
 
             if self._use_tree:
@@ -82,12 +79,12 @@ class SaveTargetOverlay(Container):
             else:
                 yield Static("Enter: open/select  •  d/Tab→Enter: done  •  Esc: cancel", classes="muted")
 
-    def open(self, *, directory: Path, prefix: str) -> None:
+    def open(self, *, directory: Path) -> None:
         _agent_log(
             hypothesisId="H_overlay_visibility",
             location="cairn/tui/edit_screens/overlays.py:SaveTargetOverlay.open",
             message="open_called",
-            data={"directory": str(directory), "prefix": str(prefix), "prior_classes": str(getattr(self, "classes", None))},
+            data={"directory": str(directory), "prior_classes": str(getattr(self, "classes", None))},
         )
         # Initialize _cur_dir with defensive checks
         if directory is None:
@@ -100,8 +97,6 @@ class SaveTargetOverlay(Container):
                     self._cur_dir = Path(directory).expanduser()
                 except Exception:
                     self._cur_dir = Path.cwd()
-        # Initialize _prefix with defensive checks
-        self._prefix = str(prefix or "").strip()
         try:
             self.add_class("open")
         except Exception:
@@ -127,7 +122,7 @@ class SaveTargetOverlay(Container):
 
         # Best-effort debug hook
         try:
-            getattr(self.app, "_dbg")(event="save.change.open", data={"dir": str(self._cur_dir), "prefix": self._prefix})
+            getattr(self.app, "_dbg")(event="save.change.open", data={"dir": str(self._cur_dir)})
         except Exception:
             pass
 
@@ -146,11 +141,6 @@ class SaveTargetOverlay(Container):
     def _refresh(self) -> None:
         try:
             self.query_one("#save_target_path", Static).update(f"Directory: {self._cur_dir}")
-        except Exception:
-            pass
-        try:
-            inp = self.query_one("#save_target_prefix", Input)
-            inp.value = self._prefix
         except Exception:
             pass
         try:
@@ -195,37 +185,21 @@ class SaveTargetOverlay(Container):
         except Exception:
             pass
 
-        try:
-            inp = self.query_one("#save_target_prefix", Input)
-            inp.value = self._prefix
-        except Exception:
-            pass
-
         # Reload tree at current directory
         self._reload_tree()
 
     def _apply_done(self) -> None:
-        # Capture prefix from input field
-        try:
-            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "").strip()
-        except Exception:
-            pass
-
         # Ensure _cur_dir is properly set (defensive check)
         if not hasattr(self, "_cur_dir") or self._cur_dir is None:
             self._cur_dir = Path.cwd()
 
-        # Send Done message with current directory and prefix
-        self.post_message(self.Done(directory=self._cur_dir, prefix=self._prefix, cancelled=False))
+        # Send Done message with current directory (filename is handled in main UI)
+        self.post_message(self.Done(directory=self._cur_dir, cancelled=False))
         self.close()
 
     def activate(self) -> None:
         """Deterministic activation used by tests (same as Enter on the browser)."""
-        # Preserve any typed prefix while navigating the directory browser.
-        try:
-            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
-        except Exception:
-            pass
+        # No prefix to preserve - filename is handled in main UI
 
         # Handle tree mode (DirectoryTree)
         if self._use_tree:
@@ -302,7 +276,7 @@ class SaveTargetOverlay(Container):
                 getattr(self.app, "_dbg")(event="save.change.cancel", data={"dir": str(self._cur_dir)})
             except Exception:
                 pass
-            self.post_message(self.Done(directory=self._cur_dir, prefix=self._prefix, cancelled=True))
+            self.post_message(self.Done(directory=self._cur_dir, cancelled=True))
             self.close()
             try:
                 event.stop()
@@ -423,12 +397,6 @@ class SaveTargetOverlay(Container):
         # Update display
         try:
             self.query_one("#save_target_path", Static).update(f"Directory: {self._cur_dir}")
-        except Exception:
-            pass
-
-        # Preserve prefix
-        try:
-            self._prefix = str(self.query_one("#save_target_prefix", Input).value or "")
         except Exception:
             pass
 

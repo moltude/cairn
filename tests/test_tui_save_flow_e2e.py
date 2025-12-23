@@ -36,16 +36,9 @@ def _dismiss_post_save_prompt_if_present(pilot, app) -> None:
 
 
 async def _open_save_target_overlay(app, pilot) -> None:
-    """Open the SaveTargetOverlay via the Preview & Export step 'c' key or button."""
-    # Try button click first (more reliable in tests)
-    try:
-        button = app.query_one("#change_export_settings", Button)
-        button.press()
-        await pilot.pause()
-    except Exception:
-        # Fallback to keyboard shortcut
-        await pilot.press("c")
-        await pilot.pause()
+    """Open the SaveTargetOverlay via the Preview & Export step 'c' key."""
+    await pilot.press("c")
+    await pilot.pause()
 
 
 async def _activate_save_target_row(app, pilot, *, row_key: str) -> None:
@@ -106,6 +99,7 @@ def test_tui_save_change_folder_then_export(tmp_path: Path) -> None:
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
+        from textual.widgets import Input
 
         fixture_copy = copy_fixture_to_tmp(tmp_path)
         base = tmp_path / "out_base"
@@ -137,10 +131,13 @@ def test_tui_save_change_folder_then_export(tmp_path: Path) -> None:
             await _activate_save_target_row(app, pilot, row_key="__done__")
             assert app.model.output_dir == sub
 
-            # Export
-            await pilot.press("enter")  # open confirm
+            # Set filename before exporting
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
             await pilot.pause()
-            await pilot.press("enter")  # confirm
+
+            # Export
+            await pilot.press("enter")
             await pilot.pause()
 
             for _ in range(600):
@@ -155,9 +152,9 @@ def test_tui_save_change_folder_then_export(tmp_path: Path) -> None:
     asyncio.run(_run())
 
 
-def test_tui_save_prefix_persists_across_folder_navigation(tmp_path: Path) -> None:
+def test_tui_save_filename_persists_across_folder_navigation(tmp_path: Path) -> None:
     """
-    E2E: set output prefix, navigate folders, and confirm the prefix persists.
+    E2E: set output filename, navigate folders, and confirm the filename persists.
     """
 
     async def _run() -> None:
@@ -182,19 +179,20 @@ def test_tui_save_prefix_persists_across_folder_navigation(tmp_path: Path) -> No
             await pilot.pause()
             assert app.step == "Preview"
 
-            # Open overlay and set prefix programmatically (avoids needing to Tab-focus in tests).
-            prefix = "MY_PREFIX"
-            await _open_save_target_overlay(app, pilot)
-            app.query_one("#save_target_prefix", Input).value = prefix
+            # Set filename in main UI (filename is no longer in overlay)
+            filename = "MY_FILENAME"
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = filename
             await pilot.pause()
 
-            # Navigate into subfolder and back out, then Done to apply.
+            # Navigate folders via overlay (filename should persist)
+            await _open_save_target_overlay(app, pilot)
             await _activate_save_target_row(app, pilot, row_key=f"dir:{sub}")
             await _activate_save_target_row(app, pilot, row_key="__up__")
             await _activate_save_target_row(app, pilot, row_key="__done__")
 
-            # Prefix should persist after applying changes.
-            assert (app._output_prefix or "").strip() == prefix
+            # Filename should persist after applying directory changes.
+            assert (app._output_filename or "").strip() == filename
 
     asyncio.run(_run())
 
@@ -223,6 +221,11 @@ def test_tui_save_rename_outputs_and_apply(tmp_path: Path) -> None:
             app._goto("List_data")
             await pilot.pause()
             app._goto("Preview")
+            await pilot.pause()
+
+            # Set filename before exporting
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
             await pilot.pause()
 
             # Export - call action_export directly (no confirm dialog anymore)
@@ -299,9 +302,12 @@ def test_tui_save_rename_negative_cases_then_recover(tmp_path: Path, mode: str) 
             app._goto("Preview")
             await pilot.pause()
 
-            # Export
-            await pilot.press("enter")
+            # Set filename before exporting
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
             await pilot.pause()
+
+            # Export
             await pilot.press("enter")
             await pilot.pause()
 
@@ -374,14 +380,14 @@ def test_tui_save_rename_negative_cases_then_recover(tmp_path: Path, mode: str) 
     asyncio.run(_run())
 
 
-def test_tui_save_target_overlay_done_applies_output_dir_and_prefix(tmp_path: Path) -> None:
+def test_tui_save_target_overlay_done_applies_output_dir(tmp_path: Path) -> None:
     """
     Unit-style: ensure SaveTargetOverlay Done applies to app model state.
+    Filename is handled in main UI, not overlay.
     """
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
-        from textual.widgets import Input
 
         fixture_copy = copy_fixture_to_tmp(tmp_path)
         base = tmp_path / "out_base"
@@ -400,20 +406,18 @@ def test_tui_save_target_overlay_done_applies_output_dir_and_prefix(tmp_path: Pa
             await pilot.pause()
 
             await _open_save_target_overlay(app, pilot)
-            # Navigate into subfolder and set prefix, then Done.
+            # Navigate into subfolder, then Done.
             await _activate_save_target_row(app, pilot, row_key=f"dir:{sub}")
-            app.query_one("#save_target_prefix", Input).value = "UNIT_PREFIX"
             await pilot.pause()
             await _activate_save_target_row(app, pilot, row_key="__done__")
 
             assert app.model.output_dir == sub
-            assert (app._output_prefix or "").strip() == "UNIT_PREFIX"
 
     asyncio.run(_run())
 
 
 @pytest.mark.parametrize(
-    "change_folder,nav_before_export,nav_after_export,set_prefix,rename_strategy",
+    "change_folder,nav_before_export,nav_after_export,set_filename,rename_strategy",
     [
         # Baseline: no folder change, export only
         (False, False, False, False, "none"),
@@ -421,7 +425,7 @@ def test_tui_save_target_overlay_done_applies_output_dir_and_prefix(tmp_path: Pa
         (True, False, False, False, "none"),
         # Navigate around (but keep folder), then export
         (False, True, False, False, "none"),
-        # Prefix set before export (should persist through folder nav)
+        # Filename set before export (should persist through folder nav)
         (True, True, False, True, "none"),
         # Rename first file only + apply
         (False, False, False, False, "first"),
@@ -438,14 +442,14 @@ def test_tui_save_flow_permutations(
     change_folder: bool,
     nav_before_export: bool,
     nav_after_export: bool,
-    set_prefix: bool,
+    set_filename: bool,
     rename_strategy: str,
 ) -> None:
     """
     Combinatorial E2E coverage for Save step to catch state bugs:
     - changing output folder vs keeping it
     - navigating folders before/after export
-    - keeping prefix stable across renders
+    - keeping filename stable across renders
     - renaming outputs (first/all) + applying via 'r'
     """
 
@@ -478,15 +482,16 @@ def test_tui_save_flow_permutations(
             await pilot.pause()
             assert app.step == "Preview"
 
-            # Optionally set prefix up-front (should survive folder navigation / re-renders).
-            prefix_val = "SCENARIO_PREFIX" if set_prefix else ""
+            # Optionally set filename up-front (should survive folder navigation / re-renders).
+            filename_val = "SCENARIO_FILENAME" if set_filename else "test_export"
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = filename_val
+            await pilot.pause()
+
             # Optionally change the output folder.
             expected_out_dir = base
-            if nav_before_export or change_folder or set_prefix:
+            if nav_before_export or change_folder:
                 await _open_save_target_overlay(app, pilot)
-                if set_prefix:
-                    app.query_one("#save_target_prefix", Input).value = prefix_val
-                    await pilot.pause()
 
                 if nav_before_export:
                     # Browse around, but return to base.
@@ -502,13 +507,11 @@ def test_tui_save_flow_permutations(
                 await _activate_save_target_row(app, pilot, row_key="__done__")
 
             assert app.model.output_dir == expected_out_dir
-            if set_prefix:
-                assert (app._output_prefix or "").strip() == prefix_val
+            if set_filename:
+                assert (app._output_filename or "").strip() == filename_val
 
             # Export
-            await pilot.press("enter")  # open confirm
-            await pilot.pause()
-            await pilot.press("enter")  # confirm
+            await pilot.press("enter")
             await pilot.pause()
 
             for _ in range(600):
@@ -524,6 +527,10 @@ def test_tui_save_flow_permutations(
 
             # Optionally rename outputs + apply
             if rename_strategy in {"first", "all"}:
+                # Wait for UI to update and create rename inputs
+                await pilot.pause()
+                await pilot.pause()
+
                 manifest = list(app._export_manifest or [])
                 assert manifest
 
@@ -531,6 +538,13 @@ def test_tui_save_flow_permutations(
                     old0 = manifest[0][0]
                     ext0 = Path(old0).suffix
                     new0 = f"RENAMED_0{ext0}"
+                    # Wait for rename input to be available
+                    for _ in range(10):
+                        try:
+                            app.query_one("#rename_0", Input)
+                            break
+                        except Exception:
+                            await pilot.pause()
                     app.query_one("#rename_0", Input).value = new0
                     await pilot.pause()
                     await pilot.press("r")
@@ -539,6 +553,15 @@ def test_tui_save_flow_permutations(
                     assert not (expected_out_dir / old0).exists()
                 else:
                     # Rename every file to a deterministic, unique name.
+                    # Wait for all rename inputs to be available
+                    for i in range(len(manifest)):
+                        for _ in range(10):
+                            try:
+                                app.query_one(f"#rename_{i}", Input)
+                                break
+                            except Exception:
+                                await pilot.pause()
+
                     new_names: list[tuple[str, str]] = []
                     for i, (fn, _fmt, _cnt, _sz) in enumerate(manifest):
                         ext = Path(fn).suffix
@@ -548,20 +571,27 @@ def test_tui_save_flow_permutations(
                     await pilot.pause()
                     await pilot.press("r")
                     await pilot.pause()
-                    for old_fn, new_fn in new_names:
-                        assert (expected_out_dir / new_fn).exists()
-                        assert not (expected_out_dir / old_fn).exists()
 
-            # Optionally navigate after export and ensure rename fields/prefix persist.
+                    # Check if there was an error
+                    if app._export_error:
+                        pytest.fail(f"Rename failed with error: {app._export_error}")
+
+                    for old_fn, new_fn in new_names:
+                        assert (expected_out_dir / new_fn).exists(), \
+                            f"Renamed file {new_fn} should exist. Error: {app._export_error}. Files in dir: {list(expected_out_dir.glob('*'))}"
+                        assert not (expected_out_dir / old_fn).exists(), \
+                            f"Original file {old_fn} should not exist after rename"
+
+            # Optionally navigate after export and ensure rename fields/filename persist.
             if nav_after_export:
-                # Open overlay, browse a bit, then cancel; ensure prefix stays stable.
+                # Open overlay, browse a bit, then cancel; ensure filename stays stable.
                 await _open_save_target_overlay(app, pilot)
                 await _activate_save_target_row(app, pilot, row_key=f"dir:{sub if expected_out_dir == base else base}")
                 await _activate_save_target_row(app, pilot, row_key="__up__")
                 await pilot.press("escape")
                 await pilot.pause()
-                if set_prefix:
-                    assert (app._output_prefix or "").strip() == prefix_val
+                if set_filename:
+                    assert (app._output_filename or "").strip() == filename_val
 
     asyncio.run(_run())
 
@@ -629,6 +659,12 @@ def test_tui_preview_tree_navigate_to_tmp_onx_export(tmp_path: Path) -> None:
             # Verify directory was updated (use resolve for macOS symlink handling)
             assert app.model.output_dir.resolve() == target_dir.resolve(), \
                 f"Export directory should be {target_dir}, got {app.model.output_dir}"
+
+            # Set filename before exporting
+            from textual.widgets import Input
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
+            await pilot.pause()
 
             # Trigger export directly (bypasses focus issues with tree mode)
             app.action_export()
@@ -711,6 +747,12 @@ def test_tui_preview_tree_navigate_to_home_onx(tmp_path: Path) -> None:
 
             assert app.model.output_dir == target_dir, \
                 f"Expected {target_dir}, got {app.model.output_dir}"
+
+            # Set filename before exporting
+            from textual.widgets import Input
+            filename_input = app.query_one("#export_filename_input", Input)
+            filename_input.value = "test_export"
+            await pilot.pause()
 
             # Trigger export directly (bypasses focus issues with tree mode)
             app.action_export()

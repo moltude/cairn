@@ -235,6 +235,11 @@ class TestSingleItemEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
+                await pilot.pause()
                 # Trigger export directly (no confirm modal anymore)
                 app.action_export()
                 await pilot.pause()
@@ -323,6 +328,11 @@ class TestSingleItemEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
+                await pilot.pause()
                 app.action_export()
                 await pilot.pause()
 
@@ -413,6 +423,11 @@ class TestMultiSelectEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
+                await pilot.pause()
                 app.action_export()
                 await pilot.pause()
 
@@ -484,7 +499,10 @@ class TestMultiSelectEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("enter")
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -797,7 +815,10 @@ class TestMultiSelectEditing:
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("enter")
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -944,14 +965,15 @@ class TestDifferentFolders:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                # Export
-                await pilot.press("enter")
-                await pilot.pause()
-                await pilot.press("enter")
+                # Navigate to Preview
+                app._goto("Preview")
                 await pilot.pause()
 
                 app.model.output_dir = out_dir
-                await pilot.press("enter")
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -965,12 +987,14 @@ class TestDifferentFolders:
 
                 # Validate
                 gpx_files = list(out_dir.glob("*.gpx"))
+                assert gpx_files, f"Expected GPX files in {out_dir}, found: {list(out_dir.glob('*'))}"
                 all_waypoints = []
                 for gpx in gpx_files:
                     all_waypoints.extend(_parse_gpx_waypoints(gpx))
 
                 found = any(SECOND_FOLDER_NAME in w["name"] for w in all_waypoints)
-                assert found, f"Expected waypoint containing {SECOND_FOLDER_NAME}"
+                waypoint_names = [w["name"] for w in all_waypoints]
+                assert found, f"Expected waypoint containing {SECOND_FOLDER_NAME}. Found waypoints: {waypoint_names[:10]}"
 
         asyncio.run(_run())
 
@@ -1257,6 +1281,11 @@ class TestMultiFolderEditing:
                 app._goto("Preview")
                 await pilot.pause()
                 app.model.output_dir = out_dir
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
+                await pilot.pause()
                 app.action_export()
                 await pilot.pause()
 
@@ -1549,6 +1578,11 @@ class TestMultiFolderEditing:
                     await pilot.pause()
 
                 app.model.output_dir = out_dir
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
+                await pilot.pause()
                 app.action_export()
                 await pilot.pause()
 
