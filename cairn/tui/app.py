@@ -3351,50 +3351,35 @@ class CairnTuiApp(App):
                     # This shouldn't be reached due to early return above, but guard just in case
                     return
 
-                # Check if user has selected an output directory
-                    cur_out = getattr(self.model, "output_dir", None)
-                    if cur_out is None:
-                        # User must select a directory first
-                        try:
-                            footer = self.query_one("#step_footer", Static)
-                            footer.update("Select an output directory from the tree first (Enter to select)")
-                        except Exception:
-                            pass
-                        try:
-                            event.stop()
-                        except Exception:
-                            pass
-                        return
+                # Get prefix from input if available
+                try:
+                    prefix_input = self.query_one("#export_prefix_input", Input)
+                    self._output_prefix = prefix_input.value or ""
+                except Exception:
+                    pass
 
-                    # Get prefix from input if available
-                    try:
-                        prefix_input = self.query_one("#export_prefix_input", Input)
-                        self._output_prefix = prefix_input.value or ""
-                    except Exception:
-                        pass
-
-                    try:
-                        self._dbg(
-                            event="save.key",
-                            data={
-                                "key": key,
-                                "character": ch,
-                                "focused_id": focused_id,
-                                "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
-                                "prefix": str(self._output_prefix or ""),
-                            },
-                        )
-                    except Exception:
-                        pass
-                    try:
-                        self.action_export()
-                    except Exception:
-                        pass
-                    try:
-                        event.stop()
-                    except Exception:
-                        pass
-                    return
+                try:
+                    self._dbg(
+                        event="save.key",
+                        data={
+                            "key": key,
+                            "character": ch,
+                            "focused_id": focused_id,
+                            "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
+                            "prefix": str(self._output_prefix or ""),
+                        },
+                    )
+                except Exception:
+                    pass
+                try:
+                    self.action_export()
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
 
         # Accept common Enter variants across terminals/backends.
         if event.key in ("enter", "return") or getattr(event, "character", None) == "\r":
