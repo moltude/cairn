@@ -1042,10 +1042,10 @@ class CairnTuiApp(App):
         self, current_selected: set[str], previously_processing: set[str]
     ) -> None:
         """Handle folder selection changes while in iteration mode.
-        
+
         Reverts deselected folders and adds newly selected folders in alphabetical order,
         adjusting the current folder index as needed.
-        
+
         Args:
             current_selected: Currently selected folder IDs
             previously_processing: Previously processing folder IDs
