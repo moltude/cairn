@@ -181,3 +181,6 @@ def test_waypoints_cursor_preserved_on_space_toggle_single_folder_fixture(tmp_pa
             assert after_key == before_key, f"Expected waypoints cursor row key preserved (before={before_key}, after={after_key})"
 
     asyncio.run(_run())
+
+
+
