@@ -223,14 +223,14 @@ class TestSingleItemEditing:
                         break
                     except Exception:
                         await pilot.pause()
-                
+
                 # Set the value directly (matching pattern from test_tui_editing_e2e.py)
                 inp = app.query_one("#rename_value", Input)
                 inp.value = NEW_NAME
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
-                
+
                 # Wait for rename to apply and table to refresh (call_after_refresh is async)
                 for _ in range(50):
                     _, waypoints = app._current_folder_features()
@@ -426,7 +426,7 @@ class TestMultiSelectEditing:
                     break
                 except Exception:
                     await pilot.pause()
-            
+
             assert inp is not None, "Rename overlay input not found"
             inp.value = BULK_NAME
             await pilot.pause()
@@ -835,7 +835,7 @@ class TestMultiSelectEditing:
                         break
                     except Exception:
                         await pilot.pause()
-                
+
                 assert inp is not None, "Rename overlay input not found"
                 inp.value = NEW_NAME
                 await pilot.pause()
@@ -1010,13 +1010,13 @@ class TestDifferentFolders:
                         break
                     except Exception:
                         await pilot.pause()
-                
+
                 assert inp is not None, "Rename overlay input not found"
                 inp.value = SECOND_FOLDER_NAME
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
-                
+
                 # Wait for rename to apply and table to refresh
                 for _ in range(50):
                     _, waypoints_check = app._current_folder_features()
