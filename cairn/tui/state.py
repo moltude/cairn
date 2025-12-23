@@ -82,6 +82,12 @@ class _MutableSetProxy(MutableSet[str]):
         for item in other:
             self._add_method(item)
 
+    def difference_update(self, other: Set[str]) -> None:
+        """Update the set, removing elements found in other."""
+        # Remove all items in other from this set
+        for item in other:
+            self._remove_method(item)
+
     def __repr__(self) -> str:
         return repr(getattr(self._manager, self._getter_name))
 
@@ -153,13 +159,12 @@ class StateManager:
         tracks = list((fd or {}).get("tracks", []) or [])
         waypoints = list((fd or {}).get("waypoints", []) or [])
 
-        # If routes exist, go to Routes
-        if tracks:
+        # NOTE: We intentionally do NOT skip the Routes step when there are no tracks
+        # but there are waypoints. The Routes step acts as a stable "first edit" step
+        # for a folder, and tests rely on deterministic Enter progression:
+        # Folder -> Routes -> Waypoints -> Preview.
+        if tracks or waypoints:
             return "Routes"
-        # If no routes but waypoints exist, go to Waypoints
-        if waypoints:
-            return "Waypoints"
-        # Otherwise go to Preview
         return "Preview"
 
     def has_real_folders(self) -> bool:

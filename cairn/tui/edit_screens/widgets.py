@@ -123,3 +123,4 @@ class _SymbolSearchInput(Input):
         # All other keys are handled by the input for typing
         pass
 
+

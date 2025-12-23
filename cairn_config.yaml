@@ -8,9 +8,9 @@ symbol_mappings:
   caution: Hazard
   hazard: Hazard
   alert: Hazard
-  tent: Campsite
+  tent: Camp
   camp: Camp
-  camping: Campsite
+  camping: Camp
   bivy: Camp Backcountry
   campground: Campground
   water: Water Source
@@ -68,7 +68,7 @@ symbol_mappings:
   snowboarding: Snowboarder
   repair-streamcrossing: Water Crossing
 keyword_mappings:
-  Campsite:
+  Camp:
   - tent
   - camp
   - sleep

@@ -93,3 +93,4 @@ def _datatable_clear_rows(table: DataTable) -> None:
     except Exception:
         pass
 
+

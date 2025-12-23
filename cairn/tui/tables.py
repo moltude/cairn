@@ -189,6 +189,126 @@ class TableManager:
         except Exception:
             return f"feature_{index}"
 
+    def _get_overlay_selectors(self) -> tuple[str, ...]:
+        """Return tuple of overlay selectors that should prevent cursor restoration."""
+        return (
+            "#inline_edit_overlay",
+            "#rename_overlay",
+            "#description_overlay",
+            "#color_picker_overlay",
+            "#icon_picker_overlay",
+            "#confirm_overlay",
+            "#save_target_overlay",
+        )
+
+    def _is_overlay_open(self) -> bool:
+        """Check if any overlay is currently open."""
+        try:
+            return any(
+                self.app._overlay_open(sel)
+                for sel in self._get_overlay_selectors()
+            )
+        except Exception:
+            return False
+
+    def _find_row_index_by_key(self, table: DataTable, row_key: str, row_count: int) -> Optional[int]:
+        """Find row index by row key in the table."""
+        try:
+            if hasattr(table, "get_row_key"):
+                for i in range(row_count):
+                    try:
+                        rk = table.get_row_key(i)  # type: ignore[attr-defined]
+                        rk_val = str(getattr(rk, "value", rk))
+                        if rk_val == str(row_key):
+                            return i
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+        return None
+
+    def _move_cursor_to_index(self, table: DataTable, target_idx: int) -> None:
+        """Move cursor to the specified index using action methods."""
+        try:
+            current_pos = int(getattr(table, "cursor_row", 0) or 0)
+        except Exception:
+            current_pos = 0
+
+        # Move to top first (known position)
+        if current_pos > 0:
+            for _ in range(current_pos):
+                try:
+                    table.action_cursor_up()  # type: ignore[attr-defined]
+                except Exception:
+                    break
+        # Move down to target from row 0
+        for _ in range(target_idx):
+            try:
+                table.action_cursor_down()  # type: ignore[attr-defined]
+            except Exception:
+                break
+
+    def _restore_cursor_after_refresh(
+        self,
+        table: DataTable,
+        *,
+        desired_row_key: Optional[str],
+        desired_index_fallback: Optional[int],
+        timer_name: str,
+    ) -> None:
+        """
+        Best-effort restore cursor position after a table refresh.
+
+        We prefer restoring by row key (stable across sorting / filtering). If that
+        isn't available or isn't visible after filtering, we fall back to the prior
+        cursor index (clamped).
+        """
+
+        def _restore() -> None:
+            try:
+                # Never steal focus away from an in-screen overlay.
+                if self._is_overlay_open():
+                    return
+
+                table_refreshed = table
+                try:
+                    table_refreshed.focus()
+                except Exception:
+                    pass
+
+                row_count = int(getattr(table_refreshed, "row_count", 0) or 0)
+                if row_count <= 0:
+                    return
+
+                target_idx: Optional[int] = None
+
+                if desired_row_key:
+                    target_idx = self._find_row_index_by_key(table_refreshed, desired_row_key, row_count)
+
+                if target_idx is None and desired_index_fallback is not None:
+                    try:
+                        target_idx = min(max(int(desired_index_fallback), 0), row_count - 1)
+                    except Exception:
+                        target_idx = None
+
+                if target_idx is None:
+                    return
+
+                self._move_cursor_to_index(table_refreshed, target_idx)
+            except Exception:
+                return
+
+        # Try after-refresh first, and also do a short timer fallback to handle
+        # versions where focus/cursor gets reset during layout.
+        try:
+            self.app.call_after_refresh(_restore)
+        except Exception:
+            _restore()
+        try:
+            self.app.set_timer(0.05, _restore, name=timer_name)
+        except Exception:
+            pass
+
     def refresh_folder_table(self) -> Optional[int]:
         """Refresh the folder table to show updated selection state.
 
@@ -214,6 +334,10 @@ class TableManager:
                 current_row_key = self.cursor_row_key(table)
             except Exception:
                 pass
+            try:
+                current_row_idx = int(getattr(table, "cursor_row", 0) or 0)
+            except Exception:
+                current_row_idx = None
 
             # Clear rows
             self.clear_rows(table)
@@ -254,6 +378,14 @@ class TableManager:
                 if current_row_key and str(folder_id) == str(current_row_key):
                     target_row_index = idx
 
+            # Restore cursor to the same folder row after refresh.
+            self._restore_cursor_after_refresh(
+                table,
+                desired_row_key=str(current_row_key) if current_row_key else None,
+                desired_index_fallback=current_row_idx,
+                timer_name="restore_folder_cursor",
+            )
+
             # Return target index for caller to restore cursor
             return target_row_index if current_row_key and target_row_index is not None else None
 
@@ -272,6 +404,15 @@ class TableManager:
             waypoints = list((fd or {}).get("waypoints", []) or [])
 
             q = (self.app._waypoints_filter or "").strip().lower()
+            # Capture cursor before clearing rows.
+            try:
+                current_row_key = self.cursor_row_key(table)
+            except Exception:
+                current_row_key = None
+            try:
+                current_row_idx = int(getattr(table, "cursor_row", 0) or 0)
+            except Exception:
+                current_row_idx = None
             self.clear_rows(table)
 
             # Ensure columns exist if clear() nuked them.
@@ -301,6 +442,14 @@ class TableManager:
                     name = ColorMapper.get_color_name(rgba).replace("-", " ").upper()
                     table.add_row(sel, title0, mapped, f"■ {name}", key=key)
 
+            # Restore cursor to the same waypoint row after refresh.
+            self._restore_cursor_after_refresh(
+                table,
+                desired_row_key=str(current_row_key) if current_row_key else None,
+                desired_index_fallback=current_row_idx,
+                timer_name="restore_waypoints_cursor",
+            )
+
     def refresh_routes_table(self) -> None:
         """Refresh the routes table with current data and filters."""
         with profile_operation("table_refresh_routes"):
@@ -316,6 +465,15 @@ class TableManager:
             tracks = list((fd or {}).get("tracks", []) or [])
 
             q = (self.app._routes_filter or "").strip().lower()
+            # Capture cursor before clearing rows.
+            try:
+                current_row_key = self.cursor_row_key(table)
+            except Exception:
+                current_row_key = None
+            try:
+                current_row_idx = int(getattr(table, "cursor_row", 0) or 0)
+            except Exception:
+                current_row_idx = None
             self.clear_rows(table)
 
             try:
@@ -349,6 +507,14 @@ class TableManager:
                     str(getattr(trk, "stroke_width", "") or ""),
                     key=key,
                 )
+
+            # Restore cursor to the same route row after refresh.
+            self._restore_cursor_after_refresh(
+                table,
+                desired_row_key=str(current_row_key) if current_row_key else None,
+                desired_index_fallback=current_row_idx,
+                timer_name="restore_routes_cursor",
+            )
 
 
 __all__ = ["TableManager"]

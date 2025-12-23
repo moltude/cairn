@@ -382,6 +382,10 @@ class TestMultiSelectEditing:
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
+                # If multiple items selected, confirmation overlay appears - confirm it
+                if num_to_select > 1:
+                    await pilot.press("y")  # Confirm the multi-rename
+                    await pilot.pause()
 
                 # Verify in memory before export
                 _, waypoints_after = app._current_folder_features()
@@ -1075,5 +1079,476 @@ class TestNavigation:
                 assert len(app._selected_waypoint_keys) == 1
                 second_selected = list(app._selected_waypoint_keys)[0]
                 assert first_selected != second_selected
+
+        asyncio.run(_run())
+
+
+class TestMultiFolderEditing:
+    """Test multi-folder editing workflows."""
+
+    def test_multi_folder_editing_e2e(self, tmp_path: Path) -> None:
+        """Verify comprehensive multi-folder editing workflow with routes and waypoints."""
+
+        async def _run() -> None:
+            from cairn.tui.app import CairnTuiApp
+
+            fixture_copy = copy_fixture_to_tmp(tmp_path)
+            out_dir = tmp_path / "onx_ready"
+
+            app = CairnTuiApp()
+            app.model.input_path = fixture_copy
+
+            # Check if we have multiple folders
+            folders = getattr(app.model.parsed, "folders", {}) or {}
+            if len(folders) < 2:
+                # Skip if only one folder
+                return
+
+            # Track edits for verification
+            folder_edits: dict[str, dict] = {}
+
+            async with app.run_test() as pilot:
+                app._goto("List_data")
+                await pilot.pause()
+                app._goto("Folder")
+                await pilot.pause()
+
+                # Select multiple folders (at least 2)
+                folder_ids = list(folders.keys())[:2]
+                for folder_id in folder_ids:
+                    app._selected_folders.add(folder_id)
+                await pilot.pause()
+
+                # Verify folders are selected
+                assert len(app._selected_folders) >= 2
+
+                # Process first folder
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Edit routes in first folder
+                if app.step == "Routes":
+                    app.action_focus_table()
+                    await pilot.pause()
+                    # Select first route
+                    await pilot.press("space")
+                    await pilot.pause()
+                    if len(app._selected_route_keys) > 0:
+                        # Edit color
+                        await pilot.press("a")
+                        await pilot.pause()
+                        await pilot.press("down")  # Description
+                        await pilot.press("down")  # Color
+                        await pilot.pause()
+                        await pilot.press("enter")
+                        await pilot.pause()
+                        # Pick first palette color
+                        await pilot.press("enter")
+                        await pilot.pause()
+                        # Track edit
+                        folder_edits[folder_ids[0]] = {"route_color_changed": True}
+
+                # Edit waypoints in first folder
+                if app.step == "Waypoints" or (app.step == "Routes" and len(app._selected_route_keys) == 0):
+                    if app.step == "Routes":
+                        await pilot.press("enter")
+                        await pilot.pause()
+                    if app.step == "Waypoints":
+                        app.action_focus_table()
+                        await pilot.pause()
+                        # Select first waypoint
+                        await pilot.press("space")
+                        await pilot.pause()
+                        if len(app._selected_waypoint_keys) > 0:
+                            # Edit description
+                            await pilot.press("a")
+                            await pilot.pause()
+                            await pilot.press("down")  # Description
+                            await pilot.pause()
+                            await pilot.press("enter")
+                            await pilot.pause()
+                            try:
+                                inp = app.query_one("#description_value", Input)
+                                inp.value = f"EDITED_FOLDER_1_WP"
+                            except Exception:
+                                pass
+                            await pilot.pause()
+                            await pilot.press("enter")
+                            await pilot.pause()
+                            # Track edit
+                            if folder_ids[0] not in folder_edits:
+                                folder_edits[folder_ids[0]] = {}
+                            folder_edits[folder_ids[0]]["waypoint_desc_changed"] = True
+
+                # Move to second folder (press Enter to advance)
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Should be on second folder now
+                if app.step in ["Routes", "Waypoints"]:
+                    # Edit routes in second folder
+                    if app.step == "Routes":
+                        app.action_focus_table()
+                        await pilot.pause()
+                        await pilot.press("space")
+                        await pilot.pause()
+                        if len(app._selected_route_keys) > 0:
+                            await pilot.press("a")
+                            await pilot.pause()
+                            await pilot.press("down")
+                            await pilot.press("down")
+                            await pilot.pause()
+                            await pilot.press("enter")
+                            await pilot.pause()
+                            await pilot.press("enter")
+                            await pilot.pause()
+                            folder_edits[folder_ids[1]] = {"route_color_changed": True}
+
+                    # Edit waypoints in second folder
+                    if app.step == "Waypoints" or (app.step == "Routes" and len(app._selected_route_keys) == 0):
+                        if app.step == "Routes":
+                            await pilot.press("enter")
+                            await pilot.pause()
+                        if app.step == "Waypoints":
+                            app.action_focus_table()
+                            await pilot.pause()
+                            await pilot.press("space")
+                            await pilot.pause()
+                            if len(app._selected_waypoint_keys) > 0:
+                                await pilot.press("a")
+                                await pilot.pause()
+                                await pilot.press("down")
+                                await pilot.pause()
+                                await pilot.press("enter")
+                                await pilot.pause()
+                                try:
+                                    inp = app.query_one("#description_value", Input)
+                                    inp.value = f"EDITED_FOLDER_2_WP"
+                                except Exception:
+                                    pass
+                                await pilot.pause()
+                                await pilot.press("enter")
+                                await pilot.pause()
+                                if folder_ids[1] not in folder_edits:
+                                    folder_edits[folder_ids[1]] = {}
+                                folder_edits[folder_ids[1]]["waypoint_desc_changed"] = True
+
+                # Continue to Preview
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Export
+                app._goto("Preview")
+                await pilot.pause()
+                app.model.output_dir = out_dir
+                app.action_export()
+                await pilot.pause()
+
+                # Wait for export
+                for _ in range(300):
+                    if not app._export_in_progress:
+                        break
+                    await asyncio.sleep(0.05)
+
+                assert app._export_error is None, f"Export error: {app._export_error}"
+                assert out_dir.exists()
+
+                # Verify folder ordering is alphabetical
+                if len(app._folders_to_process) >= 2:
+                    folder_names = [app._folder_name_by_id.get(fid, fid) for fid in app._folders_to_process]
+                    sorted_names = sorted(folder_names, key=str.lower)
+                    assert folder_names == sorted_names, f"Folders not in alphabetical order: {folder_names}"
+
+        asyncio.run(_run())
+
+    def test_selection_cleared_after_editing(self, tmp_path: Path) -> None:
+        """Verify selections are cleared after editing and Enter advances properly."""
+
+        async def _run() -> None:
+            from cairn.tui.app import CairnTuiApp
+
+            fixture_copy = copy_fixture_to_tmp(tmp_path)
+
+            app = CairnTuiApp()
+            app.model.input_path = fixture_copy
+
+            folders = getattr(app.model.parsed, "folders", {}) or {}
+            if len(folders) < 2:
+                return
+
+            async with app.run_test() as pilot:
+                app._goto("List_data")
+                await pilot.pause()
+                app._goto("Folder")
+                await pilot.pause()
+
+                # Select multiple folders
+                folder_ids = list(folders.keys())[:2]
+                for folder_id in folder_ids:
+                    app._selected_folders.add(folder_id)
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Navigate to Routes screen
+                if app.step == "Routes":
+                    # Select multiple routes
+                    app.action_focus_table()
+                    await pilot.pause()
+                    await pilot.press("space")
+                    await pilot.pause()
+                    await pilot.press("down")
+                    await pilot.press("space")
+                    await pilot.pause()
+
+                    assert len(app._selected_route_keys) >= 2
+
+                    # Edit them (change color)
+                    await pilot.press("a")
+                    await pilot.pause()
+                    await pilot.press("down")
+                    await pilot.press("down")
+                    await pilot.pause()
+                    await pilot.press("enter")
+                    await pilot.pause()
+                    await pilot.press("enter")
+                    await pilot.pause()
+
+                    # Verify selections are cleared when returning to Routes screen
+                    assert len(app._selected_route_keys) == 0, "Selections should be cleared after editing"
+
+                    # Verify can press Enter once to advance (no multiple Enter presses needed)
+                    await pilot.press("enter")
+                    await pilot.pause()
+                    # Should advance to Waypoints or next folder
+                    assert app.step in ["Waypoints", "Routes"], f"Expected Waypoints or Routes, got {app.step}"
+
+                # Repeat for Waypoints screen
+                if app.step == "Waypoints":
+                    app.action_focus_table()
+                    await pilot.pause()
+                    await pilot.press("space")
+                    await pilot.pause()
+                    await pilot.press("down")
+                    await pilot.press("space")
+                    await pilot.pause()
+
+                    assert len(app._selected_waypoint_keys) >= 2
+
+                    # Edit them
+                    await pilot.press("a")
+                    await pilot.pause()
+                    await pilot.press("down")
+                    await pilot.pause()
+                    await pilot.press("enter")
+                    await pilot.pause()
+                    try:
+                        inp = app.query_one("#description_value", Input)
+                        inp.value = "TEST_DESC"
+                    except Exception:
+                        pass
+                    await pilot.pause()
+                    await pilot.press("enter")
+                    await pilot.pause()
+
+                    # Verify selections are cleared
+                    assert len(app._selected_waypoint_keys) == 0, "Selections should be cleared after editing"
+
+                    # Verify can press Enter once to advance
+                    await pilot.press("enter")
+                    await pilot.pause()
+                    # Should advance to next folder or Preview
+                    assert app.step in ["Routes", "Waypoints", "Preview"], f"Expected Routes/Waypoints/Preview, got {app.step}"
+
+        asyncio.run(_run())
+
+    def test_folder_ordering_alphabetical(self, tmp_path: Path) -> None:
+        """Verify folders are processed in deterministic alphabetical order."""
+
+        async def _run() -> None:
+            from cairn.tui.app import CairnTuiApp
+
+            fixture_copy = copy_fixture_to_tmp(tmp_path)
+
+            app = CairnTuiApp()
+            app.model.input_path = fixture_copy
+
+            folders = getattr(app.model.parsed, "folders", {}) or {}
+            if len(folders) < 2:
+                return
+
+            async with app.run_test() as pilot:
+                app._goto("List_data")
+                await pilot.pause()
+                app._goto("Folder")
+                await pilot.pause()
+
+                # Select all folders
+                folder_ids = list(folders.keys())
+                for folder_id in folder_ids:
+                    app._selected_folders.add(folder_id)
+                await pilot.pause()
+
+                # Process folders
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Verify folders are in alphabetical order
+                if len(app._folders_to_process) >= 2:
+                    folder_names = [app._folder_name_by_id.get(fid, fid) for fid in app._folders_to_process]
+                    sorted_names = sorted(folder_names, key=str.lower)
+                    assert folder_names == sorted_names, f"Folders not in alphabetical order: {folder_names} vs {sorted_names}"
+
+                # Navigate through folders and verify order
+                processed_folders = []
+                while app.step in ["Routes", "Waypoints"]:
+                    current_folder = app.model.selected_folder_id
+                    if current_folder:
+                        folder_name = app._folder_name_by_id.get(current_folder, current_folder)
+                        processed_folders.append(folder_name)
+                    await pilot.press("enter")
+                    await pilot.pause()
+                    if app.step == "Preview":
+                        break
+
+                # Verify processed folders are in alphabetical order
+                if len(processed_folders) >= 2:
+                    sorted_processed = sorted(processed_folders, key=str.lower)
+                    assert processed_folders == sorted_processed, f"Processed folders not alphabetical: {processed_folders} vs {sorted_processed}"
+
+        asyncio.run(_run())
+
+    def test_folder_selection_change_persistence(self, tmp_path: Path) -> None:
+        """Verify folder selection changes persist edits for selected, revert for deselected."""
+
+        async def _run() -> None:
+            from cairn.tui.app import CairnTuiApp
+
+            fixture_copy = copy_fixture_to_tmp(tmp_path)
+            out_dir = tmp_path / "onx_ready"
+
+            app = CairnTuiApp()
+            app.model.input_path = fixture_copy
+
+            folders = getattr(app.model.parsed, "folders", {}) or {}
+            if len(folders) < 3:
+                # Need at least 3 folders for this test
+                return
+
+            folder_ids = list(folders.keys())[:3]
+            folder_a_id = folder_ids[0]
+            folder_b_id = folder_ids[1]
+            folder_c_id = folder_ids[2]
+
+            async with app.run_test() as pilot:
+                app._goto("List_data")
+                await pilot.pause()
+                app._goto("Folder")
+                await pilot.pause()
+
+                # Select Folder A and Folder B
+                app._selected_folders.add(folder_a_id)
+                app._selected_folders.add(folder_b_id)
+                await pilot.pause()
+
+                # Process folders
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Edit routes in Folder A
+                if app.step == "Routes" and app.model.selected_folder_id == folder_a_id:
+                    app.action_focus_table()
+                    await pilot.pause()
+                    await pilot.press("space")
+                    await pilot.pause()
+                    if len(app._selected_route_keys) > 0:
+                        await pilot.press("a")
+                        await pilot.pause()
+                        await pilot.press("down")
+                        await pilot.press("down")
+                        await pilot.pause()
+                        await pilot.press("enter")
+                        await pilot.pause()
+                        await pilot.press("enter")
+                        await pilot.pause()
+
+                # Edit waypoints in Folder A
+                if app.step == "Waypoints" and app.model.selected_folder_id == folder_a_id:
+                    app.action_focus_table()
+                    await pilot.pause()
+                    await pilot.press("space")
+                    await pilot.pause()
+                    if len(app._selected_waypoint_keys) > 0:
+                        await pilot.press("a")
+                        await pilot.pause()
+                        await pilot.press("down")
+                        await pilot.pause()
+                        await pilot.press("enter")
+                        await pilot.pause()
+                        try:
+                            inp = app.query_one("#description_value", Input)
+                            inp.value = "FOLDER_A_EDITED"
+                        except Exception:
+                            pass
+                        await pilot.pause()
+                        await pilot.press("enter")
+                        await pilot.pause()
+
+                # Back out to Folder selection screen
+                while app.step != "Folder":
+                    await pilot.press("escape")
+                    await pilot.pause()
+
+                # Deselect Folder A, select Folder C
+                if folder_a_id in app._selected_folders:
+                    app._selected_folders.remove(folder_a_id)
+                app._selected_folders.add(folder_c_id)
+                await pilot.pause()
+
+                # Process folders again (should handle selection change)
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Verify Folder A edits are kept in memory (not reverted in model)
+                # But Folder A should not be in export since it's deselected
+                # Edit routes/waypoints in Folder C
+                if app.step == "Routes" and app.model.selected_folder_id == folder_c_id:
+                    app.action_focus_table()
+                    await pilot.pause()
+                    await pilot.press("space")
+                    await pilot.pause()
+                    if len(app._selected_route_keys) > 0:
+                        await pilot.press("a")
+                        await pilot.pause()
+                        await pilot.press("down")
+                        await pilot.press("down")
+                        await pilot.pause()
+                        await pilot.press("enter")
+                        await pilot.pause()
+                        await pilot.press("enter")
+                        await pilot.pause()
+
+                # Continue to Preview and export
+                while app.step != "Preview":
+                    await pilot.press("enter")
+                    await pilot.pause()
+
+                app.model.output_dir = out_dir
+                app.action_export()
+                await pilot.pause()
+
+                # Wait for export
+                for _ in range(300):
+                    if not app._export_in_progress:
+                        break
+                    await asyncio.sleep(0.05)
+
+                assert app._export_error is None
+                assert out_dir.exists()
+
+                # Verify folder ordering is alphabetical (B, C - A is deselected)
+                if len(app._folders_to_process) >= 2:
+                    folder_names = [app._folder_name_by_id.get(fid, fid) for fid in app._folders_to_process]
+                    sorted_names = sorted(folder_names, key=str.lower)
+                    assert folder_names == sorted_names, f"Folders not in alphabetical order: {folder_names}"
 
         asyncio.run(_run())

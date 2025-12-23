@@ -854,3 +854,4 @@ class UnmappedSymbolModal(ModalScreen[Optional[str]]):
                 pass
             return
 
+
