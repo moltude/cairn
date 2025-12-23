@@ -96,11 +96,14 @@ class HelpModal(ModalScreen[None]):
             ("Ctrl+A", "Select all routes"),
             ("/", "Focus search/filter input"),
             ("t", "Focus table (for Space selection)"),
-            ("a", "Open actions menu for selected"),
+            ("a", "Open actions menu for selected (set color, rename)"),
             ("x", "Clear all selections"),
             ("Enter", "Continue to waypoints"),
             ("Esc", "Go back"),
             ("q", "Quit application"),
+            # GPX tip
+            ("", ""),
+            ("💡", "GPX imports: Add colors here that GPX cannot store"),
         ],
         "Waypoints": [
             ("↑/↓", "Navigate waypoint list"),
@@ -108,11 +111,14 @@ class HelpModal(ModalScreen[None]):
             ("Ctrl+A", "Select all waypoints"),
             ("/", "Focus search/filter input"),
             ("t", "Focus table (for Space selection)"),
-            ("a", "Open actions menu for selected"),
+            ("a", "Open actions menu for selected (icon, color, desc)"),
             ("x", "Clear all selections"),
             ("Enter", "Continue to preview"),
             ("Esc", "Go back"),
             ("q", "Quit application"),
+            # GPX tip
+            ("", ""),
+            ("💡", "GPX imports: Add icons/colors/descriptions here"),
         ],
         "Preview": [
             ("y", "Change directory/prefix"),

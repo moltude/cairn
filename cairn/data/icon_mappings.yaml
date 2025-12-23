@@ -43,10 +43,10 @@ caltopo_to_onx:
     alert: Hazard
 
     # Camping - Multiple OnX camp icons
-    campsite: Campsite
-    tent: Campsite
+    campsite: Camp
+    tent: Camp
     camp: Camp
-    camping: Campsite
+    camping: Camp
     bivy: Camp Backcountry
     campground: Campground
     camp-area: Camp Area
@@ -211,8 +211,7 @@ caltopo_to_onx:
   # OnX icon -> keyword list (fallback when symbol does not map)
   keyword_map:
     # Camping
-    Campsite: [tent, camp, sleep, overnight, camping]
-    Camp: [camp, camping]
+    Camp: [tent, camp, sleep, overnight, camping]
     Camp Area: ["camp area", "camping area"]
     Camp Backcountry: ["backcountry camp", bivy, bivouac]
     Campground: [campground, "established camp"]
@@ -281,7 +280,6 @@ onx_to_caltopo:
     "Hot Spring": repair-streamcrossing
     "Potable Water": repair-streamcrossing
 
-    Campsite: camping
     Camp: camping
     "Camp Backcountry": camping
     Campground: camping

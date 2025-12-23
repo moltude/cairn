@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>Lost Horse Canyon</name>
+  </metadata>
+  <wpt lat="46.09373973668337" lon="-114.25734043121338">
+    <name>Campsites</name>
+    <desc>name=Campsites
+notes=New campsites
+id=cc734abf-b953-48d7-a3f9-f93825ed0684
+color=rgba(132,212,0,1)
+icon=Camp Area</desc>
+    <extensions>
+      <onx:icon>Camp Area</onx:icon>
+      <onx:color>rgba(132,212,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.100167728666435" lon="-114.25944328308107">
+    <name>Campsites</name>
+    <desc>name=Campsites
+notes=New campsites
+id=d3173c46-ea83-4bad-87bb-9022a56d86ce
+color=rgba(132,212,0,1)
+icon=Camp Area</desc>
+    <extensions>
+      <onx:icon>Camp Area</onx:icon>
+      <onx:color>rgba(132,212,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.14120290164944" lon="-114.30999755859375">
+    <name>Chute1</name>
+    <desc>name=Chute1
+notes=
+id=99e55aa4-612e-4850-8646-e8511e4015fb
+color=rgba(255,0,0,1)
+icon=Location</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.166115472093864" lon="-114.39937949180604">
+    <name>Good looking skiing</name>
+    <desc>name=Good looking skiing
+notes=
+id=334e8409-6152-44e6-b313-7b4fb1fba5f2
+color=rgba(255,0,0,1)
+icon=XC Skiing</desc>
+    <extensions>
+      <onx:icon>XC Skiing</onx:icon>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.1042" lon="-114.26325">
+    <name>Main Wall - Approach</name>
+    <desc>name=Main Wall - Approach
+notes=
+id=0f8c2b1a-6f20-4cda-9c90-9b2c7a2e9c01
+color=rgba(0,0,0,1)
+icon=Climbing</desc>
+    <extensions>
+      <onx:icon>Climbing</onx:icon>
+      <onx:color>rgba(0,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.1046" lon="-114.2628">
+    <name>Main Wall - Boulders</name>
+    <desc>name=Main Wall - Boulders
+notes=
+id=2b7b4a43-9dd2-4c2e-a1db-3c1d8d2e62b7
+color=rgba(0,0,0,1)
+icon=Climbing</desc>
+    <extensions>
+      <onx:icon>Climbing</onx:icon>
+      <onx:color>rgba(0,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.10544788870023" lon="-114.2646035776599">
+    <name>Main Wall- Lost horse canyon</name>
+    <desc>name=Main Wall- Lost horse canyon
+notes=
+id=e757e751-bd41-454a-b867-9069c12fc841
+color=rgba(0,0,0,1)
+icon=Climbing</desc>
+    <extensions>
+      <onx:icon>Climbing</onx:icon>
+      <onx:color>rgba(0,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.102559113951635" lon="-114.26225990563121">
+    <name>Parking- Main Wall and Starlight Lounge</name>
+    <desc>name=Parking- Main Wall and Starlight Lounge
+notes=
+id=5be3f84d-47ff-4fde-9a68-5569463d1e54
+color=rgba(0,0,0,1)
+icon=Parking</desc>
+    <extensions>
+      <onx:icon>Parking</onx:icon>
+      <onx:color>rgba(0,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.10212052920946" lon="-114.2512893676758">
+    <name>Pullout boulders</name>
+    <desc>name=Pullout boulders
+notes=
+id=f00fc4d7-1096-48d1-8992-c2065d7e0187
+color=rgba(0,0,0,1)
+icon=Climbing</desc>
+    <extensions>
+      <onx:icon>Climbing</onx:icon>
+      <onx:color>rgba(0,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.14011755129237" lon="-114.32969570159914">
+    <name>Sick bowl brah</name>
+    <desc>name=Sick bowl brah
+notes=
+id=312e3b9a-5325-4559-a302-ac53ef9e9186
+color=rgba(255,0,0,1)
+icon=Location</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+</gpx>

@@ -2242,7 +2242,12 @@ class CairnTuiApp(App):
                 return
             if self.model.parsed is None:
                 try:
-                    self.model.parsed = parse_geojson(self.model.input_path)
+                    # Dispatch to correct parser based on file extension
+                    if self.model.input_path.suffix.lower() == ".gpx":
+                        from cairn.io.caltopo_gpx import parse_caltopo_gpx
+                        self.model.parsed = parse_caltopo_gpx(self.model.input_path)
+                    else:
+                        self.model.parsed = parse_geojson(self.model.input_path)
                 except Exception as e:
                     body.mount(Static(f"Parse error: {e}", classes="err"))
                     return

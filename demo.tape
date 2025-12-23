@@ -3,8 +3,8 @@
 
 Output demo.gif
 
-Set TypingSpeed 100ms
-Set PlaybackSpeed 1.2
+Set TypingSpeed 200ms
+Set PlaybackSpeed 1.0
 
 Set Shell "bash"
 Set FontSize 20
@@ -32,131 +32,143 @@ Enter
 Show
 
 # Title
-Type "# Migrate OnX waypoints with interactive editing"
+Type "# Caltopo to onX"
 Enter
 Sleep 2s
 
 # Run the migrate command
-Type "cairn migrate onx"
+Type "uv run cairn tui"
 Sleep 2s
 Enter
 
-# Input: demo/bitterroots/
+# Navigate through TUI interface
+# SELECT demo/
+Down
+Down
+Sleep 1s
+Down
+Down
+Down
+Sleep 1s
+Enter
+Sleep 1s
+
+# SELECT bitterroots/
+Down
+# Sleep 1s
+Enter
+
+# SELECT subset.json
+Down
+Down
+Down
+Sleep 1s
+Enter
+
+# Summary
 Sleep 2s
-Type "demo/bitterroots/"
+Enter
+
+# Folder
+Sleep 2s
+Enter
+
+# Routes (none)
+Sleep 1s
+Enter
+
+# Select and modify waypoints
+# Edit campsites
+# - Change color
+# - Change description
+# - Change name
+Space
+Sleep 1s
+Down
+Sleep 1s
+Space
+Sleep 1s
+Enter
+Sleep 1s
+Enter
+Sleep 1s
+Type "Campsites"
+Enter
 Sleep 3s
 Enter
-
-# Input: 2
+Sleep 1s
+Down
+Down
+Down
 Sleep 2s
-Type "2"
+Enter
+
+# Change color
+Down
+Down
+Down
+Down
+Enter
+Sleep 8s
+Escape
+
+# Edit ski touring
+# - Normalize icons
+# - Add description
+Down
+Down
+Down
+Space
+Down
+Space
+Sleep 1s
+Down
+Down
+Down
+Down
+Down
+Down
+Sleep 1s
+Enter
+Down
+Enter
+Sleep 1s
+Type "Ski touring"
+Enter
+Down
+Down
+Sleep 1s
+Enter
+Tab
+Tab
+Tab
+Type "ski"
+Tab
+Down
+Down
+Sleep 2s
+Enter
+Down
+Down
+Down
+Enter
+Down
+Sleep 1s
+Enter
+Down
+Down
+Down
+Down
 Sleep 3s
 Enter
-Sleep 4s
-
-# Input: y
-Sleep 4s
-Type "y"
-Sleep 3s
-Enter
-
-# Input: y
 Sleep 2s
-Type "y"
-Sleep 3s
-Enter
 
-# Input: 3
-Sleep 2s
-Type "3"
-Sleep 3s
-Enter
 
-# Input: Cool chute
-Sleep 2s
-Type "Cool chute"
-Sleep 3s
-Enter
 
-# Input: let it rip
-Sleep 2s
-Type "let it rip"
-Sleep 3s
-Enter
+# Edit color for climbing
 
-# Input: browse
-Sleep 2s
-Type "browse"
-Sleep 3s
-Enter
+# Pause for 5s
+# Move on to next screen
 
-# Input: Clour
-Sleep 2s
-Type "Clour"
-Sleep 3s
-Enter
-
-# Input: ski touring
-Sleep 2s
-Type "ski touring"
-Sleep 3s
-Enter
-
-# Input: purple
-Sleep 2s
-Type "purple"
-Sleep 3s
-Enter
-
-# Input: y
-Sleep 2s
-Type "y"
-Sleep 3s
-Enter
-
-# Input: 10,4
-Sleep 2s
-Type "10,4"
-Sleep 3s
-Enter
-
-# Input: enter (just press enter)
-Sleep 2s
-Enter
-
-# Input: enter (just press enter)
-Sleep 2s
-Enter
-
-# Input: ski touring
-Sleep 2s
-Type "ski touring"
-Sleep 3s
-Enter
-
-# Input: 7
-Sleep 2s
-Type "7"
-Sleep 3s
-Enter
-
-# Input: n
-Sleep 2s
-Type "n"
-Sleep 3s
-Enter
-
-# Input: y
-Sleep 2s
-Type "y"
-Sleep 3s
-Enter
-
-# Input: y
-Sleep 2s
-Type "y"
-Sleep 3s
-Enter
-
-# Final pause to show completion
-Sleep 10s
+Sleep 5s
+Escape

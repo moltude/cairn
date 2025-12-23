@@ -171,22 +171,20 @@ class StateManager:
         """Check if there are real folders (not just default folder).
 
         Returns:
-            True if there are real folders to process, False otherwise
+            True if there are multiple folders or named folders to select from.
+            False if there's only one "default" folder (e.g., GPX imports).
         """
         if self.app.model.parsed is None:
             return False
         folders = getattr(self.app.model.parsed, "folders", {}) or {}
         if not folders:
             return False
-        # If only one folder and it's "default", treat as no folders
+        # If only one folder and it's "default", skip folder step
+        # This handles GPX imports which have a single synthetic default folder
         if len(folders) == 1:
             default_id = list(folders.keys())[0]
             if default_id == "default":
-                # Check if default folder has any content
-                fd = folders[default_id]
-                tracks = list((fd or {}).get("tracks", []) or [])
-                waypoints = list((fd or {}).get("waypoints", []) or [])
-                return len(tracks) > 0 or len(waypoints) > 0
+                return False  # Skip folder step for single default folder
         return True
 
     @property

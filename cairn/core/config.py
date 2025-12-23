@@ -173,7 +173,7 @@ ICON_COLOR_MAP = {
     "Hazard": "rgba(255,51,0,1)",  # Red-Orange
     "Barrier": "rgba(255,0,0,1)",  # Red
     # Camping (no true "orange" in waypoint palette; closest is Red-Orange)
-    "Campsite": "rgba(255,51,0,1)",  # Red-Orange
+    "Camp": "rgba(255,51,0,1)",  # Red-Orange
     "Camp": "rgba(255,51,0,1)",  # Red-Orange
     "Camp Area": "rgba(255,51,0,1)",  # Red-Orange
     "Camp Backcountry": "rgba(255,51,0,1)",  # Red-Orange
@@ -214,7 +214,7 @@ def get_icon_color(icon_name: str, *, default: str = "rgba(8,122,255,1)") -> str
     Get the appropriate RGBA color for an icon type.
 
     Args:
-        icon_name: The OnX icon name (e.g., "Hazard", "Campsite")
+        icon_name: The OnX icon name (e.g., "Hazard", "Camp")
 
     Returns:
         RGBA color string (e.g., "rgba(255,0,0,1)")
@@ -233,10 +233,10 @@ DEFAULT_SYMBOL_MAP = {
     "hazard": "Hazard",
     "alert": "Hazard",
     # Camping - Multiple OnX camp icons
-    "campsite": "Campsite",
-    "tent": "Campsite",
+    "campsite": "Camp",
+    "tent": "Camp",
     "camp": "Camp",
-    "camping": "Campsite",
+    "camping": "Camp",
     "bivy": "Camp Backcountry",
     "campground": "Campground",
     "camp-area": "Camp Area",
@@ -391,7 +391,7 @@ DEFAULT_SYMBOL_MAP = {
 # Based on actual OnX icon names from GPX analysis
 DEFAULT_KEYWORD_MAP = {
     # Camping
-    "Campsite": ["tent", "camp", "sleep", "overnight", "camping"],
+    "Camp": ["tent", "camp", "sleep", "overnight", "camping"],
     "Camp": ["camp", "camping"],
     "Camp Area": ["camp area", "camping area"],
     "Camp Backcountry": ["backcountry camp", "bivy", "bivouac"],
@@ -519,7 +519,7 @@ class IconMappingConfig:
         symbol_mappings:
           skull: Hazard
         keyword_mappings:
-          Campsite: [tent, camp, sleep]
+          Camp: [tent, camp, sleep]
         enable_unmapped_detection: true
 
         Args:
@@ -675,12 +675,12 @@ symbol_mappings:
   alert: Hazard
 
   # ---------------------------------------------------------------------------
-  # CAMPING -> Campsite/Camp (orange icon)
+  # CAMPING -> Camp (orange icon)
   # ---------------------------------------------------------------------------
-  tent: Campsite
-  campsite: Campsite
+  tent: Camp
+  campsite: Camp
   camp: Camp
-  camping: Campsite
+  camping: Camp
   bivy: Camp Backcountry
   campground: Campground
 
@@ -773,7 +773,7 @@ symbol_mappings:
 keyword_mappings:
 
   # Camping keywords
-  Campsite:
+  Camp:
     - tent
     - camp
     - sleep

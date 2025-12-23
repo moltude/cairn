@@ -177,21 +177,25 @@ def test_tui_file_browser_select_json_file_advances_step(tmp_path: Path) -> None
     asyncio.run(_run())
 
 
-def test_tui_file_browser_gpx_shows_info_modal() -> None:
-    """Test that selecting a .gpx file shows info modal (not yet supported)."""
+def test_tui_file_browser_gpx_is_selectable() -> None:
+    """Test that selecting a .gpx file is accepted (CalTopo GPX support)."""
 
     async def _run() -> None:
         from cairn.tui.app import CairnTuiApp
-        from cairn.tui.edit_screens import InfoModal
 
-        # Use a temporary directory
+        # Use a temporary directory with a valid CalTopo-style GPX
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             test_dir = tmp_path / "maps"
             test_dir.mkdir()
             gpx_file = test_dir / "tracks.gpx"
-            gpx_file.write_text("<gpx></gpx>", encoding="utf-8")
+            # Create a valid GPX with at least one waypoint
+            gpx_content = '''<?xml version="1.0"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" creator="CALTOPO" version="1.1">
+  <wpt lat="46.0" lon="-114.0"><name>Test Point</name></wpt>
+</gpx>'''
+            gpx_file.write_text(gpx_content, encoding="utf-8")
 
             app = CairnTuiApp()
 
@@ -207,10 +211,9 @@ def test_tui_file_browser_gpx_shows_info_modal() -> None:
                 await pilot.press("enter")
                 await pilot.pause()
 
-                # Should show info modal (GPX not supported in TUI)
-                from textual.screen import ModalScreen
-                # The modal indicates GPX is not yet supported
-                assert isinstance(app.screen, ModalScreen), "Expected info modal for GPX file"
+                # GPX is now supported - should be selected as input
+                assert app.model.input_path is not None, "GPX file should be selectable"
+                assert app.model.input_path.suffix == ".gpx"
 
     asyncio.run(_run())
 
