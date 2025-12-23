@@ -258,13 +258,13 @@ class TestCaltopoGpxEdgeCases:
 class TestKeywordIconMapping:
     """Test that keyword-based icon mapping works for GPX waypoints."""
 
-    def test_camp_keyword_maps_to_campsite(self) -> None:
-        """Test that 'camp' in title maps to Campsite icon."""
+    def test_camp_keyword_maps_to_camp(self) -> None:
+        """Test that 'camp' in title maps to Camp icon."""
         from cairn.core.mapper import map_icon
 
         # GPX has empty symbol, so keyword mapping should trigger
         icon = map_icon("Camp spot", "", "")
-        assert icon == "Campsite"
+        assert icon == "Camp"
 
     def test_water_keyword_maps_to_water_source(self) -> None:
         """Test that 'water' in title maps to Water Source icon."""

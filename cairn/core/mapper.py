@@ -16,7 +16,7 @@ from cairn.core.icon_resolver import IconResolver
 # Fallback keyword mapping (when no config provided)
 # Kept in sync with DEFAULT_KEYWORD_MAP in config.py
 ICON_MAP = {
-    "Campsite": ["tent", "camp", "sleep", "overnight", "camping"],
+    "Camp": ["tent", "camp", "sleep", "overnight", "camping"],
     "Water Source": ["water", "spring", "refill", "creek", "stream"],
     "Parking": ["car", "parking", "lot", "vehicle"],
     "Trailhead": ["trailhead", "trail head", "th"],
@@ -66,7 +66,7 @@ def map_icon(
         config: Optional IconMappingConfig instance for enhanced mapping
 
     Returns:
-        The OnX Backcountry icon ID (e.g., "Campsite", "Water Source")
+        The OnX Backcountry icon ID (e.g., "Camp", "Water Source")
         Defaults to "Location" if no match is found.
     """
     # Config-based mode (preferred): use an explainable resolver and cache it on the config instance.

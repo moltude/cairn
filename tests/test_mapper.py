@@ -13,9 +13,9 @@ class TestMapIcon:
 
     def test_campsite_keyword(self):
         """Campsite keywords matched."""
-        assert map_icon("Tent site", "") == "Campsite"
-        assert map_icon("Camp location", "") == "Campsite"
-        assert map_icon("Sleep here", "") == "Campsite"
+        assert map_icon("Tent site", "") == "Camp"
+        assert map_icon("Camp location", "") == "Camp"
+        assert map_icon("Sleep here", "") == "Camp"
 
     def test_water_keyword(self):
         """Water source keywords matched."""
@@ -73,7 +73,7 @@ class TestMapIcon:
 
     def test_description_match(self):
         """Keywords in description also match."""
-        assert map_icon("Random Point", "Good tent site") == "Campsite"
+        assert map_icon("Random Point", "Good tent site") == "Camp"
 
     def test_no_match_returns_location(self):
         """No keyword match returns Location."""
@@ -85,7 +85,7 @@ class TestMapIcon:
 
     def test_case_insensitive(self):
         """Matching is case-insensitive."""
-        assert map_icon("CAMPING SPOT", "") == "Campsite"
+        assert map_icon("CAMPING SPOT", "") == "Camp"
         assert map_icon("water SOURCE", "") == "Water Source"
 
 
@@ -165,17 +165,17 @@ class TestSymbolMappingsWithConfig:
     # -------------------------------------------------------------------------
     def test_camping_symbols(self, config):
         """Camping symbols map to appropriate camp icons."""
-        assert map_icon("", "", "tent", config) == "Campsite"
-        assert map_icon("", "", "campsite", config) == "Campsite"
+        assert map_icon("", "", "tent", config) == "Camp"
+        assert map_icon("", "", "campsite", config) == "Camp"
         assert map_icon("", "", "camp", config) == "Camp"
-        assert map_icon("", "", "camping", config) == "Campsite"
+        assert map_icon("", "", "camping", config) == "Camp"
         assert map_icon("", "", "bivy", config) == "Camp Backcountry"
         assert map_icon("", "", "campground", config) == "Campground"
 
     def test_camping_symbols_case_insensitive(self, config):
         """Camping symbol matching is case-insensitive."""
-        assert map_icon("", "", "TENT", config) == "Campsite"
-        assert map_icon("", "", "Campsite", config) == "Campsite"
+        assert map_icon("", "", "TENT", config) == "Camp"
+        assert map_icon("", "", "Camp", config) == "Camp"
         assert map_icon("", "", "BIVY", config) == "Camp Backcountry"
 
     # -------------------------------------------------------------------------
@@ -298,18 +298,18 @@ class TestKeywordMappingsWithConfig:
     # -------------------------------------------------------------------------
     def test_camping_keywords(self, config):
         """Camping keywords match correctly."""
-        assert map_icon("Tent Site Alpha", "", "", config) == "Campsite"
-        assert map_icon("Base Camp", "", "", config) == "Campsite"
-        assert map_icon("Sleep spot", "", "", config) == "Campsite"
-        assert map_icon("Overnight location", "", "", config) == "Campsite"
-        assert map_icon("Camping area", "", "", config) == "Campsite"
+        assert map_icon("Tent Site Alpha", "", "", config) == "Camp"
+        assert map_icon("Base Camp", "", "", config) == "Camp"
+        assert map_icon("Sleep spot", "", "", config) == "Camp"
+        assert map_icon("Overnight location", "", "", config) == "Camp"
+        assert map_icon("Camping area", "", "", config) == "Camp"
 
     def test_camping_keywords_case_insensitive(self, config):
         """Camping keyword matching is case-insensitive."""
-        assert map_icon("TENT SITE", "", "", config) == "Campsite"
-        assert map_icon("base CAMP", "", "", config) == "Campsite"
-        assert map_icon("Cow Camp Mile 31.9", "", "", config) == "Campsite"
-        assert map_icon("hunting camp mile 92.8", "", "", config) == "Campsite"
+        assert map_icon("TENT SITE", "", "", config) == "Camp"
+        assert map_icon("base CAMP", "", "", config) == "Camp"
+        assert map_icon("Cow Camp Mile 31.9", "", "", config) == "Camp"
+        assert map_icon("hunting camp mile 92.8", "", "", config) == "Camp"
 
     # -------------------------------------------------------------------------
     # WATER KEYWORDS
@@ -426,13 +426,13 @@ class TestKeywordMappingsWithConfig:
     # -------------------------------------------------------------------------
     def test_description_keywords(self, config):
         """Keywords in description also match."""
-        assert map_icon("Random Point", "Good tent site here", "", config) == "Campsite"
+        assert map_icon("Random Point", "Good tent site here", "", config) == "Camp"
         assert map_icon("Waypoint 5", "Water refill available", "", config) == "Water Source"
         assert map_icon("Point 3", "Danger - avalanche terrain", "", config) == "Hazard"
 
     def test_description_keywords_case_insensitive(self, config):
         """Description keyword matching is case-insensitive."""
-        assert map_icon("Point A", "TENT SITE", "", config) == "Campsite"
+        assert map_icon("Point A", "TENT SITE", "", config) == "Camp"
         assert map_icon("Point B", "Water SOURCE", "", config) == "Water Source"
 
     # -------------------------------------------------------------------------
@@ -443,7 +443,7 @@ class TestKeywordMappingsWithConfig:
         # Title says "camp" but symbol says "hazard"
         assert map_icon("Camp with danger", "", "skull", config) == "Hazard"
         # Title says "water" but symbol says "campsite"
-        assert map_icon("Water camp", "", "tent", config) == "Campsite"
+        assert map_icon("Water camp", "", "tent", config) == "Camp"
 
     # -------------------------------------------------------------------------
     # DEFAULT FALLBACK
@@ -461,7 +461,7 @@ class TestKeywordMappingsWithConfig:
     def test_generic_symbols_allow_keyword_matching(self, config):
         """Generic symbols like 'point' don't block keyword matching."""
         # 'point' is a generic CalTopo symbol - should fall through to keywords
-        assert map_icon("Cow Camp Mile 31.9", "", "point", config) == "Campsite"
+        assert map_icon("Cow Camp Mile 31.9", "", "point", config) == "Camp"
         assert map_icon("Deadfall ahead", "", "point", config) == "Hazard"
         assert map_icon("Water refill", "", "point", config) == "Water Source"
 
