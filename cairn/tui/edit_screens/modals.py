@@ -121,10 +121,10 @@ class HelpModal(ModalScreen[None]):
             ("💡", "GPX imports: Add icons/colors/descriptions here"),
         ],
         "Preview": [
-            ("y", "Change directory/prefix"),
+            ("c", "Change directory/prefix"),
             ("Enter", "Export (with confirmation)"),
             ("r", "Apply rename edits (after export)"),
-            ("Ctrl+N", "Start a new migration"),
+            ("Ctrl+N", "New folder (tree mode) / Start new migration"),
             ("Esc", "Go back to make changes"),
             ("q", "Quit application"),
         ],
