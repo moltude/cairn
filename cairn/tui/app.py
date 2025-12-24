@@ -711,16 +711,6 @@ class CairnTuiApp(App):
             except Exception:
                 pass
 
-    def on_confirm_overlay_result(self, message: ConfirmOverlay.Result) -> None:  # type: ignore[name-defined]
-        """Handle result from ConfirmOverlay."""
-        cb = self._confirm_callback
-        self._confirm_callback = None
-        if cb is None:
-            return
-        try:
-            cb(bool(getattr(message, "confirmed", False)))
-        except Exception:
-            pass
 
     def on_directory_tree_directory_selected(self, event) -> None:  # type: ignore[override]
         """Handle directory selection from export_dir_tree on Preview screen."""
@@ -3576,7 +3566,7 @@ class CairnTuiApp(App):
             self._confirm_callback = None  # Clear it
             try:
                 callback(confirmed)
-            except Exception as e:
+            except Exception:
                 pass
             return
 

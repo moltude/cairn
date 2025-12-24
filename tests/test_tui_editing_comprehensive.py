@@ -459,7 +459,7 @@ class TestMultiSelectEditing:
                         except Exception:
                             pass
                         await pilot.pause()
-                    await pilot.press("y")  # Confirm the multi-rename
+                    await pilot.press("enter")  # Confirm the multi-rename (using Enter instead of 'y')
                     await pilot.pause()
 
                 # Wait for rename to apply and table to refresh
@@ -475,34 +475,34 @@ class TestMultiSelectEditing:
                 renamed = [w for w in waypoints_after if getattr(w, "title", "") == BULK_NAME]
                 assert len(renamed) == num_to_select, f"Expected {num_to_select} renamed, got {len(renamed)}"
 
-            # Export - use _goto to avoid DuplicateIds issues
-            app._goto("Preview")
-            await pilot.pause()
+                # Export - use _goto to avoid DuplicateIds issues
+                app._goto("Preview")
+                await pilot.pause()
 
-            app.model.output_dir = out_dir
-            # Set filename before exporting
-            from textual.widgets import Input
-            filename_input = app.query_one("#export_filename_input", Input)
-            filename_input.value = "test_export"
-            await pilot.pause()
-            app.action_export()
-            await pilot.pause()
+                app.model.output_dir = out_dir
+                # Set filename before exporting
+                from textual.widgets import Input
+                filename_input = app.query_one("#export_filename_input", Input)
+                filename_input.value = "test_export"
+                await pilot.pause()
+                app.action_export()
+                await pilot.pause()
 
-            for _ in range(300):
-                if not app._export_in_progress:
-                    break
-                await asyncio.sleep(0.05)
+                for _ in range(300):
+                    if not app._export_in_progress:
+                        break
+                    await asyncio.sleep(0.05)
 
-            assert app._export_error is None, f"Export error: {app._export_error}"
+                assert app._export_error is None, f"Export error: {app._export_error}"
 
-            # Validate
-            gpx_files = list(out_dir.glob("*.gpx"))
-            all_waypoints = []
-            for gpx in gpx_files:
-                all_waypoints.extend(_parse_gpx_waypoints(gpx))
+                # Validate
+                gpx_files = list(out_dir.glob("*.gpx"))
+                all_waypoints = []
+                for gpx in gpx_files:
+                    all_waypoints.extend(_parse_gpx_waypoints(gpx))
 
-            bulk_named = [w for w in all_waypoints if w["name"] == BULK_NAME]
-            assert len(bulk_named) == num_to_select, f"Expected {num_to_select} waypoints named {BULK_NAME}, got {len(bulk_named)}"
+                bulk_named = [w for w in all_waypoints if w["name"] == BULK_NAME]
+                assert len(bulk_named) == num_to_select, f"Expected {num_to_select} waypoints named {BULK_NAME}, got {len(bulk_named)}"
 
         asyncio.run(_run())
 
