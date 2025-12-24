@@ -137,7 +137,8 @@ class StepAwareFooter(Static):
         ],
         "Preview": [
             ("↑↓", "Navigate"),
-            ("Enter", "Export"),
+            ("e", "Export"),
+            ("c", "Change dir"),
             ("Ctrl+N", "New folder"),
             ("r", "Apply names"),
             ("Tab", "Next field"),
@@ -167,8 +168,3 @@ __all__ = [
     "Stepper",
     "StepAwareFooter",
 ]
-
-
-
-
-

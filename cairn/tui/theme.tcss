@@ -122,6 +122,41 @@ DirectoryTree > .directory-tree--file {
   color: #E0DBB7;
 }
 
+/* Preview screen layout - prioritize directory tree */
+
+#preview_root {
+  height: auto;
+}
+
+#export_dir_tree {
+  /* Fixed height for consistent layout - 10 visible rows */
+  height: 12;
+}
+
+#export_target_section {
+  height: auto;
+}
+
+#export_buttons {
+  /* Constrain button row height */
+  height: 3;
+}
+
+#save_post {
+  /* Constrain post-save area */
+  height: 1;
+}
+
+#export_contents_section {
+  height: auto;
+}
+
+/* Preview DataTables - auto height with reasonable limits */
+#preview_waypoints, #preview_routes {
+  height: auto;
+  max-height: 10;
+}
+
 /* Inline edit overlay (true popup, doesn't navigate Screens) */
 
 #inline_edit_overlay {
@@ -265,9 +300,9 @@ DirectoryTree > .directory-tree--file {
   border: solid #C48A4A;
 }
 
-/* Export buttons - match confirm button styling for consistency */
-/* Base styles for both buttons - dark background when unfocused */
-#change_export_settings, #export_button {
+/* Export button - match confirm button styling for consistency */
+/* Base styles - dark background when unfocused */
+#export_button {
   width: 16;
   height: 3;
   margin: 0 1;
@@ -277,30 +312,30 @@ DirectoryTree > .directory-tree--file {
 }
 
 /* Override any primary or success variant styles that might be applied */
-#change_export_settings.--primary, #export_button.--primary,
-#change_export_settings.--success, #export_button.--success {
+#export_button.--primary,
+#export_button.--success {
   background: #1F1513;
   color: #E0DBB7;
   border: solid #563C27;
 }
 
-/* Focus state - light brown background for whichever button has focus */
-#change_export_settings:focus, #export_button:focus {
+/* Focus state - light brown background when button has focus */
+#export_button:focus {
   background: #563C27;
   color: #FFF9D5;
   border: solid #C48A4A;
 }
 
 /* Ensure focused state overrides variant styles */
-#change_export_settings.--primary:focus, #export_button.--primary:focus,
-#change_export_settings.--success:focus, #export_button.--success:focus {
+#export_button.--primary:focus,
+#export_button.--success:focus {
   background: #563C27;
   color: #FFF9D5;
   border: solid #C48A4A;
 }
 
 /* Also handle hover state to match focus */
-#change_export_settings:hover, #export_button:hover {
+#export_button:hover {
   border: solid #C48A4A;
 }
 

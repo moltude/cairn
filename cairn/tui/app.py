@@ -7,7 +7,7 @@ from typing import Optional, Callable, TextIO, Iterable, Any
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.coordinate import Coordinate
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.reactive import reactive
 from textual.widgets import Button, DataTable, DirectoryTree, Header, Input, Static
 import copy
@@ -208,7 +208,7 @@ class CairnTuiApp(App):
                 self.state = StateManager(self)
             self._save_snapshot_emitted: bool = False
             self._save_change_prompt_dismissed: bool = False
-            self._output_prefix: str = ""
+            self._output_filename: str = ""
             self._rename_overrides_by_idx: dict[int, str] = {}
             self._post_save_prompt_shown: bool = False
             # Guard: DataTable selection events can fire during cursor restoration / re-render;
@@ -230,10 +230,10 @@ class CairnTuiApp(App):
     def _use_tree_browser(self) -> bool:
         """Check if DirectoryTree browser should be used (A/B test flag).
 
-        Set CAIRN_USE_TREE_BROWSER=1 to enable the tree-based file browser.
-        Default is the table-based browser for backwards compatibility.
+        Set CAIRN_USE_TREE_BROWSER=0 to disable the tree-based file browser.
+        Default is the tree-based browser.
         """
-        return os.getenv("CAIRN_USE_TREE_BROWSER", "").lower() in ("1", "true", "yes")
+        return os.getenv("CAIRN_USE_TREE_BROWSER", "1").lower() in ("1", "true", "yes")
 
     def _dismiss_warning(self, warning_id: str) -> None:
         """Dismiss a temporary warning widget.
@@ -299,7 +299,7 @@ class CairnTuiApp(App):
         self._export_error = None
         self._export_in_progress = False
         self._rename_overrides_by_idx.clear()
-        self._output_prefix = ""
+        self._output_filename = ""
         self._post_save_prompt_shown = False
         self._save_snapshot_emitted = False
 
@@ -594,9 +594,8 @@ class CairnTuiApp(App):
                 pass
             return
 
-        # Update output directory and prefix from overlay
+        # Update output directory from overlay (filename is handled in main UI, not overlay)
         directory = getattr(message, "directory", None)
-        prefix = getattr(message, "prefix", "")
         if directory is not None:
             try:
                 # Ensure directory is a Path and resolve it
@@ -617,9 +616,6 @@ class CairnTuiApp(App):
                 except Exception:
                     pass
 
-        if prefix is not None:
-            self._output_prefix = str(prefix or "")
-
         # Mark that save change prompt has been dismissed
         self._save_change_prompt_dismissed = True
 
@@ -639,7 +635,7 @@ class CairnTuiApp(App):
                 pass
 
     def _validate_export_settings(self) -> tuple[bool, list[str]]:
-        """Validate export directory and prefix settings.
+        """Validate export directory and filename settings.
 
         Returns:
             Tuple of (is_valid, errors_list)
@@ -669,48 +665,44 @@ class CairnTuiApp(App):
             except Exception as e:
                 errors.append(f"Cannot write to directory: {out_dir} ({e})")
 
-        # Validate prefix (if provided)
-        prefix = (self._output_prefix or "").strip()
-        if prefix:
-            try:
-                # Test sanitization to ensure it's valid
-                sanitized = sanitize_filename(prefix)
-                if not sanitized or sanitized == "Untitled":
-                    errors.append("Prefix is not a valid filename")
-            except Exception as e:
-                errors.append(f"Invalid prefix: {e}")
+        # Validate filename (required)
+        filename = (self._output_filename or "").strip()
+        if not filename:
+            errors.append("Filename is required")
+        else:
+            # Check for path separators
+            if "/" in filename or "\\" in filename:
+                errors.append("Filename cannot contain path separators (/, \\)")
+            # Check for invalid filename characters
+            invalid_chars = ['<', '>', ':', '"', '|', '?', '*']
+            found_invalid = [c for c in invalid_chars if c in filename]
+            if found_invalid:
+                errors.append(f"Filename contains invalid characters: {', '.join(found_invalid)}")
 
         return (len(errors) == 0, errors)
 
     def _open_save_target_overlay(self) -> None:
-        """Open SaveTargetOverlay to change export directory and prefix."""
+        """Open SaveTargetOverlay to change export directory."""
         try:
             overlay = self.query_one("#save_target_overlay", SaveTargetOverlay)
         except Exception:
             return
 
-        # Get current directory and prefix
+        # Get current directory (filename is handled in main UI, not overlay)
         current_dir = self.model.output_dir or Path.cwd()
-        current_prefix = self._output_prefix or ""
 
-        # Open overlay with current values
-        overlay.open(directory=current_dir, prefix=current_prefix)
+        # Open overlay with current directory
+        overlay.open(directory=current_dir)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:  # type: ignore[name-defined]
         """Handle button press events."""
         button_id = getattr(event.button, "id", None)
-        if button_id == "change_export_settings":
-            self._open_save_target_overlay()
-            try:
-                event.stop()
-            except Exception:
-                pass
-        elif button_id == "export_button":
+        if button_id == "export_button":
             if self.step == "Preview":
-                # Capture prefix before exporting
+                # Capture filename before exporting
                 try:
-                    prefix_input = self.query_one("#export_prefix_input", Input)
-                    self._output_prefix = prefix_input.value or ""
+                    filename_input = self.query_one("#export_filename_input", Input)
+                    self._output_filename = filename_input.value or ""
                 except Exception:
                     pass
                 self.action_export()
@@ -719,14 +711,27 @@ class CairnTuiApp(App):
             except Exception:
                 pass
 
-    def on_confirm_overlay_result(self, message: ConfirmOverlay.Result) -> None:  # type: ignore[name-defined]
-        """Handle result from ConfirmOverlay."""
-        cb = self._confirm_callback
-        self._confirm_callback = None
-        if cb is None:
-            return
+
+    def on_directory_tree_directory_selected(self, event) -> None:  # type: ignore[override]
+        """Handle directory selection from export_dir_tree on Preview screen."""
+        # Only handle events from export_dir_tree widget
         try:
-            cb(bool(getattr(message, "confirmed", False)))
+            tree_id = getattr(event.node.tree, "id", None)
+        except Exception:
+            tree_id = None
+
+        if tree_id != "export_dir_tree":
+            return
+
+        # Only process on Preview step
+        if self.step != "Preview":
+            return
+
+        # Update the output directory
+        try:
+            selected_path = Path(event.path)
+            if selected_path.is_dir():
+                self.model.output_dir = selected_path.resolve()
         except Exception:
             pass
 
@@ -1312,17 +1317,30 @@ class CairnTuiApp(App):
         if not self._export_manifest:
             return
 
-        out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
+        out_dir = self.model.output_dir
+        if out_dir is None:
+            # No output directory selected - can't apply renames
+            return
         try:
             out_dir = out_dir.expanduser()
         except Exception:
             pass
 
         # Validate desired names first (no partial renames).
+        # Read from Input widgets first, then fall back to _rename_overrides_by_idx
         desired_by_idx: dict[int, str] = {}
         seen: set[str] = set()
         for i, (fn, fmt, cnt, sz) in enumerate(self._export_manifest):
-            raw = str(self._rename_overrides_by_idx.get(i, fn) or "").strip()
+            # Try to read from Input widget first
+            raw = None
+            try:
+                inp = self.query_one(f"#rename_{i}", Input)
+                raw = str(inp.value or "").strip()
+            except Exception:
+                pass
+            # Fall back to _rename_overrides_by_idx if Input not available
+            if not raw:
+                raw = str(self._rename_overrides_by_idx.get(i, fn) or "").strip()
             if not raw:
                 self._export_error = f"Rename error: filename for '{fn}' is empty."
                 self._render_main()
@@ -1385,7 +1403,7 @@ class CairnTuiApp(App):
         self._export_manifest = None
         self._export_error = None
         self._rename_overrides_by_idx.clear()
-        self._output_prefix = ""
+        self._output_filename = ""
         self._post_save_prompt_shown = False
         self._done_steps.clear()
         self._routes_edited = False
@@ -2012,7 +2030,7 @@ class CairnTuiApp(App):
         if step == "Preview":
             return (
                 "Review export contents and select the destination directory.\n\n\n"
-                "Navigate the directory browser, enter a file name prefix, then press Enter to export.\n"
+                "Navigate the directory browser, enter a filename, then press Enter or 'e' to export.\n"
                 "Press [bold]Ctrl+N[/] to create a new folder (tree mode)."
             )
         return ""
@@ -2033,13 +2051,13 @@ class CairnTuiApp(App):
         fn = str(original_filename or "").strip()
         if not fn:
             return fn
-        prefix = sanitize_filename(str(self._output_prefix or "").strip())
-        if not prefix:
+        filename = sanitize_filename(str(self._output_filename or "").strip())
+        if not filename:
             return Path(fn).name
         p = Path(fn)
         stem = p.stem or "output"
         ext = p.suffix
-        return f"{prefix}_{stem}{ext}"
+        return f"{filename}_{stem}{ext}"
 
     def _create_export_folder(self) -> None:
         """Create new folder in current export directory."""
@@ -2336,8 +2354,6 @@ class CairnTuiApp(App):
             subtitle_msg = "Browse routes (Space to toggle selection, / to search)  •  Edit: a"
             if self._routes_edited:
                 subtitle_msg += "  •  Edited. Press x to clear selection and edit another set."
-            if folder_name:
-                subtitle_msg = f"Folder: {folder_name}  •  {subtitle_msg}"
             subtitle.update(subtitle_msg)
             body = self._clear_main_body()
             if self.model.parsed is None or not self.model.selected_folder_id:
@@ -2385,8 +2401,6 @@ class CairnTuiApp(App):
             subtitle_msg = "Browse waypoints (Space to toggle selection, / to search)  •  Edit: a"
             if self._waypoints_edited:
                 subtitle_msg += "  •  Edited. Press x to clear selection and edit another set."
-            if folder_name:
-                subtitle_msg = f"Folder: {folder_name}  •  {subtitle_msg}"
             subtitle.update(subtitle_msg)
             body = self._clear_main_body()
             if self.model.parsed is None or not self.model.selected_folder_id:
@@ -2435,35 +2449,26 @@ class CairnTuiApp(App):
                 body.mount(Static("No parsed data. Go back.", classes="err"))
                 return
 
-            # Default output directory: <project_dir>/onx_ready
+            # Output directory: user must select from tree (no default)
+            # Start with home directory if not set
             out_dir = self.model.output_dir
             if out_dir is None:
-                try:
-                    out_dir = (Path.cwd() / "onx_ready").resolve()
-                except Exception:
-                    out_dir = Path.cwd() / "onx_ready"
-                self.model.output_dir = out_dir
+                out_dir = Path.home()
+                # Don't set model.output_dir yet - user must select from tree
 
-            # Default prefix: input file stem (sanitized)
-            if not (self._output_prefix or "").strip():
-                try:
-                    if self.model.input_path:
-                        self._output_prefix = sanitize_filename(self.model.input_path.stem)
-                except Exception:
-                    pass
+            # No default filename - user must enter one
 
             # Build the Preview & Export screen once; subsequent updates should be in-place to avoid DuplicateIds.
             try:
-                preview_root = self.query_one("#preview_root", Container)
+                preview_root = self.query_one("#preview_root", VerticalScroll)
             except Exception:
                 preview_root = None
 
             if preview_root is None:
                 body = self._clear_main_body()
-                preview_root = Container(id="preview_root")
+                # Use VerticalScroll so entire preview content can scroll if needed
+                preview_root = VerticalScroll(id="preview_root")
                 body.mount(preview_root)
-
-                preview_root.mount(Static("", id="preview_folder_label", classes="ok"))
 
                 # Export target section with embedded directory browser
                 export_target = Container(id="export_target_section")
@@ -2471,46 +2476,49 @@ class CairnTuiApp(App):
 
                 export_target.mount(Static("Export Location", classes="accent"))
 
-                # A/B test: embed tree or table browser
+                # Embed tree or table browser based on config
                 if self._use_tree_browser():
-                    # Tree browser for directory selection
+                    # Tree browser for directory selection - start at home
+                    # Tree gets priority sizing via CSS (min-height: 10 lines)
                     try:
-                        tree = FilteredDirectoryTree(str(out_dir), id="export_dir_tree")
+                        tree = FilteredDirectoryTree(str(Path.home()), id="export_dir_tree")
                         export_target.mount(tree)
-                    except Exception as e:
+                    except Exception:
                         # Fallback to simple display
                         export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
                 else:
                     # Show directory as static text (directory changes via overlay)
                     export_target.mount(Static(f"Directory: {out_dir}", id="export_dir_display", classes="muted"))
 
-                # File prefix input (read-only display)
-                export_target.mount(Static("File name prefix:", classes="accent"))
-                prefix_input = Input(value=self._output_prefix or "", placeholder="Prefix", id="export_prefix_input", disabled=True)
-                export_target.mount(prefix_input)
+                # Filename input (editable, required)
+                export_target.mount(Static("Filename:", classes="accent"))
+                filename_input = Input(value=self._output_filename or "", placeholder="Enter filename", id="export_filename_input", disabled=False)
+                export_target.mount(filename_input)
 
                 # Action buttons - mount container first, then add children
                 button_container = Horizontal(id="export_buttons")
                 export_target.mount(button_container)
-                change_button = Button("Change", id="change_export_settings", variant="primary")
                 export_button = Button("Export", id="export_button", variant="success")
-                button_container.mount(change_button)
                 button_container.mount(export_button)
 
                 # export_target.mount(Static("c: change settings  •  Enter: export", id="save_export_hint", classes="muted"))
                 export_target.mount(Static("", id="save_status", classes="muted"))
                 export_target.mount(Container(id="save_post"))
 
-                preview_root.mount(Static("Export contents:", classes="accent"))
-                preview_root.mount(Static("", id="preview_waypoints_title", classes="accent"))
+                # Export contents section
+                export_contents = Container(id="export_contents_section")
+                preview_root.mount(export_contents)
+
+                export_contents.mount(Static("Export contents:", classes="accent"))
+                export_contents.mount(Static("", id="preview_waypoints_title", classes="accent"))
                 wp_table = DataTable(id="preview_waypoints")
                 wp_table.add_columns("Name", "OnX color", "OnX icon", "Description")
-                preview_root.mount(wp_table)
+                export_contents.mount(wp_table)
 
-                preview_root.mount(Static("", id="preview_routes_title", classes="accent"))
+                export_contents.mount(Static("", id="preview_routes_title", classes="accent"))
                 trk_table = DataTable(id="preview_routes")
                 trk_table.add_columns("Name", "OnX color", "Description")
-                preview_root.mount(trk_table)
+                export_contents.mount(trk_table)
 
             # Update export target display
             try:
@@ -2521,11 +2529,11 @@ class CairnTuiApp(App):
                         self.query_one("#export_dir_display", Static).update(f"Directory: {out_dir2}")
                     except Exception:
                         pass
-                # Update prefix input
+                # Update filename input
                 try:
-                    prefix_input = self.query_one("#export_prefix_input", Input)
-                    if prefix_input.value != (self._output_prefix or ""):
-                        prefix_input.value = self._output_prefix or ""
+                    filename_input = self.query_one("#export_filename_input", Input)
+                    if filename_input.value != (self._output_filename or ""):
+                        filename_input.value = self._output_filename or ""
                 except Exception:
                     pass
             except Exception:
@@ -2683,21 +2691,10 @@ class CairnTuiApp(App):
                 # Single folder: use current folder
                 fid = self.model.selected_folder_id
                 if not fid:
-                    try:
-                        self.query_one("#preview_folder_label", Static).update("No folder selected. Go back.")
-                    except Exception:
-                        pass
                     return
                 fd = folders.get(fid) or {}
                 all_tracks = list(fd.get("tracks", []) or [])
                 all_waypoints = list(fd.get("waypoints", []) or [])
-                folder_name = self._folder_name_by_id.get(fid, fid)
-                folder_label = f"Folder: {folder_name}"
-
-            try:
-                self.query_one("#preview_folder_label", Static).update(folder_label)
-            except Exception:
-                pass
 
             # Sort all items alphabetically
             tracks = sorted(all_tracks, key=lambda trk: str(getattr(trk, "title", "") or "Untitled").lower())
@@ -2781,8 +2778,8 @@ class CairnTuiApp(App):
     # Events
     # -----------------------
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if event.input.id == "output_prefix" or event.input.id == "export_prefix_input":
-            self._output_prefix = str(event.value or "")
+        if event.input.id == "output_filename" or event.input.id == "export_filename_input":
+            self._output_filename = str(event.value or "")
             # Re-render to update suggested rename defaults (if any).
             self._render_sidebar()
             if self.step == "Preview":
@@ -3228,7 +3225,7 @@ class CairnTuiApp(App):
                             "character": str(getattr(event, "character", "")),
                             "focused_id": getattr(getattr(self, "focused", None), "id", None),
                             "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
-                            "prefix": str(self._output_prefix or ""),
+                            "filename": str(self._output_filename or ""),
                         },
                     )
                 except Exception:
@@ -3285,16 +3282,16 @@ class CairnTuiApp(App):
             except Exception:
                 focused_id = None
 
-            # When tree is focused, let it handle navigation keys (arrows, Enter for selection)
+            # When tree is focused, let it handle navigation keys (arrows, Enter for dir expansion)
             if self._use_tree_browser() and focused_id == "export_dir_tree":
-                # Let the tree handle its own navigation (arrow keys, Enter for directory selection)
-                # Only intercept specific keys we need to handle at app level
-                if key not in ("ctrl+n",) and ch.lower() != "c":
-                    # Let tree handle arrow keys, Enter, and other navigation
+                # Let the tree handle its own navigation (arrow keys AND Enter for directory expansion)
+                # User exports by pressing 'e', or opens overlay with 'c', or uses Ctrl+N for new folder
+                if key not in ("ctrl+n",) and ch.lower() not in ("c", "e"):
+                    # Let tree handle arrow keys, Enter for dir expansion, and other navigation
                     return
 
             # 'c' key: Open overlay to change export settings
-            if ch.lower() == "c" and focused_id not in ("export_prefix_input",):
+            if ch.lower() == "c" and focused_id not in ("export_filename_input",):
                 self._open_save_target_overlay()
                 try:
                     event.stop()
@@ -3311,88 +3308,45 @@ class CairnTuiApp(App):
                     pass
                 return
 
-            # Handle Enter to export (unless the prefix input is focused).
-            # Tests and the footer contract expect Enter to export even when the directory tree
-            # is focused; directory selection is handled via tree events.
-            if focused_id != "export_prefix_input":
-                if key in ("enter", "return") or ch == "\r":
-                    # Guard: when output_dir is still the default (cwd/onx_ready), require a
-                    # second Enter to actually export. This prevents accidental exports to the
-                    # repo default directory in tests that set model.output_dir immediately after
-                    # arriving on Preview.
-                    try:
-                        from pathlib import Path as _Path
-
-                        cur_out = getattr(self.model, "output_dir", None)
-                        default_out = (_Path.cwd() / "onx_ready")
-                        try:
-                            cur_norm = _Path(cur_out).expanduser().resolve() if cur_out is not None else None
-                        except Exception:
-                            try:
-                                cur_norm = _Path(cur_out).expanduser() if cur_out is not None else None
-                            except Exception:
-                                cur_norm = None
-                        try:
-                            def_norm = default_out.expanduser().resolve()
-                        except Exception:
-                            def_norm = default_out.expanduser()
-
-                        if cur_norm is not None and str(cur_norm) != str(def_norm):
-                            # Non-default output dir: always export immediately.
-                            setattr(self, "_default_export_armed", False)
-                        else:
-                            if not bool(getattr(self, "_default_export_armed", False)):
-                                setattr(self, "_default_export_armed", True)
-                                # Show user feedback that a second Enter is required
-                                try:
-                                    footer = self.query_one("#step_footer", Static)
-                                    footer.update("Press Enter again to export to default directory (onx_ready/)")
-                                except Exception:
-                                    pass
-                                try:
-                                    event.stop()
-                                except Exception:
-                                    pass
-                                return
-                            # Second Enter: proceed with export to default.
-                            setattr(self, "_default_export_armed", False)
-                            # Clear the feedback message by restoring footer
-                            try:
-                                self._update_footer()
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-
-                    # Get prefix from input if available
-                    try:
-                        prefix_input = self.query_one("#export_prefix_input", Input)
-                        self._output_prefix = prefix_input.value or ""
-                    except Exception:
-                        pass
-
-                    try:
-                        self._dbg(
-                            event="save.key",
-                            data={
-                                "key": key,
-                                "character": ch,
-                                "focused_id": focused_id,
-                                "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
-                                "prefix": str(self._output_prefix or ""),
-                            },
-                        )
-                    except Exception:
-                        pass
-                    try:
-                        self.action_export()
-                    except Exception:
-                        pass
-                    try:
-                        event.stop()
-                    except Exception:
-                        pass
+            # Handle export via 'e' key OR Enter (when tree is not focused).
+            # When tree is focused: Enter navigates tree, 'e' exports
+            # When tree is not focused: Enter exports
+            is_export_key = ch.lower() == "e" or (key in ("enter", "return") or ch == "\r")
+            if focused_id != "export_filename_input" and is_export_key:
+                # Skip if tree focused and Enter pressed (tree handles Enter for navigation)
+                if self._use_tree_browser() and focused_id == "export_dir_tree" and (key in ("enter", "return") or ch == "\r"):
+                    # This shouldn't be reached due to early return above, but guard just in case
                     return
+
+                # Get prefix from input if available
+                try:
+                    filename_input = self.query_one("#export_filename_input", Input)
+                    self._output_filename = filename_input.value or ""
+                except Exception:
+                    pass
+
+                try:
+                    self._dbg(
+                        event="save.key",
+                        data={
+                            "key": key,
+                            "character": ch,
+                            "focused_id": focused_id,
+                            "output_dir": str(self.model.output_dir) if self.model.output_dir else None,
+                            "filename": str(self._output_filename or ""),
+                        },
+                    )
+                except Exception:
+                    pass
+                try:
+                    self.action_export()
+                except Exception:
+                    pass
+                try:
+                    event.stop()
+                except Exception:
+                    pass
+                return
 
         # Accept common Enter variants across terminals/backends.
         if event.key in ("enter", "return") or getattr(event, "character", None) == "\r":
@@ -3419,17 +3373,58 @@ class CairnTuiApp(App):
         with profile_operation("action_export"):
             if self._export_in_progress:
                 return
-            # Capture prefix from input field before exporting
-            # This ensures the prefix is captured even when action_export() is called
+            # Capture filename from input field before exporting
+            # This ensures the filename is captured even when action_export() is called
             # directly (e.g., from button clicks or RowSelected events) rather than
             # through the on_key handler.
             if self.step == "Preview":
                 try:
-                    prefix_input = self.query_one("#export_prefix_input", Input)
-                    input_value = prefix_input.value or ""
-                    self._output_prefix = input_value
+                    filename_input = self.query_one("#export_filename_input", Input)
+                    input_value = filename_input.value or ""
+                    self._output_filename = input_value
                 except Exception as e:
                     pass
+
+            # Validate filename before starting export
+            filename = (self._output_filename or "").strip()
+            if not filename:
+                self._export_error = "Filename is required. Please enter a filename."
+                self._export_in_progress = False
+                self._render_main()
+                # Focus the filename input field
+                try:
+                    filename_input = self.query_one("#export_filename_input", Input)
+                    filename_input.focus()
+                except Exception:
+                    pass
+                return
+
+            # Check for path separators
+            if "/" in filename or "\\" in filename:
+                self._export_error = "Filename cannot contain path separators (/, \\)"
+                self._export_in_progress = False
+                self._render_main()
+                try:
+                    filename_input = self.query_one("#export_filename_input", Input)
+                    filename_input.focus()
+                except Exception:
+                    pass
+                return
+
+            # Check for invalid filename characters
+            invalid_chars = ['<', '>', ':', '"', '|', '?', '*']
+            found_invalid = [c for c in invalid_chars if c in filename]
+            if found_invalid:
+                self._export_error = f"Filename contains invalid characters: {', '.join(found_invalid)}"
+                self._export_in_progress = False
+                self._render_main()
+                try:
+                    filename_input = self.query_one("#export_filename_input", Input)
+                    filename_input.focus()
+                except Exception:
+                    pass
+                return
+
             self._start_export()
 
     def _start_export(self) -> None:
@@ -3442,7 +3437,12 @@ class CairnTuiApp(App):
             self._export_in_progress = False
             self._render_main()
             return
-        out_dir = self.model.output_dir or (Path.cwd() / "onx_ready")
+        out_dir = self.model.output_dir
+        if out_dir is None:
+            self._export_error = "No output directory selected. Select a directory from the tree."
+            self._export_in_progress = False
+            self._render_main()
+            return
         try:
             out_dir = out_dir.expanduser()
         except Exception:
@@ -3479,7 +3479,7 @@ class CairnTuiApp(App):
                 config=self._config,
                 split_gpx=True,
                 max_gpx_bytes=4 * 1024 * 1024,
-                prefix=self._output_prefix or None,
+                filename=self._output_filename or None,
             )
             rows = [(a, b, int(c), int(d)) for (a, b, c, d) in manifest]
             self.call_from_thread(self._on_export_done, rows, None)
@@ -3566,7 +3566,7 @@ class CairnTuiApp(App):
             self._confirm_callback = None  # Clear it
             try:
                 callback(confirmed)
-            except Exception as e:
+            except Exception:
                 pass
             return
 
@@ -3576,66 +3576,6 @@ class CairnTuiApp(App):
         else:
             try:
                 self.exit()
-            except Exception:
-                pass
-
-    def on_rename_overlay_submitted(self, message: RenameOverlay.Submitted) -> None:  # type: ignore[name-defined]
-        """Handle Submitted message from RenameOverlay."""
-        ctx = getattr(message, "ctx", None)
-        value = getattr(message, "value", None)
-        if ctx is None:
-            return
-        if value is None:
-            # User cancelled - return to inline overlay if applicable
-            if self._in_inline_edit:
-                try:
-                    feats = self._selected_features(ctx)
-                    if feats:
-                        self._show_inline_overlay(ctx=ctx, feats=feats)
-                except Exception:
-                    pass
-            return
-        # Apply the rename via the standard edit payload mechanism
-        payload = {"action": "rename", "value": value, "ctx": ctx}
-        self._apply_edit_payload(payload)
-        # If this triggered a confirmation overlay (multi-rename), don't steal focus by
-        # reopening the inline overlay yet; `_apply_rename_confirmed` will bring us back.
-        try:
-            if self.query_one("#confirm_overlay", ConfirmOverlay).has_class("open"):
-                return
-        except Exception:
-            pass
-        # Heuristic for test stability / UX: if the current folder only has a single
-        # waypoint and we just renamed it, assume the user is "done editing" and let
-        # Enter advance the stepper (rather than leaving the inline overlay open and
-        # keeping selection active, which would cause Enter to reopen actions).
-        try:
-            if getattr(ctx, "kind", None) == "waypoint":
-                _tracks, _waypoints = self._current_folder_features()
-                if len(getattr(ctx, "selected_keys", []) or []) == 1 and len(_waypoints) <= 1:
-                    try:
-                        self._in_single_item_edit = False
-                        self._in_inline_edit = False
-                    except Exception:
-                        pass
-                    try:
-                        self._selected_waypoint_keys.clear()
-                        self._refresh_waypoints_table()
-                    except Exception:
-                        pass
-                    try:
-                        self.call_after_refresh(self.action_focus_table)
-                    except Exception:
-                        self.action_focus_table()
-                    return
-        except Exception:
-            pass
-
-        if self._in_inline_edit:
-            try:
-                feats = self._selected_features(ctx)
-                if feats:
-                    self._show_inline_overlay(ctx=ctx, feats=feats)
             except Exception:
                 pass
 
@@ -3744,9 +3684,9 @@ class CairnTuiApp(App):
             elif event.input.id == "waypoints_search":
                 self._waypoints_filter = event.value or ""
                 self._refresh_waypoints_table()
-            elif event.input.id == "output_prefix" or event.input.id == "export_prefix_input":
+            elif event.input.id == "output_filename" or event.input.id == "export_filename_input":
                 # Keep in sync while typing; pressing Enter will also commit.
-                self._output_prefix = str(event.value or "")
+                self._output_filename = str(event.value or "")
             elif str(event.input.id or "").startswith("rename_"):
                 try:
                     idx = int(str(event.input.id).split("_", 1)[1])

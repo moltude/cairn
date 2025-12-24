@@ -1,7 +1,7 @@
 version: 1
 observed_caltopo_symbols:
   campsite:
-    count: 242
+    count: 270
     examples:
     - Test Waypoint
   placemark2:
@@ -103,7 +103,7 @@ observed_onx_icons:
     - Gash knob
     - Cool pointy summit
   Water Source:
-    count: 666
+    count: 736
     examples:
     - Mill Creek TH?
     - Bass Creek TH
@@ -146,7 +146,7 @@ observed_onx_icons:
     - Waypoint 11/30/25 14:03
     - Camp Area - Ridge Camping Zone (Lime)
   Campsite:
-    count: 570
+    count: 640
     examples:
     - Test2-ExtensionsOnly
     - Campsite - Alpine Meadow (Red-Orange)
@@ -260,4 +260,4 @@ observed_onx_icons:
     - Solo Waypoint
     - North Pole
     - South Pole
-updated_at: '2025-12-23T15:32:50+00:00'
+updated_at: '2025-12-24T13:26:01+00:00'

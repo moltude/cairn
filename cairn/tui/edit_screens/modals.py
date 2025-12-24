@@ -121,10 +121,12 @@ class HelpModal(ModalScreen[None]):
             ("💡", "GPX imports: Add icons/colors/descriptions here"),
         ],
         "Preview": [
-            ("y", "Change directory/prefix"),
-            ("Enter", "Export (with confirmation)"),
+            ("↑/↓/Enter", "Navigate tree (tree mode)"),
+            ("e", "Export (works anywhere)"),
+            ("Enter", "Export (when tree not focused)"),
+            ("c", "Change directory/prefix"),
             ("r", "Apply rename edits (after export)"),
-            ("Ctrl+N", "Start a new migration"),
+            ("Ctrl+N", "New folder (tree mode)"),
             ("Esc", "Go back to make changes"),
             ("q", "Quit application"),
         ],
@@ -859,7 +861,3 @@ class UnmappedSymbolModal(ModalScreen[Optional[str]]):
             except Exception:
                 pass
             return
-
-
-
-

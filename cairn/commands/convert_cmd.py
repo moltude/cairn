@@ -261,7 +261,7 @@ def process_and_write_files(
     *,
     split_gpx: bool = True,
     max_gpx_bytes: Optional[int] = None,
-    prefix: Optional[str] = None,
+    filename: Optional[str] = None,
 ) -> list:
     """
     Process folders and write output files.
@@ -291,13 +291,22 @@ def process_and_write_files(
     if max_gpx_bytes is None:
         max_gpx_bytes = _DEFAULT_MAX_GPX_BYTES
 
-    for folder_id, folder_data in parsed_data.folders.items():
+    # Determine if we need to append folder identifiers (when multiple folders exist)
+    folder_count = len(parsed_data.folders)
+    use_folder_suffix = folder_count > 1
+
+    for folder_idx, (folder_id, folder_data) in enumerate(parsed_data.folders.items(), 1):
         folder_name = folder_data["name"]
-        safe_name = sanitize_filename(folder_name)
-        # Apply prefix if provided
-        if prefix and prefix.strip():
-            prefix_safe = sanitize_filename(prefix.strip())
-            safe_name = f"{prefix_safe}_{safe_name}"
+        # Use filename if provided, otherwise use folder name
+        if filename and filename.strip():
+            # Strip any extension from user input, we'll add appropriate ones
+            base_name = Path(filename.strip()).stem
+            safe_name = sanitize_filename(base_name)
+            # If multiple folders, append folder index to make filenames unique
+            if use_folder_suffix:
+                safe_name = f"{safe_name}_Folder{folder_idx}"
+        else:
+            safe_name = sanitize_filename(folder_name)
 
         waypoints = folder_data["waypoints"]
         tracks = folder_data["tracks"]
