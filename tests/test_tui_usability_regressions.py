@@ -190,35 +190,50 @@ def test_selection_toggle_fast_on_10k_row_table(tmp_path: Path) -> None:
             table.focus()
             await pilot.pause()
 
-            target_row = 6000
-            table.cursor_coordinate = Coordinate(target_row, 0)
-            await pilot.pause()
-            assert int(table.cursor_row) == target_row
+            async def timed_toggle(row: int) -> float:
+                table_now = app.query_one("#waypoints_table", DataTable)
+                table_now.cursor_coordinate = Coordinate(row, 0)
+                await pilot.pause()
+                assert int(table_now.cursor_row) == row
 
-            before_selected = len(app._selected_waypoint_keys)
-            t0 = time.perf_counter()
-            app.action_toggle_select()
-            await pilot.pause()
-            # Allow any deferred restore callbacks to complete before stopping the clock.
-            await asyncio.sleep(0.1)
-            await pilot.pause()
-            elapsed = time.perf_counter() - t0
+                before = len(app._selected_waypoint_keys)
+                t0 = time.perf_counter()
+                app.action_toggle_select()
+                await pilot.pause()
+                # Allow deferred restore callbacks to complete before stopping
+                # the clock.
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+                elapsed = time.perf_counter() - t0
 
-            assert len(app._selected_waypoint_keys) == before_selected + 1, (
-                "Space toggle should have selected exactly one waypoint"
-            )
-            table_after = app.query_one("#waypoints_table", DataTable)
-            assert int(table_after.cursor_row) == target_row, (
-                f"Cursor should be restored to row {target_row}, got {table_after.cursor_row}"
-            )
-            # Old behavior: ~5.8s at row 6000 (cursor restored via ~12,000
-            # cursor_up/cursor_down actions, scheduled twice). New behavior sets
-            # the coordinate directly: measured ~0.5s (dominated by the 10k-row
-            # rebuild). 3s is generous headroom for slow machines while still
-            # failing hard if the quadratic restore returns.
-            assert elapsed < 3.0, (
-                f"Toggling selection at row {target_row} of a 10k-row table took "
-                f"{elapsed:.2f}s; quadratic cursor restore has likely returned"
+                assert len(app._selected_waypoint_keys) == before + 1, (
+                    "Space toggle should have selected exactly one waypoint"
+                )
+                after = app.query_one("#waypoints_table", DataTable)
+                assert int(after.cursor_row) == row, (
+                    f"Cursor should be restored to row {row}, got {after.cursor_row}"
+                )
+                return elapsed
+
+            # Old behavior: cursor restored via ~2x<row> cursor_up/cursor_down
+            # actions, so the toggle cost grew with cursor position (~5.8s at
+            # row 6000 on a fast machine). New behavior sets the coordinate
+            # directly, so the cost is dominated by the position-independent
+            # 10k-row rebuild. A wall-clock bound can't pin that on both a fast
+            # dev laptop (~0.5s) and GitHub's py3.10 runner (~3.3s for the SAME
+            # code) without also passing the quadratic path on the fast machine,
+            # so assert the scaling instead: a toggle at row 6000 must cost
+            # about the same as one at row 100 (quadratic restore makes it
+            # ~10x). The row-50 warmup keeps first-render costs out of the
+            # baseline.
+            await timed_toggle(50)
+            baseline = await timed_toggle(100)
+            deep = await timed_toggle(6000)
+
+            assert deep < baseline * 4 + 0.5, (
+                f"Toggling at row 6000 took {deep:.2f}s vs {baseline:.2f}s at "
+                f"row 100; position-dependent cost means the quadratic cursor "
+                f"restore has likely returned"
             )
 
     asyncio.run(_run())

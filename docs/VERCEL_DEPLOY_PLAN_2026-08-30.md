@@ -32,10 +32,12 @@ live on the Cloudflare side, in front of the Pages project:
   hostname, which is what makes this work — **verify this in the dashboard** (Workers & Pages →
   Routes for this zone) before relying on it, and check there's no existing Route/Page Rule
   already claiming `/cairn*`.
-- The Worker needs to: redirect bare `/cairn` (no trailing slash) to `/cairn/` (the app's relative
-  asset paths resolve against the URL's directory, so without the slash every asset 404s); strip
-  the `/cairn` prefix and proxy the remainder to the Vercel production URL; and **rewrite the
-  `Location` header on any 3xx response back under `/cairn`** — `web/vercel.json` sets
+- The Worker needs to: pass through anything that isn't exactly `/cairn` or under `/cairn/`
+  (the `/cairn*` route pattern also matches blog paths like `/cairn-foo` — see §4's guard);
+  redirect bare `/cairn` (no trailing slash) to `/cairn/` with a *temporary* redirect (the app's
+  relative asset paths resolve against the URL's directory, so without the slash every asset
+  404s); strip the `/cairn` prefix and proxy the remainder to the Vercel production URL; and
+  **rewrite the `Location` header on any 3xx response back under `/cairn`** — `web/vercel.json` sets
   `cleanUrls: true`, so Vercel does emit redirects (e.g. `Location: /index`), and forwarded
   verbatim that would send the browser out of `/cairn/` into the blog's own `/index`.
 - Do **not** attach `quietmarch.to` as a custom domain on the Vercel project — DNS is already
@@ -201,9 +203,18 @@ domain (a Cloudflare Pages project serving the Jekyll blog).
    Configured in the Cloudflare dashboard (Workers & Pages → Routes) or via `wrangler` — this
    needs **no changes to the `moltude/quietmarch.to` repo**, since Routes live at the zone level,
    independent of the Pages project's build. The worker logic:
-   - Bare `/cairn` (no trailing slash) → 301/308 redirect to `/cairn/`. Same reason as the old
-     Vercel-rewrite draft had this: the app's relative asset paths (`./dist/...`) resolve against
-     the URL's *directory*, and `/cairn` (no slash) has `/` as that directory, not `/cairn/`.
+   - **Guard first: only handle exactly `/cairn` or paths under `/cairn/`.** The broad Route
+     pattern `/cairn*` also matches any blog URL that merely *begins* with "/cairn" (a future
+     `/cairn-announcement` post, say), and stripping the prefix from those would proxy garbage
+     (`/-announcement`) to the app instead of serving the blog page. For anything where
+     `url.pathname !== "/cairn" && !url.pathname.startsWith("/cairn/")`, pass the request
+     through untouched (`return fetch(request)`) so the Pages origin serves it.
+   - Bare `/cairn` (no trailing slash) → **302/307 (temporary) redirect** to `/cairn/`. Same
+     reason as the old Vercel-rewrite draft had this: the app's relative asset paths
+     (`./dist/...`) resolve against the URL's *directory*, and `/cairn` (no slash) has `/` as
+     that directory, not `/cairn/`. Temporary, not 301/308: browsers cache permanent redirects
+     indefinitely, and this is an explicitly demo-stage deploy whose path scheme may change —
+     the original plan's `"permanent": false` choice carries over deliberately.
    - Otherwise: strip the `/cairn` prefix and `fetch()` the remainder from
      `https://cairn-web.vercel.app/...`, streaming the response back.
    - **Rewrite the `Location` header on any 3xx response back under `/cairn`.**
@@ -322,9 +333,10 @@ This plan deploys a working prototype. It is **not** the full hybrid rollout fro
 - Added `web/vercel.json` for the cairn deploy (§3)
 - Ran a dedicated security review — no vulnerabilities found (see header)
 - Post-review correctness pass caught and fixed 4 deploy-blocking/false-confidence issues:
-  the wheel was silently gitignored (§1), the subpath needs a trailing-slash redirect not just
-  the rewrite (§4), `vercel.json`'s `buildCommand` had the wrong type (§3), and the e2e suite's
-  `BASE_URL` override was a no-op (§6)
+  the wheel was silently gitignored (§1), the subpath needs a trailing-slash redirect on top of
+  the since-abandoned Vercel-rewrite draft (§4 — that approach was later replaced wholesale by
+  the Cloudflare Worker route now described there), `vercel.json`'s `buildCommand` had the wrong
+  type (§3), and the e2e suite's `BASE_URL` override was a no-op (§6)
 
 **Needs the user** (live-account steps this session can't do unattended):
 1. Confirm pushing this branch and opening a PR against `moltude/cairn` (public repo).
