@@ -5,6 +5,9 @@
 
 **Installation**
 
+Cairn is not on PyPI yet (the distribution name will be `cairn-maps`; the command stays `cairn`).
+For now, install from source:
+
 ```shell
 # Install uv if you don't have it
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -13,11 +16,30 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/moltude/cairn.git
 cd cairn
 
-uv sync # Or if that fails then 'uv pip install -e .'
+uv sync --all-extras   # --all-extras also installs the test dependencies
 
 # Run the app
 uv run cairn tui
 ```
+
+**Usage**
+
+```shell
+cairn tui                                  # full-screen interactive app
+cairn migrate onx <file>                   # CalTopo -> onX  (.json / .geojson / .gpx)
+cairn migrate caltopo <file>               # onX -> CalTopo  (.gpx / .kml)
+```
+
+Useful flags and settings:
+
+| | |
+|---|---|
+| `--debug` | Include Cairn's internal fields (`id=`, `color=`, `icon=`) in each `<desc>`. By default `<desc>` carries only your own notes. |
+| `--output-dir <path>` | Where to write the generated files. |
+| `--no-sort` | Preserve the original order instead of natural sorting. |
+| `--max-gpx-mb` | Size cap before auto-splitting (onX's import limit is 4 MB; default 3.75). |
+| `CAIRN_DEBUG_LOG=<path>` | Opt in to structured debug logging. Off by default. |
+| `CAIRN_ICON_CATALOG=<path>` | Opt in to recording which CalTopo symbols you encounter. Off by default. |
 
 ### Why?
 
@@ -78,6 +100,8 @@ Cairn now supports CalTopo GPX exports as input. However, CalTopo GPX exports ar
 Cairn will suggest icons based on keywords in waypoint names (e.g., "Camp spot" → Campsite icon), but walking through the editing steps lets you customize before export.
 
 **Recommendation**: When possible, export from CalTopo as GeoJSON for full fidelity. Use GPX when that's your only option, and use Cairn to add the metadata that GPX cannot store.
+
+Both the TUI and `cairn migrate onx` accept `.gpx`; Cairn will tell you up front what GPX cannot carry. If a directory holds both a `.json` and a `.gpx` export of the same map, Cairn offers the GeoJSON first, since choosing the GPX silently loses your icons, colors and folders.
 
 ### A Story
 

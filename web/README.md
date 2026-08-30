@@ -73,7 +73,7 @@ are in the engine, not the web layer:
 | Bug | Where | Impact |
 |---|---|---|
 | `load_config()` resolves `cairn_config.yaml` from the **current directory** | `cairn/core/config.py:906` | The browser (cwd `/home/pyodide`) silently loaded **144** symbol mappings while the CLI loaded **152**. `circle-p` failed to map to Parking, and **8 of 24 exported files differed**. Same bug the CLI has when run from another directory. |
-| Colour edits were silently discarded | `web/bridge.py` | No writer reads `cairn_onx_color_override`; `writers.py:429` recomputes colour from `feature.color`. The picker looked like it worked and changed nothing. |
+| Colour edits were silently discarded *(fixed)* | `web/bridge.py` | No writer reads `cairn_onx_color_override`; `writers.py:429` recomputes colour from `feature.color`. Fixed by writing the picked color onto `feature.color` directly for edited items (`bridge.py:257-272`). |
 | KML shapes weren't sorted | `web/bridge.py` | The CLI natural-sorts before `write_kml_shapes` (`convert_cmd.py:458`); the bridge didn't, so placemark order diverged. |
 | `typer`/`rich`/`textual` are hard dependencies | `pyproject.toml` | micropip pulled ~2.6 MB the browser never executes, busting the download gate. Worked around with `deps:false`; the real fix is an optional `cli` extra. |
 | Fallback folder name came from the temp filename | `web/bridge.py` | A CalTopo export with no folders produced a folder literally named `in`, and a runbook saying "Rename it to `in`". |
