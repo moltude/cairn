@@ -88,6 +88,39 @@ jobs:
           fi
       - run: uv run pytest -q
 
+  web-e2e:
+    # The Pyodide web app, driven end-to-end in a real headless Chromium —
+    # including test_page_boots_under_enforced_csp, which boots the page under
+    # the exact CSP web/vercel.json ships (serve.py mirrors those headers).
+    # This is the pre-deploy gate for quietmarch.to/cairn.
+    name: web app e2e (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - run: uv sync --all-extras
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+      - name: Rebuild the engine wheel the page serves
+        # Guards against a stale committed wheel: the page must run the same
+        # engine code this commit contains.
+        run: uv build --no-sources && cp dist/*.whl web/dist/
+      - name: Start dev server
+        run: |
+          uv run python web/serve.py &
+          for i in $(seq 1 20); do
+            curl -sf -o /dev/null http://127.0.0.1:8765/index.html && exit 0
+            sleep 0.5
+          done
+          echo "::error::dev server never came up" && exit 1
+      - name: Run web e2e suite
+        run: uv run pytest --no-cov -p no:cacheprovider tests/web/test_web_app.py -q
+
   build-check:
     # Cheap insurance that `uv build` works, long before you tag a release.
     name: sdist/wheel build

@@ -1,6 +1,21 @@
 # Cairn
 
 **Work in progress, buyer beware.**
+
+## Try it in the browser
+
+Cairn also runs entirely client-side as a web app (the same Python engine, via
+[Pyodide](https://pyodide.org)) — your map file never leaves your computer. A hosted
+version is being set up at `quietmarch.to/cairn`; until then, run it locally:
+
+```shell
+uv run python web/serve.py   # then open http://127.0.0.1:8765
+```
+
+See [`web/README.md`](web/README.md) for how the prototype works and
+[`docs/VERCEL_DEPLOY_PLAN_2026-08-30.md`](docs/VERCEL_DEPLOY_PLAN_2026-08-30.md)
+for the deployment plan.
+
 ## Quick start
 
 **Installation**

@@ -83,8 +83,17 @@ because of `cairn/ui/`.
 - **Do not add `try/except Exception` around assertions or key presses in tests.** 35 existing TUI
   tests already swallow exceptions and then assert nothing — they pass unconditionally. Don't add
   to that pile; a flaky interaction should be fixed or `pytest.skip`ped explicitly.
-- `tests/output/` holds committed generated output from `scripts/test_edge_cases.py`. It is not
-  produced by pytest and is not a fixture. Don't treat it as an expectation baseline.
+- `tests/output/` holds stale generated output from `scripts/test_edge_cases.py` (untracked
+  since 2026-08-30). It is not produced by pytest and is not a fixture. Don't treat it as an
+  expectation baseline.
+- `tests/web/test_web_app.py` drives the Pyodide web app in headless Chromium (needs the dev
+  server: `uv run python web/serve.py`, and once per machine `uv run playwright install
+  chromium`). The main fixture context sets `bypass_csp=True` because the page ships a strict
+  CSP with no `unsafe-eval`, which blocks Playwright's string-evaluating helpers;
+  `test_page_boots_under_enforced_csp` is the one test that boots without the bypass and is the
+  only thing standing between a CSP change and a silently broken production boot. `BASE_URL` in
+  the environment points the suite at a live deployment (unreachable explicit URL = failure,
+  not skip).
 
 ## Known traps
 
@@ -93,9 +102,11 @@ because of `cairn/ui/`.
   2026-08-29, along with `uv.lock`. The `fresh-clone` CI job now fails if any test dependency is
   ever untracked again, so don't re-add a broad ignore pattern under `tests/`.
 - CI lives in `.github/workflows/ci.yml`: `test` (Python 3.10–3.14 on Linux + one macOS cell),
-  `import-floor`, `fresh-clone`, `build-check`. `release.yml` publishes to PyPI on a version tag
-  via Trusted Publishing. Action refs are pinned to SHAs — note `astral-sh/setup-uv` has **no
-  floating `v10` tag**, so it must be pinned by SHA.
+  `import-floor`, `fresh-clone`, `web-e2e` (Playwright against the Pyodide app under the
+  production CSP), `build-check`. `release.yml` publishes to PyPI on a version tag via Trusted
+  Publishing. `codeql.yml` scans python/javascript/actions weekly and on PRs;
+  `.github/dependabot.yml` bumps uv deps and action SHAs weekly. Action refs are pinned to
+  SHAs — note `astral-sh/setup-uv` has **no floating `v10` tag**, so it must be pinned by SHA.
 - **The distribution is named `cairn-maps`**, not `cairn` — that name is taken on PyPI by an
   unrelated 2019 project. The installed command is still `cairn` via `[project.scripts]`.
   `release.yml`'s tag-guard asserts the git tag matches `pyproject`'s version; PyPI filenames are
@@ -112,6 +123,17 @@ because of `cairn/ui/`.
   on every machine turns the logging back on for everyone.
 - The onX format is not fully standard: the same linework exports as `<trk>` or `<rte>`; areas
   usually only survive as KML polygons; onX reorders items after import. See `TECH_DETAIILS.md`.
+- **A JS object is not keyword arguments to a Python function.** In `web/app.js`,
+  `micropip.install(url, { deps: false })` silently passed the object as the second
+  *positional* parameter (`keep_going`), leaving `deps=True` — every boot fetched
+  typer/rich/textual from PyPI. Pyodide requires `fn.callKwargs(args, { kw: v })` for kwargs.
+  The enforced-CSP e2e test is what caught it; keep that test passing.
+- **XML parsing uses stock `xml.etree.ElementTree`, deliberately.** The readers only run in the
+  CLI/TUI on files the user chose (the web app is JSON/GeoJSON-only — `web/bridge.py` imports
+  just `parse_geojson`). Stock ElementTree doesn't resolve external entities (no classic XXE)
+  and modern expat caps entity amplification, so `defusedxml` was evaluated (2026-08-30) and
+  skipped as a dependency not worth its cost. Revisit only if XML parsing ever becomes reachable
+  from the web bridge.
 - **A subagent-built feature with no commits has no history.** `web/` was built by a subagent via
   Bash/heredoc rather than tracked `Edit`/`Write` calls, across an uncommitted session spanning
   roughly two days (built 2026-08-29, first committed 2026-08-30 as `9c4e14a`). A later session

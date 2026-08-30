@@ -25,8 +25,10 @@ names) is routed through the `esc()` escaping helper; `bridge.py`'s `_safe()` st
 separators before any filename reaches a filesystem write; there is no `eval`/`exec`/unsafe YAML
 load of untrusted content. Two hardening (not vulnerability) items were folded into this plan
 regardless, since the app is about to go public-facing: `micropip.install("pyyaml")` is now
-version-pinned (`pyyaml==6.0.2`), and an SRI hash for the Pyodide CDN `<script>` tag is a
-follow-up (jsDelivr's SRI value wasn't retrievable from this session — see §9).
+version-pinned (`pyyaml==6.0.2`), and the SRI hash for the Pyodide CDN `<script>` tag was
+**added by the capstone session** (sha384, computed from the pinned v0.28.3 file), along with a
+strict CSP + security headers in `web/vercel.json` that the dev server mirrors and the e2e suite
+enforces (`test_page_boots_under_enforced_csp`).
 
 **Post-review correctness pass:** [verified — 2026-08-30] A second pass (not a security review —
 a plain "would this actually work" check) caught four issues in the first draft of this plan, all

@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Python deps: reads pyproject.toml + uv.lock (uv is a first-class ecosystem).
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-deps:
+        patterns: ["*"]
+
+  # The SHA-pinned actions in .github/workflows — dependabot bumps the SHA and
+  # keeps the human-readable version comment in sync.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
