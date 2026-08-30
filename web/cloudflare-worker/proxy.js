@@ -25,8 +25,12 @@ export default {
       return Response.redirect(url.toString(), 308);
     }
 
-    // Strip the /cairn prefix and proxy the rest to Vercel.
-    const upstreamPath = url.pathname.slice("/cairn".length) || "/";
+    // Strip the /cairn prefix and proxy the rest to Vercel. Paths that don't
+    // start with /cairn (e.g. hitting the workers.dev preview at its own
+    // root) pass through unchanged instead of being mangled.
+    const upstreamPath = url.pathname.startsWith("/cairn")
+      ? url.pathname.slice("/cairn".length) || "/"
+      : url.pathname;
     const upstreamUrl = TARGET_ORIGIN + upstreamPath + url.search;
 
     const upstreamHeaders = new Headers(request.headers);
