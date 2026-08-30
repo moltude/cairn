@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import io
+import os
 import re
 import urllib.error
 import urllib.request
@@ -25,7 +26,13 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, sync_playwright
 
-BASE_URL = "http://127.0.0.1:8765"
+# BASE_URL is read from the environment so this suite can be pointed at a
+# live deployment (e.g. `BASE_URL=https://quietmarch.to/cairn/ pytest ...`)
+# as well as the local dev server. When the caller explicitly set BASE_URL,
+# an unreachable server is a hard failure, not a skip -- a silent skip
+# against a mistyped or down deployment URL would report green for nothing.
+_EXPLICIT_BASE_URL = "BASE_URL" in os.environ
+BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8765").rstrip("/")
 FIXTURE = (
     Path(__file__).resolve().parent.parent
     / "fixtures"
@@ -54,12 +61,18 @@ def _server_reachable() -> bool:
 
 @pytest.fixture(scope="session", autouse=True)
 def _require_server():
-    """Skip the whole module cleanly if the dev server isn't up."""
+    """Skip if the local dev server isn't up; fail if an explicit BASE_URL is unreachable.
+
+    A skip is the right call for "you forgot to start the dev server" -- but
+    if BASE_URL was set on purpose (pointing at a deployment), an unreachable
+    URL must fail the run. Otherwise a mistyped or down URL reports a clean
+    green skip, which is worse than no test at all.
+    """
     if not _server_reachable():
-        pytest.skip(
-            f"web dev server not reachable at {BASE_URL} "
-            "(start it with: uv run python web/serve.py)"
-        )
+        msg = f"web server not reachable at {BASE_URL}"
+        if _EXPLICIT_BASE_URL:
+            pytest.fail(msg)
+        pytest.skip(f"{msg} (start it with: uv run python web/serve.py)")
 
 
 @pytest.fixture(scope="session")

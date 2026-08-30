@@ -18,6 +18,11 @@ build/
 *.egg
 .eggs/
 
+# The web prototype vendors the built engine wheel deliberately -- Pyodide
+# fetches it at runtime, so it must be committed for the deploy to work.
+!web/dist/
+!web/dist/*.whl
+
 # UV
 uv.lock
 

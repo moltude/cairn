@@ -28,16 +28,39 @@ regardless, since the app is about to go public-facing: `micropip.install("pyyam
 version-pinned (`pyyaml==6.0.2`), and an SRI hash for the Pyodide CDN `<script>` tag is a
 follow-up (jsDelivr's SRI value wasn't retrievable from this session — see §9).
 
+**Post-review correctness pass:** [verified — 2026-08-30] A second pass (not a security review —
+a plain "would this actually work" check) caught four issues in the first draft of this plan, all
+fixed in this session: the engine wheel was silently excluded from git by a blanket `dist/` rule
+in `.gitignore` (§1); a relative-path fetch breaks at `/cairn` without a trailing slash, since
+relative URLs resolve against the *directory* of the current page, and `/cairn` (no slash) has
+`/` as its directory, not `/cairn/` (§4 now requires a redirect, not just the rewrite); the
+original `vercel.json` set `"buildCommand": false`, a boolean where Vercel's schema wants
+`string | null` (§3, now restructured); and the documented `BASE_URL=... pytest` verification
+command was a no-op because the test hardcoded `BASE_URL` as a Python constant that never read
+the environment (§6, now fixed in `tests/web/test_web_app.py`).
+
 ---
 
 ## 1. Pre-flight: commit web/ and tests/web/ to git
 
 Vercel deploys from a git repository and branch. `web/` and `tests/web/` were untracked in the
 main checkout; **done in this session** — committed on branch `worktree-vercel-deploy-plan`
-alongside the fix in §2 and the `vercel.json` in §3. Still needed: push the branch and open a PR
-against `moltude/cairn` (public repo) so the change is reviewable before it goes live — confirm
-with the user before pushing/opening the PR, since this is the first time this prototype code
-becomes part of the public repo's history.
+alongside the fix in §2 and the `vercel.json` in §3.
+
+**Caught and fixed:** the repo's `.gitignore` has a blanket `dist/` rule (for `uv build` output at
+the repo root), which also matched `web/dist/` and silently excluded
+`cairn_maps-1.0.0-py3-none-any.whl` from the first commit — `git add web/` staged everything
+except the one file the app actually needs at runtime. Fixed with a targeted negation:
+```
+dist/
+!web/dist/
+!web/dist/*.whl
+```
+Verify before trusting any future commit here: `git ls-files web/dist/` must list the `.whl`.
+
+Still needed: push the branch and open a PR against `moltude/cairn` (public repo) so the change
+is reviewable before it goes live — confirm with the user before pushing/opening the PR, since
+this is the first time this prototype code becomes part of the public repo's history.
 
 ---
 
@@ -70,14 +93,16 @@ build-time substitution needed. Same edit also pinned the previously-unpinned `p
 
 ## 3. vercel.json and static hosting config — done
 
-**Root directory:** `web/`. Build step: none — pure static site (HTML + CSS + JS + whl), Vercel
-copies files as-is. [verified]
+**Root directory:** set `web/` as the Vercel **Project Setting** "Root Directory" when creating
+the project (dashboard, or `vercel link` then adjust in project settings) — not via a
+`vercel.json` key. Build step: none — pure static site (HTML + CSS + JS + whl); with no
+`package.json` or other framework manifest present, Vercel's auto-detection lands on "Other"
+(static passthrough, zero build) on its own, so there's nothing to override.
 
-**`vercel.json` added at the cairn repo root** (this session):
+**`web/vercel.json`** (this session — placed inside `web/` because that becomes the project root
+once Root Directory is set, and Vercel looks for `vercel.json` at the project root):
 ```json
 {
-  "buildCommand": false,
-  "outputDirectory": "web",
   "cleanUrls": true,
   "headers": [
     {
@@ -95,9 +120,12 @@ copies files as-is. [verified]
   ]
 }
 ```
+Deliberately has no `buildCommand`/`outputDirectory` keys — an earlier draft set
+`"buildCommand": false`, which is the wrong type (Vercel's schema wants `string | null`) and would
+likely fail schema validation at deploy time. Letting Root Directory + auto-detection handle it
+avoids the type risk entirely; `vercel build` (once logged in) will validate this file locally
+before the first real deploy.
 
-- `buildCommand: false` skips Vercel's framework auto-detection (this is not a Jekyll/Next/etc.
-  project; auto-detection would misfire against a bare static folder)
 - `/dist/` (the wheel) gets a 1-year immutable cache since the filename is version-pinned; every
   other file gets a 1-hour cache with revalidation so app.js/index.html fixes propagate quickly
 - No custom MIME mapping needed — Vercel serves `.whl` as a generic binary type by default and
@@ -117,22 +145,29 @@ same-account rewrite — no subdomain, no Cloudflare Worker needed for the routi
 2. Deploy it (`vercel --prod` or a dashboard-triggered deploy from the PR branch) and note the
    resulting production URL — e.g. `cairn-web.vercel.app` (exact name depends on what Vercel
    assigns; confirm it in the project's dashboard).
-3. In the **quietmarch.to** Vercel project, add a rewrite so `/cairn/*` proxies to that URL. That
-   repo currently has no `vercel.json` at all (confirmed by inspecting
-   `~/_code/quietmarch.to` — routing today is whatever Vercel's dashboard defaults are), so this
-   means *adding* one:
+3. In the **quietmarch.to** Vercel project, add a rewrite so `/cairn/*` proxies to that URL —
+   **plus a redirect to enforce the trailing slash.** The app's HTML/JS/wheel are fetched with
+   relative paths (`./dist/...`, `styles.css`, `icons.js`) so it works at any subpath — but a
+   relative URL resolves against the *directory* of the current page, and `https://quietmarch.to/cairn`
+   (no trailing slash) has `https://quietmarch.to/` as that directory, not `.../cairn/`. Without
+   the redirect, every asset the app requests 404s and the page never boots. That repo currently
+   has no `vercel.json` at all (confirmed by inspecting `~/_code/quietmarch.to` — routing today is
+   whatever Vercel's dashboard defaults are), so this means *adding* one:
    ```json
    {
+     "redirects": [
+       { "source": "/cairn", "destination": "/cairn/", "permanent": false }
+     ],
      "rewrites": [
-       { "source": "/cairn", "destination": "https://cairn-web.vercel.app/" },
        { "source": "/cairn/:path*", "destination": "https://cairn-web.vercel.app/:path*" }
      ]
    }
    ```
-   Vercel rewrites to an absolute external URL act as an edge-side reverse proxy — the browser's
-   address bar stays on `quietmarch.to/cairn`, no redirect, no CORS issue (the browser never sees
-   the second origin). [verified — this is standard Vercel rewrite behavior, not something specific
-   to this setup]
+   Vercel processes redirects before rewrites, so `/cairn` → `/cairn/` (browser-visible redirect,
+   one hop) → proxied to the cairn deployment (invisible rewrite, address bar stays on
+   `quietmarch.to/cairn/`). [verified — Vercel's documented processing order is redirects, then
+   rewrites; a rewrite to an absolute external URL acts as an edge-side reverse proxy with no CORS
+   exposure, since the browser never sees the second origin]
 4. This is a change to a **separate, live, production repo** (`moltude/quietmarch.to`) that isn't
    part of this session's worktree — confirm with the user before opening a PR there, and prefer a
    PR over a direct push to `main` even though it's a personal blog.
@@ -165,19 +200,22 @@ Once deployed to the chosen URL (subpath, subdomain, or proxied):
 7. Export and download the ZIP
 
 **Automated test (e2e):**
-The existing Playwright suite in `tests/web/test_web_app.py` can be pointed at the live URL:
+`tests/web/test_web_app.py` now reads `BASE_URL` from the environment (fixed this session — it
+was previously a hardcoded constant that silently ignored the variable, making this command a
+no-op):
 
 ```bash
-# Before deploy:
-BASE_URL=http://127.0.0.1:8765 uv run pytest tests/web/test_web_app.py
+# Local dev server (default, no BASE_URL needed):
+uv run pytest --no-cov -p no:cacheprovider tests/web/test_web_app.py
 
-# After deploy:
-BASE_URL=https://quietmarch.to/cairn uv run pytest tests/web/test_web_app.py
-# (or the live URL of whichever option is chosen)
+# Against the live deploy — note the trailing slash, required per §4:
+BASE_URL=https://quietmarch.to/cairn/ uv run pytest --no-cov -p no:cacheprovider tests/web/test_web_app.py
 ```
 
-The suite self-skips if the URL is unreachable, so it's safe to run against live as a final
-verification.
+When `BASE_URL` is left unset, an unreachable local server still skips cleanly. When `BASE_URL`
+is set explicitly (the live-deploy case), an unreachable URL now **fails** the run instead of
+skipping — a skip would report green for a broken or mistyped deployment URL, which is worse than
+no test at all.
 
 **Expected results:**
 - Page loads, no JavaScript errors (check browser console)
@@ -243,16 +281,21 @@ This plan deploys a working prototype. It is **not** the full hybrid rollout fro
 **Done this session** (branch `worktree-vercel-deploy-plan`, not yet pushed):
 - Committed `web/` and `tests/web/` to git
 - Fixed the subpath wheel-fetch bug and pinned `pyyaml` (§2)
-- Added `vercel.json` for the cairn deploy (§3)
+- Added `web/vercel.json` for the cairn deploy (§3)
 - Ran a dedicated security review — no vulnerabilities found (see header)
+- Post-review correctness pass caught and fixed 4 deploy-blocking/false-confidence issues:
+  the wheel was silently gitignored (§1), the subpath needs a trailing-slash redirect not just
+  the rewrite (§4), `vercel.json`'s `buildCommand` had the wrong type (§3), and the e2e suite's
+  `BASE_URL` override was a no-op (§6)
 
 **Needs the user** (live-account / production-repo steps this session can't do unattended):
 1. Confirm pushing this branch and opening a PR against `moltude/cairn` (public repo).
 2. Run `vercel login` interactively (CLI is installed but not authenticated in this
-   environment) and link/create the cairn Vercel project, or do it via the Vercel dashboard.
+   environment) and link/create the cairn Vercel project with **Root Directory = `web/`**, or do
+   it via the Vercel dashboard.
 3. Get the resulting deployment URL, then confirm before a PR/push is opened against
-   `moltude/quietmarch.to` adding the `/cairn` rewrite (§4) — that's a separate live repo this
-   session should not touch without explicit sign-off.
+   `moltude/quietmarch.to` adding the `/cairn` redirect + rewrite (§4) — that's a separate live
+   repo this session should not touch without explicit sign-off.
 4. Check the Cloudflare dashboard for this zone for any existing Worker/Page Rule on `/cairn*`
    (§4 caveat) before relying on the Vercel rewrite alone.
 5. Verify the live deploy with the smoke test and/or e2e suite (§6).
