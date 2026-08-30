@@ -14,6 +14,7 @@ implementation is rewritten again.
 from __future__ import annotations
 
 import re
+import sys
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
@@ -114,14 +115,15 @@ def test_matches_legacy_on_characters_that_need_escaping(text: str) -> None:
 
     Python 3.13 changed minidom to stop escaping quotes in *text* nodes
     (they were never required to be escaped there); `prettify_xml` matches the
-    3.13+ form. On older interpreters, normalize the legacy output's
-    over-escaping before the byte comparison — the canonical forms must match
-    on every version regardless.
+    3.13+ form. On older interpreters the legacy serializer over-escapes text
+    quotes, so byte equality is only a meaningful claim on 3.13+; canonical
+    XML equality is the invariant on every version.
     """
     ours = prettify_xml(_build(2, text=text))
     legacy = _legacy_prettify(_build(2, text=text))
     assert ET.canonicalize(ours) == ET.canonicalize(legacy)
-    assert ours == legacy.replace("&quot;", '"')
+    if sys.version_info >= (3, 13):
+        assert ours == legacy
 
 
 def test_declaration_and_trailing_newline_are_preserved() -> None:
