@@ -1,4 +1,10 @@
+# Cursor (retired 2026-08-29 — this project uses Claude Code; see .claude/README.md)
 .cursor/
+
+# Claude Code: share settings.json + skills, keep personal overrides local
+.claude/settings.local.json
+# Session worktrees Claude Code creates under .claude/ — full repo checkouts, never content
+.claude/worktrees/
 
 # Python bytecode
 __pycache__/
@@ -17,9 +23,30 @@ dist/
 build/
 *.egg
 .eggs/
+# EXCEPTION: the engine wheel the web prototype fetches at runtime is deliberately
+# committed — Vercel serves web/ statically with no build step, so the wheel must
+# be in git. Verify with: `git ls-files web/dist/` (must list the .whl).
+!web/dist/
+!web/dist/*.whl
 
 # UV
-uv.lock
+# NOTE: uv.lock is intentionally COMMITTED — this is an application, and the
+# lockfile is what makes builds reproducible across machines.
+
+# Secrets and local environment — never commit these
+.env
+.env.*
+*.pem
+*.key
+
+# Vercel CLI local project link (contains org/project IDs)
+.vercel/
+
+# Node tooling (none today; guards a future package.json)
+node_modules/
+
+# Logs
+*.log
 
 # IDE and editor
 .idea/
@@ -34,8 +61,14 @@ uv.lock
 htmlcov/
 .tox/
 .mypy_cache/
+.ruff_cache/
+# Playwright artifacts (tests/web)
+test-results/
+playwright-report/
 
 # Project-specific output
 onx_ready/
 artifacts/tui/
-tests/fixtures/*.gpx
+# NOTE: do NOT ignore tests/fixtures/*.gpx — 15 of them are hard test dependencies.
+tests/output/
+coverage.xml
