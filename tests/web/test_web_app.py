@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import io
+import os
 import re
 import urllib.error
 import urllib.request
@@ -23,9 +24,15 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, expect, sync_playwright
 
-BASE_URL = "http://127.0.0.1:8765"
+# BASE_URL is read from the environment so this suite can be pointed at a
+# live deployment (e.g. `BASE_URL=https://quietmarch.to/cairn/ pytest ...`)
+# as well as the local dev server. When the caller explicitly set BASE_URL,
+# an unreachable server is a hard failure, not a skip -- a silent skip
+# against a mistyped or down deployment URL would report green for nothing.
+_EXPLICIT_BASE_URL = "BASE_URL" in os.environ
+BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8765").rstrip("/")
 FIXTURE = (
     Path(__file__).resolve().parent.parent
     / "fixtures"
@@ -54,8 +61,16 @@ def _server_reachable() -> bool:
 
 @pytest.fixture(scope="session", autouse=True)
 def _require_server():
-    """Skip the whole module cleanly if the dev server isn't up."""
+    """Skip if the local dev server isn't up; fail if an explicit BASE_URL is unreachable.
+
+    A skip is the right call for "you forgot to start the dev server" -- but
+    if BASE_URL was set on purpose (pointing at a deployment), an unreachable
+    URL must fail the run. Otherwise a mistyped or down URL reports a clean
+    green skip, which is worse than no test at all.
+    """
     if not _server_reachable():
+        if _EXPLICIT_BASE_URL:
+            pytest.fail(f"explicit BASE_URL={BASE_URL} is not reachable")
         pytest.skip(
             f"web dev server not reachable at {BASE_URL} "
             "(start it with: uv run python web/serve.py)"
@@ -76,7 +91,12 @@ def context(browser):
     Pyodide/wheel assets stay in the HTTP cache: the first test pays a cold
     boot, every later test's boot is warm (see perf numbers in the report).
     """
-    ctx = browser.new_context()
+    # bypass_csp: the page now ships a strict Content-Security-Policy (see
+    # web/vercel.json, mirrored by serve.py) with no 'unsafe-eval'; Playwright's
+    # string-evaluating helpers (wait_for_function etc.) are eval-based and
+    # would be blocked by it. The CSP itself is verified by
+    # test_page_boots_under_enforced_csp, which uses a non-bypassing context.
+    ctx = browser.new_context(bypass_csp=True)
     yield ctx
     ctx.close()
 
@@ -733,3 +753,29 @@ def test_clear_link_empties_the_selection(loaded: Page):
     loaded.click("#clear-sel")
     loaded.wait_for_timeout(300)
     assert loaded.evaluate("SEL.size") == 0
+
+
+def test_page_boots_under_enforced_csp(browser):
+    """Boot the app in a context that does NOT bypass CSP.
+
+    Every other test bypasses CSP so Playwright's eval-based helpers work;
+    this one proves the strict policy in web/vercel.json (mirrored by
+    serve.py) actually lets Pyodide boot: CDN script + SRI hash, WASM
+    compilation under 'wasm-unsafe-eval', jsdelivr fetches under connect-src.
+    Only CSP-safe waits are used (no evaluate/wait_for_function).
+    """
+    ctx = browser.new_context()  # deliberately no bypass_csp
+    page = ctx.new_page()
+    violations = []
+    page.on(
+        "console",
+        lambda m: violations.append(m.text)
+        if "Content Security Policy" in m.text
+        else None,
+    )
+    try:
+        page.goto(f"{BASE_URL}/index.html")
+        expect(page.locator("#status")).to_contain_text("Ready", timeout=60000)
+        assert not violations, f"CSP violations during boot: {violations}"
+    finally:
+        ctx.close()

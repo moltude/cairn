@@ -5,6 +5,7 @@ Analyze OnX sorting behavior by comparing original GPX with exported GPX and UI 
 This script helps identify how OnX re-sorts waypoints for display vs storage.
 """
 
+import sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from rich.console import Console
@@ -144,7 +145,10 @@ if __name__ == "__main__":
     ]
 
     original_gpx = Path("onx_ready/Crazy_Mountain_100M_Waypoints.gpx")
-    exported_gpx = Path("/Users/scott/downloads/OnX-markups-12132025 (1).gpx")
+    exported_gpx = Path(
+        sys.argv[1] if len(sys.argv) > 1
+        else "~/Downloads/OnX-markups-12132025 (1).gpx"
+    ).expanduser()
 
     if not original_gpx.exists():
         console.print(f"[red]Error: {original_gpx} not found[/]")

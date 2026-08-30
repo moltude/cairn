@@ -12,12 +12,19 @@ async function boot() {
     setStatus("Loading map engine…");
     await py.loadPackage("micropip");
     const micropip = py.pyimport("micropip");
-    await micropip.install("pyyaml");
+    // Pinned; resolves from the Pyodide lockfile on jsdelivr, not PyPI.
+    await micropip.install("pyyaml==6.0.2");
     // deps:false -- the engine needs only pyyaml (installed above). Letting
     // micropip resolve the declared dependencies drags in typer, rich, textual
-    // and pygments (~2.6 MB) that never execute in the browser.
-    await micropip.install(
-      location.origin + "/dist/cairn_maps-1.0.0-py3-none-any.whl", { deps: false });
+    // and pygments (~2.6 MB) from PyPI that never execute in the browser.
+    // callKwargs is load-bearing: a plain JS object argument is NOT keyword
+    // args to a Python function -- it lands as the second positional
+    // (keep_going), silently leaving deps=True. Caught by
+    // test_page_boots_under_enforced_csp when the CSP blocked pypi.org.
+    // The URL is built against document.baseURI, not location.origin, so the
+    // app works served from a subpath (e.g. quietmarch.to/cairn/).
+    const wheel = new URL("dist/cairn_maps-1.0.0-py3-none-any.whl", document.baseURI).href;
+    await micropip.install.callKwargs(wheel, { deps: false });
     const bridge = await (await fetch("bridge.py")).text();
     py.FS.writeFile("/bridge.py", bridge);
     // Carry the user's symbol mappings into the sandbox. Without this the
@@ -59,9 +66,12 @@ async function handleFile(file) {
   setStatus("Reading " + file.name + "…");
   try {
     const text = await file.text();
-    const raw = py.runPython(
-      `bridge.load_document(${JSON.stringify(text)}, ${JSON.stringify(file.name)})`
-    );
+    // Data crosses into Python via globals, never by interpolating user
+    // content into Python source — JSON escaping happening to be valid
+    // Python-literal escaping is not a contract worth betting on.
+    py.globals.set("_cairn_text", text);
+    py.globals.set("_cairn_fname", file.name);
+    const raw = py.runPython("bridge.load_document(_cairn_text, _cairn_fname)");
     DATA = JSON.parse(raw); EDITS = {}; SEL.clear();
     renderEdit();
     $("#drop-stage").classList.add("hidden");
@@ -346,7 +356,8 @@ const colorName = rgba => (DATA.colors.find(c => c.rgba === rgba) || { name: "�
 async function doExport() {
   setStatus("Building onX files…");
   try {
-    py.runPython(`bridge.apply_edits(${JSON.stringify(JSON.stringify(EDITS))})`);
+    py.globals.set("_cairn_edits", JSON.stringify(EDITS));
+    py.runPython("bridge.apply_edits(_cairn_edits)");
     const bytes = py.runPython("bridge.export_zip()").toJs();
     ZIP = new Blob([bytes], { type: "application/zip" });
     MANIFEST = JSON.parse(py.runPython("import json; json.dumps(bridge._STATE['manifest'])"));
@@ -385,8 +396,8 @@ function renderRunbook() {
   });
 }
 
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 /* ---------- wire ---------- */
 window.addEventListener("DOMContentLoaded", () => {

@@ -42,10 +42,14 @@ the environment (§6, now fixed in `tests/web/test_web_app.py`).
 **Merge note (2026-08-30 capstone session):** this file now combines two same-day efforts that
 each wrote to this path in different checkouts: the deploy plan below (from the
 `worktree-vercel-deploy-plan` branch) and the web-UX session's staging notes (Appendix A).
-Everything the worktree branch shipped has been ported onto `main`: `web/vercel.json`, the
-`.gitignore` wheel negation with the wheel committed at `web/dist/`, and the `app.js`
-relative-fetch + pyyaml pin and `BASE_URL` test fixes (those two were already independently in
-`main`'s newer `web/`). **The worktree branch is superseded** — its `web/` predates `main`'s
+Everything the worktree branch shipped has been ported onto `main`: `web/vercel.json` (now with
+security headers), the `.gitignore` wheel negation with the wheel committed at `web/dist/`, the
+`app.js` subpath-safe wheel fetch + pyyaml pin, and the `BASE_URL` env fix in the e2e suite.
+The port went further than the branch: the capstone session's enforced-CSP boot test exposed
+that `micropip.install(url, { deps: false })` — in both the branch's and main's `app.js` — never
+actually passed `deps=False` (a plain JS object lands as the second *positional* arg), so every
+boot silently resolved typer/rich/textual from PyPI; fixed with `install.callKwargs`.
+**The worktree branch is superseded** — its `web/` predates `main`'s
 control-bar redesign (`9c4e14a`); do not merge it. Section 1's pre-flight is therefore done on
 `main`, and the "Needs the user" steps at the end are the live to-do list.
 
