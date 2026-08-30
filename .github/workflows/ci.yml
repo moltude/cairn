@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (py${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        # 3.10 is the requires-python floor (cairn/model.py:119 evaluates a PEP 604
+        # union at runtime). It goes EOL 2026-10 -> drop the row and bump the floor
+        # then. https://devguide.python.org/versions/
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          # One macOS cell for path/filesystem coverage. macos-latest is macOS 26
+          # on arm64. https://github.com/actions/runner-images
+          - os: macos-latest
+            python-version: "3.14"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv and set the Python version
+        # setup-uv has NO floating v10 tag (commits/v10 -> 422), so pin the SHA.
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      - name: Sync dependencies
+        # --all-extras is required: pytest/pytest-cov live in the `dev` optional
+        # extra, and a plain `uv sync` leaves the suite uncollectable.
+        run: uv sync --all-extras
+
+      - name: Run tests
+        # No TTY or terminal-size env needed: Textual's run_test() is headless and
+        # forces an 80x24 size by default, so COLUMNS/LINES here would be a no-op.
+        run: uv run pytest -q
+
+  import-floor:
+    # Guards the claim in pyproject's requires-python. cairn/model.py uses a
+    # runtime PEP 604 union, so the floor is a real constraint, not a hint.
+    name: import on minimum Python (3.10)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.10"
+      - run: uv sync --all-extras
+      - run: uv run python -c "import cairn; import cairn.tui.app; print('import OK')"
+
+  fresh-clone:
+    # The bug this repo actually shipped: fixtures excluded by .gitignore, so the
+    # suite passed locally and failed for everyone else. This job only sees what is
+    # committed, so it fails if a test dependency is ever untracked again.
+    name: fresh checkout has every test dependency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - run: uv sync --all-extras
+      - name: Assert no test file is untracked
+        run: |
+          if [ -n "$(git status --porcelain --ignored=no)" ]; then
+            echo "::error::Working tree is dirty on a fresh checkout:"
+            git status --porcelain
+            exit 1
+          fi
+      - run: uv run pytest -q
+
+  build-check:
+    # Cheap insurance that `uv build` works, long before you tag a release.
+    name: sdist/wheel build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - run: uv build --no-sources
+      - run: uv run --isolated --no-project --with dist/*.whl -- cairn --help
