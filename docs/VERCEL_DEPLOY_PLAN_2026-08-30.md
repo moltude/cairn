@@ -1,21 +1,51 @@
-# Vercel deployment plan — Cairn web prototype to quietmarch.to/cairn — 2026-08-30
+# Deployment plan — Cairn web prototype to quietmarch.to/cairn — 2026-08-30
+
+_(Originally titled "Vercel deployment plan" — corrected 2026-08-30: quietmarch.to turned out to
+be on Cloudflare Pages, not Vercel. See the corrected status note and §4 below.)_
 
 **Goal:** Deploy the static, client-side Cairn web prototype to Vercel, served at the subpath
 `quietmarch.to/cairn` (the user's personal blog domain). This is a demo-stage deploy: a live,
 shareable URL for the working Pyodide prototype. **Not** the full hybrid rollout from
 `docs/PLATFORM_DECISION_2026-08-29.md` — that requires additional phasing.
 
-**Status of quietmarch.to hosting:** [verified — confirmed by user 2026-08-30] Already on Vercel.
-DNS/CDN also runs through Cloudflare. Repo is `github.com/moltude/quietmarch.to` (Jekyll static
-site — confirmed by inspecting `~/_code/quietmarch.to` directly: `_config.yml`, `Gemfile`, no
-`vercel.json`, no CI workflows, and no Cloudflare config-as-code anywhere in that repo). This
-means **Option A below is confirmed as the path** — the domain-wiring fork originally in this
-plan is resolved. Both the Vercel rewrite target and the Vercel↔Cloudflare interaction still need
-one thing confirmed before the final DNS-facing step: whether Cloudflare in front of this domain
-is DNS-only/CDN-passthrough (no interference with a Vercel-side rewrite) or has its own Worker/
-Page Rule that could intercept `/cairn/*` before it reaches Vercel. Nothing in the
-`quietmarch.to` repo suggests a Worker exists (no `wrangler.toml` anywhere), so the working
-assumption is DNS/CDN-only — verify this holds by testing the live rewrite in §6.
+**Status of quietmarch.to hosting:** [CORRECTED — 2026-08-30, supersedes the "confirmed by user"
+line below] The earlier note that quietmarch.to is "already on Vercel" was **wrong**. Verified
+directly against the live site: DNS resolves to Cloudflare IPs/nameservers, the response carries
+no Vercel or GitHub Pages fingerprint (`server: cloudflare` only), and
+`https://quietmarch-to.pages.dev` — the default hostname Cloudflare Pages assigns a project named
+`quietmarch-to` — serves byte-for-byte the same HTML as the apex domain. So the origin is a
+**Cloudflare Pages project** (git-integrated with `github.com/moltude/quietmarch.to`, a Jekyll
+site; there's no deploy config in that repo — an empty `.github/workflows/`, no `wrangler.toml` —
+because the build/deploy lives entirely in the Cloudflare dashboard's Pages git integration, not
+in the repo). Vercel is not in the request path for this domain at all.
+
+**This means Option A (a Vercel-side rewrite) cannot work** — quietmarch.to's routing isn't
+controlled by Vercel, so there's nothing on the Vercel side to add a rewrite to. The fix has to
+live on the Cloudflare side, in front of the Pages project:
+
+- **A Cloudflare Worker bound to a Route on the zone** (`quietmarch.to/cairn*`) that proxies to
+  the Vercel production URL. This is the only viable path-based mechanism — Cloudflare Pages'
+  `_redirects` file supports a same-site "rewrite" via status 200, but its own docs are explicit
+  that "proxying will only support relative URLs on your site — you cannot proxy external
+  domains," which rules out using it to reach a separate Vercel deployment.
+- Worker Routes are documented to take precedence over a Pages/Custom Domain binding on the same
+  hostname, which is what makes this work — **verify this in the dashboard** (Workers & Pages →
+  Routes for this zone) before relying on it, and check there's no existing Route/Page Rule
+  already claiming `/cairn*`.
+- The Worker needs to: redirect bare `/cairn` (no trailing slash) to `/cairn/` (the app's relative
+  asset paths resolve against the URL's directory, so without the slash every asset 404s); strip
+  the `/cairn` prefix and proxy the remainder to the Vercel production URL; and **rewrite the
+  `Location` header on any 3xx response back under `/cairn`** — `web/vercel.json` sets
+  `cleanUrls: true`, so Vercel does emit redirects (e.g. `Location: /index`), and forwarded
+  verbatim that would send the browser out of `/cairn/` into the blog's own `/index`.
+- Do **not** attach `quietmarch.to` as a custom domain on the Vercel project — DNS is already
+  pointed at Cloudflare Pages, and adding it would fight that. Keep Vercel's own stable production
+  alias (e.g. `cairn-web.vercel.app`) as the Worker's proxy target, and confirm Vercel's
+  Deployment Protection is off for production (a 401 forwarded through the proxy just fails the
+  page silently).
+- This needs no changes to the `moltude/quietmarch.to` repo at all — Worker Routes are configured
+  at the zone level (Cloudflare dashboard or `wrangler`), independent of the Pages project's own
+  build.
 
 **Security review:** [verified — 2026-08-30] A dedicated security-review pass (OWASP-category
 scan: XSS, path traversal, injection, unsafe deserialization, code execution) was run against the
@@ -149,54 +179,46 @@ before the first real deploy.
 
 ---
 
-## 4. Domain wiring: confirmed as a Vercel rewrite
+## 4. Domain wiring: a Cloudflare Worker route, not a Vercel rewrite
 
-`quietmarch.to` is already a Vercel project (confirmed by the user), so `/cairn` becomes a
-same-account rewrite — no subdomain, no Cloudflare Worker needed for the routing itself.
+[CORRECTED — 2026-08-30] The section below (a same-account Vercel rewrite) assumed
+`quietmarch.to` was itself a Vercel project. It isn't — see the corrected status note above. There
+is no quietmarch.to-side Vercel project to add a rewrite to, so this whole approach is void. The
+routing has to happen on the Cloudflare side instead, since that's what's actually in front of the
+domain (a Cloudflare Pages project serving the Jekyll blog).
 
 **Steps:**
-1. Create a **new, separate Vercel project** for cairn's `web/` (don't fold it into the blog's
-   project — different repo, different deploy cadence, and it keeps the blog's build untouched).
-   `vercel link` from the cairn repo root, or import `moltude/cairn` in the Vercel dashboard.
+1. Create a **new, separate Vercel project** for cairn's `web/` (don't fold it into anything else
+   — different repo, different deploy cadence). `vercel link` from the cairn repo root, or import
+   `moltude/cairn` in the Vercel dashboard. Root Directory = `web/`.
 2. Deploy it (`vercel --prod` or a dashboard-triggered deploy from the PR branch) and note the
-   resulting production URL — e.g. `cairn-web.vercel.app` (exact name depends on what Vercel
-   assigns; confirm it in the project's dashboard).
-3. In the **quietmarch.to** Vercel project, add a rewrite so `/cairn/*` proxies to that URL —
-   **plus a redirect to enforce the trailing slash.** The app's HTML/JS/wheel are fetched with
-   relative paths (`./dist/...`, `styles.css`, `icons.js`) so it works at any subpath — but a
-   relative URL resolves against the *directory* of the current page, and `https://quietmarch.to/cairn`
-   (no trailing slash) has `https://quietmarch.to/` as that directory, not `.../cairn/`. Without
-   the redirect, every asset the app requests 404s and the page never boots. That repo currently
-   has no `vercel.json` at all (confirmed by inspecting `~/_code/quietmarch.to` — routing today is
-   whatever Vercel's dashboard defaults are), so this means *adding* one:
-   ```json
-   {
-     "redirects": [
-       { "source": "/cairn", "destination": "/cairn/", "permanent": false }
-     ],
-     "rewrites": [
-       { "source": "/cairn/:path*", "destination": "https://cairn-web.vercel.app/:path*" }
-     ]
-   }
-   ```
-   Vercel processes redirects before rewrites, so `/cairn` → `/cairn/` (browser-visible redirect,
-   one hop) → proxied to the cairn deployment (invisible rewrite, address bar stays on
-   `quietmarch.to/cairn/`). [verified — Vercel's documented processing order is redirects, then
-   rewrites; a rewrite to an absolute external URL acts as an edge-side reverse proxy with no CORS
-   exposure, since the browser never sees the second origin]
-4. This is a change to a **separate, live, production repo** (`moltude/quietmarch.to`) that isn't
-   part of this session's worktree — confirm with the user before opening a PR there, and prefer a
-   PR over a direct push to `main` even though it's a personal blog.
+   stable production alias — e.g. `cairn-web.vercel.app` (exact name depends on what Vercel
+   assigns). Do **not** add `quietmarch.to` as a custom domain on this project — its DNS is
+   already pointed at Cloudflare Pages, and this would conflict with that. Confirm Deployment
+   Protection is off for production, or a forwarded 401 will silently break the page.
+3. Add a **Cloudflare Worker** with a **Route** bound to the `quietmarch.to` zone
+   (`quietmarch.to/cairn*` — the broad pattern; `/cairn/*` alone misses the bare `/cairn` request).
+   Configured in the Cloudflare dashboard (Workers & Pages → Routes) or via `wrangler` — this
+   needs **no changes to the `moltude/quietmarch.to` repo**, since Routes live at the zone level,
+   independent of the Pages project's build. The worker logic:
+   - Bare `/cairn` (no trailing slash) → 301/308 redirect to `/cairn/`. Same reason as the old
+     Vercel-rewrite draft had this: the app's relative asset paths (`./dist/...`) resolve against
+     the URL's *directory*, and `/cairn` (no slash) has `/` as that directory, not `/cairn/`.
+   - Otherwise: strip the `/cairn` prefix and `fetch()` the remainder from
+     `https://cairn-web.vercel.app/...`, streaming the response back.
+   - **Rewrite the `Location` header on any 3xx response back under `/cairn`.**
+     `web/vercel.json` sets `cleanUrls: true`, so Vercel does emit redirects (e.g.
+     `Location: /index`); forwarded unmodified, that sends the browser out of `/cairn/` into the
+     blog's own `/index` — a silent, intermittent break rather than an obvious one.
+4. This is new infrastructure attached to a **separate, live, production zone**
+   (`quietmarch.to`), configured via the Cloudflare dashboard/API — confirm with the user before
+   creating the Route or (if going the `wrangler` route) deploying the Worker.
 
-**Cloudflare caveat:** Cloudflare sits in front of this domain too. Nothing in the
-`quietmarch.to` repo indicates a Worker or Page Rule (no `wrangler.toml`, no reference to
-Cloudflare anywhere in-repo), so the working assumption is Cloudflare is acting as DNS/CDN
-passthrough only — which does not interfere with a Vercel-side rewrite; Cloudflare simply proxies
-the request to Vercel, and Vercel resolves `/cairn/*` before it ever reaches the blog's own
-content. **This assumption needs one confirmation from the user**: check the Cloudflare dashboard
-for this zone for any existing Worker route or Page Rule matching `/cairn*` — if one exists, it
-runs *before* Vercel's rewrite and would need to explicitly pass the request through (or be
-adjusted) rather than being silently overridden.
+**Cloudflare Route-vs-Pages precedence:** Worker Routes are documented to take precedence over a
+Pages project's binding on the same hostname (the same rule Cloudflare documents for Routes vs.
+Custom Domains generally). This is the assumption the whole plan rests on — **verify it in the
+dashboard** (Workers & Pages → Routes for this zone) as part of setup, and check there's no
+existing Route or Page Rule already claiming `/cairn*` that would need to be reconciled first.
 
 ---
 
@@ -304,16 +326,18 @@ This plan deploys a working prototype. It is **not** the full hybrid rollout fro
   the rewrite (§4), `vercel.json`'s `buildCommand` had the wrong type (§3), and the e2e suite's
   `BASE_URL` override was a no-op (§6)
 
-**Needs the user** (live-account / production-repo steps this session can't do unattended):
+**Needs the user** (live-account steps this session can't do unattended):
 1. Confirm pushing this branch and opening a PR against `moltude/cairn` (public repo).
 2. Run `vercel login` interactively (CLI is installed but not authenticated in this
    environment) and link/create the cairn Vercel project with **Root Directory = `web/`**, or do
-   it via the Vercel dashboard.
-3. Get the resulting deployment URL, then confirm before a PR/push is opened against
-   `moltude/quietmarch.to` adding the `/cairn` redirect + rewrite (§4) — that's a separate live
-   repo this session should not touch without explicit sign-off.
-4. Check the Cloudflare dashboard for this zone for any existing Worker/Page Rule on `/cairn*`
-   (§4 caveat) before relying on the Vercel rewrite alone.
+   it via the Vercel dashboard. Confirm Deployment Protection is off for production.
+3. Get the resulting stable production alias (e.g. `cairn-web.vercel.app`).
+4. In the Cloudflare dashboard for the `quietmarch.to` zone (Workers & Pages → Routes), in one
+   sitting: check for any existing Worker Route or Page Rule already claiming `/cairn*`; confirm a
+   Worker Route does take precedence over the Pages binding here; then create the Route
+   (`quietmarch.to/cairn*`) and the Worker that proxies to the alias from step 3, handling the
+   trailing-slash redirect and `Location`-header rewrite described in §4 — this needs no changes
+   to the `moltude/quietmarch.to` repo.
 5. Verify the live deploy with the smoke test and/or e2e suite (§6).
 
 ---
