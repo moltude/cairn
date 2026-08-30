@@ -226,15 +226,6 @@ def apply_edits(edits_json: str) -> str:
     return json.dumps({"applied": n})
 
 
-def _feature_index(doc):
-    idx = {}
-    for fname, fdata in doc.folders.items():
-        for kind in ("waypoints", "tracks", "shapes"):
-            for i, feat in enumerate(fdata.get(kind) or []):
-                idx[f"{fname}::{kind}::{i}"] = feat
-    return idx
-
-
 def export_zip() -> bytes:
     """Run the real engine writers; return a .zip of the onX-ready files."""
     doc, cfg = _STATE["doc"], _STATE["config"]
@@ -392,7 +383,3 @@ def build_runbook(manifest) -> str:
         "If a folder is missing items, delete that folder and redo just its step.",
     ]
     return "\n".join(L)
-
-
-def get_runbook() -> str:
-    return _STATE.get("runbook", "")

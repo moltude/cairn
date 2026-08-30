@@ -174,27 +174,6 @@ class ColorMapper:
         return best  # type: ignore[return-value]
 
     @classmethod
-    def find_closest_color(cls, r: int, g: int, b: int) -> str:
-        """
-        Backwards-compatible RGB → nearest OnX **track** color mapping.
-
-        Prefer `map_track_color()` or `map_waypoint_color()` for new code.
-
-        Args:
-            r: Red component (0-255)
-            g: Green component (0-255)
-            b: Blue component (0-255)
-
-        Returns:
-            OnX RGBA color string (e.g., "rgba(255,0,0,1)")
-
-        Example:
-            >>> ColorMapper.find_closest_color(255, 0, 0)
-            'rgba(255,0,0,1)'
-        """
-        return cls._find_closest_in_palette(r, g, b, cls.TRACK_PALETTE).rgba
-
-    @classmethod
     def map_track_color(cls, color_str: str) -> str:
         """
         Map a color to the closest OnX **track** palette color.

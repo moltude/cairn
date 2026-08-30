@@ -1782,39 +1782,6 @@ def prompt_for_new_icon(current_icon: str) -> Optional[str]:
         # Reprompt
 
 
-def show_mapping_preview(parsed_data: ParsedData, config: IconMappingConfig) -> None:
-    """
-    Show a preview of how waypoints will be mapped.
-
-    Args:
-        parsed_data: Parsed GeoJSON data
-        config: Icon mapping configuration
-    """
-    console.print("\n[bold]Icon Mapping Preview:[/]\n")
-
-    # Sample waypoints from each folder
-    for folder_id, folder_data in parsed_data.folders.items():
-        if not folder_data["waypoints"]:
-            continue
-
-        folder_name = folder_data["name"]
-        console.print(f"[cyan]{folder_name}[/]")
-
-        # Show up to 10 waypoints
-        for waypoint in folder_data["waypoints"][:10]:
-            icon = map_icon(
-                waypoint.title, waypoint.description or "", waypoint.symbol, config
-            )
-            console.print(f"  {waypoint.title[:50]} → [yellow]{icon}[/]")
-
-        if len(folder_data["waypoints"]) > 10:
-            console.print(
-                f"  [dim]... and {len(folder_data['waypoints']) - 10} more[/]"
-            )
-
-        console.print()
-
-
 def get_color_square(feature: ParsedFeature) -> str:
     """
     Get a colored square indicator for a track based on its stroke color.
@@ -1838,27 +1805,6 @@ def get_color_square(feature: ParsedFeature) -> str:
     r, g, b = ColorMapper.parse_color(stroke)
 
     return _color_square_from_rgb(r, g, b)
-
-
-def get_waypoint_icon_preview(
-    feature: ParsedFeature, config: Optional[IconMappingConfig] = None
-) -> str:
-    """
-    Get an icon preview for a waypoint.
-
-    Args:
-        feature: The waypoint feature
-        config: Optional config for keyword/symbol mappings
-
-    Returns:
-        Icon label like "[Location]"
-    """
-    from cairn.core.mapper import map_icon
-
-    mapped_icon = map_icon(
-        feature.title, feature.description or "", feature.symbol, config
-    )
-    return f"[{mapped_icon}]"
 
 
 def preview_sorted_order(

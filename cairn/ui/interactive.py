@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Sequence, Tuple, TypeVar
+from typing import Callable, Iterable, List, Optional, Sequence, Tuple
 
 from rich.console import Console
 from rich.table import Table
@@ -14,9 +13,6 @@ from cairn.ui.state import (
     load_state,
     save_state,
 )
-
-
-T = TypeVar("T")
 
 
 def is_interactive_tty(*, force: Optional[bool] = None) -> bool:
@@ -34,23 +30,6 @@ def is_interactive_tty(*, force: Optional[bool] = None) -> bool:
         return sys.stdin is not None and getattr(sys.stdin, "isatty", lambda: False)()
     except Exception:
         return False
-
-
-@dataclass(frozen=True)
-class UIChoice(Sequence[str]):
-    """
-    A simple label/value pair for list selection UIs.
-    """
-
-    value: str
-    label: str
-
-    # Provide Sequence-ish behavior so prompt-toolkit doesn't choke on custom objects in edge cases.
-    def __len__(self) -> int:  # pragma: no cover
-        return 2
-
-    def __getitem__(self, idx: int) -> str:  # pragma: no cover
-        return (self.value, self.label)[idx]
 
 
 class InteractiveUI:

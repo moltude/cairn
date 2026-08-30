@@ -56,7 +56,6 @@ class IconResolver:
         generic_symbols: Set[str] | None = None,
     ):
         self._symbol_map = symbol_map
-        self._keyword_map = keyword_map
         self._default_icon = default_icon
         self._generic_symbols = generic_symbols or set()
 

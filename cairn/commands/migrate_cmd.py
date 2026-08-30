@@ -73,33 +73,6 @@ def _display_path(p: Path) -> str:
         return p.name
 
 
-def _prompt_existing_path(label: str, *, expected_suffix: str) -> Path:
-    """Prompt until the user enters an existing path with the expected suffix."""
-    while True:
-        entered = typer.prompt(label).strip()
-        p = Path(entered).expanduser()
-        if p.suffix.lower() != expected_suffix.lower():
-            console.print(f"[bold red]Expected a {expected_suffix} file:[/] {p}")
-            continue
-        if not p.exists():
-            console.print(f"[bold red]File not found:[/] {p}")
-            continue
-        return p
-
-
-def _validate_existing_file(
-    value: Optional[Path], *, expected_suffix: str, label: str
-) -> Optional[Path]:
-    if value is None:
-        return None
-    p = value.expanduser()
-    if p.suffix.lower() != expected_suffix.lower():
-        raise typer.BadParameter(f"Expected a {expected_suffix} file: {p}")
-    if not p.exists():
-        raise typer.BadParameter(f"{label} file not found: {p}")
-    return p
-
-
 def _find_export_files(directory: Path) -> Tuple[List[Path], List[Path]]:
     """
     Find GPX and KML files in directory.
@@ -659,39 +632,6 @@ def _validate_geojson_file(file_path: Path) -> Tuple[bool, Optional["ParsedData"
             "as GeoJSON for full fidelity."
         )
     return True, parsed_data
-
-
-def _confirm_caltopo_migration(
-    input_file: Path,
-    parsed_data,
-    output_dir: Path,
-    sort_enabled: bool,
-) -> bool:
-    """
-    Display CalTopo migration summary and prompt for confirmation.
-
-    Returns:
-        True if user confirms, False to cancel
-    """
-    from cairn.core.parser import get_file_summary
-
-    # Deprecated: kept for backwards-compat within this module, but no longer used by
-    # the interactive CalTopo → OnX migration path (see caltopo_to_onx gate prompt).
-    console.print("\n[bold]Migration Summary:[/]")
-    console.print("─" * 60)
-    size = input_file.stat().st_size
-    console.print(
-        f"\n[bold cyan]Input File:[/] {input_file.name} [dim]({format_file_size(size)})[/]"
-    )
-    summary = get_file_summary(parsed_data)
-    console.print(
-        f"[bold cyan]Content:[/] Folders={summary['folder_count']}, "
-        f"Waypoints={summary['total_waypoints']}, Tracks={summary['total_tracks']}, Shapes={summary['total_shapes']}"
-    )
-    console.print(f"[bold cyan]Output Directory:[/] {_display_path(output_dir)}")
-    console.print(f"[bold cyan]Natural sorting:[/] {'Yes' if sort_enabled else 'No'}")
-    console.print("\n" + "─" * 60)
-    return typer.confirm("\nReady to generate new map?", default=True)
 
 
 # Canonical name is lowercase `onx` (CLI-friendly).

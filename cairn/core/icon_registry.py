@@ -19,8 +19,7 @@ import yaml
 
 from cairn.core.color_mapper import ColorMapper
 from cairn.core.config import GENERIC_SYMBOLS, IconMappingConfig, get_icon_color
-from cairn.core.icon_resolver import IconDecision, IconResolver
-from cairn.core.matcher import FuzzyIconMatcher
+from cairn.core.icon_resolver import IconResolver
 from cairn.model import MapDocument
 
 
@@ -115,7 +114,6 @@ class IconRegistry:
         self._catalog_path_is_explicit = catalog_path is not None
         self.catalog_path = (catalog_path or default_catalog_path()).resolve()
 
-        self._raw: Dict[str, Any] = {}
         self.policies: Dict[str, Any] = {}
 
         # CalTopo -> OnX
@@ -130,7 +128,6 @@ class IconRegistry:
 
         # Lazy/cache
         self._caltopo_resolver: Optional[IconResolver] = None
-        self._onx_matcher: Optional[FuzzyIconMatcher] = None
 
         self.load()
 
@@ -140,7 +137,6 @@ class IconRegistry:
         raw = yaml.safe_load(self.mappings_path.read_text(encoding="utf-8")) or {}
         if not isinstance(raw, dict):
             raise ValueError("Icon mappings YAML must be a dict at the top level")
-        self._raw = raw
 
         version = raw.get("version")
         if version != 1:
@@ -209,12 +205,6 @@ class IconRegistry:
 
         # Clear lazy caches if reload happens.
         self._caltopo_resolver = None
-        self._onx_matcher = None
-
-    def should_append_unknown_icon_to_description(self) -> bool:
-        return (
-            self.policies.get("unknown_icon_handling") or ""
-        ).strip() == "keep_point_and_append_to_description"
 
     # ------------------------------------------------------------------
     # Mapping helpers
@@ -228,13 +218,6 @@ class IconRegistry:
                 generic_symbols=set(self.caltopo_generic_symbols),
             )
         return self._caltopo_resolver
-
-    def resolve_caltopo_to_onx(
-        self, *, title: str, description: str = "", symbol: str = ""
-    ) -> IconDecision:
-        return self.caltopo_to_onx_resolver().resolve(
-            title or "", description or "", symbol or ""
-        )
 
     def map_onx_icon_to_caltopo_symbol(
         self, onx_icon: Optional[str]
@@ -250,17 +233,6 @@ class IconRegistry:
         if mapped:
             return mapped, "direct"
         return self.onx_default_symbol, "default"
-
-    def onx_fuzzy_suggestions(
-        self, onx_icon: str, *, valid_caltopo_symbols: Sequence[str], top_n: int = 3
-    ) -> List[Tuple[str, float]]:
-        """
-        Best-effort fuzzy suggestions for OnX icon -> CalTopo symbol.
-        This is advisory only (we do not auto-map).
-        """
-        if self._onx_matcher is None:
-            self._onx_matcher = FuzzyIconMatcher(list(valid_caltopo_symbols))
-        return self._onx_matcher.find_best_matches(onx_icon, top_n=top_n)
 
     # ------------------------------------------------------------------
     # Inventories (for reporting + catalog)

@@ -16,7 +16,7 @@ uv sync --all-extras     # dev extras (pytest, pytest-cov) live in [project.opti
 Then the normal loop works:
 
 ```bash
-uv run pytest                              # full suite (~85s, 609 pass / 2 skip)
+uv run pytest                              # full suite (~2.5min with the web e2e tests)
 uv run pytest tests/test_writers_tracks.py # single file — preferred while iterating
 uv run pytest tests/test_x.py::test_name   # single test
 ```
@@ -27,7 +27,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-08-29: **650 passed, 2 skipped, Python 3.14.**
+Baseline as of 2026-08-30: **686 passed, 2 skipped, Python 3.14** (with the web dev server up;
+without it the 36 `tests/web` tests skip, giving 650 passed / 38 skipped).
 If you see a different pass count, something changed — find out what before proceeding.
 
 ## Architecture

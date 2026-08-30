@@ -252,13 +252,6 @@ class StateManager:
         """Remove a route key from selection."""
         self._selected_route_keys.discard(key)
 
-    def toggle_selected_route_key(self, key: str) -> None:
-        """Toggle a route key in selection."""
-        if key in self._selected_route_keys:
-            self._selected_route_keys.remove(key)
-        else:
-            self._selected_route_keys.add(key)
-
     @property
     def selected_waypoint_keys(self) -> Set[str]:
         """Get the set of selected waypoint keys (read-only copy)."""
@@ -292,13 +285,6 @@ class StateManager:
         """Remove a waypoint key from selection."""
         self._selected_waypoint_keys.discard(key)
 
-    def toggle_selected_waypoint_key(self, key: str) -> None:
-        """Toggle a waypoint key in selection."""
-        if key in self._selected_waypoint_keys:
-            self._selected_waypoint_keys.remove(key)
-        else:
-            self._selected_waypoint_keys.add(key)
-
     @property
     def selected_folders(self) -> Set[str]:
         """Get the set of selected folder IDs (read-only copy)."""
@@ -331,13 +317,5 @@ class StateManager:
     def remove_selected_folder(self, folder_id: str) -> None:
         """Remove a folder ID from selection."""
         self._selected_folders.discard(folder_id)
-
-    def toggle_selected_folder(self, folder_id: str) -> None:
-        """Toggle a folder ID in selection."""
-        if folder_id in self._selected_folders:
-            self._selected_folders.remove(folder_id)
-        else:
-            self._selected_folders.add(folder_id)
-
 
 __all__ = ["StateManager"]

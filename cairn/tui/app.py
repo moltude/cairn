@@ -3423,13 +3423,9 @@ class CairnTuiApp(App):
         # Toggle selection in tables with Space (when table is focused).
         if event.key != "space":
             return
-        try:
-            # NOTE: Space selection is handled via the App Binding ("space" -> action_toggle_select)
-            # with priority=True. Avoid also handling it here to prevent double-toggles.
-            return
-        except Exception:
-            return
-        return
+
+        # NOTE: Space selection is handled via the App Binding ("space" -> action_toggle_select)
+        # with priority=True. Avoid also handling it here to prevent double-toggles.
 
     def action_export(self) -> None:
         """Action method to trigger export (called from Enter key handler)."""
