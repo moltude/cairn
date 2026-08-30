@@ -9,11 +9,10 @@ from __future__ import annotations
 
 from typing import List, Optional
 import xml.etree.ElementTree as ET
-from xml.dom import minidom
 from pathlib import Path
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 
 from cairn.core.parser import ParsedFeature
@@ -39,19 +38,29 @@ logger = logging.getLogger(__name__)
 def _agent_ndjson_log(payload: dict) -> None:
     """
     Debug-mode NDJSON logger (append-only).
-    Writes one JSON object per line to .cursor/debug.log.
+
+    Disabled unless CAIRN_DEBUG_LOG is set; writes one JSON object per line
+    to that path. Best-effort — never raises.
     """
     try:
         import json, os  # noqa: E401
 
         payload = dict(payload or {})
         # Convert Python timestamp (seconds) to JavaScript timestamp (milliseconds)
-        payload.setdefault("timestamp", int(datetime.utcnow().timestamp() * 1000))
+        payload.setdefault(
+            "timestamp", int(datetime.now(timezone.utc).timestamp() * 1000)
+        )
         payload.setdefault("sessionId", "debug-session")
         payload.setdefault("runId", os.environ.get("CAIRN_RUN_ID", "pre-fix"))
-        with open(
-            "/Users/scott/_code/cairn/.cursor/debug.log", "a", encoding="utf-8"
-        ) as f:
+        # Opt-in only. Previously this wrote to a hardcoded author-specific path,
+        # which meant it was a silent no-op everywhere else; defaulting to a path
+        # that exists would have switched unbounded logging on for every user.
+        # Set CAIRN_DEBUG_LOG to a file path to enable.
+        log_path = os.environ.get("CAIRN_DEBUG_LOG")
+        if not log_path:
+            return
+
+        with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception:
         pass
@@ -61,6 +70,25 @@ def _agent_ndjson_log(payload: dict) -> None:
 
 # OnX import max GPX size is 4MB. Use a slightly lower default to avoid edge cases.
 DEFAULT_MAX_GPX_BYTES = int(math.floor(3.75 * 1024 * 1024))
+
+
+def _desc_text(notes_clean: str, kv_lines: List[str], debug_desc: bool) -> str:
+    """
+    Content for a GPX <desc> element.
+
+    Default: only the user's own notes — <desc> is the field onX shows people,
+    so machine state (id/color/icon/...) does not belong there. Color/icon/style
+    already travel in the <onx:*> extension elements.
+
+    Debug mode (--debug): the legacy key=value block, kept verbatim for
+    troubleshooting.
+
+    Returns "" when there is nothing to write; callers then omit <desc> entirely
+    (<desc> is optional in GPX 1.1, and onX imports files without it).
+    """
+    if debug_desc:
+        return "\n".join(kv_lines)
+    return (notes_clean or "").strip()
 
 # Global change tracker for name sanitization
 # Format: {feature_type: [(original_name, sanitized_name), ...]}
@@ -182,9 +210,17 @@ def prettify_xml(elem: ET.Element) -> str:
     Returns:
         Formatted XML string
     """
-    rough_string = ET.tostring(elem, encoding="unicode")
-    reparsed = minidom.parseString(rough_string)
-    return reparsed.toprettyxml(indent="  ")
+    # ET.indent formats in place; minidom.parseString + toprettyxml built a
+    # second full DOM, which cost ~2x the time and ~10x the peak memory on a
+    # 10k-feature export (0.44s/35MB -> 0.21s/3.3MB, measured). Output is
+    # identical to the old minidom result for every element that has children,
+    # including the declaration's `?>` spacing and the trailing newline. The one
+    # divergence is a childless element: ET renders `<tag />`, minidom `<tag/>`.
+    # Semantically the same XML, and unreachable here — real KML output contains
+    # no self-closing tags. All of this is pinned in test_writers_prettify.py.
+    ET.indent(elem, space="  ")
+    body = ET.tostring(elem, encoding="unicode")
+    return f'<?xml version="1.0" ?>\n{body}\n'
 
 
 def _utf8_joined_size(lines: List[str]) -> int:
@@ -313,10 +349,14 @@ def write_gpx_waypoints_maybe_split(
     config: Optional[IconMappingConfig] = None,
     split: bool = True,
     max_bytes: int = DEFAULT_MAX_GPX_BYTES,
+    debug_desc: bool = False,
 ) -> List[tuple[Path, int, int]]:
     """
     Write waypoints to GPX, automatically splitting into multiple files if the output
     would exceed max_bytes. Preserves order.
+
+    debug_desc: if True, <desc> carries the legacy key=value troubleshooting block;
+    by default <desc> contains only the user's own notes (omitted entirely when empty).
 
     Returns list of (path, size_bytes, written_waypoint_count) for manifest.
     """
@@ -420,23 +460,26 @@ def write_gpx_waypoints_maybe_split(
 
         wp_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         notes_clean = strip_html(feature.description or "")
-        desc_kv = "\n".join(
+        desc_content = _desc_text(
+            notes_clean,
             [
                 f"name={feature.title}",
                 f"notes={notes_clean}",
                 f"id={wp_id}",
                 f"color={onx_color}",
                 f"icon={mapped_icon}",
-            ]
+            ],
+            debug_desc,
         )
 
         block: List[str] = []
         block.append(f'  <wpt lat="{lat}" lon="{lon}">')
         block.append(f"    <name>{formatted_name}</name>")
         if add_timestamps:
-            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             block.append(f"    <time>{timestamp}</time>")
-        block.append(f"    <desc>{escape(desc_kv)}</desc>")
+        if desc_content:
+            block.append(f"    <desc>{escape(desc_content)}</desc>")
         block.append("    <extensions>")
         block.append(f"      <onx:icon>{mapped_icon}</onx:icon>")
         block.append(f"      <onx:color>{onx_color}</onx:color>")
@@ -557,10 +600,14 @@ def write_gpx_tracks_maybe_split(
     sort: bool = True,
     split: bool = True,
     max_bytes: int = DEFAULT_MAX_GPX_BYTES,
+    debug_desc: bool = False,
 ) -> List[tuple[Path, int, int]]:
     """
     Write tracks to GPX, automatically splitting into multiple files if the output
     would exceed max_bytes. Preserves order.
+
+    debug_desc: if True, <desc> carries the legacy key=value troubleshooting block;
+    by default <desc> contains only the user's own notes (omitted entirely when empty).
 
     Returns list of (path, size_bytes, written_track_count) for manifest.
     """
@@ -639,7 +686,8 @@ def write_gpx_tracks_maybe_split(
 
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         notes_clean = strip_html(feature.description or "")
-        desc_kv = "\n".join(
+        desc_content = _desc_text(
+            notes_clean,
             [
                 f"name={feature.title}",
                 f"notes={notes_clean}",
@@ -647,13 +695,15 @@ def write_gpx_tracks_maybe_split(
                 f"color={onx_color}",
                 f"style={onx_style}",
                 f"weight={onx_weight}",
-            ]
+            ],
+            debug_desc,
         )
 
         block: List[str] = []
         block.append("  <trk>")
         block.append(f"    <name>{escape(sanitized_track_name)}</name>")
-        block.append(f"    <desc>{escape(desc_kv)}</desc>")
+        if desc_content:
+            block.append(f"    <desc>{escape(desc_content)}</desc>")
         block.append("    <extensions>")
         block.append(f"      <onx:color>{onx_color}</onx:color>")
         block.append(f"      <onx:style>{onx_style}</onx:style>")
@@ -751,6 +801,7 @@ def write_gpx_waypoints(
     sort: bool = True,
     add_timestamps: bool = False,
     config: Optional[IconMappingConfig] = None,
+    debug_desc: bool = False,
 ) -> int:
     """
     Write waypoints to a GPX file with OnX namespace extensions.
@@ -837,7 +888,7 @@ def write_gpx_waypoints(
         if add_timestamps:
             # Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
             # Sequential timestamps to preserve order
-            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             lines.append(f"    <time>{timestamp}</time>")
 
         # Waypoint color policy:
@@ -856,20 +907,23 @@ def write_gpx_waypoints(
                 ),
             )
 
-        # Match OnX-exported GPX behavior: include a key/value block in <desc>.
-        # OnX exports both <desc> (kv block) and <extensions> (OnX namespace).
+        # <desc> is user-facing: notes only by default; the legacy key=value
+        # block (matching OnX's own export format) is available via debug_desc.
         wp_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         notes_clean = strip_html(feature.description or "")
-        desc_kv = "\n".join(
+        desc_content = _desc_text(
+            notes_clean,
             [
                 f"name={feature.title}",
                 f"notes={notes_clean}",
                 f"id={wp_id}",
                 f"color={onx_color}",
                 f"icon={mapped_icon}",
-            ]
+            ],
+            debug_desc,
         )
-        lines.append(f"    <desc>{escape(desc_kv)}</desc>")
+        if desc_content:
+            lines.append(f"    <desc>{escape(desc_content)}</desc>")
 
         # Add OnX extensions (use lowercase `onx:` prefix to match OnX exports)
         lines.append("    <extensions>")
@@ -913,6 +967,7 @@ def write_gpx_tracks(
     output_path: Path,
     folder_name: str,
     sort: bool = True,
+    debug_desc: bool = False,
 ) -> int:
     """
     Write tracks to a GPX file with OnX namespace extensions for color, style, and weight.
@@ -966,10 +1021,12 @@ def write_gpx_tracks(
         onx_style = pattern_to_style(feature.pattern)
         onx_weight = stroke_width_to_weight(feature.stroke_width)
 
-        # Match OnX-exported GPX behavior: include a key/value block in <desc>.
+        # <desc> is user-facing: notes only by default; the legacy key=value
+        # block (matching OnX's own export format) is available via debug_desc.
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         notes_clean = strip_html(feature.description or "")
-        desc_kv = "\n".join(
+        desc_content = _desc_text(
+            notes_clean,
             [
                 f"name={feature.title}",
                 f"notes={notes_clean}",
@@ -977,9 +1034,11 @@ def write_gpx_tracks(
                 f"color={onx_color}",
                 f"style={onx_style}",
                 f"weight={onx_weight}",
-            ]
+            ],
+            debug_desc,
         )
-        lines.append(f"    <desc>{escape(desc_kv)}</desc>")
+        if desc_content:
+            lines.append(f"    <desc>{escape(desc_content)}</desc>")
 
         # Add OnX extensions for color, style, and weight (use lowercase `onx:` prefix)
         lines.append("    <extensions>")

@@ -262,6 +262,7 @@ def process_and_write_files(
     split_gpx: bool = True,
     max_gpx_bytes: Optional[int] = None,
     filename: Optional[str] = None,
+    debug_desc: bool = False,
 ) -> list:
     """
     Process folders and write output files.
@@ -272,6 +273,8 @@ def process_and_write_files(
         sort: If True, sort items using natural sort order
         skip_confirmation: If True, skip the order confirmation prompt
         config: Icon mapping config for waypoint previews
+        debug_desc: If True, GPX <desc> carries the legacy key=value
+            troubleshooting block; default writes only the user's notes
 
     Returns:
         List of (filename, format, count, size) tuples for the manifest
@@ -362,6 +365,7 @@ def process_and_write_files(
                         config=config,
                         split=split_gpx,
                         max_bytes=max_gpx_bytes,
+                        debug_desc=debug_desc,
                     )
                     for pth, sz, cnt in written_parts:
                         output_files.append((pth.name, "GPX (Waypoints)", cnt, sz))
@@ -379,6 +383,7 @@ def process_and_write_files(
                     config=config,
                     split=split_gpx,
                     max_bytes=max_gpx_bytes,
+                    debug_desc=debug_desc,
                 )
                 for pth, sz, cnt in written_parts:
                     output_files.append((pth.name, "GPX (Waypoints)", cnt, sz))
@@ -422,6 +427,7 @@ def process_and_write_files(
                         sort=False,
                         split=split_gpx,
                         max_bytes=max_gpx_bytes,
+                        debug_desc=debug_desc,
                     )
                     for pth, sz, cnt in written_parts:
                         output_files.append((pth.name, "GPX (Tracks)", cnt, sz))
@@ -438,6 +444,7 @@ def process_and_write_files(
                     sort=False,
                     split=split_gpx,
                     max_bytes=max_gpx_bytes,
+                    debug_desc=debug_desc,
                 )
                 for pth, sz, cnt in written_parts:
                     output_files.append((pth.name, "GPX (Tracks)", cnt, sz))
@@ -717,7 +724,7 @@ def convert(
     description_mode: str = typer.Option(
         "notes-only",
         "--description-mode",
-        help="CalTopo description content when writing GeoJSON: notes-only (default) or debug",
+        help="Description content in exported files (GeoJSON or GPX): notes-only (default) or debug",
     ),
     route_color_strategy: str = typer.Option(
         "palette",
@@ -1090,6 +1097,15 @@ def convert(
 
     # Process and write files with sorting and confirmation
     sort_enabled = not no_sort
+    # <desc> policy for the OnX direction mirrors the CalTopo direction:
+    # notes-only by default, full key=value block behind --description-mode debug.
+    desc_mode_norm = (description_mode or "").strip().lower().replace("-", "_")
+    if desc_mode_norm in ("notes_only", "notes"):
+        desc_mode_norm = "notes_only"
+    elif desc_mode_norm != "debug":
+        raise typer.BadParameter(
+            "--description-mode must be one of: notes-only, debug"
+        )
     console.print(f"[bold white]Writing files to[/] [underline]{output_dir}[/]...\n")
     output_files = process_and_write_files(
         parsed_data,
@@ -1099,6 +1115,7 @@ def convert(
         config=config,
         split_gpx=split_gpx,
         max_gpx_bytes=int(max(0.0, float(max_gpx_mb)) * 1024 * 1024),
+        debug_desc=(desc_mode_norm == "debug"),
     )
 
     # Display manifest

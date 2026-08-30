@@ -11,10 +11,11 @@ import time
 from typing import Optional, TextIO
 
 
-_AGENT_DEBUG_LOG_PATH = os.environ.get(
-    "AGENT_DEBUG_LOG_PATH",
-    os.path.join(os.path.expanduser("~"), ".cursor", "debug.log"),
-)
+# Opt-in only. This previously defaulted to ~/.cursor/debug.log and ran
+# unconditionally, which grew a 12 MB log in the user's home directory
+# containing file paths and waypoint data. Set CAIRN_DEBUG_LOG to a file path
+# to turn it back on.
+_AGENT_DEBUG_LOG_PATH = os.environ.get("CAIRN_DEBUG_LOG")
 
 
 def agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> None:
@@ -29,6 +30,9 @@ def agent_log(*, hypothesisId: str, location: str, message: str, data: dict) -> 
         message: Brief message describing the event
         data: Additional data dictionary
     """
+    if not _AGENT_DEBUG_LOG_PATH:
+        return
+
     try:
         payload = {
             "timestamp": int(time.time() * 1000),
@@ -146,6 +150,7 @@ class DebugLogger:
 
 
 __all__ = ["agent_log", "DebugLogger"]
+
 
 
 

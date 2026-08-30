@@ -858,6 +858,11 @@ class CairnTuiApp(App):
             return
 
     def action_back(self) -> None:
+        # Modal-aware back: the Esc binding is priority=True, so it runs before
+        # ModalScreen handlers. If a modal screen (Help, command palette, ...) is
+        # on top, Esc must close it — never rewind the workflow step behind it.
+        if self._dismiss_top_modal_screen():
+            return
         # Overlay-aware back: if any in-screen overlay is visible, Esc/Back should
         # cancel/close that overlay (and return to the inline editor) rather than
         # navigating the global stepper.
@@ -867,6 +872,29 @@ class CairnTuiApp(App):
         if idx <= 0:
             return
         self._goto(STEPS[idx - 1])
+
+    def _dismiss_top_modal_screen(self) -> bool:
+        """If a modal screen (or any pushed screen) is on top, dismiss it and return True."""
+        try:
+            from textual.screen import ModalScreen
+
+            screen = getattr(self, "screen", None)
+            try:
+                stacked = len(getattr(self, "screen_stack", []) or []) > 1
+            except Exception:
+                stacked = False
+            if isinstance(screen, ModalScreen) or stacked:
+                try:
+                    screen.dismiss(None)  # type: ignore[union-attr]
+                except Exception:
+                    try:
+                        self.pop_screen()
+                    except Exception:
+                        pass
+                return True
+        except Exception:
+            pass
+        return False
 
     def _overlay_open(self, selector: str) -> bool:
         try:
@@ -899,16 +927,25 @@ class CairnTuiApp(App):
         Textual's Esc binding may still invoke `action_back()`. We must never let that
         advance the stepper while an edit overlay is visible.
         """
-        # Confirm overlay (multi-rename): treat Back as "No".
+        # Confirm overlay: treat Back as cancel.
         if self._overlay_open("#confirm_overlay"):
             try:
                 self.query_one("#confirm_overlay", ConfirmOverlay).close()
             except Exception:
                 pass
-            try:
-                self.on_confirm_overlay_result(ConfirmOverlay.Result(False))  # type: ignore[arg-type]
-            except Exception:
-                pass
+            # If a caller is awaiting this confirmation (multi-rename, overwrite,
+            # discard-edits...), Esc means "No"/cancel.
+            cb = getattr(self, "_confirm_callback", None)
+            if cb is not None:
+                self._confirm_callback = None
+                try:
+                    cb(False)
+                except Exception:
+                    pass
+            # No pending callback (e.g. the post-export "Migrate another file?"
+            # prompt): just dismiss the overlay and stay in the app. Do NOT
+            # synthesize Result(False) here — the default Result(False) branch
+            # quits the whole app, which must never happen on a mere Esc.
             return True
 
         # Rename / Description overlays: treat Back as cancel and return to inline overlay.
@@ -1175,6 +1212,13 @@ class CairnTuiApp(App):
                 if not self._selected_folders:
                     # Requirement: when multiple folders exist, user must explicitly
                     # select/toggle at least one folder via Space before Enter can advance.
+                    # Tell the user why nothing happened instead of silently ignoring Enter.
+                    try:
+                        self.query_one("#main_subtitle", Static).update(
+                            "No folder selected — press Space to select at least one folder, then Enter."
+                        )
+                    except Exception:
+                        pass
                     return
                 # Folders selected, start processing first folder
                 if not self._folders_to_process:
@@ -1387,10 +1431,29 @@ class CairnTuiApp(App):
 
         self._render_main()
 
+    def _has_unsaved_edits(self) -> bool:
+        """True when the user applied edits in this session (routes/waypoints)."""
+        return bool(getattr(self, "_routes_edited", False) or getattr(self, "_waypoints_edited", False))
+
     def action_new_file(self) -> None:
-        """Start a new migration (return to Select file and clear current session state)."""
+        """Start a new migration (return to Select file and clear current session state).
+
+        When unsaved edits exist, ask for confirmation instead of instantly
+        discarding everything on a single Ctrl+N.
+        """
         if self._export_in_progress:
             return
+        if self._has_unsaved_edits():
+            self._confirm(
+                title="Discard unsaved edits?",
+                message="You have unsaved edits. Start a new file and discard them?",
+                callback=lambda ok: (self._reset_for_new_file() if ok else None),
+            )
+            return
+        self._reset_for_new_file()
+
+    def _reset_for_new_file(self) -> None:
+        """Unconditionally reset session state and return to Select_file."""
         # Reset most session state, but keep output_dir and user config/state.
         self.model.input_path = None
         self.model.parsed = None
@@ -3427,7 +3490,54 @@ class CairnTuiApp(App):
 
             self._start_export()
 
-    def _start_export(self) -> None:
+    def _files_that_would_be_overwritten(self, out_dir: Path) -> list[str]:
+        """Predict export output filenames and return the ones already present in out_dir.
+
+        Mirrors the naming policy of process_and_write_files (per-folder
+        `{safe}_Waypoints.gpx` / `{safe}_Tracks.gpx` / `{safe}_Shapes.kml`,
+        plus their `_PartN` / `_N` split variants which share the same prefix).
+        """
+        parsed = self.model.parsed
+        if parsed is None:
+            return []
+        try:
+            from cairn.utils.utils import sanitize_filename
+        except Exception:
+            return []
+        try:
+            entries = [p for p in out_dir.iterdir() if p.is_file()]
+        except Exception:
+            return []
+        if not entries:
+            return []
+
+        folders = list((getattr(parsed, "folders", {}) or {}).items())
+        use_folder_suffix = len(folders) > 1
+        filename = (self._output_filename or "").strip()
+
+        hits: set[str] = set()
+        for folder_idx, (folder_id, fd) in enumerate(folders, 1):
+            folder_name = str((fd or {}).get("name") or folder_id)
+            if filename:
+                safe = sanitize_filename(Path(filename).stem)
+                if use_folder_suffix:
+                    safe = f"{safe}_Folder{folder_idx}"
+            else:
+                safe = sanitize_filename(folder_name)
+            prefixes: list[tuple[str, str]] = []
+            if (fd or {}).get("waypoints"):
+                prefixes.append((f"{safe}_Waypoints", ".gpx"))
+            if (fd or {}).get("tracks"):
+                prefixes.append((f"{safe}_Tracks", ".gpx"))
+            if (fd or {}).get("shapes"):
+                prefixes.append((f"{safe}_Shapes", ".kml"))
+            for prefix, ext in prefixes:
+                for p in entries:
+                    if p.name.startswith(prefix) and p.name.endswith(ext):
+                        hits.add(p.name)
+        return sorted(hits)
+
+    def _start_export(self, *, overwrite_confirmed: bool = False) -> None:
         self._export_error = None
         self._export_manifest = None
         self._export_in_progress = True
@@ -3447,6 +3557,30 @@ class CairnTuiApp(App):
             out_dir = out_dir.expanduser()
         except Exception:
             pass
+
+        # Never silently overwrite existing output files: confirm first.
+        if not overwrite_confirmed:
+            try:
+                clobbered = self._files_that_would_be_overwritten(out_dir)
+            except Exception:
+                clobbered = []
+            if clobbered:
+                self._export_in_progress = False
+                self._render_main()
+                shown = ", ".join(clobbered[:6])
+                if len(clobbered) > 6:
+                    shown += f" (+{len(clobbered) - 6} more)"
+                self._confirm(
+                    title="Overwrite existing files?",
+                    message=(
+                        f"These files already exist in {out_dir} and will be "
+                        f"overwritten: {shown}"
+                    ),
+                    callback=lambda ok: (
+                        self._start_export(overwrite_confirmed=True) if ok else None
+                    ),
+                )
+                return
         # Remember the actual directory used for this export (useful if the user/test
         # updates model.output_dir while the export is running).
         try:
@@ -3525,6 +3659,15 @@ class CairnTuiApp(App):
         except Exception:
             pass
         self._render_main()
+
+        # A successful export means current edits are saved; don't treat them as
+        # unsaved when the user starts a new file afterwards.
+        if err is None and manifest:
+            try:
+                self._routes_edited = False
+                self._waypoints_edited = False
+            except Exception:
+                pass
 
         # After a successful export, prompt for next action (new file vs quit).
         try:

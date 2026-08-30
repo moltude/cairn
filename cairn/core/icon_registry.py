@@ -9,6 +9,7 @@ Goals:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +40,25 @@ def default_mappings_path() -> Path:
 
 def default_catalog_path() -> Path:
     return _repo_data_dir() / "icon_catalog.yaml"
+
+
+def catalog_write_path() -> Optional[Path]:
+    """Where observed-icon inventory may be recorded, or None to not record.
+
+    The observed_* sections are write-only telemetry: nothing in Cairn reads
+    them back, they exist so the maintainer can see which CalTopo symbols show
+    up in the wild. Recording them into the packaged data file was wrong three
+    ways -- it dirtied the git working tree on every run (including every test
+    run), it leaked test fixture names like "Test Waypoint" into shipped data,
+    and on a real `pip`/`brew` install it tries to write inside site-packages,
+    which is not ours to write and may be read-only.
+
+    So it is now opt-in: set CAIRN_ICON_CATALOG to a file path to collect it.
+    """
+    raw = os.environ.get("CAIRN_ICON_CATALOG")
+    if not raw:
+        return None
+    return Path(raw).expanduser()
 
 
 def _as_dict(value: Any, *, label: str) -> Dict[str, Any]:
@@ -90,6 +110,9 @@ class IconRegistry:
         catalog_path: Optional[Path] = None,
     ):
         self.mappings_path = (mappings_path or default_mappings_path()).resolve()
+        # An explicitly supplied catalog_path is always writable (tests and
+        # tooling pass their own). Only the packaged default is protected.
+        self._catalog_path_is_explicit = catalog_path is not None
         self.catalog_path = (catalog_path or default_catalog_path()).resolve()
 
         self._raw: Dict[str, Any] = {}
@@ -454,6 +477,14 @@ class IconRegistry:
         *,
         example_limit: int = 3,
     ) -> None:
+        if not self._catalog_path_is_explicit:
+            # Default (packaged) catalog: only record when opted in, and never
+            # into the package directory itself. See catalog_write_path().
+            target = catalog_write_path()
+            if target is None:
+                return
+            self.catalog_path = target.resolve()
+
         # Load existing
         if self.catalog_path.exists():
             raw = yaml.safe_load(self.catalog_path.read_text(encoding="utf-8")) or {}

@@ -14,7 +14,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from cairn.core.parser import ParsedData
 
 import typer
 from rich.console import Console
@@ -544,16 +547,31 @@ def _confirm_migration(
     return typer.confirm("\nReady to generate new map?", default=True)
 
 
+# Source formats accepted by the CalTopo -> OnX direction. GPX carries only
+# coordinates and names (no icons, colors, folders, or descriptions), which is
+# exactly why Cairn's editing step matters most for GPX input — see README.
+CALTOPO_SOURCE_EXTS = (".json", ".geojson", ".gpx")
+
+
+def _describe_source_exts() -> str:
+    """Human-readable list of accepted extensions, for error messages."""
+    return ", ".join(CALTOPO_SOURCE_EXTS)
+
+
 def _find_geojson_files(directory: Path) -> List[Path]:
     """
-    Find GeoJSON files in directory.
+    Find CalTopo source files in directory.
 
     Returns:
-        List of .json and .geojson files sorted alphabetically
+        List of .json, .geojson and .gpx files. Lossless formats (.json,
+        .geojson) sort before lossy .gpx, alphabetically within each group,
+        so the picker's default selection never silently prefers a GPX
+        (no icons/colors/folders) over a GeoJSON export of the same map.
     """
-    json_files = list(directory.glob("*.json")) + list(directory.glob("*.geojson"))
-    # Sort alphabetically by filename
-    json_files.sort(key=lambda p: p.name.lower())
+    json_files: List[Path] = []
+    for ext in CALTOPO_SOURCE_EXTS:
+        json_files.extend(directory.glob(f"*{ext}"))
+    json_files.sort(key=lambda p: (p.suffix.lower() == ".gpx", p.name.lower()))
     return json_files
 
 
@@ -566,10 +584,10 @@ def _select_geojson_interactive(
     Returns:
         Selected Path or None if cancelled
     """
-    console.print("\n[bold]Found GeoJSON files:[/]")
+    console.print("\n[bold]Found CalTopo export files:[/]")
 
     if not json_files:
-        console.print("[red]No JSON/GeoJSON files found[/]")
+        console.print(f"[red]No {_describe_source_exts()} files found[/]")
         return None
 
     def _label(p: Path) -> str:
@@ -582,7 +600,7 @@ def _select_geojson_interactive(
 
     if is_interactive_tty(force=force_interactive) and ui.has_prompt_toolkit():
         return ui.pick_from_paths(
-            title="Select GeoJSON file", paths=json_files, default_index=0, labeler=_label
+            title="Select CalTopo export", paths=json_files, default_index=0, labeler=_label
         )
 
     console.print("\n[bold cyan]Available files:[/]")
@@ -599,28 +617,48 @@ def _select_geojson_interactive(
             console.print("[red]Invalid selection[/] (enter a number from the list)")
 
 
-def _validate_geojson_file(file_path: Path) -> None:
+def _validate_geojson_file(file_path: Path) -> Tuple[bool, Optional["ParsedData"]]:
     """
-    Validate GeoJSON file and parse it.
+    Validate a CalTopo source file (.json/.geojson/.gpx) and parse it.
 
     Returns:
         Tuple of (success: bool, parsed_data: Optional[ParsedData])
     """
     from cairn.core.parser import parse_geojson
+    from cairn.io.caltopo_gpx import parse_caltopo_gpx
 
     # Check extension
-    if file_path.suffix.lower() not in [".json", ".geojson"]:
-        console.print(f"[red]Expected a .json or .geojson file: {file_path}[/]")
+    suffix = file_path.suffix.lower()
+    if suffix not in CALTOPO_SOURCE_EXTS:
+        console.print(
+            f"[red]Expected one of {_describe_source_exts()}: {file_path}[/]"
+        )
         return False, None
 
-    # Try to parse
+    # Try to parse. GPX and GeoJSON both normalize to ParsedData, so everything
+    # downstream is format-agnostic from here.
+    is_gpx = suffix == ".gpx"
     try:
-        parsed_data = parse_geojson(file_path)
-        return True, parsed_data
+        parsed_data = (
+            parse_caltopo_gpx(file_path) if is_gpx else parse_geojson(file_path)
+        )
     except Exception as e:
-        console.print("[bold red]❌ Error parsing GeoJSON:[/]")
+        console.print(
+            f"[bold red]❌ Error parsing {'GPX' if is_gpx else 'GeoJSON'}:[/]"
+        )
         console.print(f"[red]{e}[/]")
         return False, None
+
+    if is_gpx:
+        # GPX cannot carry icons, colors, or folders. Say so up front rather than
+        # letting the user discover it after import.
+        console.print(
+            "[yellow]Note:[/] GPX carries only coordinates and names — no icons, "
+            "colors, or folder structure.\n"
+            "      Use the editing steps to add them, or re-export from CalTopo "
+            "as GeoJSON for full fidelity."
+        )
+    return True, parsed_data
 
 
 def _confirm_caltopo_migration(
@@ -962,7 +1000,7 @@ def migrate_to_caltopo(
 def caltopo_to_onx(
     input_dir: Optional[Path] = typer.Argument(
         None,
-        help="CalTopo GeoJSON input: directory containing exports, or a single .json/.geojson file",
+        help="CalTopo input: directory containing exports, or a single .json/.geojson/.gpx file",
         exists=True,
         file_okay=True,
         dir_okay=True,
@@ -1008,6 +1046,11 @@ def caltopo_to_onx(
         None,
         "--interactive/--no-interactive",
         help="Force interactive prompting even when stdin is not a TTY (useful for scripted testing). Default: auto-detect.",
+    ),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="Include Cairn's internal key=value block (name/id/color/icon/...) in each GPX <desc> for troubleshooting. Default: <desc> carries only your own notes.",
     ),
 ):
     """Migrate CalTopo GeoJSON exports to OnX-importable GPX/KML format.
@@ -1115,7 +1158,9 @@ def caltopo_to_onx(
                 continue
             json_files = _find_geojson_files(p)
             if not json_files:
-                console.print(f"[red]No .json or .geojson files found in: {p}[/]")
+                console.print(
+                    f"[red]No {_describe_source_exts()} files found in: {p}[/]"
+                )
                 continue
             input_dir = p
             break
@@ -1125,8 +1170,10 @@ def caltopo_to_onx(
             console.print(f"[red]Path not found: {input_dir}[/]")
             raise typer.Exit(1)
         if input_dir.is_file():
-            if input_dir.suffix.lower() not in (".json", ".geojson"):
-                console.print(f"[red]Expected a .json or .geojson file: {input_dir}[/]")
+            if input_dir.suffix.lower() not in CALTOPO_SOURCE_EXTS:
+                console.print(
+                    f"[red]Expected one of {_describe_source_exts()}: {input_dir}[/]"
+                )
                 raise typer.Exit(1)
             selected_file = input_dir
             input_dir = input_dir.parent
@@ -1137,7 +1184,7 @@ def caltopo_to_onx(
             json_files = _find_geojson_files(input_dir)
             if not json_files:
                 console.print(
-                    f"[red]No .json or .geojson files found in: {input_dir}[/]"
+                    f"[red]No {_describe_source_exts()} files found in: {input_dir}[/]"
                 )
                 raise typer.Exit(1)
 
@@ -1297,6 +1344,7 @@ def caltopo_to_onx(
         config=config,
         split_gpx=split_gpx,
         max_gpx_bytes=int(max(0.0, float(max_gpx_mb)) * 1024 * 1024),
+        debug_desc=debug,
     )
 
     # Persist session one last time (best-effort) so users can resume even if export artifacts change later.
@@ -1324,7 +1372,7 @@ def caltopo_to_onx(
 def migrate_to_onx(
     source: Optional[Path] = typer.Argument(
         None,
-        help="CalTopo GeoJSON input: a directory or a single .json/.geojson file",
+        help="CalTopo input: a directory or a single .json/.geojson/.gpx file",
     ),
     output_dir: Optional[Path] = typer.Option(
         None,
@@ -1368,6 +1416,11 @@ def migrate_to_onx(
         "--interactive/--no-interactive",
         help="Force interactive prompting even when stdin is not a TTY (useful for scripted testing). Default: auto-detect.",
     ),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="Include Cairn's internal key=value block (name/id/color/icon/...) in each GPX <desc> for troubleshooting. Default: <desc> carries only your own notes.",
+    ),
 ):
     """
     Alias for `migrate caltopo-to-onx` (target is OnX).
@@ -1384,4 +1437,5 @@ def migrate_to_onx(
         session_file=session_file,
         save_session=save_session,
         interactive=interactive,
+        debug=debug,
     )

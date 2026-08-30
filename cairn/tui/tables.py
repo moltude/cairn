@@ -5,7 +5,8 @@ testability and separation of concerns.
 """
 
 from typing import Optional, TYPE_CHECKING, Any
-from textual.widgets import DataTable
+from textual.coordinate import Coordinate
+from textual.widgets import DataTable, Input
 from rich.text import Text
 
 from cairn.core.color_mapper import ColorMapper
@@ -228,25 +229,26 @@ class TableManager:
         return None
 
     def _move_cursor_to_index(self, table: DataTable, target_idx: int) -> None:
-        """Move cursor to the specified index using action methods."""
-        try:
-            current_pos = int(getattr(table, "cursor_row", 0) or 0)
-        except Exception:
-            current_pos = 0
+        """Move cursor directly to the specified row index.
 
-        # Move to top first (known position)
-        if current_pos > 0:
-            for _ in range(current_pos):
-                try:
-                    table.action_cursor_up()  # type: ignore[attr-defined]
-                except Exception:
-                    break
-        # Move down to target from row 0
-        for _ in range(target_idx):
-            try:
-                table.action_cursor_down()  # type: ignore[attr-defined]
-            except Exception:
-                break
+        Sets the cursor coordinate in O(1) instead of simulating per-row
+        cursor_up/cursor_down actions, which is quadratic on large tables
+        (~12,000 widget actions to restore row 6000 of 10,000).
+        """
+        try:
+            col = int(getattr(table, "cursor_column", 0) or 0)
+        except Exception:
+            col = 0
+        try:
+            table.cursor_coordinate = Coordinate(int(target_idx), col)
+            return
+        except Exception:
+            pass
+        # Fallback for Textual versions where the reactive assignment fails.
+        try:
+            table.move_cursor(row=int(target_idx), column=col)  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
     def _restore_cursor_after_refresh(
         self,
@@ -271,10 +273,17 @@ class TableManager:
                     return
 
                 table_refreshed = table
-                try:
-                    table_refreshed.focus()
-                except Exception:
-                    pass
+                # Don't steal focus while the user is typing in an Input
+                # (e.g. the '/' search box triggers a refresh on every
+                # keystroke; focusing the table here would eat the search
+                # box's focus after one character). Still restore the
+                # cursor position below either way.
+                focused = getattr(self.app, "focused", None)
+                if not isinstance(focused, Input):
+                    try:
+                        table_refreshed.focus()
+                    except Exception:
+                        pass
 
                 row_count = int(getattr(table_refreshed, "row_count", 0) or 0)
                 if row_count <= 0:
@@ -298,16 +307,14 @@ class TableManager:
             except Exception:
                 return
 
-        # Try after-refresh first, and also do a short timer fallback to handle
-        # versions where focus/cursor gets reset during layout.
+        # Schedule the restore exactly once, after the refresh has been
+        # painted. (A second set_timer fallback used to run the whole restore
+        # again 50ms later, doubling the cost of every refresh.)
+        del timer_name  # kept in the signature for call-site compatibility
         try:
             self.app.call_after_refresh(_restore)
         except Exception:
             _restore()
-        try:
-            self.app.set_timer(0.05, _restore, name=timer_name)
-        except Exception:
-            pass
 
     def refresh_folder_table(self) -> Optional[int]:
         """Refresh the folder table to show updated selection state.
