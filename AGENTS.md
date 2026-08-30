@@ -1,7 +1,7 @@
 # AGENTS.md — Cairn
 
-Instructions for AI agents working in this repo. Human-facing docs are `README.md` (what/why)
-and `TECH_DETAIILS.md` (icon/color mapping tables, known quirks — note the typo in the filename).
+Instructions for AI agents working in this repo. The human-facing doc is `README.md` — what/why,
+icon/color mapping tables, known quirks (`TECH_DETAIILS.md` was merged into it 2026-08-30).
 
 ## Environment: read this first
 
@@ -123,7 +123,8 @@ because of `cairn/ui/`.
   unconditionally and had grown to 12 MB. Don't reintroduce a default path — a path that exists
   on every machine turns the logging back on for everyone.
 - The onX format is not fully standard: the same linework exports as `<trk>` or `<rte>`; areas
-  usually only survive as KML polygons; onX reorders items after import. See `TECH_DETAIILS.md`.
+  usually only survive as KML polygons; onX reorders items after import. See
+  `README.md`'s "Known quirks" section.
 - **A JS object is not keyword arguments to a Python function.** In `web/app.js`,
   `micropip.install(url, { deps: false })` silently passed the object as the second
   *positional* parameter (`keep_going`), leaving `deps=True` — every boot fetched

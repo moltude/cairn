@@ -27,7 +27,7 @@ from cairn.core.writers import (
     write_kml_shapes,
 )
 
-# onX's waypoint palette (10). Track/line adds Fuchsia -> 11. TECH_DETAIILS.md
+# onX's waypoint palette (10). Track/line adds Fuchsia -> 11. See README.md's color reference.
 ONX_COLORS = [
     ("Red-Orange", "rgba(255,51,0,1)", "#FF3300"),
     ("Blue", "rgba(8,122,255,1)", "#087AFF"),
