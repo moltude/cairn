@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cairn — CalTopo to onX</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="mark">▲</span> Cairn</div>
+  <div class="tagline">Move your CalTopo map to onX — with the icons, colors and folders intact</div>
+  <button id="help-btn" class="btn">Help</button>
+  <div id="status" class="status">Starting…</div>
+</header>
+
+<main>
+  <!-- 1. DROP -->
+  <section id="drop-stage" class="stage">
+    <div id="dropzone" class="dropzone">
+      <div class="dz-icon">🗺️</div>
+      <h2>Drop your CalTopo export here</h2>
+      <p>A <code>.json</code> / <code>.geojson</code> file. Export from CalTopo as <b>GeoJSON</b> — it's the only format that keeps your folders and styling.</p>
+      <button id="pick" class="btn primary" disabled>Choose a file…</button>
+      <input id="file" type="file" accept=".json,.geojson" hidden>
+      <p class="fineprint">Your map never leaves this computer — everything runs in your browser.</p>
+    </div>
+  </section>
+
+  <!-- 2. EDIT -->
+  <section id="edit-stage" class="stage hidden">
+    <div class="summary-row">
+      <div class="summary" id="summary"></div>
+      <div class="summary-actions">
+        <button class="btn newmap">Load another map</button>
+        <button id="export" class="btn primary">Export for onX →</button>
+      </div>
+    </div>
+    <!-- One persistent bar: filters are always usable, and the two edit
+         tools people reach for constantly (icon, color) are always visible
+         too -- just disabled until there's a selection to apply them to.
+         Only the less-common bulk actions (rename from description,
+         exclude/include) are tucked behind Advanced. -->
+    <div class="bar" id="control-bar">
+      <div class="bar-filters">
+        <input id="filter" type="search" placeholder="Search names and descriptions…" autocomplete="off">
+        <select id="type-filter" title="Show only one kind of markup">
+          <option value="">All types</option>
+          <option value="waypoints">Waypoints</option>
+          <option value="tracks">Lines &amp; tracks</option>
+          <option value="shapes">Areas</option>
+        </select>
+        <label class="chk" title="Show only waypoints that fell back to onX's default pin.">
+          <input type="checkbox" id="only-attention"> Needs an icon
+        </label>
+        <span id="shown-count" class="muted-note"></span>
+      </div>
+      <!-- Wraps as one unit when space is tight, instead of stranding a
+           single button on its own line. -->
+      <div class="bar-actions">
+        <span id="selcount" class="selcount hidden">0 selected</span>
+        <button id="clear-sel" class="btn clear hidden">✕ Clear selection</button>
+        <button id="bulk-icon" class="btn" disabled>Set icon…</button>
+        <button id="bulk-color" class="btn" disabled>Set color…</button>
+        <div class="menu-wrap">
+          <button id="more-btn" class="btn" disabled>Advanced ▾</button>
+          <div id="more-menu" class="menu hidden">
+            <button id="bulk-desc">Use description as name</button>
+            <button id="bulk-exclude">Leave out of the onX export</button>
+            <button id="bulk-include">Put back in the export</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="folders" class="folders"></div>
+  </section>
+
+  <!-- 3. IMPORT RUNBOOK -->
+  <section id="done-stage" class="stage hidden">
+    <div class="done-head">
+      <h2>✅ Your files are ready</h2>
+      <button id="download" class="btn primary">Download .zip</button>
+      <button id="back" class="btn">← Back to editing</button>
+      <button class="btn newmap">Load another map</button>
+    </div>
+    <div class="runbook-intro">
+      <p><b>onX makes one folder per import, and names it with a timestamp.</b> That's why this
+      checklist exists — it tells you which files go together and what to rename each folder to.</p>
+    </div>
+    <div id="runbook" class="runbook"></div>
+  </section>
+</main>
+
+<!-- help -->
+<div id="help" class="modal hidden"><div class="modal-card wide">
+  <div class="modal-head"><h3>How to use Cairn</h3><button id="help-close" class="x">✕</button></div>
+  <div class="help-body">
+    <h4>1 · Export from CalTopo as GeoJSON</h4>
+    <p>On your CalTopo map choose <b>Export</b> and pick <b>GeoJSON</b>. It is the only CalTopo
+       format that keeps your folders, icons and colors — GPX and KML both discard them.
+       Drop that file here.</p>
+
+    <h4>2 · Review the icons</h4>
+    <p>Cairn maps each CalTopo symbol to the closest onX icon. Hover any icon to see
+       <b>why</b> it was chosen. Some waypoints fall back to onX's default pin because CalTopo
+       had no symbol and the name gave no clue — that is often perfectly fine (mile markers,
+       numbered stops). Set an icon only where the meaning matters; choosing an icon —
+       <i>including deliberately choosing “Location”</i> — marks it reviewed.</p>
+
+    <h4>3 · Edit in bulk</h4>
+    <p>Narrow the list with the search box, the type dropdown, or <b>Needs an icon</b>.
+       Then tick rows — <b>Set icon…</b> and <b>Set color…</b> light up and apply to your
+       selection. <b>Advanced</b> holds <i>Use description as name</i> (when the real information
+       is in the notes) and the export include/exclude controls.</p>
+    <table class="help-tbl">
+      <tr><th>Click a box</th><td>Select one row.</td></tr>
+      <tr><th>Shift + click</th><td>Select everything between it and the last row you clicked.</td></tr>
+      <tr><th>Ctrl / ⌘ + A</th><td>Select everything currently shown. Press again to deselect.</td></tr>
+      <tr><th>Header checkbox</th><td>Select every row in that folder.</td></tr>
+      <tr><th>Esc</th><td>Clear the selection. While editing a name or description, Esc undoes that edit instead.</td></tr>
+    </table>
+    <p class="help-note">Selection always follows what is on screen: filter first, then select
+       all, and you only touch the rows you can see.</p>
+
+    <h4>4 · Leave things out</h4>
+    <p>Select rows and choose <b>More → Leave out of the onX export</b>. Excluded rows stay
+       visible, struck through, with a <b>restore</b> button. Useful for scratch lines and
+       duplicated tracks. Nothing is ever deleted from your CalTopo file.</p>
+
+    <h4>5 · Export and import</h4>
+    <p>Cairn writes one set of files per folder and a checklist. This matters:
+       <b>onX creates one folder per import, and names it with a timestamp</b> — never from the
+       filename. So the checklist tells you which files to drag in together and exactly what to
+       rename each folder to. Work through it in order.</p>
+
+    <h4>What carries across</h4>
+    <table class="help-tbl">
+      <tr><th>Name</th><td>Yes — and it is the only field onX lets you search.</td></tr>
+      <tr><th>Description</th><td>Yes — arrives as the markup's <b>Notes</b> in onX.</td></tr>
+      <tr><th>Icon</th><td>Yes, for waypoints. onX has 95; CalTopo has many more, so some map approximately.</td></tr>
+      <tr><th>Color</th><td>Yes, snapped to onX's 10 waypoint colors (11 for lines).</td></tr>
+      <tr><th>Folders</th><td>Yes — but only if you follow the import checklist.</td></tr>
+      <tr><th>Lines vs areas</th><td>Handled automatically: lines and tracks go to GPX, areas to KML.</td></tr>
+    </table>
+
+    <h4>Good to know</h4>
+    <ul>
+      <li>Importing needs an onX <b>Premium or Elite</b> membership.</li>
+      <li>KML files (areas) can only be imported on the onX <b>Web Map</b>, not the phone app.</li>
+      <li>An onX account holds <b>1,500 markups</b>; Cairn warns you if a map exceeds it.</li>
+      <li>Your map never leaves this computer — the conversion runs entirely in your browser.</li>
+    </ul>
+  </div>
+</div></div>
+
+<!-- pickers -->
+<div id="modal" class="modal hidden"><div class="modal-card">
+  <div class="modal-head"><h3 id="modal-title"></h3><button id="modal-close" class="x">✕</button></div>
+  <input id="modal-filter" type="search" placeholder="Search…" autocomplete="off">
+  <div id="modal-body" class="modal-body"></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"></script>
+<script src="icons.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

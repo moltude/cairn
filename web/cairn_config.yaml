@@ -1,0 +1,125 @@
+# default_path: ~/_code/cairn/demo/
+use_icon_name_prefix: false
+enable_unmapped_detection: true
+symbol_mappings:
+  skull: Hazard
+  danger: Hazard
+  warning: Hazard
+  caution: Hazard
+  hazard: Hazard
+  alert: Hazard
+  tent: Camp
+  camp: Camp
+  camping: Camp
+  bivy: Camp Backcountry
+  campground: Campground
+  water: Water Source
+  droplet: Water Source
+  spring: Water Source
+  creek: Water Source
+  lake: Water Source
+  river: Water Source
+  waterfall: Waterfall
+  hot-spring: Hot Spring
+  car: Parking
+  parking: Parking
+  vehicle: Parking
+  lot: Parking
+  4x4: 4x4
+  atv: ATV
+  ski: Ski
+  skiing: XC Skiing
+  xc-skiing: XC Skiing
+  backcountry: Ski Touring
+  skin: Skin Track
+  tour: Ski Touring
+  ski-touring: Ski Touring
+  snowboard: Snowboarder
+  snowmobile: Snowmobile
+  trailhead: Trailhead
+  trail: Trailhead
+  hike: Hike
+  hiking: Hike
+  backpack: Backpacker
+  backpacker: Backpacker
+  summit: Summit
+  peak: Summit
+  triangle-u: Summit
+  mountain: Summit
+  top: Summit
+  camera: Photo
+  photo: Photo
+  binoculars: View
+  viewpoint: View
+  vista: View
+  overlook: View
+  lookout: Lookout
+  cabin: Cabin
+  hut: Cabin
+  yurt: Cabin
+  shelter: Shelter
+  house: House
+  climbing-2: Climbing
+  circle-p: Parking
+  climbing-1: Climbing
+  flag-1: Location
+  scrambling: Climbing
+  automobile: Parking
+  snowboarding: Snowboarder
+  repair-streamcrossing: Water Crossing
+keyword_mappings:
+  Camp:
+  - tent
+  - camp
+  - sleep
+  - overnight
+  - camping
+  Water Source:
+  - water
+  - spring
+  - refill
+  - creek
+  - stream
+  Parking:
+  - car
+  - parking
+  - lot
+  - vehicle
+  Trailhead:
+  - trailhead
+  - trail head
+  - th
+  XC Skiing:
+  - ski
+  - skin
+  - tour
+  - uptrack
+  - skiing
+  - xc
+  Summit:
+  - summit
+  - peak
+  - top
+  - mt
+  Hazard:
+  - danger
+  - avy
+  - avalanche
+  - slide
+  - caution
+  - warning
+  - deadfall
+  - dead fall
+  Photo:
+  - camera
+  - photo
+  View:
+  - view
+  - viewpoint
+  - vista
+  - overlook
+  - scenic
+  Cabin:
+  - cabin
+  - hut
+  - yurt
