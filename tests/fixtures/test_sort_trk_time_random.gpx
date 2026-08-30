@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - OnX Sort Fixtures">
+  <metadata>
+    <name>Tracks Time (XML Random, Time Random-in-File)</name>
+    <desc>5 tracks with &lt;time&gt; Oldest→Newest, but placed in a shuffled XML order so times are not sequential in-file.</desc>
+  </metadata>
+  <trk>
+    <name>T3 - Middle (Expect_Time_03)</name>
+    <time>2025-01-01T00:02:00Z</time>
+    <extensions>
+      <onx:color>rgba(255,255,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.540000" lon="-114.500000">
+        <time>2025-01-01T00:02:00Z</time>
+      </trkpt>
+      <trkpt lat="45.550000" lon="-114.490000">
+        <time>2025-01-01T00:02:30Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>T1 - Oldest (Expect_Time_01)</name>
+    <time>2025-01-01T00:00:00Z</time>
+    <extensions>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.500000" lon="-114.500000">
+        <time>2025-01-01T00:00:00Z</time>
+      </trkpt>
+      <trkpt lat="45.510000" lon="-114.490000">
+        <time>2025-01-01T00:00:30Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>T5 - Newest (Expect_Time_05)</name>
+    <time>2025-01-01T00:04:00Z</time>
+    <extensions>
+      <onx:color>rgba(0,0,255,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.580000" lon="-114.500000">
+        <time>2025-01-01T00:04:00Z</time>
+      </trkpt>
+      <trkpt lat="45.590000" lon="-114.490000">
+        <time>2025-01-01T00:04:30Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>T2 - Older (Expect_Time_02)</name>
+    <time>2025-01-01T00:01:00Z</time>
+    <extensions>
+      <onx:color>rgba(255,128,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.520000" lon="-114.500000">
+        <time>2025-01-01T00:01:00Z</time>
+      </trkpt>
+      <trkpt lat="45.530000" lon="-114.490000">
+        <time>2025-01-01T00:01:30Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>T4 - Newer (Expect_Time_04)</name>
+    <time>2025-01-01T00:03:00Z</time>
+    <extensions>
+      <onx:color>rgba(0,255,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.560000" lon="-114.500000">
+        <time>2025-01-01T00:03:00Z</time>
+      </trkpt>
+      <trkpt lat="45.570000" lon="-114.490000">
+        <time>2025-01-01T00:03:30Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

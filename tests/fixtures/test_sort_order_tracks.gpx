@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn Sort Order Test">
+  <metadata>
+    <name>Sort Order Test</name>
+    <desc>Testing if onX respects XML element order for track sorting</desc>
+  </metadata>
+  <trk>
+    <name>05 - Bottom (First in XML)</name>
+    <desc>Test track: 05 - Bottom (First in XML)</desc>
+    <extensions>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.500000" lon="-114.500000"/>
+      <trkpt lat="45.510000" lon="-114.490000"/>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>04 - Fourth</name>
+    <desc>Test track: 04 - Fourth</desc>
+    <extensions>
+      <onx:color>rgba(255,128,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.520000" lon="-114.500000"/>
+      <trkpt lat="45.530000" lon="-114.490000"/>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>03 - Middle</name>
+    <desc>Test track: 03 - Middle</desc>
+    <extensions>
+      <onx:color>rgba(255,255,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.540000" lon="-114.500000"/>
+      <trkpt lat="45.550000" lon="-114.490000"/>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>02 - Second</name>
+    <desc>Test track: 02 - Second</desc>
+    <extensions>
+      <onx:color>rgba(0,255,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.560000" lon="-114.500000"/>
+      <trkpt lat="45.570000" lon="-114.490000"/>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>01 - Top (Last in XML)</name>
+    <desc>Test track: 01 - Top (Last in XML)</desc>
+    <extensions>
+      <onx:color>rgba(0,0,255,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.580000" lon="-114.500000"/>
+      <trkpt lat="45.590000" lon="-114.490000"/>
+    </trkseg>
+  </trk>
+</gpx>

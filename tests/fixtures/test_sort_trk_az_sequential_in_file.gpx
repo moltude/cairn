@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - OnX Sort Fixtures">
+  <metadata>
+    <name>Tracks A–Z (XML Sequential)</name>
+    <desc>5 tracks named A–E in the same XML order. No timestamps.</desc>
+  </metadata>
+  <trk>
+    <name>A - A-Z First (Expect_AZ_01)</name>
+    <extensions>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.500000" lon="-114.500000">
+      </trkpt>
+      <trkpt lat="45.510000" lon="-114.490000">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>B - A-Z Second (Expect_AZ_02)</name>
+    <extensions>
+      <onx:color>rgba(255,128,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.520000" lon="-114.500000">
+      </trkpt>
+      <trkpt lat="45.530000" lon="-114.490000">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>C - A-Z Third (Expect_AZ_03)</name>
+    <extensions>
+      <onx:color>rgba(255,255,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.540000" lon="-114.500000">
+      </trkpt>
+      <trkpt lat="45.550000" lon="-114.490000">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>D - A-Z Fourth (Expect_AZ_04)</name>
+    <extensions>
+      <onx:color>rgba(0,255,0,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.560000" lon="-114.500000">
+      </trkpt>
+      <trkpt lat="45.570000" lon="-114.490000">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>E - A-Z Fifth (Expect_AZ_05)</name>
+    <extensions>
+      <onx:color>rgba(0,0,255,1)</onx:color>
+    </extensions>
+    <trkseg>
+      <trkpt lat="45.580000" lon="-114.500000">
+      </trkpt>
+      <trkpt lat="45.590000" lon="-114.490000">
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

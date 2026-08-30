@@ -65,7 +65,10 @@ def test_split_waypoints_gpx_by_bytes_preserves_order_and_onx_metadata(tmp_path:
     # OnX import-critical metadata remains.
     for pth, _, _ in parts:
         t = pth.read_text(encoding="utf-8")
-        assert "<desc>" in t and "color=rgba(" in t and "icon=" in t
+        # <desc> carries only the user's note by default; onX metadata lives
+        # in the <onx:*> extensions.
+        assert "<desc>" in t and "xxxxx" in t
+        assert "color=rgba(" not in t and "icon=" not in t
         assert "<onx:icon>" in t and "<onx:color>" in t
 
 
@@ -91,5 +94,6 @@ def test_split_tracks_gpx_by_bytes_preserves_order_and_onx_metadata(tmp_path: Pa
     for pth, _, _ in parts:
         t = pth.read_text(encoding="utf-8")
         assert "<trk>" in t
-        assert "<desc>" in t and "style=" in t and "weight=" in t
+        assert "<desc>" in t and "yyyyy" in t
+        assert "style=" not in t and "weight=" not in t
         assert "<onx:color>" in t and "<onx:style>" in t and "<onx:weight>" in t

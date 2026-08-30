@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Cairn Test Suite">
+<metadata>
+<name>Rattlesnake Wilderness Test Tracks</name>
+<desc>Comprehensive test file with all OnX track colors for import verification</desc>
+</metadata>
+
+<!-- RED TRACK -->
+<trk>
+<name>Red Route - Summit Trail</name>
+<desc>Primary summit trail to Rattlesnake Peak. Steep ascent through alpine meadows with spectacular views. 6.2 miles one-way, 3,200 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(255,59,48,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.020000" lon="-113.500000"><ele>1524</ele></trkpt>
+<trkpt lat="47.025000" lon="-113.505000"><ele>1600</ele></trkpt>
+<trkpt lat="47.030000" lon="-113.510000"><ele>1700</ele></trkpt>
+<trkpt lat="47.035000" lon="-113.515000"><ele>1850</ele></trkpt>
+<trkpt lat="47.040000" lon="-113.520000"><ele>2000</ele></trkpt>
+<trkpt lat="47.045000" lon="-113.525000"><ele>2200</ele></trkpt>
+<trkpt lat="47.050000" lon="-113.530000"><ele>2400</ele></trkpt>
+<trkpt lat="47.055000" lon="-113.535000"><ele>2600</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- BLUE TRACK -->
+<trk>
+<name>Blue Route - Lakeside Loop</name>
+<desc>Scenic loop around Stuart Peak Lake. Gentle terrain, great for families. Wildflowers peak in July. 4.8 miles, 400 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(8,122,255,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.060000" lon="-113.540000"><ele>1700</ele></trkpt>
+<trkpt lat="47.062000" lon="-113.542000"><ele>1710</ele></trkpt>
+<trkpt lat="47.064000" lon="-113.544000"><ele>1720</ele></trkpt>
+<trkpt lat="47.066000" lon="-113.546000"><ele>1730</ele></trkpt>
+<trkpt lat="47.068000" lon="-113.548000"><ele>1750</ele></trkpt>
+<trkpt lat="47.070000" lon="-113.550000"><ele>1780</ele></trkpt>
+<trkpt lat="47.072000" lon="-113.552000"><ele>1800</ele></trkpt>
+<trkpt lat="47.074000" lon="-113.554000"><ele>1820</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- GREEN TRACK -->
+<trk>
+<name>Green Route - Forest Trail</name>
+<desc>Shaded forest trail through old-growth ponderosa pine. Cool summer hike, good for hot days. 5.5 miles, 800 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(52,199,89,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.076000" lon="-113.556000"><ele>1400</ele></trkpt>
+<trkpt lat="47.078000" lon="-113.558000"><ele>1450</ele></trkpt>
+<trkpt lat="47.080000" lon="-113.560000"><ele>1500</ele></trkpt>
+<trkpt lat="47.082000" lon="-113.562000"><ele>1550</ele></trkpt>
+<trkpt lat="47.084000" lon="-113.564000"><ele>1600</ele></trkpt>
+<trkpt lat="47.086000" lon="-113.566000"><ele>1650</ele></trkpt>
+<trkpt lat="47.088000" lon="-113.568000"><ele>1700</ele></trkpt>
+<trkpt lat="47.090000" lon="-113.570000"><ele>1750</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- ORANGE TRACK -->
+<trk>
+<name>Orange Route - Ridge Run</name>
+<desc>Exposed ridge trail with panoramic views. Windy conditions common, bring layers. 7.2 miles, 2,100 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(255,149,0,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.092000" lon="-113.572000"><ele>1900</ele></trkpt>
+<trkpt lat="47.094000" lon="-113.574000"><ele>2000</ele></trkpt>
+<trkpt lat="47.096000" lon="-113.576000"><ele>2100</ele></trkpt>
+<trkpt lat="47.098000" lon="-113.578000"><ele>2200</ele></trkpt>
+<trkpt lat="47.100000" lon="-113.580000"><ele>2300</ele></trkpt>
+<trkpt lat="47.102000" lon="-113.582000"><ele>2400</ele></trkpt>
+<trkpt lat="47.104000" lon="-113.584000"><ele>2500</ele></trkpt>
+<trkpt lat="47.106000" lon="-113.586000"><ele>2600</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- PURPLE TRACK -->
+<trk>
+<name>Purple Route - Waterfall Trail</name>
+<desc>Trail to spectacular Cascade Falls. Creek crossings, slippery when wet. Best flow May-June. 3.8 miles, 600 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(175,82,222,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.108000" lon="-113.588000"><ele>1500</ele></trkpt>
+<trkpt lat="47.110000" lon="-113.590000"><ele>1550</ele></trkpt>
+<trkpt lat="47.112000" lon="-113.592000"><ele>1600</ele></trkpt>
+<trkpt lat="47.114000" lon="-113.594000"><ele>1650</ele></trkpt>
+<trkpt lat="47.116000" lon="-113.596000"><ele>1700</ele></trkpt>
+<trkpt lat="47.118000" lon="-113.598000"><ele>1750</ele></trkpt>
+<trkpt lat="47.120000" lon="-113.600000"><ele>1800</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- YELLOW TRACK -->
+<trk>
+<name>Yellow Route - Meadow Traverse</name>
+<desc>Alpine meadow traverse with wildflower displays. Peak bloom mid-July. Watch for mountain goats. 6.5 miles, 1,400 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(255,204,0,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.020000" lon="-113.520000"><ele>1800</ele></trkpt>
+<trkpt lat="47.022000" lon="-113.522000"><ele>1850</ele></trkpt>
+<trkpt lat="47.024000" lon="-113.524000"><ele>1900</ele></trkpt>
+<trkpt lat="47.026000" lon="-113.526000"><ele>1950</ele></trkpt>
+<trkpt lat="47.028000" lon="-113.528000"><ele>2000</ele></trkpt>
+<trkpt lat="47.030000" lon="-113.530000"><ele>2050</ele></trkpt>
+<trkpt lat="47.032000" lon="-113.532000"><ele>2100</ele></trkpt>
+<trkpt lat="47.034000" lon="-113.534000"><ele>2150</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- CYAN TRACK -->
+<trk>
+<name>Cyan Route - Creek Trail</name>
+<desc>Trail following Spring Creek through canyon. Multiple water crossings, beautiful in fall. 5.2 miles, 900 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(50,173,230,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.036000" lon="-113.536000"><ele>1300</ele></trkpt>
+<trkpt lat="47.038000" lon="-113.538000"><ele>1350</ele></trkpt>
+<trkpt lat="47.040000" lon="-113.540000"><ele>1400</ele></trkpt>
+<trkpt lat="47.042000" lon="-113.542000"><ele>1450</ele></trkpt>
+<trkpt lat="47.044000" lon="-113.544000"><ele>1500</ele></trkpt>
+<trkpt lat="47.046000" lon="-113.546000"><ele>1550</ele></trkpt>
+<trkpt lat="47.048000" lon="-113.548000"><ele>1600</ele></trkpt>
+<trkpt lat="47.050000" lon="-113.550000"><ele>1650</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- MAGENTA TRACK -->
+<trk>
+<name>Magenta Route - Backcountry Loop</name>
+<desc>Remote backcountry loop for experienced hikers. Minimal trail maintenance, route-finding skills needed. 12.3 miles, 2,800 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(255,45,85,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.052000" lon="-113.552000"><ele>1700</ele></trkpt>
+<trkpt lat="47.054000" lon="-113.554000"><ele>1800</ele></trkpt>
+<trkpt lat="47.056000" lon="-113.556000"><ele>1900</ele></trkpt>
+<trkpt lat="47.058000" lon="-113.558000"><ele>2000</ele></trkpt>
+<trkpt lat="47.060000" lon="-113.560000"><ele>2100</ele></trkpt>
+<trkpt lat="47.062000" lon="-113.562000"><ele>2200</ele></trkpt>
+<trkpt lat="47.064000" lon="-113.564000"><ele>2300</ele></trkpt>
+<trkpt lat="47.066000" lon="-113.566000"><ele>2400</ele></trkpt>
+<trkpt lat="47.068000" lon="-113.568000"><ele>2500</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- PINK TRACK -->
+<trk>
+<name>Pink Route - Sunset Vista</name>
+<desc>Evening hike to sunset viewpoint. West-facing overlook perfect for photography. 4.1 miles, 1,100 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(255,55,95,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.070000" lon="-113.570000"><ele>1600</ele></trkpt>
+<trkpt lat="47.072000" lon="-113.572000"><ele>1650</ele></trkpt>
+<trkpt lat="47.074000" lon="-113.574000"><ele>1700</ele></trkpt>
+<trkpt lat="47.076000" lon="-113.576000"><ele>1750</ele></trkpt>
+<trkpt lat="47.078000" lon="-113.578000"><ele>1800</ele></trkpt>
+<trkpt lat="47.080000" lon="-113.580000"><ele>1850</ele></trkpt>
+<trkpt lat="47.082000" lon="-113.582000"><ele>1900</ele></trkpt>
+</trkseg>
+</trk>
+
+<!-- TEAL TRACK -->
+<trk>
+<name>Teal Route - Alpine Circuit</name>
+<desc>High alpine circuit above treeline. Stunning 360-degree views, exposed to weather. 8.7 miles, 2,400 feet elevation gain.</desc>
+<extensions>
+<onx:color>rgba(90,200,250,1)</onx:color>
+<onx:style>solid</onx:style>
+<onx:weight>4.0</onx:weight>
+</extensions>
+<trkseg>
+<trkpt lat="47.084000" lon="-113.584000"><ele>2000</ele></trkpt>
+<trkpt lat="47.086000" lon="-113.586000"><ele>2100</ele></trkpt>
+<trkpt lat="47.088000" lon="-113.588000"><ele>2200</ele></trkpt>
+<trkpt lat="47.090000" lon="-113.590000"><ele>2300</ele></trkpt>
+<trkpt lat="47.092000" lon="-113.592000"><ele>2400</ele></trkpt>
+<trkpt lat="47.094000" lon="-113.594000"><ele>2500</ele></trkpt>
+<trkpt lat="47.096000" lon="-113.596000"><ele>2600</ele></trkpt>
+<trkpt lat="47.098000" lon="-113.598000"><ele>2700</ele></trkpt>
+</trkseg>
+</trk>
+
+</gpx>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - OnX Sort Fixtures">
+  <metadata>
+    <name>Waypoints Time (XML Random, Time Random-in-File)</name>
+    <desc>5 waypoints with &lt;time&gt; Oldest→Newest, but placed in a shuffled XML order so times are not sequential in-file.</desc>
+  </metadata>
+  <wpt lat="45.520000" lon="-114.520000">
+    <name>T3 - Middle (Expect_Time_03)</name>
+    <time>2025-01-01T00:02:00Z</time>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.500000" lon="-114.500000">
+    <name>T1 - Oldest (Expect_Time_01)</name>
+    <time>2025-01-01T00:00:00Z</time>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.540000" lon="-114.540000">
+    <name>T5 - Newest (Expect_Time_05)</name>
+    <time>2025-01-01T00:04:00Z</time>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.510000" lon="-114.510000">
+    <name>T2 - Older (Expect_Time_02)</name>
+    <time>2025-01-01T00:01:00Z</time>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.530000" lon="-114.530000">
+    <name>T4 - Newer (Expect_Time_04)</name>
+    <time>2025-01-01T00:03:00Z</time>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+</gpx>

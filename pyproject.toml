@@ -3,11 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cairn"
+# The PyPI name `cairn` is taken by an unrelated 2019 project, so the
+# distribution is `cairn-maps`. The installed command is still `cairn` --
+# see [project.scripts] below.
+name = "cairn-maps"
 version = "1.0.0"
 description = "Migrate map data between OnX Backcountry and CalTopo"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"  # cairn/model.py:119 uses a runtime PEP 604 union
 license = {text = "MIT"}
 authors = [
     {name = "Scott"}
@@ -18,13 +21,20 @@ dependencies = [
     "rich>=13.0.0",
     "pyyaml>=6.0",
     "prompt-toolkit>=3.0.43",
-    "textual>=0.58.0",
+    # Was `>=0.58.0`, which claimed support for a range (0.58 -> 8.x) that was
+    # never tested. A grep for every API removed or renamed across those
+    # versions found zero hits in cairn/ and tests/, so the floor is raised to
+    # what is actually exercised.
+    "textual>=6.11,<9",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
+    # tests/web/test_web_app.py drives the Pyodide prototype in a real browser.
+    # After sync, browsers must exist once per machine: `uv run playwright install chromium`
+    "playwright>=1.40",
 ]
 
 [project.scripts]

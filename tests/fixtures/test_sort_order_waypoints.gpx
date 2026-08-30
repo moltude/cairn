@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - OnX Order Debug Test">
+  <metadata>
+    <name>OnX Order Debug Test</name>
+    <desc>Test file to verify OnX sorting behavior. Waypoints are numbered 01-10 in correct order, plus unnumbered entries and different icon types.</desc>
+  </metadata>
+  <!-- Waypoints are intentionally ordered: #0 entries first, then #01-#10 sequentially, then unnumbered, then hazard icons -->
+  <wpt lat="45.500000" lon="-114.500000">
+    <name>#0 Finish Line</name>
+    <desc>Finish line waypoint - should appear first</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.510000" lon="-114.510000">
+    <name>#0 Start Line</name>
+    <desc>Start line waypoint - should appear second</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.520000" lon="-114.520000">
+    <name>#01 Porcupine Mile 6.1</name>
+    <desc>First numbered waypoint</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.530000" lon="-114.530000">
+    <name>#02 Ibex Mile 19.4</name>
+    <desc>Second numbered waypoint</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.540000" lon="-114.540000">
+    <name>#03 &amp; #05 Cow Camp Mile 31.9 &amp; 54.8</name>
+    <desc>Combined waypoint reference - should appear before #04</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.550000" lon="-114.550000">
+    <name>#04 Halfmoon Mile 43.4</name>
+    <desc>Fourth numbered waypoint - should appear after #03</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.560000" lon="-114.560000">
+    <name>#06 Sunlight Mile 63.3</name>
+    <desc>Sixth numbered waypoint</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.570000" lon="-114.570000">
+    <name>#07 Crandall Mile 70.4</name>
+    <desc>Seventh numbered waypoint</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.580000" lon="-114.580000">
+    <name>#08 Forest Lake Mile 78.3</name>
+    <desc>Eighth numbered waypoint</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.590000" lon="-114.590000">
+    <name>#09 Honey Trail Mile 85.4</name>
+    <desc>Ninth numbered waypoint</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.600000" lon="-114.600000">
+    <name>#10 Hunting Camp Mile 92.8</name>
+    <desc>Tenth numbered waypoint</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.610000" lon="-114.610000">
+    <name>CONICAL PASS CUTOFF 12:45 AM</name>
+    <desc>Unnumbered waypoint - should appear after numbered waypoints</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.620000" lon="-114.620000">
+    <name>Dead fall</name>
+    <desc>Hazard waypoint with different icon - testing if OnX groups by icon type</desc>
+    <extensions>
+      <onx:icon>Hazard</onx:icon>
+      <onx:color>rgba(255,51,0,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="45.630000" lon="-114.630000">
+    <name>Deadfall</name>
+    <desc>Another hazard waypoint - should be grouped with other hazards if OnX sorts by icon</desc>
+    <extensions>
+      <onx:icon>Hazard</onx:icon>
+      <onx:color>rgba(255,51,0,1)</onx:color>
+    </extensions>
+  </wpt>
+</gpx>

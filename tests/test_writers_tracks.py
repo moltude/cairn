@@ -28,4 +28,6 @@ def test_write_gpx_tracks_palette_color_round_trips(tmp_path):
     assert "<onx:color>rgba(255,0,255,1)</onx:color>" in gpx
     assert "<onx:style>solid</onx:style>" in gpx
     assert "<onx:weight>4.0</onx:weight>" in gpx
-    assert "color=rgba(255,0,255,1)" in gpx
+    # <desc> is user-facing: only the note survives; kv debug block is opt-in.
+    assert "<desc>Hello</desc>" in gpx
+    assert "color=rgba(" not in gpx

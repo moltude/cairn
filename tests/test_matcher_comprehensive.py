@@ -295,12 +295,21 @@ def test_partial_word_match(matcher):
 
 
 def test_avalanche_synonym_matching(matcher):
-    """Test avalanche-related synonym matching."""
+    """The slang "avy" resolves to the "avalanche" icon, and ranks first.
+
+    This is the behavior the feature exists for: a CalTopo user who typed a
+    shorthand still gets the right onX icon. Pinned as rank-1 rather than
+    "somewhere in the top 3" — a synonym hit that loses to an unrelated string
+    would be a regression, and the margin here is wide (0.47 vs 0.11).
+    """
     matches = matcher.find_best_matches("avy", top_n=3)
 
-    # Should find "avalanche" via synonyms
-    found = [m for m in matches if m[0] == "avalanche"]
-    # May or may not be in top 3 depending on other scores
+    assert matches, "expected at least one match for 'avy'"
+    assert matches[0][0] == "avalanche"
+    assert matches[0][1] > 0.4
+    # Comfortably ahead of the next candidate, so this is a synonym hit and not
+    # an accident of fuzzy string distance.
+    assert matches[0][1] > matches[1][1] * 2
 
 
 def test_parking_trailhead_synonym(matcher):

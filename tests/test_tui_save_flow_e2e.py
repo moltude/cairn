@@ -35,6 +35,21 @@ def _dismiss_post_save_prompt_if_present(pilot, app) -> None:
         pass
 
 
+async def _confirm_overwrite_if_prompted(app, pilot) -> None:
+    """
+    The TUI now asks before overwriting existing export files (usability bug fix).
+    Tests that export into persistent directories (/tmp/onx-export, ~/onx) may hit
+    that prompt when files from a previous run exist; accept it so the export runs.
+    """
+    from cairn.tui.edit_screens.overlays import ConfirmOverlay
+
+    await pilot.pause()
+    if app._overlay_open("#confirm_overlay"):
+        app.query_one("#confirm_overlay", ConfirmOverlay).close()
+        app.on_confirm_overlay_result(ConfirmOverlay.Result(True))
+        await pilot.pause()
+
+
 async def _open_save_target_overlay(app, pilot) -> None:
     """Open the SaveTargetOverlay via the Preview & Export step 'c' key."""
     await pilot.press("c")
@@ -669,6 +684,8 @@ def test_tui_preview_tree_navigate_to_tmp_onx_export(tmp_path: Path) -> None:
             # Trigger export directly (bypasses focus issues with tree mode)
             app.action_export()
             await pilot.pause()
+            # /tmp/onx-export persists between runs; accept the overwrite prompt if shown.
+            await _confirm_overwrite_if_prompted(app, pilot)
 
             # Wait for export to complete
             for _ in range(600):
@@ -757,6 +774,8 @@ def test_tui_preview_tree_navigate_to_home_onx(tmp_path: Path) -> None:
             # Trigger export directly (bypasses focus issues with tree mode)
             app.action_export()
             await pilot.pause()
+            # ~/onx persists between runs; accept the overwrite prompt if shown.
+            await _confirm_overwrite_if_prompted(app, pilot)
 
             for _ in range(600):
                 if not app._export_in_progress:

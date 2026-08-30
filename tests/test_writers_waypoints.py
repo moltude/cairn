@@ -75,6 +75,7 @@ def test_write_gpx_waypoints_respects_per_feature_icon_override_and_palette_colo
     assert "<onx:icon>View</onx:icon>" in gpx
     assert "<onx:color>rgba(132,212,0,1)</onx:color>" in gpx
 
-    # Also ensure the OnX-style <desc> kv block matches.
-    assert "icon=View" in gpx
-    assert "color=rgba(132,212,0,1)" in gpx
+    # <desc> is user-facing: it carries only the note, not the kv debug block.
+    assert "<desc>Hello</desc>" in gpx
+    assert "icon=" not in gpx
+    assert "id=" not in gpx

@@ -387,11 +387,18 @@ def test_remove_user_mapping_nonexistent_key(tmp_path):
 
 
 def test_remove_user_mapping_from_nonexistent_file(tmp_path):
-    """Test that removing from nonexistent file is handled."""
+    """Removing a mapping from a missing config reports failure without side effects.
+
+    Pinned behavior: returns False, does not raise, and — importantly — does not
+    create the config file as a side effect of trying to remove from it.
+    """
     config_path = tmp_path / "nonexistent.yaml"
 
-    # Should not raise an error
-    remove_user_mapping("key", config_path)
+    result = remove_user_mapping("key", config_path)
+
+    assert result is False
+    assert not config_path.exists(), "removing a mapping must not create the config file"
+    assert list(tmp_path.iterdir()) == []
 
 
 # ===== Invalid Config Data Tests =====

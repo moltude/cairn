@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="OnX Backcountry">
+<metadata>
+<name>OnX Export Test</name>
+<desc>Test file with waypoints and tracks for conversion testing</desc>
+</metadata>
+
+<wpt lat="47.020000" lon="-113.500000">
+<name>Test Campsite</name>
+<desc>Test campsite waypoint</desc>
+<extensions>
+<onx:color>rgba(255,51,0,1)</onx:color>
+<onx:icon>Campsite</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.025000" lon="-113.505000">
+<name>Test Water Source</name>
+<desc>Test water source waypoint</desc>
+<extensions>
+<onx:color>rgba(8,122,255,1)</onx:color>
+<onx:icon>Water Source</onx:icon>
+</extensions>
+</wpt>
+
+<trk>
+<name>Test Trail Route</name>
+<desc>Test trail description</desc>
+<extensions>
+<onx:color>rgba(255,51,0,1)</onx:color>
+</extensions>
+<trkseg>
+<trkpt lat="47.020000" lon="-113.500000"><ele>1200</ele></trkpt>
+<trkpt lat="47.021000" lon="-113.501000"><ele>1210</ele></trkpt>
+<trkpt lat="47.022000" lon="-113.502000"><ele>1220</ele></trkpt>
+<trkpt lat="47.023000" lon="-113.503000"><ele>1230</ele></trkpt>
+</trkseg>
+</trk>
+
+<trk>
+<name>Second Test Route</name>
+<desc>Another test route</desc>
+<extensions>
+<onx:color>rgba(8,122,255,1)</onx:color>
+</extensions>
+<trkseg>
+<trkpt lat="47.025000" lon="-113.505000"><ele>1300</ele></trkpt>
+<trkpt lat="47.026000" lon="-113.506000"><ele>1310</ele></trkpt>
+<trkpt lat="47.027000" lon="-113.507000"><ele>1320</ele></trkpt>
+</trkseg>
+</trk>
+
+</gpx>

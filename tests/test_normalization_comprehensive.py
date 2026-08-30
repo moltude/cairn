@@ -227,10 +227,22 @@ def test_iso8601_invalid_format():
 
 
 def test_iso8601_partial_date():
-    """Test that partial date strings return None."""
-    result = iso8601_to_epoch_ms("2021-01-01")
-    # May or may not parse depending on implementation
-    # Just verify it doesn't crash
+    """A date with no time parses as midnight UTC; a date missing day/month does not.
+
+    The old version of this test asserted nothing and its docstring claimed
+    partial dates return None, which is the opposite of what happens for a
+    full date. Pinned to measured behavior: "2021-01-01" is accepted and
+    normalized to 00:00:00Z, while shorter prefixes are rejected.
+    """
+    # Full date, no time component -> midnight UTC, same as the explicit form.
+    assert iso8601_to_epoch_ms("2021-01-01") == 1609459200000
+    assert iso8601_to_epoch_ms("2021-01-01") == iso8601_to_epoch_ms("2021-01-01T00:00:00Z")
+
+    # Truncated further than a whole date -> rejected rather than guessed at.
+    assert iso8601_to_epoch_ms("2021-01") is None
+    assert iso8601_to_epoch_ms("2021") is None
+    assert iso8601_to_epoch_ms("not-a-date") is None
+    assert iso8601_to_epoch_ms("") is None
 
 
 def test_iso8601_whitespace_handling():

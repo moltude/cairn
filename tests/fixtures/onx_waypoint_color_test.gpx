@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Cairn Color Test">
+<metadata>
+<name>OnX Waypoint Color Test</name>
+<desc>Test file to discover OnX's actual waypoint color values. Import this, then manually change each waypoint to the specified color and export to verify.</desc>
+</metadata>
+
+<!-- TEST WAYPOINTS - One for each common color -->
+
+<wpt lat="47.000000" lon="-113.500000">
+<name>Test 01 - Red (CSS Standard)</name>
+<desc>CSS Red: rgba(255,0,0,1) - Change to RED in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(255,0,0,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.005000" lon="-113.505000">
+<name>Test 02 - Blue (CSS Standard)</name>
+<desc>CSS Blue: rgba(0,0,255,1) - Change to BLUE in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(0,0,255,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.010000" lon="-113.510000">
+<name>Test 03 - Green (CSS Standard)</name>
+<desc>CSS Green: rgba(0,128,0,1) - Change to GREEN in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(0,128,0,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.015000" lon="-113.515000">
+<name>Test 04 - Orange (CSS Standard)</name>
+<desc>CSS Orange: rgba(255,165,0,1) - Change to ORANGE in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(255,165,0,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.020000" lon="-113.520000">
+<name>Test 05 - Purple (CSS Standard)</name>
+<desc>CSS Purple: rgba(128,0,128,1) - Change to PURPLE in OnX and export to verify [CONFIRMED]</desc>
+<extensions>
+<onx:color>rgba(128,0,128,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.025000" lon="-113.525000">
+<name>Test 06 - Yellow (CSS Standard)</name>
+<desc>CSS Yellow: rgba(255,255,0,1) - Change to YELLOW in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(255,255,0,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.030000" lon="-113.530000">
+<name>Test 07 - Cyan (CSS Standard)</name>
+<desc>CSS Cyan: rgba(0,255,255,1) - Change to CYAN in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(0,255,255,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.035000" lon="-113.535000">
+<name>Test 08 - Magenta (CSS Standard)</name>
+<desc>CSS Magenta: rgba(255,0,255,1) - Change to MAGENTA in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(255,0,255,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.040000" lon="-113.540000">
+<name>Test 09 - Pink (CSS Standard)</name>
+<desc>CSS Pink: rgba(255,192,203,1) - Change to PINK in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(255,192,203,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.045000" lon="-113.545000">
+<name>Test 10 - Teal (CSS Standard)</name>
+<desc>CSS Teal: rgba(0,128,128,1) - Change to TEAL in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(0,128,128,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.050000" lon="-113.550000">
+<name>Test 11 - White (CSS Standard)</name>
+<desc>CSS White: rgba(255,255,255,1) - Change to WHITE in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(255,255,255,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+<wpt lat="47.055000" lon="-113.555000">
+<name>Test 12 - Black (CSS Standard)</name>
+<desc>CSS Black: rgba(0,0,0,1) - Change to BLACK in OnX and export to verify</desc>
+<extensions>
+<onx:color>rgba(0,0,0,1)</onx:color>
+<onx:icon>Location</onx:icon>
+</extensions>
+</wpt>
+
+</gpx>
