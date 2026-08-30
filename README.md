@@ -20,6 +20,45 @@ See [`web/README.md`](web/README.md) for how the web app works and
 [`docs/VERCEL_DEPLOY_PLAN_2026-08-30.md`](docs/VERCEL_DEPLOY_PLAN_2026-08-30.md)
 for how it's deployed.
 
+### A walkthrough
+
+A real transformation, start to finish — a 100k trail race's aid stations, mile splits and
+course lines exported from CalTopo as GeoJSON.
+
+**1. Drop the file.** Nothing uploads anywhere; this all runs in your browser.
+
+<img src="./docs/screenshots/web-01-drop.png" alt="Cairn's drop-zone screen, prompting for a CalTopo GeoJSON export" width="800">
+
+**2. Review what came in.** 49 markups across aid stations, mile markers and the course lines,
+each already given a best-guess onX icon and color.
+
+<img src="./docs/screenshots/web-02-loaded.png" alt="The loaded Olympic Mtn 100k map, showing folders, waypoints, icons and colors" width="800">
+
+**3. Filter to what needs a human decision.** 37 waypoints — mostly generic mile markers —
+fell back to onX's default pin because nothing in CalTopo matched. That's often fine (a mile
+split doesn't need its own icon), but it's a one-click way to see exactly what's still
+unresolved.
+
+<img src="./docs/screenshots/web-03-needs-icon-filter.png" alt="The list filtered to 'Needs an icon', showing the 37 waypoints using onX's default pin" width="800">
+
+**4. Select the ones worth fixing.** Here, three mile-marker waypoints.
+
+<img src="./docs/screenshots/web-04-selected-rows.png" alt="Three mile-marker waypoints selected via checkboxes" width="800">
+
+**5. Set an icon on all of them at once.** No editing one waypoint at a time.
+
+<img src="./docs/screenshots/web-05-bulk-icon-picker.png" alt="The bulk icon picker, open to set an icon on 3 selected items" width="800">
+
+The attention count drops from 37 to 34 — exactly the 3 waypoints just fixed.
+
+<img src="./docs/screenshots/web-06-after-bulk-edit.png" alt="The map after the bulk edit, attention count reduced from 37 to 34" width="800">
+
+**6. Export, and get an import checklist, not just a pile of files.** onX creates one folder per
+import and names it with a timestamp — never from the filename — so Cairn tells you exactly
+which files to drag in together and what to rename the folder to.
+
+<img src="./docs/screenshots/web-07-runbook.png" alt="The generated import runbook, listing the files to import together and the folder name to use" width="800">
+
 ### Why?
 
 I'm an advocate for open data and being able to exchange map data between platforms. GPX/KML/GeoJSON are meant to be platform-agnostic interchange formats (or at least that's how I understand them). Cairn is my attempt to make that promise feel real for backcountry mapping: move between OnX and CalTopo while taking *all the map customization with you* (icons, colors, notes, and organization), not just raw shapes.
