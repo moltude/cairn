@@ -213,10 +213,13 @@ def test_selection_toggle_fast_on_10k_row_table(tmp_path: Path) -> None:
             )
             # Old behavior: ~5.8s at row 6000 (cursor restored via ~12,000
             # cursor_up/cursor_down actions, scheduled twice). New behavior sets
-            # the coordinate directly: measured ~0.5s (dominated by the 10k-row
-            # rebuild). 3s is generous headroom for slow machines while still
-            # failing hard if the quadratic restore returns.
-            assert elapsed < 3.0, (
+            # the coordinate directly: measured ~0.5s locally (dominated by the
+            # 10k-row rebuild) but 3.3s on GitHub's py3.10 ubuntu runner — the
+            # environment alone costs ~7x. The threshold must separate the fixed
+            # path (<~4s even on a slow runner) from the quadratic one (~6s on a
+            # fast machine, ~30s+ on that same slow runner), so 8s: past any
+            # honest constant-time run, well under any quadratic return.
+            assert elapsed < 8.0, (
                 f"Toggling selection at row {target_row} of a 10k-row table took "
                 f"{elapsed:.2f}s; quadratic cursor restore has likely returned"
             )

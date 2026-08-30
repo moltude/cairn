@@ -111,8 +111,17 @@ def test_matches_legacy_on_characters_that_need_escaping(text: str) -> None:
     """XML escaping and unicode must survive the swap identically.
 
     This is the case that would actually break an onX import if it regressed.
+
+    Python 3.13 changed minidom to stop escaping quotes in *text* nodes
+    (they were never required to be escaped there); `prettify_xml` matches the
+    3.13+ form. On older interpreters, normalize the legacy output's
+    over-escaping before the byte comparison — the canonical forms must match
+    on every version regardless.
     """
-    assert prettify_xml(_build(2, text=text)) == _legacy_prettify(_build(2, text=text))
+    ours = prettify_xml(_build(2, text=text))
+    legacy = _legacy_prettify(_build(2, text=text))
+    assert ET.canonicalize(ours) == ET.canonicalize(legacy)
+    assert ours == legacy.replace("&quot;", '"')
 
 
 def test_declaration_and_trailing_newline_are_preserved() -> None:
