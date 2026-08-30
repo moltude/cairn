@@ -65,44 +65,13 @@ See the color reference table below for the allowed onX colors. If the data you 
 
 For icons and symbols, onX accepts a set of ~40 icons but CalTopo exports a much larger set. Even when the icons are visually identical the text labels used may not match and the icon doesn't transfer. When the icon does not match in onX the default <img src="./docs/screenshots/onx-logo.png" alt="Alt text" height=15px> will be used.
 
-Cairn maintains a default mapping of common CalTopo --> onX icons, and it will warn you when it sees an icon it can't map.
+Cairn maintains a default mapping of common CalTopo --> onX icons. When it can't map one, the web
+app marks that waypoint amber and falls back to onX's default pin — filter to **"Needs an icon"**
+to see just those, then set an icon on them (individually or in bulk) before you export. Nothing
+is silently dropped; it's just flagged for a quick human decision.
 
-Example warning output:
-
-```shell
-⚠️  Found 3 unmapped CalTopo symbol(s):
-
-Symbol      Count  Example Waypoint
-climbing-2  3      Main Wall - Lost horse canyon
-circle-p    1      Parking- Main Wall and Starlight Lounge
-climbing-1  1      Pullout boulders
-
-💡 Add these to your config (default: cairn_config.yaml) to map them to OnX icons
-   Run 'cairn config export' to create a template
-   Run 'cairn config show' to see valid OnX icons already used in your mappings
-```
-
-To permanently map `climbing-1` to the OnX climber icon, add this to your `cairn_config.yaml`:
-
-```yaml
-symbol_mappings:
-  climbing-1: Climbing
-```
-
-#### Configuration
-
-Cairn uses `cairn_config.yaml` to store custom icon mappings and preferences.
-
-```yaml
-symbol_mappings:
-  # CalTopo symbol → OnX icon name
-  climbing-1: Climbing
-  climbing-2: Climbing
-  campsite-1: Campground
-  circle-p: Parking
-
-# Add more mappings as you encounter unmapped symbols
-```
+*(Prefer to pre-map symbols permanently instead of fixing them per-export? See
+["Custom icon mappings"](#custom-icon-mappings-command-line) under Command line.)*
 
 #### Color reference
 
@@ -153,7 +122,10 @@ Cairn will suggest icons based on keywords in waypoint names (e.g., "Camp spot" 
 
 **Recommendation**: When possible, export from CalTopo as GeoJSON for full fidelity. Use GPX when that's your only option, and use Cairn to add the metadata that GPX cannot store.
 
-Both the web app and CLI accept `.gpx`; Cairn will tell you up front what GPX cannot carry. If a directory holds both a `.json` and a `.gpx` export of the same map, Cairn offers the GeoJSON first, since choosing the GPX silently loses your icons, colors and folders.
+Both the web app and CLI accept `.gpx`; Cairn will tell you up front what GPX cannot carry.
+(The CLI/TUI's file browser goes a step further: if a directory holds both a `.json` and a
+`.gpx` export of the same map, it offers the GeoJSON first, since choosing the GPX silently
+loses your icons, colors and folders.)
 
 ### Known quirks, blockers and things I learned along the way
 
@@ -220,6 +192,44 @@ Useful flags and settings:
 | `--max-gpx-mb` | Size cap before auto-splitting (onX's import limit is 4 MB; default 3.75). |
 | `CAIRN_DEBUG_LOG=<path>` | Opt in to structured debug logging. Off by default. |
 | `CAIRN_ICON_CATALOG=<path>` | Opt in to recording which CalTopo symbols you encounter. Off by default. |
+
+#### Custom icon mappings (command line)
+
+The CLI/TUI can permanently pre-map a CalTopo symbol to an onX icon, instead of fixing unmapped
+ones per-export in the web app's UI. When a symbol has no mapping, the CLI prints a warning:
+
+```shell
+⚠️  Found 3 unmapped CalTopo symbol(s):
+
+Symbol      Count  Example Waypoint
+climbing-2  3      Main Wall - Lost horse canyon
+circle-p    1      Parking- Main Wall and Starlight Lounge
+climbing-1  1      Pullout boulders
+
+💡 Add these to your config (default: cairn_config.yaml) to map them to OnX icons
+   Run 'cairn config export' to create a template
+   Run 'cairn config show' to see valid OnX icons already used in your mappings
+```
+
+To permanently map `climbing-1` to the OnX climber icon, add this to your `cairn_config.yaml`:
+
+```yaml
+symbol_mappings:
+  climbing-1: Climbing
+```
+
+Cairn uses `cairn_config.yaml` to store custom icon mappings and preferences:
+
+```yaml
+symbol_mappings:
+  # CalTopo symbol → OnX icon name
+  climbing-1: Climbing
+  climbing-2: Climbing
+  campsite-1: Campground
+  circle-p: Parking
+
+# Add more mappings as you encounter unmapped symbols
+```
 
 If you want to *watch* a full CalTopo → OnX migration run (including intentional bad inputs to
 exercise error handling, bulk edits, and re-editing a folder) without interacting, run the
