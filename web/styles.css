@@ -1,11 +1,11 @@
 :root{
-  --bg:#12100e; --panel:#1b1815; --panel2:#242019; --line:#3a332a;
-  --ink:#f0ebe3; --muted:#a89d8c; --accent:#c8873c; --accent2:#8a6a3a;
+  --bg:#191c20; --panel:#21252a; --panel2:#292e34; --line:#3a3f47;
+  --ink:#e8e5df; --muted:#8b8f96; --accent:#c8873c; --accent2:#8a6a3a;
   --ok:#7bb661; --warn:#d9a441; --radius:10px;
 }
-@media (prefers-color-scheme: light){
-  :root{ --bg:#f7f4ee; --panel:#fff; --panel2:#f0ebe1; --line:#ddd3c2;
-         --ink:#231e18; --muted:#6d6355; --accent:#a4652a; }
+:root[data-theme="light"]{
+  --bg:#f7f4ee; --panel:#fff; --panel2:#f0ebe1; --line:#ddd3c2;
+  --ink:#231e18; --muted:#6d6355; --accent:#a4652a;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);

@@ -5,11 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cairn — CalTopo to onX</title>
 <link rel="stylesheet" href="styles.css">
+<script>
+  try {
+    if (localStorage.getItem("cairn-theme") === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  } catch (e) {}
+</script>
 </head>
 <body>
 <header>
   <div class="brand"><span class="mark">▲</span> Cairn</div>
   <div class="tagline">Move your CalTopo map to onX — with the icons, colors and folders intact</div>
+  <button id="theme-toggle" class="btn" title="Switch color theme">☀️ Light</button>
   <button id="help-btn" class="btn">Help</button>
   <div id="status" class="status">Starting…</div>
 </header>

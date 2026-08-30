@@ -5,6 +5,13 @@ let ANCHOR = null;   // last row clicked without shift -- the pivot for range se
 const $ = s => document.querySelector(s);
 const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; e.className = "status " + cls; };
 
+function setTheme(theme) {
+  if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
+  else document.documentElement.removeAttribute("data-theme");
+  try { localStorage.setItem("cairn-theme", theme); } catch (e) {}
+  $("#theme-toggle").textContent = theme === "light" ? "🌙 Twilight" : "☀️ Light";
+}
+
 async function boot() {
   try {
     setStatus("Loading Python runtime…");
@@ -309,6 +316,12 @@ function updateSel() {
     el.disabled = n === 0;
     el.title = n === 0 ? "Select rows first" : "";
   });
+  // Icons only exist on waypoints in onX -- a selection of only lines/areas
+  // would otherwise let "Set icon..." look active while applying to nothing.
+  if (n > 0 && !allItems().some(i => SEL.has(i.uid) && i.kind === "waypoints")) {
+    $("#bulk-icon").disabled = true;
+    $("#bulk-icon").title = "Lines and areas don’t take an icon in onX — select a waypoint";
+  }
   $("#more-menu").classList.add("hidden");
   syncSelectAllBox();
 }
@@ -338,10 +351,29 @@ const closeModal = () => $("#modal").classList.add("hidden");
 
 function pickIcon(uids) {
   const items = allItems().filter(i => uids.includes(i.uid));
-  openModal(uids.length > 1 ? `Set icon on ${uids.length} items` : "Choose an onX icon",
+  const wpItems = items.filter(i => i.kind === "waypoints");
+  const skipped = items.length - wpItems.length;
+  if (skipped > 0) {
+    console.warn(
+      `[cairn] Set icon: ${skipped} selected item(s) are lines/areas, which don't take an ` +
+      `icon in onX -- they will be left unchanged.`,
+      items.filter(i => i.kind !== "waypoints").map(i => ({ uid: i.uid, name: i.name, kind: i.kind }))
+    );
+  }
+  if (!wpItems.length) {
+    setStatus("Lines and areas don’t take an icon in onX.", "err");
+    return;
+  }
+  openModal(wpItems.length > 1 ? `Set icon on ${wpItems.length} items` : "Choose an onX icon",
     DATA.icons.map(i => ({ label: i, value: i, glyph: glyph(i) })),
-    items.length === 1 ? items[0].icon : null,
-    v => items.forEach(it => edit(it, { icon: v })));
+    wpItems.length === 1 ? wpItems[0].icon : null,
+    v => {
+      wpItems.forEach(it => edit(it, { icon: v }));
+      if (skipped > 0) {
+        setStatus(`Icon set on ${wpItems.length} waypoint${wpItems.length === 1 ? "" : "s"} — ` +
+          `${skipped} line/area item${skipped === 1 ? "" : "s"} left unchanged (no icon in onX).`);
+      }
+    });
 }
 function pickColor(uids) {
   const items = allItems().filter(i => uids.includes(i.uid));
@@ -418,6 +450,10 @@ window.addEventListener("DOMContentLoaded", () => {
   menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: it.desc } : {}));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
+  setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "twilight");
+  $("#theme-toggle").onclick = () => {
+    setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "twilight" : "light");
+  };
   $("#help-btn").onclick = () => $("#help").classList.remove("hidden");
   $("#help-close").onclick = () => $("#help").classList.add("hidden");
   $("#bulk-icon").onclick = () => pickIcon([...SEL]);
