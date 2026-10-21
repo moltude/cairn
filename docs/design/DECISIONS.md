@@ -209,7 +209,9 @@ condensed but complete:
 | F17 | "Export for onX" → "Export" | Applied in the app |
 
 ### UI-10 — Label for items that aren't in any CalTopo folder
-Status: open
+Status: **provisional — "Unorganized"** (user's suggestion, 2026-10-21; explicitly not final —
+the user is still unpacking how folder filtering should work). Mocked in B v2 with the subtitle
+"Not in any CalTopo folder". The candidates below stay live alternatives.
 
 Context: the app shows "Uncategorized". It comes from `cairn/core/parser.py:245` (items with no
 or a dangling `folderId`, only when the map has at least one folder) and is re-applied in
@@ -233,7 +235,10 @@ folder name / sidebar length):
   the short label in Cairn and this long form only for the onX folder/runbook.
 
 ### UI-11 — Icon and color as one mark?
-Status: open
+Status: decided 2026-10-21 — **3 · onX-style map marker**, accepting taller rows. User's reason:
+it's closest to how onX renders the waypoint, so it shows what Cairn will actually export.
+Applied in B v2: the separate Color column is gone; the marker is the icon cell and the click
+target for changing both.
 
 Options (rendered in `IconColor.dc.html`, each shown in Red / Blue / Yellow / White / Black):
 
@@ -275,3 +280,29 @@ Bitterroots fixture).
   row grows into a multi-line editor with Done/Cancel.
 - **Side panel / drawer** — not mocked; an alternative if inline growth disturbs the table.
 - **Modal** — not mocked; heaviest.
+
+---
+
+## Round 5 — Wording and the combined marker (2026-10-21)
+
+### UI-14 — Name of the "everything" folder facet
+Status: **provisional — "All"** (user's suggestion; not final, same open question as UI-10).
+Previously mocked as "All folders".
+
+### UI-15 — Drop "onX" from field labels
+Status: decided 2026-10-21. "onX icon" → **Icon**, "Notes for onX" → **Note**, "onX default
+pin" → **Default pin**. Rationale: the whole tool is about onX; repeating it on every label is
+noise. ("Export for onX" → "Export" in F17 was the same call.)
+
+### UI-16 — Changing icon + color now that they're one marker
+Status: proposed — `EditMark.dc.html`
+
+- **One item:** click the row's marker → a popover with a large live preview of the marker
+  (name, "Icon · Color", and what it was before), the 10 onX waypoint colors, an icon search with
+  icons suggested from the item's name, every icon drawn as a marker in the chosen color,
+  "Browse all 95", Cancel / Apply.
+- **Several items:** "Change icon & color" in the selection bar → a dialog with a Now → After
+  list per item, color and icon each defaulting to "Keep each one's", and a note that lines take
+  only the color (lines have no icon). Apply names the count ("Apply to 4").
+- Not yet mocked: lines use onX's 11-color track palette (adds Fuchsia) — the bulk dialog will
+  need to reconcile the two palettes when waypoints and lines are mixed.
