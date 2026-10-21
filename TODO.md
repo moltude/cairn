@@ -88,6 +88,8 @@ Feature backlog from the 2026-10-21 redesign review (`docs/design/DECISIONS.md`,
 * **Multi-line notes editor.** Note cell is a one-line `<input>`; Enter commits, so no line
   breaks can be typed and long notes are truncated. Proposed: click to expand into a textarea
   (UI-13). Needs the engine newline fix above first.
+* **Bulk rename and bulk note edit** (UI-17). "More" today only offers use-note-as-name and
+  exclude/include. Add Rename… (prefix/suffix, find/replace, with preview) and Change note….
 * **Filter / select by onX icon** (F14). Today's filters are search, type, and "needs an icon".
   Mocked as an "onX icon" facet in the sidebar.
 * **Folder facets with "All folders" + clear** (F1) — part of the B-layout rebuild.

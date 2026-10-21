@@ -306,3 +306,29 @@ Status: proposed — `EditMark.dc.html`
   only the color (lines have no icon). Apply names the count ("Apply to 4").
 - Not yet mocked: lines use onX's 11-color track palette (adds Fuchsia) — the bulk dialog will
   need to reconcile the two palettes when waypoints and lines are mixed.
+
+### UI-16 revisions (2026-10-21, user feedback on `EditMark.dc.html`)
+Status: accepted with changes ("look okay")
+
+- "Keep each one's" → **"Use existing"** (color and icon).
+- Removed the "Was: Default pin · Red" line from the single-item preview; Cancel is enough to
+  signal you can revert.
+- Every confirm button reads **"Apply"** (was "Apply to 4") — consistent button language.
+- Previews are **live**: the artboard is now interactive. Picking a color or icon re-renders the
+  big preview, the icon grid, and every Now → After row in the bulk dialog; "Use existing"
+  restores each item's own value; Cancel resets. The real build must do the same.
+- Icon picks in the bulk dialog are drawn in the chosen color (or a neutral red when color is
+  "Use existing").
+
+### UI-17 — What's in "More"
+Status: proposed
+
+Finding (`web/index.html:67-72`, `web/app.js:447-452`): today's menu (labelled "Advanced") has
+exactly three actions — **Use description as name**, **Leave out of the onX export**, **Put back
+in the export**. It does **not** batch-rename or batch-change notes. The only bulk rename in
+the web app is "use the note as the name".
+
+- Mocked in `EditMark.dc.html`: the three existing actions (reworded: "Use note as name",
+  "Leave out of export", "Put back in export") plus **Rename…** and **Change note…**, flagged
+  "not built". Rename would cover prefix/suffix and find/replace with a preview (the old TUI
+  backlog asked for the same).
