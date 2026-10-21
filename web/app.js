@@ -285,7 +285,8 @@ function renderFolders() {
   // invisible target for the next bulk edit.
   const fk = focusedKey();
   const shownUids = new Set(shownItems().map(i => i.uid));
-  for (const uid of SEL) if (!shownUids.has(uid)) SEL.delete(uid);
+  const selectableUids = new Set(selectableItems().map(i => i.uid));
+  for (const uid of SEL) if (!selectableUids.has(uid)) SEL.delete(uid);
   if (NOTE_EDIT && !shownUids.has(NOTE_EDIT.uid)) NOTE_EDIT = null;
   renderChips();
 
@@ -371,7 +372,7 @@ function row(it) {
       // currently displayed -- so it follows the active filter and sort rather
       // than the underlying file order.
       e.preventDefault();
-      const order = shownItems().map(i => i.uid);
+      const order = selectableItems().map(i => i.uid);
       const a = order.indexOf(ANCHOR), b = order.indexOf(it.uid);
       if (a !== -1 && b !== -1) {
         const [lo, hi] = a < b ? [a, b] : [b, a];
@@ -522,10 +523,14 @@ function allItems() { return DATA.groups.flatMap(g => g.items); }
     Select-all deliberately operates on THESE, not on everything in the file --
     "select all" after filtering to `water` should select the water, not 177 items. */
 function shownItems() { return DATA.groups.flatMap(g => visibleItems(g)); }
+/** Rows the user can actually see: shown items minus folders they collapsed.
+    Selection (select-all, shift-range, pruning) works on THESE, so a bulk edit
+    never reaches a row hidden inside a collapsed folder. */
+function selectableItems() { return DATA.groups.flatMap(g => COLLAPSED.has(g.key) ? [] : visibleItems(g)); }
 const selectedItems = () => allItems().filter(i => SEL.has(i.uid));
 
 function setSelectAll(on) {
-  const shown = shownItems();
+  const shown = selectableItems();
   shown.forEach(i => on ? SEL.add(i.uid) : SEL.delete(i.uid));
   if (!on) ANCHOR = null;
   renderFolders();
@@ -1011,7 +1016,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && !typing && DATA &&
         document.body.dataset.stage === "edit" && !BULK && !POP) {
       e.preventDefault();
-      setSelectAll(!(SEL.size && SEL.size === shownItems().length));
+      setSelectAll(!(SEL.size && SEL.size === selectableItems().length));
     }
   });
   boot();

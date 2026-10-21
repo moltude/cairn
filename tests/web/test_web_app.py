@@ -1146,3 +1146,28 @@ def test_export_with_unchanged_open_note_just_exports(loaded: Page):
     export_zip_bytes(loaded)  # no confirm button pressed: must not prompt
     expect(loaded.locator("#confirm")).to_be_hidden()
     assert loaded.evaluate("NOTE_EDIT") is None
+
+
+def test_selection_is_limited_to_rows_in_expanded_folders(loaded: Page):
+    """Select-all and shift-range must only reach rows the user can see. Rows in
+    a collapsed folder are not selected, and collapsing a folder drops its rows
+    from an existing selection, so a bulk edit never changes hidden items."""
+    first = loaded.evaluate("DATA.groups[0].key")
+    in_first = f"DATA.groups[0].items.filter(i => SEL.has(i.uid)).length"
+
+    # Collapse the first folder, then select all: nothing inside it is selected.
+    loaded.locator(f'.collapse[data-fk="collapse|{first}"]').click()
+    _select_all_shown(loaded)
+    assert loaded.evaluate(in_first) == 0
+    expected = loaded.evaluate(
+        "DATA.groups.slice(1).reduce((n, g) => n + visibleItems(g).length, 0)")
+    assert loaded.evaluate("SEL.size") == expected
+
+    # Expand, select all, then collapse: the folder's rows leave the selection.
+    _clear_selection(loaded)
+    loaded.locator(f'.collapse[data-fk="collapse|{first}"]').click()
+    _select_all_shown(loaded)
+    assert loaded.evaluate(in_first) == loaded.evaluate("DATA.groups[0].items.length")
+    loaded.locator(f'.collapse[data-fk="collapse|{first}"]').click()
+    loaded.wait_for_timeout(250)
+    assert loaded.evaluate(in_first) == 0

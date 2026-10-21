@@ -450,3 +450,12 @@ with Apply (save, then export; initial focus), Discard (export without it) and C
 to the editor). An open but unchanged note just closes.
 
 Other options considered: silently apply the draft; block Export while a note is open.
+
+### UI-23 — Selection is limited to visible rows
+Status: decided 2026-10-21. Closes the red-team item "Select-all includes collapsed folders".
+
+User: select-all should be limited to visible rows. Select-all (Ctrl/Cmd+A), shift-range and the
+"selection follows the screen" pruning now skip folders the user collapsed; collapsing a folder
+drops its rows from the selection. The "Showing N" chip still counts every filter match.
+
+Other option considered: keep hidden rows selected and show a "N hidden rows selected" notice.
