@@ -1,6 +1,12 @@
 # AGENTS.md — Cairn
 
-Instructions for AI agents working in this repo. The human-facing doc is `README.md` — what/why,
+Instructions for AI agents working in this repo.
+
+**Cairn is web-only (since 2026-10).** `web/` is the sole interface; `cairn/` is the conversion
+engine it runs in the browser via Pyodide. The typer CLI (`cairn/cli.py`, `cairn/commands/`), the
+legacy prompt-toolkit UI (`cairn/ui/`) and the Textual TUI (`cairn/tui/`) were deleted — their
+last state is git tag `cli-final`. Do not reintroduce a terminal interface or a typer/rich/
+textual dependency. The human-facing doc is `README.md` — what/why,
 icon/color mapping tables, known quirks (`TECH_DETAIILS.md` was merged into it 2026-08-30).
 
 ## Environment: read this first
@@ -27,8 +33,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-08-30: **686 passed, 2 skipped, Python 3.14** (with the web dev server up;
-without it the 36 `tests/web` tests skip, giving 650 passed / 38 skipped).
+Baseline as of 2026-10-21: **532 passed, Python 3.14** (with the web dev server up; without
+it the 36 `tests/web` tests skip). The drop from 686 is the CLI/TUI test removal.
 If you see a different pass count, something changed — find out what before proceeding.
 
 ## Architecture
@@ -59,31 +65,25 @@ cairn/core/
   dedup.py / shape_dedup.py / merge.py
                             rotation- and direction-tolerant fuzzy geometry dedup; prefers
                             KML polygons over GPX track representations of the same object
-  preview.py                1946 lines — the non-TUI interactive preview/edit flow
-  edit_session.py           edit state shared by both UIs
+  edit_session.py           edit state (formerly shared by the TUIs; unused by web today)
 
-cairn/commands/           typer subcommands: migrate (primary), convert (hidden/advanced),
-                          config, tui
-cairn/cli.py              entry point -> `cairn` console script
-
-cairn/ui/                 LEGACY prompt-toolkit interactive UI. Still live — imported by
-                          core/preview.py and commands/migrate_cmd.py. Do not assume it's dead.
-cairn/tui/                CURRENT Textual UI. app.py is 3698 lines; edit_screens/ holds the
-                          modals and overlays.
+web/                      THE INTERFACE. index.html + app.js + styles.css; bridge.py is the
+                          only Python consumer of cairn/. It ships cairn as a wheel in web/dist/
+                          (rebuild: `uv build --no-sources && cp dist/*.whl web/dist/`).
 ```
 
-Two UI stacks coexist on purpose (mid-migration). `prompt-toolkit` is still a hard dependency
-because of `cairn/ui/`.
+Modules web/bridge.py reaches carry a `# Web engine:` header; `tests/test_web_engine_surface.py`
+fails if that marking drifts from bridge.py's real import graph. Everything else in cairn/ (onX
+readers, caltopo_gpx, dedup/merge) is engine code not yet wired into the web app.
 
 ## Testing conventions
 
-- TUI tests drive the real Textual app through `tests/tui_harness.py` + textual's `Pilot`.
 - Fixtures live in `tests/fixtures/`. `tests/fixtures/bitterroots/Bitterroots__Complete_.json`
   is the canonical large dataset; `tests/fixtures/edge_cases/` covers poles, dateline, unicode,
   malformed input, and 10k-feature stress files.
-- **Do not add `try/except Exception` around assertions or key presses in tests.** 35 existing TUI
-  tests already swallow exceptions and then assert nothing — they pass unconditionally. Don't add
-  to that pile; a flaky interaction should be fixed or `pytest.skip`ped explicitly.
+- **Do not add `try/except Exception` around assertions in tests.** The deleted TUI suite had 35
+  tests that swallowed exceptions and asserted nothing. A flaky interaction should be fixed or
+  `pytest.skip`ped explicitly.
 - `tests/output/` holds stale generated output from `scripts/test_edge_cases.py` (untracked
   since 2026-08-30). It is not produced by pytest and is not a fixture. Don't treat it as an
   expectation baseline.
@@ -109,16 +109,14 @@ because of `cairn/ui/`.
   `.github/dependabot.yml` bumps uv deps and action SHAs weekly. Action refs are pinned to
   SHAs — note `astral-sh/setup-uv` has **no floating `v10` tag**, so it must be pinned by SHA.
 - **The distribution is named `cairn-maps`**, not `cairn` — that name is taken on PyPI by an
-  unrelated 2019 project. The installed command is still `cairn` via `[project.scripts]`.
+  unrelated 2019 project. There is no console script any more (web-only).
   `release.yml`'s tag-guard asserts the git tag matches `pyproject`'s version; PyPI filenames are
   immutable, so a mismatched publish is permanent.
 - **Nothing under `cairn/` may write to its own package directory.** `icon_catalog.yaml` used to
   be appended to on every run — dirtying the working tree, leaking test fixture names into shipped
   data, and targeting a path that is read-only in a real install. Recording is now opt-in via
   `CAIRN_ICON_CATALOG`; `tests/test_icon_catalog_optin.py` guards it.
-- `pyproject.toml` claims `requires-python = ">=3.9"`. That is false — `cairn/model.py:119` uses a
-  PEP 604 union at runtime, so `import cairn` raises `TypeError` on 3.9. The real floor is 3.10.
-- Debug logging (`tui/debug.py:agent_log`, `core/writers.py:_agent_ndjson_log`) is **opt-in via
+- Debug logging (`core/writers.py:_agent_ndjson_log`) is **opt-in via
   `CAIRN_DEBUG_LOG`** as of 2026-08-29. It previously wrote to `~/.cursor/debug.log`
   unconditionally and had grown to 12 MB. Don't reintroduce a default path — a path that exists
   on every machine turns the logging back on for everyone.
@@ -129,9 +127,11 @@ because of `cairn/ui/`.
   `micropip.install(url, { deps: false })` silently passed the object as the second
   *positional* parameter (`keep_going`), leaving `deps=True` — every boot fetched
   typer/rich/textual from PyPI. Pyodide requires `fn.callKwargs(args, { kw: v })` for kwargs.
-  The enforced-CSP e2e test is what caught it; keep that test passing.
-- **XML parsing uses stock `xml.etree.ElementTree`, deliberately.** The readers only run in the
-  CLI/TUI on files the user chose (the web app is JSON/GeoJSON-only — `web/bridge.py` imports
+  The enforced-CSP e2e test is what caught it; keep that test passing. It also caught an
+  inline `<script>` (the theme-init snippet) that production's CSP silently blocked — all JS
+  must live in files under `web/`.
+- **XML parsing uses stock `xml.etree.ElementTree`, deliberately.** The XML readers aren't
+  reachable from the web app at all (the web app is JSON/GeoJSON-only — `web/bridge.py` imports
   just `parse_geojson`). Stock ElementTree doesn't resolve external entities (no classic XXE)
   and modern expat caps entity amplification, so `defusedxml` was evaluated (2026-08-30) and
   skipped as a dependency not worth its cost. Revisit only if XML parsing ever becomes reachable
