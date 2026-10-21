@@ -159,7 +159,7 @@ brown + contour green, blue links, serif throughout, drawn stroke icons, exact o
 the real Bitterroots fixture data. Where they differ is the question.
 
 ### UI-09 — Which layout for the loaded map?
-Status: open
+Status: decided 2026-10-21 — **B, with the round-4 changes below** (see `CollarV2.dc.html`)
 
 - **A · Quad sheet** (`Main.dc.html`, Source Serif 4) — A boxed title block across the top
   like a USGS quad's corner (map name, file, scale-bar ornament, a 2×2 count grid with
@@ -177,3 +177,101 @@ Status: open
 Empty state (`Empty.dc.html`): one proposal, two columns — what Cairn does + 3 numbered steps
 on the left, a framed drop target with contour lines and a map glyph on the right. Not yet a
 decision; revisit once UI-09 is picked so it shares that variant's type and header.
+
+User's reasons for B: the folder list works as **facets** (a filter), which A and C lack.
+Graft from C: the faint contour lines, used as background in a few places in B.
+
+---
+
+## Round 4 — Feedback on B (2026-10-21)
+
+Revised mockup: `CollarV2.dc.html`. Treatment study: `IconColor.dc.html`. The user's feedback,
+condensed but complete:
+
+| # | Feedback | Resolution |
+|---|---|---|
+| F1 | Folder facets need an "All" option and a way to clear filters | Added "All folders" + "Clear" in the rail and a filter chip row with "Clear all filters" (B v2) |
+| F2 | "Uncategorized" is wrong; those items simply aren't in a CalTopo folder. Wants language suggestions | Open → UI-10 |
+| F3 | Use C's light contour lines as background in a few places | Done in B v2 (title block of the rail) |
+| F4 | "25 waypoints will use onX's default pin" sentence is text taking up space | Removed; the default pin stays visible per row and as an icon facet |
+| F5 | "10 batches" means nothing on this screen (confused even the user) | Removed from this screen; explain imports at export time / in the runbook |
+| F6 | Total markup count isn't relevant here | Removed the map-level totals (per-folder counts stay in the facets) |
+| F7 | Don't show the file name, only the CalTopo map title | Done: "Bitterroots (Complete)" only |
+| F8 | B was missing the "More" action that A and C have | Added "More ▾" to the selection bar |
+| F9 | Color column: just show the color, no label | Swatch only (name in tooltip / aria-label) |
+| F10 | Could icon and color be one mark (red camp → blue camp)? Wants renderings; may be overkill | Open → UI-11 |
+| F11 | Notes: clicking should open the full note for reading/editing, multi-line | Mocked as an inline expanding textarea; current behavior investigated → UI-13 |
+| F12 | How do multi-line notes carry into onX — plain text or HTML? Don't assume | **Unverified.** No onX doc or repo evidence settles it; only indirect evidence that multi-line `<desc>` lands verbatim. Needs a manual import probe (see `TODO.md`) |
+| F13 | 100 items in a folder: paginated or one long list? | One long list: every row is built, no paging; collapse only hides. Measured locally: 1,500 rows load+render 0.21 s, ~70 ms per filter keystroke; 5,000 rows 0.69 s / ~190 ms. No pagination needed within onX's 1,500-markup limit |
+| F14 | Filter / select by icon type | Added "onX icon" facet in B v2; not built in the app yet → `TODO.md` |
+| F15 | "Load another map" is unclear; user assumed it merges maps | Investigated: it **clears** the current map. → UI-12 |
+| F16 | Counts are ambiguous (items vs waypoints vs lines) — clarify in docs, not on the site | `web/README.md` "What the numbers mean" |
+| F17 | "Export for onX" → "Export" | Applied in the app |
+
+### UI-10 — Label for items that aren't in any CalTopo folder
+Status: open
+
+Context: the app shows "Uncategorized". It comes from `cairn/core/parser.py:245` (items with no
+or a dangling `folderId`, only when the map has at least one folder) and is re-applied in
+`web/bridge.py:127`. The same string becomes the export folder (`NN_Uncategorized`) and the
+runbook's "rename the onX import folder to …" line — so this label is also what the user types
+into onX. Whatever is chosen should live in one shared constant. Mocked placeholder in B v2:
+"Not in a folder", italic in the rail to set it apart from real folders.
+
+Candidates (researched by a subagent; judged on clarity to a CalTopo user / fitness as an onX
+folder name / sidebar length):
+
+- **Not in a folder** — clearest for someone who sees these at the map's top level in CalTopo;
+  a bit long, reads as a phrase rather than a name.
+- **No folder** — very short and unambiguous; can read like an error.
+- **Unfiled** — short, familiar from mail/file apps; slightly jargon-y as an onX folder name.
+- **Map top level** — exactly describes CalTopo's structure; technical for onX users.
+- **Loose items** — plain and easy to picture; informal.
+- **Ungrouped** — standard in software; jargon for many people.
+- *(variant)* **"<Map title> — not in a folder"** — e.g. "Bitterroots (Complete) — not in a
+  folder"; self-explanatory as an onX folder name once imported, long in the sidebar. Could use
+  the short label in Cairn and this long form only for the onX folder/runbook.
+
+### UI-11 — Icon and color as one mark?
+Status: open
+
+Options (rendered in `IconColor.dc.html`, each shown in Red / Blue / Yellow / White / Black):
+
+- **1 · Tinted line icon** — icon stroke drawn in the onX color, over a dark outline so yellow
+  and white survive on paper. Lightest; thin colored strokes are hard to tell apart.
+- **2 · Color disc, icon knocked out** — a filled circle in the onX color with the icon in
+  black or white for contrast. Compact; color reads first.
+- **3 · onX-style map marker** — a teardrop pin in the color with the icon inside; previews the
+  map. Most literal, tallest, and a stand-in for onX's own artwork.
+- **4 · Ink icon on a color field** — icon chip with a color tab attached; one click target but
+  icon and color stay separable.
+- **Keep them separate** — current B v2: icon + name, then a color swatch column.
+
+Also mocked: clicking the mark opens one popover holding both the color palette and the icon
+search.
+
+### UI-12 — "Load another map"
+Status: decided (copy); merge feature deferred
+
+Finding: the button resets everything (`web/app.js` `.newmap` handler: `DATA = null; EDITS =
+{}` …) and returns to the drop screen. It does **not** merge maps. The user expected (or wanted)
+merging several CalTopo exports (e.g. three people's Bitterroots maps) into one onX export.
+
+- **Relabel to "Start over with a different map" + tooltip** — ✔ chosen for now; tooltip says
+  combining maps isn't supported yet.
+- **Build merge ("Add another map")** — deferred to `TODO.md` as a feature; the engine has
+  dedup/merge code (`cairn/core/merge.py`, `dedup.py`) not yet wired into the web app.
+
+### UI-13 — Reading and editing notes
+Status: proposed (B v2)
+
+Finding: today's note cell is a single-line `<input>` (`web/app.js` `desc-in`); long notes are
+cut off and Enter commits, so there is no way to type a line break. Worse, line breaks never
+reach the UI: `strip_html` (`cairn/utils/utils.py`) collapses all whitespace at parse time, so
+multi-line CalTopo notes are flattened before Cairn shows or exports them (7 of 189 notes in the
+Bitterroots fixture).
+
+- **Inline expand to a textarea** — proposed in B v2: click the note (pencil affordance) and the
+  row grows into a multi-line editor with Done/Cancel.
+- **Side panel / drawer** — not mocked; an alternative if inline growth disturbs the table.
+- **Modal** — not mocked; heaviest.

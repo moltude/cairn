@@ -50,6 +50,19 @@
   RUNBOOK telling the user the batches, the order, and the exact name to type — is now built
   (`web/bridge.py:build_runbook`, shipped in every web export). See
   `docs/FIDELITY_MODEL_2026-08-29.md` and `docs/PLATFORM_CONSTRAINTS_2026-08-29.md`.
+* **Multi-line notes are flattened at parse time.** `strip_html` (`cairn/utils/utils.py`) ends
+  with `re.sub(r"\s+", " ", text)`, and `cairn/core/parser.py` applies it to every description —
+  so line breaks in CalTopo notes are gone before the web app shows them or the writers export
+  them (7 of 189 notes in the Bitterroots fixture). Keep `\n` (collapse only runs of spaces/tabs),
+  and add a test. Prerequisite for the notes editor below. (Found 2026-10-21.)
+* **Investigate: do line breaks / formatting survive into onX notes?** Unknown whether onX keeps
+  newlines from GPX `<desc>` (or KML `<description>`), needs HTML, or flattens. Do not assume —
+  settle it with a real import test. See `docs/design/DECISIONS.md` round 4 (F12). Probe:
+  one GPX with waypoints whose `<desc>` is (A1) literal newlines, (A2) `&#10;` newlines,
+  (B) escaped `&lt;br&gt;`, (C) blank line + indented line; import into a fresh onX collection,
+  check Notes on web and mobile; then type a two-line note in onX, export it as GPX, and read the
+  raw `<desc>`. Optionally repeat as KML `<description>` (plain, CDATA+`<br>`) — Cairn writes no
+  KML descriptions today.
 * Add a feature to include the CalTopo Folder name in either the Name or Description for all elements.
 * Support for polygons/areas at the engine/writer level.
 * **Move the unmapped-symbol warning to the START of the process**, not the end. Right now you
@@ -69,6 +82,22 @@
 ---
 
 ## Web app
+
+Feature backlog from the 2026-10-21 redesign review (`docs/design/DECISIONS.md`, round 4):
+
+* **Multi-line notes editor.** Note cell is a one-line `<input>`; Enter commits, so no line
+  breaks can be typed and long notes are truncated. Proposed: click to expand into a textarea
+  (UI-13). Needs the engine newline fix above first.
+* **Filter / select by onX icon** (F14). Today's filters are search, type, and "needs an icon".
+  Mocked as an "onX icon" facet in the sidebar.
+* **Folder facets with "All folders" + clear** (F1) — part of the B-layout rebuild.
+* **Merge several CalTopo maps into one export** (UI-12). "Load another map" currently resets;
+  users read it as "add". Engine has dedup/merge code (`core/merge.py`, `core/dedup.py`) not
+  wired into the web app yet.
+* **Large folders** (F13): every item renders as a table row and every edit/keystroke rebuilds
+  the whole table. Measured 2026-10-21: 1,500 rows 0.21 s load, ~70 ms per filter keystroke;
+  5,000 rows 0.69 s / ~190 ms. Fine within onX's 1,500 limit — no pagination now. If it ever
+  matters: debounce the filter, re-render only the edited row, lazily build collapsed folders.
 
 The web app's own known-bugs table lives in [`web/README.md`](web/README.md#bugs-this-prototype-exposed)
 rather than here, since most of what it's surfaced turned out to be engine bugs (folded into
