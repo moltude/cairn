@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cairn — drop a CalTopo export</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&amp;display=swap">
+<style>
+body{margin:0;background:#F3EEE2}
+a{color:#2F6690}a:hover{color:#1F4A6B}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F3EEE2; color: #2B2620; font-family: 'Source Serif 4', Georgia, serif; font-size: 17px; display: flex; flex-direction: column;">
+
+  <header style="border-bottom: 1px solid #CDBF9F; padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8A5A2B" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h14M7 20l2-5h6l2 5M9 15l1.5-4h3L15 15M10.5 11 12 7l1.5 4"></path></svg>
+      <span style="font-size: 22px; font-weight: 700;">Cairn</span>
+    </div>
+    <span style="font-size: 14px; font-style: italic; color: #5E5446;">Map engine loading… about 10 seconds the first time</span>
+  </header>
+
+  <main style="flex-grow: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 56px 32px; box-sizing: border-box; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; align-items: start;">
+
+    <div style="display: flex; flex-direction: column; gap: 18px;">
+      <span style="font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #8A5A2B;">CalTopo → onX Backcountry</span>
+      <h1 style="margin: 0; font-size: 46px; line-height: 1.08; font-weight: 700;">Move your map without losing its icons, colors or folders.</h1>
+      <p style="margin: 0; line-height: 1.65; color: #4A4136;">Cairn reads a CalTopo export, shows you every waypoint and track the way onX will see it, lets you fix what won't carry over, then writes files onX can import.</p>
+      <ol style="margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0; border-top: 1px solid #CDBF9F;">
+        <li style="display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #CDBF9F;"><span style="font-weight: 700; color: #8A5A2B; width: 20px;">1</span><span>In CalTopo, export the map as <strong>GeoJSON</strong>.</span></li>
+        <li style="display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #CDBF9F;"><span style="font-weight: 700; color: #8A5A2B; width: 20px;">2</span><span>Drop it here and review icons and colors.</span></li>
+        <li style="display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #CDBF9F;"><span style="font-weight: 700; color: #8A5A2B; width: 20px;">3</span><span>Export, then import the files into onX following the included steps.</span></li>
+      </ol>
+      <p style="margin: 0; font-size: 15px; font-style: italic; color: #5E5446;">Your map never leaves this computer — everything runs in your browser.</p>
+    </div>
+
+    <label style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 440px; padding: 40px; box-sizing: border-box; background: #FAF7EF; border: 2px solid #2B2620; text-align: center; cursor: pointer;">
+      <svg width="100%" height="100%" viewBox="0 0 400 440" preserveAspectRatio="none" fill="none" stroke="#DCCFB2" stroke-width="1" aria-hidden="true" style="position: absolute; inset: 0;">
+        <path d="M-10 380 C 80 330, 160 400, 240 350 S 360 300, 410 330"></path>
+        <path d="M-10 340 C 90 290, 170 360, 250 310 S 370 260, 410 290"></path>
+        <path d="M-10 300 C 100 250, 180 320, 260 270 S 380 220, 410 250"></path>
+        <path d="M-10 90 C 70 60, 150 120, 230 80 S 350 40, 410 70"></path>
+        <path d="M-10 60 C 80 30, 160 90, 240 50 S 360 10, 410 40"></path>
+      </svg>
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#8A5A2B" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: relative;"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14 M15 6v14"></path></svg>
+      <span style="position: relative; font-size: 26px; font-weight: 600;">Drop a CalTopo export</span>
+      <span style="position: relative; color: #5E5446;">.json or .geojson</span>
+      <span style="position: relative; font: inherit; font-weight: 600; background: #3F6B3A; color: #FFFFFF; border-radius: 3px; padding: 12px 22px; min-height: 48px; box-sizing: border-box; display: inline-flex; align-items: center;">Choose a file</span>
+      <input type="file" accept=".json,.geojson" style="position: absolute; width: 1px; height: 1px; opacity: 0;">
+    </label>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

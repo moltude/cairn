@@ -151,7 +151,29 @@ Status: decided
 
 ---
 
-## Next
+## Round 3 — Mockups (2026-10-21)
 
-Mockups for the loaded screen and the empty state, built from UI-01…UI-08. Link them here when
-they exist, and record the pick as UI-09.
+Canvas: https://claude.ai/artifact/PJBrycMk8uXHfeDr1DitKu (private). Source is versioned
+in `docs/design/mockups/project/`. All three variants share UI-01…UI-08: warm paper, topo
+brown + contour green, blue links, serif throughout, drawn stroke icons, exact onX color swatches,
+the real Bitterroots fixture data. Where they differ is the question.
+
+### UI-09 — Which layout for the loaded map?
+Status: open
+
+- **A · Quad sheet** (`Main.dc.html`, Source Serif 4) — A boxed title block across the top
+  like a USGS quad's corner (map name, file, scale-bar ornament, a 2×2 count grid with
+  default-pin highlighted). Labelled search/filter row. Folders as headed sections with a
+  brown rule. Export lives in a dark sticky bar along the bottom with a one-line summary.
+- **B · Map collar sidebar** (`Collar.dc.html`, Libre Caslon Text) — A left rail styled as
+  the map collar: title between double rules, counts as sentences, a folder index you can jump
+  through, Export + Load at the rail's foot. Segmented type filter including "Default pin · 25";
+  a selection bar appears above the table when rows are ticked.
+- **C · Legend band** (`Legend.dc.html`, Alegreya + Alegreya SC) — A full-width header band
+  with faint contour lines, big map title, Export in the band. Find / Show / Change-selected
+  as a three-cell legend box. Symbol-first table columns; colors drawn as line swatches;
+  remaining folders as a dotted-leader index.
+
+Empty state (`Empty.dc.html`): one proposal, two columns — what Cairn does + 3 numbered steps
+on the left, a framed drop target with contour lines and a map glyph on the right. Not yet a
+decision; revisit once UI-09 is picked so it shares that variant's type and header.
