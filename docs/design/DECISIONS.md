@@ -459,3 +459,14 @@ User: select-all should be limited to visible rows. Select-all (Ctrl/Cmd+A), shi
 drops its rows from the selection. The "Showing N" chip still counts every filter match.
 
 Other option considered: keep hidden rows selected and show a "N hidden rows selected" notice.
+
+### ENG-03 — Narrow the CSP's CDN allowance
+Status: decided 2026-10-21 (user approved the narrow option).
+
+`script-src` and `connect-src` now allow `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/`
+instead of all of `cdn.jsdelivr.net`, so no other jsdelivr content can run in the page. Verified:
+boot, load, export and download under the enforced CSP with zero violations; a test pins the
+CSP path to the Pyodide version the app loads.
+
+Not done (still open): self-hosting Pyodide and the pinned packages so every engine file is
+served from our own origin with integrity — about 10–15 MB more per deploy.

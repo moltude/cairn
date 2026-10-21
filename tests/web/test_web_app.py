@@ -1171,3 +1171,20 @@ def test_selection_is_limited_to_rows_in_expanded_folders(loaded: Page):
     loaded.locator(f'.collapse[data-fk="collapse|{first}"]').click()
     loaded.wait_for_timeout(250)
     assert loaded.evaluate(in_first) == 0
+
+
+def test_csp_cdn_allowance_is_pinned_to_the_pyodide_version_in_use():
+    """The CSP allows jsdelivr only under the exact Pyodide folder the app
+    loads (not all of cdn.jsdelivr.net). A Pyodide bump must update every
+    copy of the version together, or the production page fails to boot."""
+    web = Path(__file__).resolve().parents[2] / "web"
+    index_url = re.search(r'indexURL:\s*"([^"]+)"', (web / "app.js").read_text()).group(1)
+    script = re.search(r'<script src="(https://cdn\.jsdelivr\.net/[^"]+)"', (web / "index.html").read_text()).group(1)
+    policy = next(h["value"] for rule in json.loads((web / "vercel.json").read_text())["headers"]
+                  for h in rule["headers"] if h["key"] == "Content-Security-Policy")
+    directives = dict(d.strip().split(" ", 1) for d in policy.split(";") if d.strip())
+    for name in ("script-src", "connect-src"):
+        sources = directives[name].split()
+        jsdelivr = [s for s in sources if "jsdelivr" in s]
+        assert jsdelivr == [index_url], f"{name} should allow only {index_url}, got {jsdelivr}"
+    assert script.startswith(index_url)

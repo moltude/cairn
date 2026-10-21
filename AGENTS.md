@@ -35,8 +35,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-21: **567 passed, Python 3.15** with the web dev server up; without it
-the 56 `tests/web` tests skip, giving **511 passed, 56 skipped**. The drop from 686 is the
+Baseline as of 2026-10-21: **568 passed, Python 3.15** with the web dev server up; without it
+the 57 `tests/web` tests skip, giving **511 passed, 57 skipped**. The drop from 686 is the
 CLI/TUI test removal. (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 
@@ -126,6 +126,10 @@ readers, caltopo_gpx, dedup/merge) is engine code not yet wired into the web app
 - The onX format is not fully standard: the same linework exports as `<trk>` or `<rte>`; areas
   usually only survive as KML polygons; onX reorders items after import. See
   `README.md`'s "Known quirks" section.
+- **The CSP allows jsdelivr only under the pinned Pyodide folder** (`web/vercel.json`,
+  e.g. `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/`). A Pyodide bump must change the version
+  in `web/index.html` (plus its SRI hash), `web/app.js` `indexURL`, and `web/vercel.json` together;
+  `test_csp_cdn_allowance_is_pinned_to_the_pyodide_version_in_use` fails if they drift.
 - **A JS object is not keyword arguments to a Python function.** In `web/app.js`,
   `micropip.install(url, { deps: false })` silently passed the object as the second
   *positional* parameter (`keep_going`), leaving `deps=True` — every boot fetched
