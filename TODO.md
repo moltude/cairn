@@ -50,11 +50,10 @@
   RUNBOOK telling the user the batches, the order, and the exact name to type — is now built
   (`web/bridge.py:build_runbook`, shipped in every web export). See
   `docs/FIDELITY_MODEL_2026-08-29.md` and `docs/PLATFORM_CONSTRAINTS_2026-08-29.md`.
-* **Multi-line notes are flattened at parse time.** `strip_html` (`cairn/utils/utils.py`) ends
+* **FIXED (2026-10-21): Multi-line notes were flattened at parse time.** `strip_html` (`cairn/utils/utils.py`) ends
   with `re.sub(r"\s+", " ", text)`, and `cairn/core/parser.py` applies it to every description —
   so line breaks in CalTopo notes are gone before the web app shows them or the writers export
-  them (7 of 189 notes in the Bitterroots fixture). Keep `\n` (collapse only runs of spaces/tabs),
-  and add a test. Prerequisite for the notes editor below. (Found 2026-10-21.)
+  them (7 of 189 notes in the Bitterroots fixture). `strip_html` now keeps `\n` (br/p/div/li/CRLF -> newline, max one blank line); tests added. Prerequisite for the notes editor below. (Found 2026-10-21.)
 * **Investigate: do line breaks / formatting survive into onX notes?** Unknown whether onX keeps
   newlines from GPX `<desc>` (or KML `<description>`), needs HTML, or flattens. Do not assume —
   settle it with a real import test. See `docs/design/DECISIONS.md` round 4 (F12). Probe:

@@ -19,7 +19,7 @@ from cairn.core.color_mapper import ColorMapper
 from cairn.core.config import GENERIC_SYMBOLS
 from cairn.core.icon_resolver import IconResolver
 from cairn.core.mapper import map_icon
-from cairn.core.parser import parse_geojson
+from cairn.core.parser import UNORGANIZED_FOLDER_NAME, parse_geojson
 from cairn.utils.utils import natural_sort_key
 from cairn.core.writers import (
     write_gpx_tracks_maybe_split,
@@ -40,7 +40,10 @@ ONX_COLORS = [
     ("Red", "rgba(255,0,0,1)", "#FF0000"),
     ("Brown", "rgba(139,69,19,1)", "#8B4513"),
 ]
-_RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in ONX_COLORS}
+# Fuchsia: README.md color table row 11 / ColorMapper.TRACK_PALETTE (track-only).
+FUCHSIA = ("Fuchsia", "rgba(255,0,255,1)", "#FF00FF")
+LINE_COLORS = ONX_COLORS + [FUCHSIA]
+_RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in LINE_COLORS}
 
 _STATE: dict = {"doc": None, "groups": [], "config": None, "edited": set()}
 
@@ -124,7 +127,7 @@ def load_document(text: str, filename: str) -> str:
         # UUIDs in the runbook's "rename it to:" instruction.
         fname = (fdata.get("name") or "").strip()
         if not fname or fkey == "orphaned_features":
-            fname = "Uncategorized"
+            fname = UNORGANIZED_FOLDER_NAME
         items = []
         for kind in ("waypoints", "tracks", "shapes"):
             # Index PER KIND. This used to be len(items), a running total across
@@ -145,7 +148,11 @@ def load_document(text: str, filename: str) -> str:
                 # NOT cairn.core.mapper.map_color -- that converts to KML's
                 # AABBGGRR. The onX waypoint palette mapper is what writers.py:429
                 # uses, and it is what the <onx:color> element needs.
-                color = ColorMapper.map_waypoint_color(feat.color or feat.stroke or "")
+                if kind == "waypoints":
+                    color = ColorMapper.map_waypoint_color(feat.color or feat.stroke or "")
+                else:
+                    # Lines/areas use the 11-color track palette (keeps Fuchsia).
+                    color = ColorMapper.map_track_color(feat.stroke or feat.color or "")
                 items.append(
                     {
                         "uid": f"{fkey}::{kind}::{kind_index}",
@@ -183,6 +190,8 @@ def load_document(text: str, filename: str) -> str:
             "groups": groups,
             "icons": sorted(get_all_onx_icons()),
             "colors": [{"name": n, "rgba": r, "hex": h} for n, r, h in ONX_COLORS],
+            # 11-color palette for lines: the 10 waypoint colors plus Fuchsia.
+            "line_colors": [{"name": n, "rgba": r, "hex": h} for n, r, h in LINE_COLORS],
             "totals": {
                 "folders": len(groups),
                 "items": sum(len(g["items"]) for g in groups),
@@ -259,7 +268,9 @@ def export_zip() -> bytes:
                 if item["uid"] in _STATE.get("edited", ()):
                     hex_ = _hex_for(item["color"])
                     feat.color = hex_
-                    if getattr(feat, "stroke", None):
+                    if item["kind"] != "waypoints" or getattr(feat, "stroke", None):
+                        # Track writers read feature.stroke (track palette,
+                        # so Fuchsia round-trips); KML shapes read feature.color.
                         feat.stroke = hex_
 
     out = Path("/tmp/out")

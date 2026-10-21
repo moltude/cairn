@@ -14,6 +14,10 @@ from pathlib import Path
 import json
 from cairn.utils.utils import strip_html
 
+# Name of the group for items not in any CalTopo folder. PROVISIONAL label --
+# a product decision still under review (see docs/design/DECISIONS.md UI-10).
+UNORGANIZED_FOLDER_NAME = "Unorganized"
+
 
 class ParsedFeature:
     """Represents a parsed CalTopo feature."""
@@ -242,7 +246,7 @@ def parse_geojson(filepath: Path) -> ParsedData:
     # These are features without a folderId (CalTopo's root-level features)
     if parsed_data.orphaned_features:
         orphan_folder_id = "orphaned_features"
-        orphan_folder_name = "Uncategorized"
+        orphan_folder_name = UNORGANIZED_FOLDER_NAME
         parsed_data.add_folder(orphan_folder_id, orphan_folder_name)
 
         for orphan in parsed_data.orphaned_features:

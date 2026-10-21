@@ -210,3 +210,31 @@ class TestShouldSplit:
         """Custom limits respected."""
         assert should_split(50, 100, max_items=25) is True
         assert should_split(10, 100, max_items=25) is False
+
+
+class TestStripHtmlLineBreaks:
+    """strip_html keeps line breaks (multi-line notes)."""
+
+    def test_br_variants(self):
+        for br in ("<br>", "<br/>", "<br />", "<BR>"):
+            assert strip_html(f"a{br}b") == "a\nb"
+
+    def test_block_closers(self):
+        assert strip_html("<p>a</p><p>b</p>") == "a\nb"
+        assert strip_html("<div>a</div><div>b</div>") == "a\nb"
+        assert strip_html("<ul><li>a</li><li>b</li></ul>") == "a\nb"
+
+    def test_crlf_and_cr(self):
+        assert strip_html("a\r\nb\rc") == "a\nb\nc"
+
+    def test_blank_line_collapse(self):
+        assert strip_html("a\n\n\n\n\nb") == "a\n\nb"
+        assert strip_html("a\n\nb") == "a\n\nb"
+
+    def test_spaces_and_trim(self):
+        assert strip_html("  a   \t b  \n   c  \n") == "a b\nc"
+
+    def test_single_line_helper(self):
+        from cairn.utils.utils import single_line
+
+        assert single_line(" a\n\n b\tc ") == "a b c"

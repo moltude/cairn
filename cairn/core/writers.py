@@ -481,6 +481,7 @@ def write_gpx_waypoints_maybe_split(
             timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             block.append(f"    <time>{timestamp}</time>")
         if desc_content:
+            # Real newlines are written inside <desc>; whether onX keeps them is UNVERIFIED (see TODO.md).
             block.append(f"    <desc>{escape(desc_content)}</desc>")
         block.append("    <extensions>")
         block.append(f"      <onx:icon>{mapped_icon}</onx:icon>")

@@ -170,6 +170,14 @@ def _clear_selection(page):
     page.wait_for_timeout(250)
 
 
+def _set_type(page, kind):
+    """The type filter is a segmented button group (All / Waypoints / Lines /
+    Areas); "" is All."""
+    page.click(f'#type-filter [data-kind="{kind}"]')
+    page.wait_for_timeout(150)
+    assert page.get_attribute(f'#type-filter [data-kind="{kind}"]', "aria-pressed") == "true"
+
+
 def _menu_action(page, selector):
     """Bulk actions beyond icon/color now live behind the More menu."""
     page.click("#more-btn")
@@ -246,10 +254,10 @@ def test_bulk_icon_change_reduces_attention_by_exactly_n(
     boxes = loaded.locator(f"{ROW} .sel-box")
     assert boxes.count() >= n_select, "fixture doesn't have enough attention rows"
 
-    # Filters and edit tools share one persistent bar now. At rest, Set
-    # icon/color/More are visible but disabled -- not hidden.
+    # The selection bar (with the one "Icon & color…" button) only appears
+    # once rows are ticked; at rest its tools are hidden AND disabled.
     assert loaded.locator("#bulk-icon").is_disabled()
-    assert loaded.locator("#bulk-color").is_disabled()
+    assert loaded.locator("#more-btn").is_disabled()
     assert loaded.locator("#selcount").is_hidden()
 
     for i in range(n_select):
@@ -260,16 +268,19 @@ def test_bulk_icon_change_reduces_attention_by_exactly_n(
     assert f"{n_select} selected" in loaded.text_content("#selcount")
     assert loaded.locator("#selcount").is_visible()
     assert loaded.locator("#bulk-icon").is_enabled()
-    assert loaded.locator("#bulk-color").is_enabled()
 
     before_attention = loaded.evaluate("DATA.totals.attention")
 
     loaded.click("#bulk-icon")
-    loaded.click(f"#modal-body .opt >> text={new_icon}")
+    loaded.click(f'#mark-dialog .icon-pick[data-icon="{new_icon}"]')
+    # Nothing is applied until Apply.
+    assert loaded.evaluate("DATA.totals.attention") == before_attention
+    loaded.click("#bulk-apply")
     loaded.wait_for_timeout(100)
 
     after_attention = loaded.evaluate("DATA.totals.attention")
     assert after_attention == before_attention - n_select
+    assert loaded.locator("#mark-modal").is_hidden()
 
     loaded.uncheck("#only-attention")
 
@@ -534,7 +545,7 @@ def test_type_filter_shows_only_that_kind(fresh_page, kind):
     fresh_page.set_input_files("#file", str(FIXTURE))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
 
-    fresh_page.select_option("#type-filter", kind)
+    _set_type(fresh_page, kind)
     fresh_page.wait_for_timeout(400)
 
     expected = fresh_page.evaluate(
@@ -575,7 +586,7 @@ def test_excluded_items_are_left_out_of_the_export(fresh_page):
     fresh_page.set_input_files("#file", str(FIXTURE))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
 
-    fresh_page.select_option("#type-filter", "shapes")
+    _set_type(fresh_page, "shapes")
     fresh_page.wait_for_timeout(400)
     _select_all_shown(fresh_page)
     fresh_page.wait_for_timeout(300)
@@ -586,7 +597,7 @@ def test_excluded_items_are_left_out_of_the_export(fresh_page):
     fresh_page.wait_for_timeout(400)
     assert fresh_page.evaluate("DATA.totals.excluded") == n_areas
 
-    fresh_page.select_option("#type-filter", "")
+    _set_type(fresh_page, "")
     fresh_page.wait_for_timeout(300)
     zf = _export_zip(fresh_page)
     kml = [n for n in zf.namelist() if n.endswith(".kml")]
@@ -617,11 +628,14 @@ def test_escape_reverts_an_edit_instead_of_committing_it(fresh_page, field, cls)
     """Escape blurs, and blur commits -- so Escape used to SAVE the edit.
 
     Emptying a name and changing your mind must not persist an empty string.
+    The note is edited in an inline textarea opened from the row's note button.
     """
     fresh_page.set_input_files("#file", str(FIXTURE))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
 
     original = fresh_page.evaluate(f"DATA.groups[0].items[0].{field}")
+    if field == "desc":
+        fresh_page.locator(f"{ROW} .note-btn").first.click()
     box = fresh_page.locator(cls).first
     box.click()
     box.fill("")
@@ -629,7 +643,136 @@ def test_escape_reverts_an_edit_instead_of_committing_it(fresh_page, field, cls)
     fresh_page.wait_for_timeout(300)
 
     assert fresh_page.evaluate(f"DATA.groups[0].items[0].{field}") == original
+    if field == "desc":
+        # Escape closed the editor; reopening shows the untouched note.
+        assert fresh_page.locator(".desc-in").count() == 0
+        fresh_page.locator(f"{ROW} .note-btn").first.click()
     assert fresh_page.locator(cls).first.input_value() == original
+
+
+def test_note_editor_keeps_line_breaks_and_applies_with_ctrl_enter(loaded: Page):
+    """Enter is a newline in the note editor; Ctrl/Cmd+Enter applies."""
+    uid = loaded.locator(ROW).first.get_attribute("data-uid")
+    loaded.locator(f"{ROW} .note-btn").first.click()
+    box = loaded.locator(".desc-in").first
+    box.fill("first line")
+    box.press("End")
+    box.press("Enter")
+    box.type("second line")
+    box.press("ControlOrMeta+Enter")
+    loaded.wait_for_timeout(200)
+
+    desc = loaded.evaluate(f"DATA.groups.flatMap(g=>g.items).find(i=>i.uid==={uid!r}).desc")
+    assert desc == "first line\nsecond line"
+    assert loaded.locator(".desc-in").count() == 0
+    # The clipped one-line view shows the newline as a space.
+    clipped = loaded.locator(f'tr[data-uid="{uid}"] .note-text').inner_text()
+    assert clipped == "first line second line"
+
+
+def test_note_editor_apply_and_cancel_buttons(loaded: Page):
+    uid = loaded.locator(ROW).first.get_attribute("data-uid")
+    get = f"DATA.groups.flatMap(g=>g.items).find(i=>i.uid==={uid!r}).desc"
+    original = loaded.evaluate(get)
+
+    loaded.locator(f"{ROW} .note-btn").first.click()
+    loaded.locator(".desc-in").first.fill("discard me")
+    loaded.click(".note-cancel")
+    assert loaded.evaluate(get) == original
+
+    loaded.locator(f"{ROW} .note-btn").first.click()
+    loaded.locator(".desc-in").first.fill("keep me")
+    loaded.click(".note-apply")
+    assert loaded.evaluate(get) == "keep me"
+    assert loaded.evaluate(f"EDITS[{uid!r}].desc") == "keep me"
+
+
+def test_marker_popover_changes_one_items_icon_and_color(loaded: Page):
+    """Clicking a row's marker opens the single-item editor; previews are live
+    and nothing changes until Apply."""
+    loaded.check("#only-attention")
+    loaded.wait_for_timeout(100)
+    row = loaded.locator(ROW).first
+    uid = row.get_attribute("data-uid")
+    get = f"DATA.groups.flatMap(g=>g.items).find(i=>i.uid==={uid!r})"
+    before = loaded.evaluate(get)
+
+    row.locator(".icon-btn").click()
+    pop = loaded.locator("#mark-pop")
+    assert pop.is_visible()
+    # every onX icon is offered, not just a shortlist
+    assert pop.locator(".icon-pick").count() == loaded.evaluate("DATA.icons.length")
+    pop.locator('.swatch-btn[aria-label="Blue"]').click()
+    pop.locator(".icon-search").fill("summ")
+    assert pop.locator(".icon-pick").count() >= 1
+    pop.locator('.icon-pick[data-icon="Summit"]').click()
+    assert "Summit · Blue" in pop.locator(".pop-desc").inner_text()
+    assert loaded.evaluate(get)["icon"] == before["icon"]  # not yet applied
+
+    loaded.click("#pop-apply")
+    loaded.wait_for_timeout(150)
+    after = loaded.evaluate(get)
+    assert after["icon"] == "Summit"
+    assert after["color"] == "rgba(8,122,255,1)"
+    assert after["needs_attention"] is False
+    assert pop.is_hidden()
+
+
+def test_marker_popover_cancel_changes_nothing(loaded: Page):
+    row = loaded.locator(ROW).first
+    uid = row.get_attribute("data-uid")
+    get = f"DATA.groups.flatMap(g=>g.items).find(i=>i.uid==={uid!r})"
+    before = loaded.evaluate(get)
+    row.locator(".icon-btn, .line-btn").click()
+    loaded.locator('#mark-pop .swatch-btn[aria-label="Yellow"]').click()
+    loaded.locator("#mark-pop .pop-cancel").click()
+    assert loaded.evaluate(get) == before
+    assert loaded.evaluate("Object.keys(EDITS).length") == 0
+
+
+def test_bulk_dialog_palette_follows_the_selection(loaded: Page):
+    """Waypoints-only and mixed selections get onX's 10 colors; lines-only get
+    the 11-color line palette (adds Fuchsia) when the engine provides it."""
+    _set_type(loaded, "waypoints")
+    loaded.locator(f"{ROW} .sel-box").nth(0).check()
+    loaded.click("#bulk-icon")
+    assert loaded.locator("#mark-dialog .swatch-btn").count() == 10
+    loaded.click("#mark-dialog .bulk-cancel")
+    _clear_selection(loaded)
+
+    _set_type(loaded, "tracks")
+    loaded.locator(f"{ROW} .sel-box").nth(0).check()
+    loaded.locator(f"{ROW} .sel-box").nth(1).check()
+    loaded.click("#bulk-icon")
+    n_line_colors = loaded.evaluate("(DATA.line_colors || DATA.colors).length")
+    assert loaded.locator("#mark-dialog .swatch-btn").count() == n_line_colors
+    assert loaded.locator("#mark-dialog .icon-pick").count() == 0  # lines take no icon
+    # live Now -> After preview
+    loaded.locator('#mark-dialog .swatch-btn[aria-label="Purple"]').click()
+    after = loaded.locator("#mark-dialog .na-after").all_inner_texts()
+    assert after and all(t.endswith("· Purple") for t in after), after
+    loaded.click("#bulk-apply")
+    colors = loaded.evaluate(
+        "DATA.groups.flatMap(g=>g.items).filter(i=>SEL.has(i.uid)).map(i=>i.color)"
+    )
+    assert colors == ["rgba(128,0,128,1)"] * 2
+
+
+def test_folder_facet_filters_and_chip_clears_it(loaded: Page):
+    g = loaded.evaluate("({key: DATA.groups[1].key, name: DATA.groups[1].name, n: DATA.groups[1].items.length})")
+    loaded.locator("#folder-facets .facet-btn").nth(2).click()  # 0 is "All"
+    loaded.wait_for_timeout(150)
+    assert loaded.locator(ROW).count() == g["n"]
+    assert loaded.locator(".folder").count() == 1
+    assert f"Folder: {g['name']}" in loaded.inner_text("#chips")
+
+    _select_all_shown(loaded)
+    assert loaded.evaluate("SEL.size") == g["n"]
+
+    loaded.click("#chips .linkbtn")  # Clear filters
+    loaded.wait_for_timeout(150)
+    assert loaded.locator(ROW).count() == EXPECTED_TOTALS["items"]
+    assert loaded.locator("#chips").is_hidden()
 
 
 def test_a_name_cannot_be_committed_empty(fresh_page):
@@ -690,7 +833,7 @@ def test_shift_click_works_upward_too(loaded: Page):
 
 def test_shift_click_range_follows_the_filter_not_the_file(loaded: Page):
     """The range must span what is DISPLAYED, so it can't reach filtered-out rows."""
-    loaded.select_option("#type-filter", "shapes")
+    _set_type(loaded, "shapes")
     loaded.wait_for_timeout(400)
     shown = loaded.locator(ROW).count()
 
@@ -719,7 +862,7 @@ def test_ctrl_a_selects_all_shown_and_escape_clears(loaded: Page):
 
 
 def test_ctrl_a_respects_the_active_filter(loaded: Page):
-    loaded.select_option("#type-filter", "shapes")
+    _set_type(loaded, "shapes")
     loaded.wait_for_timeout(400)
     shown = loaded.locator(ROW).count()
 
