@@ -418,3 +418,17 @@ content-hashed path; drop `immutable`/long max-age for the wheel; plus a CI chec
 committed wheel matches the source. **User's call:** breaking previous visitors is acceptable —
 the site has no serious production users — so none of these were done. Revisit before the site
 has real users: any later change to `cairn/` re-creates the same failure.
+
+### ENG-02 — Mobile is out of scope
+Status: decided 2026-10-21.
+
+User: no optimization for mobile — it's outside the project's scope, and importing/exporting
+map data on a phone is not a use case Cairn will encourage or support. Cairn is a desktop
+browser tool.
+
+Consequences:
+- Closes the red-team item "On phones, Export sits at the foot of a long filter rail" as
+  **won't fix** (options were a collapsible Filters disclosure or a sticky Export bar).
+- Don't add phone-specific layouts, mockups, screenshots or tests going forward. The narrow-width
+  CSS already in the app stays as harmless fallback but is not maintained as a target; it may be
+  removed if it ever gets in the way.

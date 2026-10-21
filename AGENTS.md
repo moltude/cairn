@@ -2,6 +2,8 @@
 
 Instructions for AI agents working in this repo.
 
+**Cairn is web-only (since 2026-10), and desktop-only:** mobile is out of scope (`docs/design/DECISIONS.md` ENG-02) — don't add phone layouts or tests.
+
 **Cairn is web-only (since 2026-10).** `web/` is the sole interface; `cairn/` is the conversion
 engine it runs in the browser via Pyodide. The typer CLI (`cairn/cli.py`, `cairn/commands/`), the
 legacy prompt-toolkit UI (`cairn/ui/`) and the Textual TUI (`cairn/tui/`) were deleted — their
