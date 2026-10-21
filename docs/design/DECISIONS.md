@@ -392,3 +392,12 @@ Applied now: the theme toggle, `web/theme-init.js`, `setTheme()` and the light-v
 removed from the live app, which keeps its current (twilight) colors until the CSS rebuild
 replaces them with the field-guide theme. The options UI-03 offered (dark-first, follow the OS)
 stay recorded there if this is ever reopened.
+
+### UI-20 — Where the contour lines go
+Status: decided 2026-10-21. Revises F3 / round 4.
+
+User: the contour lines made the text hard to read; they belong in the center frame, behind
+all the text boxes — "sent to back". Applied: removed the inline contour SVGs (rail title
+block, drop target, icon popover header). One contour layer is now the page background; the
+rail and every card, field and dialog are opaque, so lines only show in the gaps. Text not
+already in a box (the empty screen's intro, the done screen) sits on a paper panel.

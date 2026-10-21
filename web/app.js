@@ -19,7 +19,7 @@ const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; 
 async function boot() {
   try {
     setStatus("Loading Python runtime…");
-    py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/" });
+    py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.5/full/" });
     setStatus("Loading map engine…");
     await py.loadPackage("micropip");
     const micropip = py.pyimport("micropip");
@@ -528,10 +528,6 @@ function openPop(it, anchor) {
   pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : "color"} for ${it.name}`);
   pop.innerHTML = `
     <div class="pop-head">
-      <svg class="contours" viewBox="0 0 600 110" preserveAspectRatio="none" fill="none" stroke="#DCCFB2" stroke-width="1" aria-hidden="true">
-        <path d="M-10 95 C 120 60, 220 110, 340 75 S 520 40, 610 60"/>
-        <path d="M-10 70 C 130 35, 230 85, 350 50 S 530 15, 610 35"/>
-        <path d="M-10 45 C 140 10, 240 60, 360 25 S 540 -10, 610 10"/></svg>
       <span class="pop-preview"></span>
       <div class="pop-title"><span class="pop-name">${esc(it.name || "Untitled")}</span><span class="pop-desc"></span></div>
     </div>

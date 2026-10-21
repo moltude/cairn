@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import os
 import re
 import urllib.error
@@ -955,3 +956,26 @@ def test_icon_popover_and_dialog_stay_inside_short_windows(loaded: Page, width, 
       .find(e => e.offsetParent && e.getBoundingClientRect().height > 0); d.id ||= 'bulk-dialog-under-test';
       return '#' + d.id; }""")
     assert loaded.evaluate(fits, dialog), f"bulk dialog clipped at {width}x{height}"
+
+
+def test_map_content_is_rendered_as_text_not_html(fresh_page: Page, tmp_path):
+    """A CalTopo file is untrusted input. Names, notes and folder titles full of
+    markup must show up as literal text everywhere the UI renders them (rows,
+    rail facets, filter chips, the icon editor), never as live elements."""
+    payload = '<img src=x id=pwn onerror="window.__pwned=1">'
+    doc = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "id": "f1", "geometry": None,
+         "properties": {"class": "Folder", "title": "Folder " + payload}},
+        {"type": "Feature", "id": "w1", "geometry": {"type": "Point", "coordinates": [-114.1, 46.2]},
+         "properties": {"class": "Marker", "title": "Name " + payload, "description": "Note " + payload,
+                        "marker-symbol": "<b>sym</b>", "marker-color": "#FF0000", "folderId": "f1"}},
+    ]}
+    src = tmp_path / "evil.json"
+    src.write_text(json.dumps(doc), encoding="utf-8")
+    fresh_page.set_input_files("#file", str(src))
+    fresh_page.wait_for_selector("#folders .icon-btn")
+    fresh_page.locator(".facet-btn, #rail button", has_text="Folder").first.click()
+    fresh_page.locator("#folders .icon-btn").first.click()
+    assert fresh_page.locator("#pwn").count() == 0
+    assert fresh_page.evaluate("() => window.__pwned === undefined")
+    assert payload in fresh_page.locator("#folders").inner_text()

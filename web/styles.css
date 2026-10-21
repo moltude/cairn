@@ -40,7 +40,6 @@ a{color:var(--link)}a:hover{color:var(--link-hover)}
 input[type=checkbox]{accent-color:var(--green);width:16px;height:16px;margin:0;cursor:pointer;flex:none}
 h1,h2,h3{font-weight:700;margin:0}
 .label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
-.contours{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
 /* ---------- buttons ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--card);
@@ -87,7 +86,7 @@ body[data-stage=edit] .topbar{display:none}
 .drop-target{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:16px;min-height:440px;padding:40px;background:var(--sheet);
   border:2px solid var(--ink);text-align:center;transition:background .15s,border-color .15s}
-.drop-target>*:not(.contours){position:relative}
+
 .drop-target.over{background:var(--sel-row);border-color:var(--green)}
 .drop-title{font-size:26px;font-weight:700}
 .drop-sub{color:var(--muted)}
@@ -97,7 +96,6 @@ body[data-stage=edit] .topbar{display:none}
 .rail{position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;overflow-x:hidden;
   flex:1 1 300px;max-width:340px;background:var(--rail);border-right:1px solid var(--rule);
   display:flex;flex-direction:column}
-.rail-contours{height:320px;bottom:auto}
 .rail-head{position:relative;padding:26px 26px 0;display:flex;flex-direction:column;gap:22px}
 .rail-head .wordmark .help-link{margin-left:auto;font-weight:400}
 .title-block{border-top:3px double var(--ink);border-bottom:3px double var(--ink);padding:18px 0}
@@ -226,7 +224,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .pop.sheet{position:fixed;left:8px;right:8px;top:8px;width:auto;max-height:calc(100vh - 16px);overflow:auto}
 .pop-head{position:relative;overflow:hidden;display:flex;align-items:center;gap:18px;padding:18px 20px;
   border-bottom:1px solid var(--rule-soft);background:var(--sheet-head)}
-.pop-head>*:not(.contours){position:relative}
+
 .pop-preview{display:inline-flex;flex:none}
 .pop-title{display:flex;flex-direction:column;gap:2px;min-width:0}
 .pop-name{font-size:20px;font-weight:700;overflow-wrap:anywhere}
@@ -372,3 +370,16 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 
 /* --link on the rail's darker paper is 4.49:1 -- just under AA; darken it there. */
 .rail .linkbtn{color:var(--link-hover)}
+
+/* Contour lines live ONLY in the center frame's background — sent to back,
+   behind every card, field and dialog (decided 2026-10-21). Never draw them
+   inline behind text. */
+:root{--contour-bg:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='560' fill='none'%3E%3Cpath d='M-20 40 C 220 -6, 420 80, 640 34 S 1020 -18, 1220 26' stroke='%23D8CAA9' stroke-width='1'/%3E%3Cpath d='M-20 92 C 220 46, 420 132, 640 86 S 1020 34, 1220 78' stroke='%23D8CAA9' stroke-width='1'/%3E%3Cpath d='M-20 144 C 220 98, 420 184, 640 138 S 1020 86, 1220 130' stroke='%23C4AF85' stroke-width='1.4'/%3E%3Cpath d='M-20 196 C 220 150, 420 236, 640 190 S 1020 138, 1220 182' stroke='%23D8CAA9' stroke-width='1'/%3E%3Cpath d='M-20 248 C 220 202, 420 288, 640 242 S 1020 190, 1220 234' stroke='%23D8CAA9' stroke-width='1'/%3E%3Cpath d='M-20 300 C 220 254, 420 340, 640 294 S 1020 242, 1220 286' stroke='%23D8CAA9' stroke-width='1'/%3E%3Cpath d='M-20 352 C 220 306, 420 392, 640 346 S 1020 294, 1220 338' stroke='%23C4AF85' stroke-width='1.4'/%3E%3Cpath d='M-20 404 C 220 358, 420 444, 640 398 S 1020 346, 1220 390' stroke='%23D8CAA9' stroke-width='1'/%3E%3Cpath d='M-20 456 C 220 410, 420 496, 640 450 S 1020 398, 1220 442' stroke='%23D8CAA9' stroke-width='1'/%3E%3Cpath d='M-20 508 C 220 462, 420 548, 640 502 S 1020 450, 1220 494' stroke='%23D8CAA9' stroke-width='1'/%3E%3C/svg%3E")}
+/* Full-width layer behind everything; the rail and every card/field/dialog
+   are opaque, so the lines only show in the gaps. Text that isn't already in a
+   box (the empty screen's intro, the done screen) gets a paper panel. */
+body{background-color:var(--paper);background-image:var(--contour-bg);
+  background-size:100% 560px;background-repeat:repeat-y}
+.drop-copy,.stage.done>*{background:var(--paper);box-shadow:0 0 0 18px var(--paper)}
+html{min-height:100%}
+body{min-height:100vh}
