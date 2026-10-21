@@ -55,13 +55,14 @@ GPX and KML byte is produced by the same writers the 342 engine tests already co
 
 `cairn/__init__.py` used to be `from cairn.cli import app, main`, which meant importing *any*
 submodule pulled in typer, rich and textual — so the engine could not load in a browser at all
-(measured: 0 of 13 engine modules importable without the CLI stack). It is now a PEP 562 lazy
-`__getattr__`, so `from cairn import app` still works for the CLI while
-`import cairn.core.writers` is dependency-free. All 650 existing tests still pass.
+(measured: 0 of 13 engine modules importable without the CLI stack). That was first
+fixed with a lazy import; since 2026-10 the CLI and TUI are gone entirely (git tag `cli-final`),
+so the engine has no terminal dependencies at all. Measurements below that compare against "the
+CLI" date from when it still existed.
 
 ## Scope
 
-Prototype, deliberately not at parity with the TUI: no undo, no map preview, no session
+Deliberately not at parity with the former TUI: no undo, no map preview, no session
 persistence, no onX → CalTopo direction. Those are on the roadmap in
 `docs/PLATFORM_DECISION_2026-08-29.md`.
 
@@ -75,6 +76,6 @@ are in the engine, not the web layer:
 | `load_config()` resolves `cairn_config.yaml` from the **current directory** | `cairn/core/config.py:906` | The browser (cwd `/home/pyodide`) silently loaded **144** symbol mappings while the CLI loaded **152**. `circle-p` failed to map to Parking, and **8 of 24 exported files differed**. Same bug the CLI has when run from another directory. |
 | Colour edits were silently discarded *(fixed)* | `web/bridge.py` | No writer reads `cairn_onx_color_override`; `writers.py:429` recomputes colour from `feature.color`. Fixed by writing the picked color onto `feature.color` directly for edited items (`bridge.py:257-272`). |
 | KML shapes weren't sorted | `web/bridge.py` | The CLI natural-sorts before `write_kml_shapes` (`convert_cmd.py:458`); the bridge didn't, so placemark order diverged. |
-| `typer`/`rich`/`textual` are hard dependencies | `pyproject.toml` | micropip pulled ~2.6 MB the browser never executes, busting the download gate. Worked around with `deps:false`; the real fix is an optional `cli` extra. |
+| `typer`/`rich`/`textual` are hard dependencies | `pyproject.toml` | micropip pulled ~2.6 MB the browser never executes, busting the download gate. **Fixed 2026-10**: the CLI was removed, so `pyyaml` is the only dependency. `deps:false` stays as a guard. |
 | Fallback folder name came from the temp filename | `web/bridge.py` | A CalTopo export with no folders produced a folder literally named `in`, and a runbook saying "Rename it to `in`". |
 | Dropped features masked the 1,500-markup warning | `web/bridge.py` | Items with no coordinates are silently skipped by `writers.py:397`; the limit check ran on the post-drop count, so a 1,601-item map could export 1,400 and never warn. |

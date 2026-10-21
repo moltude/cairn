@@ -6,22 +6,21 @@
 > `docs/CODEBASE_AUDIT_2026-08-29.md` and `docs/UX_AUDIT_2026-08-29.md`; this file stays a
 > dumping ground.
 
-> Reorganized 2026-08-30 around the web app as the primary interface (see `README.md`). The
-> TUI is now a secondary, experimental way to run the same engine locally — its backlog lives
-> in its own section below rather than mixed in with the engine/CLI items that affect every
-> interface.
+> Reorganized 2026-08-30 around the web app as the primary interface (see `README.md`).
+
+> 2026-10-21: Cairn is now **web-only**. The CLI and TUI were deleted (git tag `cli-final`), and
+> with them every item that only concerned them — the CLI-shape list, the whole TUI/styling
+> backlog, `--no-interactive`, the duplicated summary output, `set-default-color` help, and
+> `core/preview.py` test coverage.
 
 ---
 
-## Core engine (affects the web app and the CLI both)
+## Core engine (used by the web app)
 
-* **Saved config silently vanishes depending on your working directory.** `load_config()` resolves
-  `Path("cairn_config.yaml")` relative to CWD (`core/config.py:877,906`). Proved: 152 symbol
-  mappings load from the repo root, **144 from another directory** — 8 saved mappings gone, no
-  warning. The web app hits this too — its cwd (`/home/pyodide`) silently loaded 144 mappings
-  while the CLI loaded 152 (see `web/README.md`'s bug table). Fix: `--config` →
-  `$CAIRN_CONFIG` → `~/.config/cairn/config.yaml` → directory-local, merged, and print which
-  file loaded.
+* **`load_config(None)` still reads `cairn_config.yaml` from the current directory**
+  (`core/config.py`). The web app is safe because `web/bridge.py:_config` passes an explicit
+  path, but the ambient fallback is a trap for any future caller — make the path mandatory, or
+  drop the CWD lookup.
 * **Cairn ships an icon onX does not accept.** `Cabin` is absent from onX's 95-icon vocabulary
   (`normalize_onx_icon_name("Cabin")` → `None`), but `DEFAULT_SYMBOL_MAP` maps `cabin`/`hut`/`yurt`
   to it. 4 waypoints in the Bitterroots fixture export `<onx:icon>Cabin</onx:icon>` and will land
@@ -36,15 +35,7 @@
 * ~~**`<desc>` is a debug dump in every exported waypoint.**~~ **Fixed 2026-08-29.**
   `<desc>` now carries only the user's own note (omitted entirely when there is no note);
   icons/colors/styles still travel in the `<onx:>` extensions. The old key=value block is
-  available via `--debug` on `migrate onx` / `migrate caltopo-to-onx` (and
-  `--description-mode debug` on `convert`). Covered by `tests/test_desc_output.py`.
-* **`--no-interactive` still prompts, then aborts** on empty stdin, so Cairn can't be scripted
-  or run in CI. (Known since Dec 2025; never fixed.)
-* **"Order confirmed (--yes flag)"** prints for a flag that doesn't exist on `migrate onx`, and
-  prints twice, around a summary block that also prints twice.
-* **The success path wraps the output directory mid-character**, so the one thing the user needs
-  at the end is unreadable.
-* **`set-default-color` help text is incomplete.** (Known since Dec 2025.)
+  still available from the writers via `description_mode="debug"` (not exposed in the web app). Covered by `tests/test_desc_output.py`.
 * ~~**Running the tool wrote into its own installed package.**~~ **Fixed 2026-08-29**: every
   `migrate` run — and every test run — used to append to the version-controlled
   `cairn/data/icon_catalog.yaml`, leaking test fixture names ("Test Waypoint", "JsonWaypoint")
@@ -61,41 +52,19 @@
   `docs/FIDELITY_MODEL_2026-08-29.md` and `docs/PLATFORM_CONSTRAINTS_2026-08-29.md`.
 * Add a feature to include the CalTopo Folder name in either the Name or Description for all elements.
 * Support for polygons/areas at the engine/writer level.
-* Stop writing the `ICON_REPORT.md` summary file by default — it was a debugging artifact.
 * **Move the unmapped-symbol warning to the START of the process**, not the end. Right now you
   learn which icons failed to map only after the files are already written.
 * Investigate line styling in onX.
 * Investigate: can onX data be exported, modified, and re-imported so it *updates* the same
   objects rather than creating duplicates? (Skeptical this is possible — worth 30 minutes to
   find out, not more.)
-* Add tests for `core/preview.py` (16% covered, 1946 lines, on the legacy non-TUI interactive
-  preview/edit flow used by `cairn/ui/`).
-* Re-enable the 2 skipped regression tests, or delete them if the behavior is intentionally gone.
-
-### CLI shape
-
-* The subcommand tree is bigger than it needs to be.
-  * `convert` — registered `hidden=True`, 36% covered, 1115 lines. Determine what it's actually
-    for; if `migrate` covers it, delete it.
-  * `icon` — managing icon mappings belongs in the config file, not the CLI.
-  * `config` — a config subcommand is useful, but this isn't the one. Revisit what should be
-    configurable at all.
-* Generalize the naming: it's really "migrate to onX" / "migrate to CalTopo" regardless of
-  whether the source is GPX, KML or GeoJSON. (Partly done — `migrate onx` / `migrate caltopo`
-  aliases exist, and `migrate onx` now accepts `.gpx` as of 2026-08-29.)
-* **Invalid input should never abort the process.** A missing directory, or a directory with no
-  map files, should re-prompt rather than exit.
 
 ### General / process
 
 * Workflow redesign — `docs/WORKFLOW_REDESIGN_2026-08-29.md` reconciles three design proposals
   against `docs/DECISION_SURFACE_2026-08-29.md`, which measures that the tool makes users walk
-  68 waypoints to answer ~24 questions. (Written against the TUI's flow; re-check relevance now
-  that the web app is primary.)
-* `pyproject.toml` pins `textual>=0.58.0` — a range spanning 0.58 to 8.2.8 that has never been
-  tested. A grep for every API removed/renamed across those versions found zero hits in `cairn/`
-  and `tests/`, so the upgrade is low-risk; tighten the pin to what is actually verified
-  (`>=6.11,<9`).
+  68 waypoints to answer ~24 questions. (Written against the since-deleted TUI's flow; re-check
+  what still applies to the web app.)
 
 ---
 
@@ -105,45 +74,3 @@ The web app's own known-bugs table lives in [`web/README.md`](web/README.md#bugs
 rather than here, since most of what it's surfaced turned out to be engine bugs (folded into
 "Core engine" above). Add new web-only findings there.
 
----
-
-## TUI (secondary, experimental)
-
-The TUI predates the web app and still works, but it's no longer the primary interface — see
-`README.md`. Its backlog stays here rather than blocking on it; fix what's actively broken,
-don't feel obliged to build it out further.
-
-* **Polygons cannot be edited at all.** There is no `_selected_shape_keys` anywhere in the
-  codebase, so shapes pass through the TUI untouched — 17 of 177 items (9.6%) in the real
-  fixture.
-* **Bulk edit is half-built.** Multi-select works, but the only bulk operation is "give
-  everything the same literal name." Prefix/suffix rename exists only in the legacy CLI
-  (`core/preview.py:67`). Needs: range syntax (`1,3,5-9`, `all`), filter-then-select-all,
-  prefix/suffix + find-replace, a preview of resulting names, and undo. (The web app already
-  has icon/color bulk-set — see `web/README.md`. This is specifically about closing the gap in
-  the TUI.)
-* **NO_COLOR is not respected.** (Known since Dec 2025.) Cause now confirmed: Textual has
-  supported it since 0.80.0, but `cairn/tui/theme.tcss` has **zero** uses of the `nocolor`
-  pseudoclass and **75 hardcoded color literals**, and nothing in the Python reads `NO_COLOR`.
-  Routing those literals through theme tokens is the same job as "use color labels" below — do
-  them together.
-* TUI bugs — see `docs/UX_AUDIT_2026-08-29.md` §2.2 for the verified list with file:line, and
-  `docs/TUI_DESIGN_2026-08-29.md` for the ranked fix plan.
-* ~~Make `tui` the default when `cairn` is run with no arguments.~~ Superseded 2026-08-30 — the
-  web app is the primary interface now; defaulting to the TUI isn't a priority.
-* Configurable default map directory (e.g. `/Users/scott/maps/`) so the TUI's file browser
-  starts somewhere useful.
-* Reduce the 280 silently-swallowed exceptions in `cairn/tui/` (264 are bare `except: pass`).
-  A crash and a no-op currently look identical from the user's chair.
-* Fix the 35 TUI tests that swallow exceptions and assert nothing — start with the 15 in
-  `tests/tui_harness.py`, which every TUI test inherits.
-
-### Styling
-
-* Increase the font size of the 'Folder' name on all screens.
-* Make the scrollbar brown(ish) to match the theme.
-* Use color labels so theme migration works.
-* Change the label `Choose the GPX or JSON data you want to migrate to onX`.
-* Remove `TUI` from app labels and text — still present in at least 3 places
-  (`app.py:423`, `app.py:2861`, `file_browser.py:202`).
-* Export Complete screen should show `File written to: <path>` above `Another file?`.

@@ -60,9 +60,9 @@ jobs:
 
       # Prove the artifact actually runs before it becomes permanent.
       - name: Smoke test (wheel)
-        run: uv run --isolated --no-project --with dist/*.whl -- cairn --help
+        run: uv run --isolated --no-project --with dist/*.whl -- python -c "import cairn.core.writers"
       - name: Smoke test (sdist)
-        run: uv run --isolated --no-project --with dist/*.tar.gz -- cairn --help
+        run: uv run --isolated --no-project --with dist/*.tar.gz -- python -c "import cairn.core.writers"
 
       - name: Upload distributions
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

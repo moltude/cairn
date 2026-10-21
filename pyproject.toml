@@ -4,8 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 # The PyPI name `cairn` is taken by an unrelated 2019 project, so the
-# distribution is `cairn-maps`. The installed command is still `cairn` --
-# see [project.scripts] below.
+# distribution is `cairn-maps`. Since 2026-10 this is the conversion ENGINE
+# only -- the web app (web/) is the sole interface. The typer CLI and Textual
+# TUI were removed; their last state is git tag `cli-final`.
 name = "cairn-maps"
 version = "1.0.0"
 description = "Migrate map data between OnX Backcountry and CalTopo"
@@ -17,15 +18,7 @@ authors = [
 ]
 
 dependencies = [
-    "typer>=0.9.0",
-    "rich>=13.0.0",
     "pyyaml>=6.0",
-    "prompt-toolkit>=3.0.43",
-    # Was `>=0.58.0`, which claimed support for a range (0.58 -> 8.x) that was
-    # never tested. A grep for every API removed or renamed across those
-    # versions found zero hits in cairn/ and tests/, so the floor is raised to
-    # what is actually exercised.
-    "textual>=6.11,<9",
 ]
 
 [project.optional-dependencies]
@@ -36,9 +29,6 @@ dev = [
     # After sync, browsers must exist once per machine: `uv run playwright install chromium`
     "playwright>=1.40",
 ]
-
-[project.scripts]
-cairn = "cairn.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["cairn"]

@@ -21,9 +21,9 @@ async function boot() {
     const micropip = py.pyimport("micropip");
     // Pinned; resolves from the Pyodide lockfile on jsdelivr, not PyPI.
     await micropip.install("pyyaml==6.0.2");
-    // deps:false -- the engine needs only pyyaml (installed above). Letting
-    // micropip resolve the declared dependencies drags in typer, rich, textual
-    // and pygments (~2.6 MB) from PyPI that never execute in the browser.
+    // deps:false -- the engine needs only pyyaml (installed above), and with
+    // the CLI gone that is all it declares. Kept anyway so a future dependency
+    // can never make the browser silently fetch from PyPI (the CSP blocks it).
     // callKwargs is load-bearing: a plain JS object argument is NOT keyword
     // args to a Python function -- it lands as the second positional
     // (keep_going), silently leaving deps=True. Caught by
