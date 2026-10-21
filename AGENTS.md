@@ -128,8 +128,8 @@ readers, caltopo_gpx, dedup/merge) is engine code not yet wired into the web app
   *positional* parameter (`keep_going`), leaving `deps=True` — every boot fetched
   typer/rich/textual from PyPI. Pyodide requires `fn.callKwargs(args, { kw: v })` for kwargs.
   The enforced-CSP e2e test is what caught it; keep that test passing. It also caught an
-  inline `<script>` (the theme-init snippet) that production's CSP silently blocked — all JS
-  must live in files under `web/`.
+  inline `<script>` (a since-removed theme-init snippet) that production's CSP silently
+  blocked — all JS must live in files under `web/`.
 - **XML parsing uses stock `xml.etree.ElementTree`, deliberately.** The XML readers aren't
   reachable from the web app at all (the web app is JSON/GeoJSON-only — `web/bridge.py` imports
   just `parse_geojson`). Stock ElementTree doesn't resolve external entities (no classic XXE)

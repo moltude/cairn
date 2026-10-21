@@ -85,7 +85,7 @@ Note: the item table wasn't flagged, so it gets restyled to match but its struct
 lowest priority to change.
 
 ### UI-03 — Light vs dark
-Status: decided
+Status: superseded by UI-19
 
 Context: twilight (dark) was the default, with a light toggle (commit `48ae876`).
 
@@ -381,3 +381,14 @@ Current label inventory with suggestions (alternatives kept for later rounds):
 | Icon editor | Apply / Cancel | **Apply / Cancel** | — |
 | Bulk editor chips | Use existing | **Reset** ✔ decided | — |
 | Modals | ✕ (text) | icon-only close, aria-label "Close" | — |
+
+### UI-19 — One theme only
+Status: decided 2026-10-21. Supersedes UI-03.
+
+User: set aside dark/light themes; Cairn has a single theme. That theme is the light,
+field-guide look (UI-01, UI-06). No toggle, no `prefers-color-scheme` variant.
+
+Applied now: the theme toggle, `web/theme-init.js`, `setTheme()` and the light-variant CSS were
+removed from the live app, which keeps its current (twilight) colors until the CSS rebuild
+replaces them with the field-guide theme. The options UI-03 offered (dark-first, follow the OS)
+stay recorded there if this is ever reopened.

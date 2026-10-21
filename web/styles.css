@@ -3,10 +3,6 @@
   --ink:#e8e5df; --muted:#8b8f96; --accent:#c8873c; --accent2:#8a6a3a;
   --ok:#7bb661; --warn:#d9a441; --radius:10px;
 }
-:root[data-theme="light"]{
-  --bg:#f7f4ee; --panel:#fff; --panel2:#f0ebe1; --line:#ddd3c2;
-  --ink:#231e18; --muted:#6d6355; --accent:#a4652a;
-}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}

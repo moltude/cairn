@@ -5,13 +5,6 @@ let ANCHOR = null;   // last row clicked without shift -- the pivot for range se
 const $ = s => document.querySelector(s);
 const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; e.className = "status " + cls; };
 
-function setTheme(theme) {
-  if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
-  else document.documentElement.removeAttribute("data-theme");
-  try { localStorage.setItem("cairn-theme", theme); } catch (e) {}
-  $("#theme-toggle").setAttribute("aria-pressed", theme === "light" ? "false" : "true");
-}
-
 async function boot() {
   try {
     setStatus("Loading Python runtime…");
@@ -450,10 +443,6 @@ window.addEventListener("DOMContentLoaded", () => {
   menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: it.desc } : {}));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
-  setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "twilight");
-  $("#theme-toggle").onclick = () => {
-    setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "twilight" : "light");
-  };
   $("#help-btn").onclick = () => $("#help").classList.remove("hidden");
   $("#help-close").onclick = () => $("#help").classList.add("hidden");
   $("#bulk-icon").onclick = () => pickIcon([...SEL]);
