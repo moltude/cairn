@@ -432,3 +432,21 @@ Consequences:
 - Don't add phone-specific layouts, mockups, screenshots or tests going forward. The narrow-width
   CSS already in the app stays as harmless fallback but is not maintained as a target; it may be
   removed if it ever gets in the way.
+
+### UI-21 — Confirm before "Start over"
+Status: decided 2026-10-21. Closes the red-team item "Start over discards all edits".
+
+User: show a pop-up confirmation when someone clicks Start over. Built as an in-page dialog
+(not a browser `confirm()`): "Start over?" with Cancel (initial focus) and a destructive
+"Start over". When edits exist it states how many unexported changes will be lost.
+
+Other options considered: an undo toast after the reset; moving the button away from Export.
+
+### UI-22 — Prompt to save an open note on Export
+Status: decided 2026-10-21. Closes the red-team item "A note left open is dropped on Export".
+
+User: if anything is unsaved when Export is clicked, prompt to save. Dialog "Save your note?"
+with Apply (save, then export; initial focus), Discard (export without it) and Cancel (back
+to the editor). An open but unchanged note just closes.
+
+Other options considered: silently apply the draft; block Export while a note is open.

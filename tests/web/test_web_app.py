@@ -127,10 +127,16 @@ def loaded(fresh_page: Page) -> Page:
     return fresh_page
 
 
-def export_zip_bytes(page: Page) -> bytes:
-    """Trigger export and pull the resulting Blob back into Python as bytes."""
+def export_zip_bytes(page: Page, confirm: str | None = None) -> bytes:
+    """Trigger export and pull the resulting Blob back into Python as bytes.
+
+    `confirm` names the button to press in the unsaved-note prompt when one is
+    expected; without it, a prompt would hang the wait below (as it should).
+    """
     page.evaluate("window.__cairnExported = false")
     page.click("#export")
+    if confirm:
+        page.click(f"#confirm .confirm-actions button:text-is('{confirm}')")
     page.wait_for_function("window.__cairnExported === true", timeout=60000)
     b64 = page.evaluate(
         """
@@ -1031,3 +1037,112 @@ def test_export_with_everything_excluded_stays_on_the_edit_stage(loaded: Page):
     expect(loaded.locator("#status")).to_have_class(re.compile(r"\berr\b"))
     assert loaded.evaluate("document.body.dataset.stage") == "edit"
     assert loaded.evaluate("window.__cairnExported") is not True
+
+
+# ---------------------------------------------------------------------------
+# Confirmations: Start over, unsaved note on Export
+# ---------------------------------------------------------------------------
+
+
+def test_start_over_without_edits_asks_first(loaded: Page):
+    loaded.locator(".newmap").first.click()
+    dlg = loaded.locator("#confirm")
+    expect(dlg).to_be_visible()
+    expect(dlg.locator("#confirm-title")).to_have_text("Start over?")
+    expect(dlg.locator("#confirm-body")).to_have_text("This clears the current map.")
+    assert loaded.evaluate("document.activeElement.textContent") == "Cancel"
+
+    dlg.get_by_role("button", name="Cancel").click()
+    expect(dlg).to_be_hidden()
+    assert loaded.evaluate("document.body.dataset.stage") == "edit"
+    assert loaded.evaluate("DATA !== null")
+
+    loaded.locator(".newmap").first.click()
+    dlg.get_by_role("button", name="Start over").click()
+    expect(dlg).to_be_hidden()
+    assert loaded.evaluate("document.body.dataset.stage") == "drop"
+    assert loaded.evaluate("DATA === null")
+
+
+def test_start_over_counts_unexported_changes_and_escape_cancels(loaded: Page):
+    name_input = loaded.locator("#folders tbody tr").first.locator(".name-in")
+    name_input.fill("ZZZ_RENAMED")
+    name_input.dispatch_event("change")
+    loaded.wait_for_timeout(100)
+    assert loaded.evaluate("Object.keys(EDITS).length") == 1
+
+    loaded.locator(".newmap").first.click()
+    body = loaded.locator("#confirm-body")
+    expect(body).to_have_text(
+        "You have 1 unexported change to this map. Starting over discards it."
+    )
+    loaded.keyboard.press("Escape")
+    expect(loaded.locator("#confirm")).to_be_hidden()
+    assert loaded.evaluate("Object.keys(EDITS).length") == 1
+    assert loaded.evaluate("document.body.dataset.stage") == "edit"
+
+
+def _open_changed_waypoint_note(page: Page, text: str):
+    """Open the note editor on a waypoint and type a draft (not applied)."""
+    uid = page.evaluate(
+        "DATA.groups.flatMap(g=>g.items).find(i => i.kind === 'waypoints').uid"
+    )
+    page.locator(f'tr[data-uid="{uid}"] .note-btn').click()
+    page.locator(".desc-in").first.fill(text)
+    return uid
+
+
+def _gpx_blob(zb: bytes) -> str:
+    zf = zipfile.ZipFile(io.BytesIO(zb))
+    return "".join(
+        zf.read(n).decode("utf-8", "replace") for n in zf.namelist() if n.endswith(".gpx")
+    )
+
+
+def test_export_with_unapplied_note_prompts_and_apply_exports_it(loaded: Page):
+    marker = "UNAPPLIED_DRAFT_APPLY"
+    _open_changed_waypoint_note(loaded, marker)
+    loaded.evaluate("window.__cairnExported = false")
+    loaded.click("#export")
+    dlg = loaded.locator("#confirm")
+    expect(dlg).to_be_visible()
+    expect(dlg.locator("#confirm-title")).to_have_text("Save your note?")
+    assert "hasn't been applied" in loaded.inner_text("#confirm-body")
+    assert loaded.evaluate("document.activeElement.textContent") == "Apply"
+    assert loaded.evaluate("window.__cairnExported") is False  # nothing exported yet
+    loaded.keyboard.press("Escape")  # Esc == Cancel
+    expect(dlg).to_be_hidden()
+
+    assert f"<desc>{marker}</desc>" in _gpx_blob(export_zip_bytes(loaded, confirm="Apply"))
+
+
+def test_export_with_unapplied_note_discard_leaves_draft_out(loaded: Page):
+    marker = "UNAPPLIED_DRAFT_DISCARD"
+    _open_changed_waypoint_note(loaded, marker)
+    blob = _gpx_blob(export_zip_bytes(loaded, confirm="Discard"))
+    assert marker not in blob
+    assert loaded.evaluate("NOTE_EDIT") is None
+
+
+def test_export_with_unapplied_note_cancel_returns_to_the_editor(loaded: Page):
+    marker = "UNAPPLIED_DRAFT_CANCEL"
+    _open_changed_waypoint_note(loaded, marker)
+    loaded.evaluate("window.__cairnExported = false")
+    loaded.click("#export")
+    loaded.locator("#confirm").get_by_role("button", name="Cancel").click()
+    expect(loaded.locator("#confirm")).to_be_hidden()
+    assert loaded.evaluate("document.body.dataset.stage") == "edit"
+    assert loaded.evaluate("window.__cairnExported") is False
+    box = loaded.locator(".desc-in").first
+    assert box.input_value() == marker
+    assert loaded.evaluate("document.activeElement.classList.contains('desc-in')")
+
+
+def test_export_with_unchanged_open_note_just_exports(loaded: Page):
+    uid = loaded.evaluate(
+        "DATA.groups.flatMap(g=>g.items).find(i => i.kind === 'waypoints').uid"
+    )
+    loaded.locator(f'tr[data-uid="{uid}"] .note-btn').click()
+    export_zip_bytes(loaded)  # no confirm button pressed: must not prompt
+    expect(loaded.locator("#confirm")).to_be_hidden()
+    assert loaded.evaluate("NOTE_EDIT") is None

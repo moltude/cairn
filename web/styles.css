@@ -277,6 +277,12 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
   justify-content:center;padding:20px;z-index:50}
 .modal-card{background:var(--sheet);border:1px solid var(--brown);box-shadow:var(--shadow);
   width:min(560px,100%);max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.confirm-card{width:min(440px,100%);padding:22px 24px 20px}
+.confirm-card h2{margin:0 0 8px;font-size:20px}
+.confirm-card p{margin:0 0 18px;line-height:1.55;font-size:16px}
+.confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.btn.danger{background:var(--warning);border-color:var(--warning);color:#fff;font-weight:700}
+.btn.danger:hover:not(:disabled){background:var(--warning);border-color:var(--brown);filter:brightness(.9)}
 .modal-card.wide{width:min(760px,100%)}
 .modal-head{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--rule-soft);
   background:var(--sheet-head);position:sticky;top:0;z-index:1}

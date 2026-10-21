@@ -859,6 +859,92 @@ function closeHelp() {
   if (r && r.isConnected) r.focus({ preventScroll: true });
 }
 
+/* ---------- confirmations ---------- */
+/* One in-page dialog (#confirm) serves Start over and the unsaved-note prompt.
+   Never window.confirm: it blocks automation and doesn't match the design. */
+let CONFIRM = null;   // {ret, cancel}
+function openConfirm({ title, body, buttons, ret }) {
+  CONFIRM = { ret: ret || document.activeElement, cancel: buttons.find(b => b.cancel) };
+  $("#confirm-title").textContent = title;
+  $("#confirm-body").textContent = body;
+  const host = $("#confirm-actions");
+  host.textContent = "";
+  let initial = null;
+  for (const b of buttons) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "btn small " + (b.cls || "");
+    el.textContent = b.label;
+    el.onclick = b.run;
+    host.appendChild(el);
+    if (b.initial) initial = el;
+  }
+  $("#confirm").classList.remove("hidden");
+  (initial || host.firstChild).focus();
+}
+function closeConfirm(focusRet = true) {
+  $("#confirm").classList.add("hidden");
+  const r = CONFIRM && CONFIRM.ret; CONFIRM = null;
+  if (focusRet && r && r.isConnected) r.focus({ preventScroll: true });
+}
+function cancelConfirm() { if (CONFIRM && CONFIRM.cancel) CONFIRM.cancel.run(); else closeConfirm(); }
+
+function noteIsChanged() {
+  if (!NOTE_EDIT || !DATA) return false;
+  const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
+  return !!it && NOTE_EDIT.draft !== (it.desc || "");
+}
+
+function resetAll() {
+  closePop(); closeBulk();
+  DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
+  resetFilters();
+  $("#file").value = "";
+  showStage("drop");
+  setStatus("Ready", "ready");
+  window.__cairnLoaded = false; window.__cairnExported = false;
+}
+
+function requestStartOver() {
+  const ret = document.activeElement;
+  const uids = new Set(Object.keys(EDITS));
+  if (noteIsChanged()) uids.add(NOTE_EDIT.uid);
+  const n = uids.size;
+  openConfirm({
+    title: "Start over?",
+    body: n
+      ? `You have ${n} unexported change${n === 1 ? "" : "s"} to this map. Starting over discards ${n === 1 ? "it" : "them"}.`
+      : "This clears the current map.",
+    ret,
+    buttons: [
+      { label: "Cancel", initial: true, cancel: true, run: () => closeConfirm() },
+      { label: "Start over", cls: "danger", run: () => { closeConfirm(false); resetAll(); } },
+    ],
+  });
+}
+
+function requestExport() {
+  const ret = document.activeElement;
+  if (!NOTE_EDIT) { doExport(); return; }
+  const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
+  if (!noteIsChanged()) { closeNote(it, false); doExport(); return; }
+  const uid = NOTE_EDIT.uid;
+  openConfirm({
+    title: "Save your note?",
+    body: `Your note for \u201c${it.name}\u201d hasn't been applied.`,
+    ret,
+    buttons: [
+      { label: "Cancel", cancel: true, run: () => {
+          closeConfirm(false);
+          const ta = document.querySelector(`tr[data-uid="${CSS.escape(uid)}"] .desc-in`);
+          if (ta) ta.focus({ preventScroll: true });
+        } },
+      { label: "Discard", run: () => { closeConfirm(false); closeNote(it, false); doExport(); } },
+      { label: "Apply", cls: "primary", initial: true, run: () => { closeConfirm(false); closeNote(it, true); doExport(); } },
+    ],
+  });
+}
+
 /* ---------- wire ---------- */
 window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-ui-icon]").forEach(el => {
@@ -887,17 +973,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // pointer, so the document-level "outside click" test can't be trusted.
   $("#mark-pop").addEventListener("click", e => e.stopPropagation());
   $("#bulk-icon").onclick = openBulk;
-  $("#export").onclick = doExport;
+  $("#export").onclick = requestExport;
   $("#back").onclick = () => showStage("edit");
-  document.querySelectorAll(".newmap").forEach(b => b.onclick = () => {
-    closePop(); closeBulk();
-    DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
-    resetFilters();
-    $("#file").value = "";
-    showStage("drop");
-    setStatus("Ready", "ready");
-    window.__cairnLoaded = false; window.__cairnExported = false;
-  });
+  document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
+  $("#confirm").addEventListener("click", e => { if (e.target === $("#confirm")) cancelConfirm(); });
   $("#download").onclick = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(ZIP); a.download = "onx_ready.zip"; a.click();
@@ -911,13 +990,15 @@ window.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", e => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ""));
     if (e.key === "Tab") {
-      if (!$("#help").classList.contains("hidden")) trapTab(e, $("#help .modal-card"));
+      if (CONFIRM) trapTab(e, $("#confirm .modal-card"));
+      else if (!$("#help").classList.contains("hidden")) trapTab(e, $("#help .modal-card"));
       else if (BULK) trapTab(e, $("#mark-dialog"));
       return;
     }
     if (e.key === "Escape") {
       // Priority: close what's in front, then an open note, then let a focused
       // field revert its own edit, else clear the selection.
+      if (CONFIRM) { e.preventDefault(); cancelConfirm(); return; }
       if (!$("#help").classList.contains("hidden")) { closeHelp(); return; }
       if (BULK) { closeBulk(); return; }
       if (POP) { closePop(); return; }

@@ -124,6 +124,11 @@
 <!-- several-items icon & color dialog (filled by app.js) -->
 <div id="mark-modal" class="modal hidden"><div id="mark-dialog" class="modal-card mark-dialog" role="dialog" aria-modal="true"></div></div>
 
+<!-- confirmation (Start over, unsaved note; filled by app.js) -->
+<div id="confirm" class="modal hidden"><div class="modal-card confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+  <h2 id="confirm-title"></h2><p id="confirm-body"></p><div id="confirm-actions" class="confirm-actions"></div>
+</div></div>
+
 <!-- help -->
 <div id="help" class="modal hidden"><div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="help-title">
   <div class="modal-head"><h2 id="help-title">How to use Cairn</h2><button id="help-close" type="button" class="x" aria-label="Close" data-ui-icon="close"></button></div>
