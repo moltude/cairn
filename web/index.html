@@ -11,7 +11,7 @@
 <header>
   <div class="brand"><span class="mark">▲</span> Cairn</div>
   <div class="tagline">Move your CalTopo map to onX — with the icons, colors and folders intact</div>
-  <button id="theme-toggle" class="btn" title="Switch color theme">☀️ Light</button>
+  <button id="theme-toggle" class="btn" title="Switch color theme" aria-pressed="true">Dark mode</button>
   <button id="help-btn" class="btn">Help</button>
   <div id="status" class="status">Starting…</div>
 </header>
@@ -23,7 +23,7 @@
       <div class="dz-icon">🗺️</div>
       <h2>Drop your CalTopo export here</h2>
       <p>A <code>.json</code> / <code>.geojson</code> file. Export from CalTopo as <b>GeoJSON</b> — it's the only format that keeps your folders and styling.</p>
-      <button id="pick" class="btn primary" disabled>Choose a file…</button>
+      <button id="pick" class="btn primary" disabled>Choose file…</button>
       <input id="file" type="file" accept=".json,.geojson" hidden>
       <p class="fineprint">Your map never leaves this computer — everything runs in your browser.</p>
     </div>
@@ -34,7 +34,7 @@
     <div class="summary-row">
       <div class="summary" id="summary"></div>
       <div class="summary-actions">
-        <button class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over with a different map</button>
+        <button class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over</button>
         <button id="export" class="btn primary">Export</button>
       </div>
     </div>
@@ -42,18 +42,18 @@
          tools people reach for constantly (icon, color) are always visible
          too -- just disabled until there's a selection to apply them to.
          Only the less-common bulk actions (rename from description,
-         exclude/include) are tucked behind Advanced. -->
+         exclude/include) are tucked behind More. -->
     <div class="bar" id="control-bar">
       <div class="bar-filters">
-        <input id="filter" type="search" placeholder="Search names and descriptions…" autocomplete="off">
+        <input id="filter" type="search" placeholder="Name or note" aria-label="Search" autocomplete="off">
         <select id="type-filter" title="Show only one kind of markup">
-          <option value="">All types</option>
+          <option value="">All</option>
           <option value="waypoints">Waypoints</option>
-          <option value="tracks">Lines &amp; tracks</option>
+          <option value="tracks">Lines</option>
           <option value="shapes">Areas</option>
         </select>
         <label class="chk" title="Show only waypoints that fell back to onX's default pin.">
-          <input type="checkbox" id="only-attention"> Needs an icon
+          <input type="checkbox" id="only-attention"> Default pin only
         </label>
         <span id="shown-count" class="muted-note"></span>
       </div>
@@ -61,15 +61,15 @@
            single button on its own line. -->
       <div class="bar-actions">
         <span id="selcount" class="selcount hidden">0 selected</span>
-        <button id="clear-sel" class="btn clear hidden">✕ Clear selection</button>
+        <button id="clear-sel" class="btn clear hidden">Clear</button>
         <button id="bulk-icon" class="btn" disabled>Set icon…</button>
         <button id="bulk-color" class="btn" disabled>Set color…</button>
         <div class="menu-wrap">
-          <button id="more-btn" class="btn" disabled>Advanced ▾</button>
+          <button id="more-btn" class="btn" disabled>More</button>
           <div id="more-menu" class="menu hidden">
-            <button id="bulk-desc">Use description as name</button>
-            <button id="bulk-exclude">Leave out of the onX export</button>
-            <button id="bulk-include">Put back in the export</button>
+            <button id="bulk-desc">Use note as name</button>
+            <button id="bulk-exclude">Exclude</button>
+            <button id="bulk-include">Include</button>
           </div>
         </div>
       </div>
@@ -82,9 +82,9 @@
   <section id="done-stage" class="stage hidden">
     <div class="done-head">
       <h2>✅ Your files are ready</h2>
-      <button id="download" class="btn primary">Download .zip</button>
-      <button id="back" class="btn">← Back to editing</button>
-      <button class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over with a different map</button>
+      <button id="download" class="btn primary">Download</button>
+      <button id="back" class="btn">Back</button>
+      <button class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over</button>
     </div>
     <div class="runbook-intro">
       <p><b>onX makes one folder per import, and names it with a timestamp.</b> That's why this
@@ -96,7 +96,7 @@
 
 <!-- help -->
 <div id="help" class="modal hidden"><div class="modal-card wide">
-  <div class="modal-head"><h3>How to use Cairn</h3><button id="help-close" class="x">✕</button></div>
+  <div class="modal-head"><h3>How to use Cairn</h3><button id="help-close" class="x" aria-label="Close">✕</button></div>
   <div class="help-body">
     <h4>1 · Export from CalTopo as GeoJSON</h4>
     <p>On your CalTopo map choose <b>Export</b> and pick <b>GeoJSON</b>. It is the only CalTopo
@@ -111,9 +111,9 @@
        <i>including deliberately choosing “Location”</i> — marks it reviewed.</p>
 
     <h4>3 · Edit in bulk</h4>
-    <p>Narrow the list with the search box, the type dropdown, or <b>Needs an icon</b>.
+    <p>Narrow the list with the search box, the type dropdown, or <b>Default pin only</b>.
        Then tick rows — <b>Set icon…</b> and <b>Set color…</b> light up and apply to your
-       selection. <b>Advanced</b> holds <i>Use description as name</i> (when the real information
+       selection. <b>More</b> holds <i>Use note as name</i> (when the real information
        is in the notes) and the export include/exclude controls.</p>
     <table class="help-tbl">
       <tr><th>Click a box</th><td>Select one row.</td></tr>
@@ -126,8 +126,8 @@
        all, and you only touch the rows you can see.</p>
 
     <h4>4 · Leave things out</h4>
-    <p>Select rows and choose <b>More → Leave out of the onX export</b>. Excluded rows stay
-       visible, struck through, with a <b>restore</b> button. Useful for scratch lines and
+    <p>Select rows and choose <b>More → Exclude</b>. Excluded rows stay
+       visible, struck through, with an <b>Include</b> button. Useful for scratch lines and
        duplicated tracks. Nothing is ever deleted from your CalTopo file.</p>
 
     <h4>5 · Export and import</h4>
@@ -139,7 +139,7 @@
     <h4>What carries across</h4>
     <table class="help-tbl">
       <tr><th>Name</th><td>Yes — and it is the only field onX lets you search.</td></tr>
-      <tr><th>Description</th><td>Yes — arrives as the markup's <b>Notes</b> in onX.</td></tr>
+      <tr><th>Note</th><td>Yes — arrives as the markup's <b>Notes</b> in onX.</td></tr>
       <tr><th>Icon</th><td>Yes, for waypoints. onX has 95; CalTopo has many more, so some map approximately.</td></tr>
       <tr><th>Color</th><td>Yes, snapped to onX's 10 waypoint colors (11 for lines).</td></tr>
       <tr><th>Folders</th><td>Yes — but only if you follow the import checklist.</td></tr>
@@ -158,7 +158,7 @@
 
 <!-- pickers -->
 <div id="modal" class="modal hidden"><div class="modal-card">
-  <div class="modal-head"><h3 id="modal-title"></h3><button id="modal-close" class="x">✕</button></div>
+  <div class="modal-head"><h3 id="modal-title"></h3><button id="modal-close" class="x" aria-label="Close">✕</button></div>
   <input id="modal-filter" type="search" placeholder="Search…" autocomplete="off">
   <div id="modal-body" class="modal-body"></div>
 </div></div>

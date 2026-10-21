@@ -171,7 +171,7 @@ def _clear_selection(page):
 
 
 def _menu_action(page, selector):
-    """Bulk actions beyond icon/color now live behind the Advanced menu."""
+    """Bulk actions beyond icon/color now live behind the More menu."""
     page.click("#more-btn")
     page.wait_for_timeout(200)
     page.click(selector)
@@ -247,7 +247,7 @@ def test_bulk_icon_change_reduces_attention_by_exactly_n(
     assert boxes.count() >= n_select, "fixture doesn't have enough attention rows"
 
     # Filters and edit tools share one persistent bar now. At rest, Set
-    # icon/color/Advanced are visible but disabled -- not hidden.
+    # icon/color/More are visible but disabled -- not hidden.
     assert loaded.locator("#bulk-icon").is_disabled()
     assert loaded.locator("#bulk-color").is_disabled()
     assert loaded.locator("#selcount").is_hidden()

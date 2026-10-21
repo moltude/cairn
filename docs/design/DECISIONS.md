@@ -334,7 +334,9 @@ the web app is "use the note as the name".
   backlog asked for the same).
 
 ### UI-18 — Button and label language review
-Status: proposed (2026-10-21) — except "Reset", decided
+Status: **decided 2026-10-21** — all suggestions accepted, with one change: "✕ Clear selection"
+becomes **"Clear"** (not "Deselect"). Applied to the mockups and the live app. In the live app,
+"Set icon…" / "Set color…" stay separate until the combined Icon & color editor (UI-16) is built.
 
 User: "Use existing" → **"Reset"** (more natural; decided). Then: button language across the
 project isn't standard UI/UX — review it and simplify.
@@ -364,7 +366,7 @@ Current label inventory with suggestions (alternatives kept for later rounds):
 | Header | ☀️ Light | **Dark mode** toggle (light is now default) | icon-only with aria-label "Theme" |
 | Header | Help | **Help** | — |
 | Selection bar | Set icon… / Set color… (app), Set icon / Set color (B v1) | **Icon & color…** (one button, since they're one marker) | "Edit marker…" |
-| Selection bar | ✕ Clear selection | **Deselect** | "Clear selection" (also standard) |
+| Selection bar | ✕ Clear selection | ~~Deselect~~ → **Clear** ✔ (user's choice) | "Deselect", "Clear selection" |
 | Selection bar | Advanced ▾ (app) / More (mockups) | **More** | — |
 | More menu | Use description as name | **Use note as name** | "Name from note" |
 | More menu | Leave out of the onX export | **Exclude** | "Don't export" |

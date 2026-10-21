@@ -195,6 +195,7 @@ tr.excluded .name-in{text-decoration:line-through}
 /* header select column + excluded state */
 th.selcol{padding-left:12px}
 th.selcol input{accent-color:var(--accent);cursor:pointer;width:16px;height:16px}
+.exc-label{margin-left:10px;color:var(--warn);font-size:12px}
 .exc-chip{margin-left:10px;background:transparent;border:1px solid var(--warn);
   color:var(--warn);font-size:11px;padding:1px 8px;border-radius:99px;cursor:pointer}
 .exc-chip:hover{background:color-mix(in srgb,var(--warn) 18%,transparent)}

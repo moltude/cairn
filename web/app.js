@@ -9,7 +9,7 @@ function setTheme(theme) {
   if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
   else document.documentElement.removeAttribute("data-theme");
   try { localStorage.setItem("cairn-theme", theme); } catch (e) {}
-  $("#theme-toggle").textContent = theme === "light" ? "🌙 Twilight" : "☀️ Light";
+  $("#theme-toggle").setAttribute("aria-pressed", theme === "light" ? "false" : "true");
 }
 
 async function boot() {
@@ -147,7 +147,7 @@ function renderFolders() {
           <input type="checkbox" class="folder-all" title="Select every row in this folder">
         </th>
         <th>Name</th>
-        <th style="width:26%">Description <span class="th-note">→ onX Notes</span></th>
+        <th style="width:26%">Note</th>
         <th style="width:54px">Type</th>
         <th style="width:180px">onX icon</th><th style="width:132px">Color</th>
       </tr></thead><tbody></tbody></table>`;
@@ -185,7 +185,7 @@ function row(it) {
   tr.innerHTML = `
     <td><input type="checkbox" class="sel-box" ${SEL.has(it.uid) ? "checked" : ""}></td>
     <td><input class="name-in" value="${esc(it.name)}">${it.included ? ""
-      : `<button class="exc-chip" title="This row will not be exported. Click to put it back.">excluded · restore</button>`}</td>
+      : `<span class="exc-label">Excluded</span><button class="exc-chip" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
     <td><input class="desc-in" placeholder="—" title="Becomes the markup's Notes in onX" value="${esc(it.desc || "")}"></td>
     <td><span class="kindtag">${it.kind === "waypoints" ? "wpt" : it.kind === "tracks" ? "line" : "area"}</span></td>
     <td>${isWp
@@ -309,7 +309,7 @@ function updateSel() {
   const shownN = DATA ? shownItems().length : 0;
   $("#shown-count").textContent =
     DATA && shownN !== total ? `Showing ${shownN} of ${total}` : "";
-  // Set icon/color and Advanced are always visible -- disabled, not hidden,
+  // Set icon/color and More are always visible -- disabled, not hidden,
   // until there's a selection to apply them to.
   ["#bulk-icon", "#bulk-color", "#more-btn"].forEach(sel => {
     const el = $(sel);
