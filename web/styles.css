@@ -216,7 +216,13 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 
 /* ---------- icon & color editor (popover + dialog) ---------- */
 .pop{position:absolute;z-index:40;width:440px;max-width:calc(100vw - 16px);background:var(--sheet);
-  border:1px solid var(--brown);box-shadow:var(--shadow);display:flex;flex-direction:column}
+  border:1px solid var(--brown);box-shadow:var(--shadow);display:flex;flex-direction:column;
+  max-height:calc(100vh - 16px)}
+/* On short viewports the popover is capped to the window; only the icon grid
+   gives up height (it scrolls), so the preview, palette and Apply stay visible. */
+.pop>*{flex:none}
+.pop>.pop-sec.icons{flex:1 1 auto;min-height:0}
+.pop>.pop-sec.icons .icon-grid{flex:1 1 auto;min-height:84px}
 .pop.sheet{position:fixed;left:8px;right:8px;top:8px;width:auto;max-height:calc(100vh - 16px);overflow:auto}
 .pop-head{position:relative;overflow:hidden;display:flex;align-items:center;gap:18px;padding:18px 20px;
   border-bottom:1px solid var(--rule-soft);background:var(--sheet-head)}
@@ -255,6 +261,8 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .bulk-icon-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .bulk-icon-row .icon-search{flex:1 1 160px;width:auto;min-height:36px;padding:6px 10px}
 .mark-dialog{width:min(620px,100%)}
+/* When the dialog has to scroll on a short window, keep Cancel/Apply in view. */
+.mark-dialog .pop-foot{position:sticky;bottom:0;background:var(--sheet);border-top:1px solid var(--rule-soft)}
 .bulk-head{padding:4px 20px 18px;border-bottom:1px solid var(--rule-soft);background:var(--sheet-head);
   display:flex;flex-direction:column;gap:8px}
 .modal-head.plain{padding:12px 0 0;border:none;background:none}

@@ -608,8 +608,13 @@ function placePop(anchor) {
   const r = anchor.getBoundingClientRect();
   const w = pop.offsetWidth, h = pop.offsetHeight;
   let left = Math.min(Math.max(8, r.right - w), vw - w - 8);
-  const below = window.innerHeight - r.bottom - 8;
-  let top = below >= h || below >= r.top ? r.bottom + 6 : Math.max(8, r.top - h - 6);
+  // Prefer below the marker, then above; if it fits neither way, clamp it inside
+  // the window (CSS caps its height at 100vh - 16px) so it is never cut off.
+  const vh = window.innerHeight;
+  let top;
+  if (vh - r.bottom - 14 >= h) top = r.bottom + 6;
+  else if (r.top - 14 >= h) top = r.top - h - 6;
+  else top = Math.max(8, Math.min(r.bottom + 6, vh - h - 8));
   pop.style.left = `${left + window.scrollX}px`;
   pop.style.top = `${top + window.scrollY}px`;
 }

@@ -922,3 +922,36 @@ def test_page_boots_under_enforced_csp(browser):
         assert not violations, f"CSP violations during boot: {violations}"
     finally:
         ctx.close()
+
+
+@pytest.mark.parametrize("width,height", [(1280, 720), (1280, 600), (1024, 560)])
+def test_icon_popover_and_dialog_stay_inside_short_windows(loaded: Page, width, height):
+    """Regression: the icon & color popover (~640px tall) was positioned below
+    its marker even when that ran past the bottom of a 720px window, cutting
+    off the icon grid and Apply. Both editors must fit the viewport with Apply
+    reachable, for markers at the top, middle and bottom of the visible list."""
+    loaded.set_viewport_size({"width": width, "height": height})
+    fits = """(sel) => {
+      const box = document.querySelector(sel).getBoundingClientRect();
+      const apply = [...document.querySelector(sel).querySelectorAll('button')]
+        .find(b => b.textContent.trim() === 'Apply').getBoundingClientRect();
+      return box.top >= 0 && box.bottom <= innerHeight
+        && apply.top >= box.top && apply.bottom <= Math.min(innerHeight, box.bottom) + 1;
+    }"""
+    visible = loaded.evaluate("""() => [...document.querySelectorAll('#folders .icon-btn')]
+      .map((e, i) => [i, e.getBoundingClientRect()])
+      .filter(([, r]) => r.top >= 0 && r.bottom <= innerHeight).map(([i]) => i)""")
+    assert visible, "no marker visible in the viewport"
+    for i in (visible[0], visible[len(visible) // 2], visible[-1]):
+        loaded.locator("#folders .icon-btn").nth(i).click()
+        assert loaded.evaluate(fits, "#mark-pop"), f"popover clipped for marker {i} at {width}x{height}"
+        loaded.keyboard.press("Escape")
+
+    boxes = loaded.locator("#folders tbody input[type=checkbox]")
+    for k in range(3):
+        boxes.nth(k).check()
+    loaded.click("#bulk-icon")
+    dialog = loaded.evaluate("""() => { const d = [...document.querySelectorAll('.modal-card')]
+      .find(e => e.offsetParent && e.getBoundingClientRect().height > 0); d.id ||= 'bulk-dialog-under-test';
+      return '#' + d.id; }""")
+    assert loaded.evaluate(fits, dialog), f"bulk dialog clipped at {width}x{height}"
