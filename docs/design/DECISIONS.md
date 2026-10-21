@@ -310,7 +310,7 @@ Status: proposed — `EditMark.dc.html`
 ### UI-16 revisions (2026-10-21, user feedback on `EditMark.dc.html`)
 Status: accepted with changes ("look okay")
 
-- "Keep each one's" → **"Use existing"** (color and icon).
+- "Keep each one's" → **"Use existing"** (color and icon) — then → **"Reset"**, see UI-18.
 - Removed the "Was: Default pin · Red" line from the single-item preview; Cancel is enough to
   signal you can revert.
 - Every confirm button reads **"Apply"** (was "Apply to 4") — consistent button language.
@@ -332,3 +332,50 @@ the web app is "use the note as the name".
   "Leave out of export", "Put back in export") plus **Rename…** and **Change note…**, flagged
   "not built". Rename would cover prefix/suffix and find/replace with a preview (the old TUI
   backlog asked for the same).
+
+### UI-18 — Button and label language review
+Status: proposed (2026-10-21) — except "Reset", decided
+
+User: "Use existing" → **"Reset"** (more natural; decided). Then: button language across the
+project isn't standard UI/UX — review it and simplify.
+
+Rules proposed for every label:
+
+1. **Short verb (+ object only when needed):** 1–2 words. "Export", "Apply", "Rename".
+2. **Sentence case**, no emoji, no arrows, no "✕ " prefixes in text (icon-only close buttons
+   keep an `aria-label`).
+3. **Ellipsis (…) only when the command opens a dialog for more input** (Rename…, Choose
+   file…), never on buttons that act immediately.
+4. **One pair for confirm/dismiss everywhere: Apply / Cancel.** No "Done", no "Apply to 4".
+5. **Explanations go in tooltips or help, not in the label** ("Start over with a different map"
+   carries its meaning in the tooltip).
+6. **One name per thing:** Note (not description), Icon (not onX icon), Lines (one term for
+   tracks/lines).
+
+Current label inventory with suggestions (alternatives kept for later rounds):
+
+| Where | Current | Suggested | Alternatives / note |
+|---|---|---|---|
+| Rail / summary | Start over with a different map | **Start over** | "New map"; tooltip keeps the explanation |
+| Rail / summary | Export | **Export** | — (already simplified, F17) |
+| Done screen | Download .zip | **Download** | "Download files" |
+| Done screen | ← Back to editing | **Back** | "Edit more" |
+| Drop zone | Choose a file… | **Choose file…** | "Browse…" |
+| Header | ☀️ Light | **Dark mode** toggle (light is now default) | icon-only with aria-label "Theme" |
+| Header | Help | **Help** | — |
+| Selection bar | Set icon… / Set color… (app), Set icon / Set color (B v1) | **Icon & color…** (one button, since they're one marker) | "Edit marker…" |
+| Selection bar | ✕ Clear selection | **Deselect** | "Clear selection" (also standard) |
+| Selection bar | Advanced ▾ (app) / More (mockups) | **More** | — |
+| More menu | Use description as name | **Use note as name** | "Name from note" |
+| More menu | Leave out of the onX export | **Exclude** | "Don't export" |
+| More menu | Put back in the export | **Include** | — |
+| More menu (new) | Rename… / Change note… | **Rename… / Edit note…** | — |
+| Row (excluded) | excluded · restore | **Excluded** label + **Include** action | — |
+| Filters | Clear (rail) + Clear all filters (chip row) | **Clear filters** (one, in the chip row; rail "All" already resets folders) | — |
+| Filters | All types / Waypoints / Lines & tracks / Areas (app); All / Waypoints / Lines (mockup) | **All / Waypoints / Lines / Areas** | keep "Areas" only if the map has any |
+| Filters | Needs an icon (checkbox) | **Default pin only** (matches the icon facet) | — |
+| Search | Search names and descriptions… | **Search** (placeholder "Name or note") | — |
+| Note editor | Done / Cancel | **Apply / Cancel** | — |
+| Icon editor | Apply / Cancel | **Apply / Cancel** | — |
+| Bulk editor chips | Use existing | **Reset** ✔ decided | — |
+| Modals | ✕ (text) | icon-only close, aria-label "Close" | — |

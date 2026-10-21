@@ -122,7 +122,7 @@ a{color:#2F6690}a:hover{color:#1F4A6B}
       <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #D8CBAE;">
         <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Color</span>
         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-          <button type="button" onClick="{{keepColor.pick}}" aria-pressed="{{keepColor.on}}" style="font: inherit; font-size: 13px; background: {{keepColor.bg}}; border: 1px solid #2A241C; border-radius: 16px; padding: 4px 12px; min-height: 32px; color: {{keepColor.ink}}; cursor: pointer;">Use existing</button>
+          <button type="button" onClick="{{keepColor.pick}}" aria-pressed="{{keepColor.on}}" style="font: inherit; font-size: 13px; background: {{keepColor.bg}}; border: 1px solid #2A241C; border-radius: 16px; padding: 4px 12px; min-height: 32px; color: {{keepColor.ink}}; cursor: pointer;">Reset</button>
           <sc-for list="{{bulkPalette}}" as="p" hint-placeholder-count="10">
           <button type="button" onClick="{{p.pick}}" aria-label="{{p.name}}" aria-pressed="{{p.on}}" title="{{p.name}}" style="width: 32px; height: 32px; border-radius: 50%; background: {{p.hex}}; border: 1px solid #2A241C; padding: 0; box-sizing: border-box; outline: {{p.outline}}; outline-offset: 2px; cursor: pointer;"></button>
           </sc-for>
@@ -132,7 +132,7 @@ a{color:#2F6690}a:hover{color:#1F4A6B}
       <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px;">
         <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Icon</span>
         <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
-          <button type="button" onClick="{{keepIcon.pick}}" aria-pressed="{{keepIcon.on}}" style="font: inherit; font-size: 13px; background: {{keepIcon.bg}}; border: 1px solid #2A241C; border-radius: 16px; padding: 4px 12px; min-height: 32px; color: {{keepIcon.ink}}; cursor: pointer;">Use existing</button>
+          <button type="button" onClick="{{keepIcon.pick}}" aria-pressed="{{keepIcon.on}}" style="font: inherit; font-size: 13px; background: {{keepIcon.bg}}; border: 1px solid #2A241C; border-radius: 16px; padding: 4px 12px; min-height: 32px; color: {{keepIcon.ink}}; cursor: pointer;">Reset</button>
           <sc-for list="{{bulkIcons}}" as="i" hint-placeholder-count="4">
           <button type="button" onClick="{{i.pick}}" aria-pressed="{{i.on}}" title="{{i.name}}" aria-label="{{i.name}}" style="background: {{i.bg}}; border: {{i.border}}; border-radius: 2px; padding: 3px 6px; min-height: 40px; cursor: pointer;">
             <svg width="24" height="30" viewBox="0 0 34 42" aria-hidden="true"><path d="{{pinPath}}" fill="{{previewHex}}" stroke="#2A241C" stroke-width="1"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{previewFg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{i.path}}"></path></g></svg>
