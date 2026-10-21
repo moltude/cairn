@@ -45,7 +45,9 @@ FUCHSIA = ("Fuchsia", "rgba(255,0,255,1)", "#FF00FF")
 LINE_COLORS = ONX_COLORS + [FUCHSIA]
 _RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in LINE_COLORS}
 
-_STATE: dict = {"doc": None, "groups": [], "config": None, "edited": set()}
+# "edited": uids with any UI edit. "color_edited": uids whose edit set a colour --
+# only those get feature.color/stroke rewritten on export (see export_zip).
+_STATE: dict = {"doc": None, "groups": [], "config": None, "edited": set(), "color_edited": set()}
 
 # Path the UI writes the user's cairn_config.yaml to before loading a document.
 CONFIG_PATH = Path("/cairn_config.yaml")
@@ -182,7 +184,7 @@ def load_document(text: str, filename: str) -> str:
         )
 
     groups.sort(key=lambda g: -len(g["items"]))
-    _STATE.update(doc=doc, groups=groups, config=cfg, edited=set())
+    _STATE.update(doc=doc, groups=groups, config=cfg, edited=set(), color_edited=set())
 
     return json.dumps(
         {
@@ -207,6 +209,9 @@ def apply_edits(edits_json: str) -> str:
     """Apply {uid: {icon,color,name}} from the UI back onto the parsed model."""
     edits = json.loads(edits_json)
     _STATE.setdefault("edited", set()).update(edits.keys())
+    _STATE.setdefault("color_edited", set()).update(
+        uid for uid, e in edits.items() if e and e.get("color") is not None
+    )
     n = 0
     for g in _STATE["groups"]:
         for item in g["items"]:
@@ -261,11 +266,14 @@ def export_zip() -> bytes:
                 # one. Write the hex onto feature.color instead -- an exact
                 # palette hex maps to its own rgba, so this round-trips exactly.
                 #
-                # ONLY for items the user actually edited. Writing it for every
+                # ONLY for items whose COLOUR the user edited. Writing it for every
                 # item gave features with no source colour an invented default
                 # (a shape with no stroke came out Blue instead of the engine's
                 # white), which silently changed output the user never touched.
-                if item["uid"] in _STATE.get("edited", ()):
+                # Gating on "any edit" was not enough: item["color"] is a
+                # parse-time default for a colourless feature, so merely
+                # renaming one changed its exported colour.
+                if item["uid"] in _STATE.get("color_edited", ()):
                     hex_ = _hex_for(item["color"])
                     feat.color = hex_
                     if item["kind"] != "waypoints" or getattr(feat, "stroke", None):

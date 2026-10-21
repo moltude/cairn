@@ -16,6 +16,32 @@ let BULK = null;                       // several-items dialog state
 const $ = s => document.querySelector(s);
 const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; e.className = "status " + cls; };
 
+/* Keyboard focus across re-renders. The rail and the list are rebuilt with
+   innerHTML, which drops focus to <body>. Every control they rebuild carries a
+   data-fk key that is stable across renders (row uid / folder key / facet key
+   plus which control); capture it BEFORE rebuilding -- once the node is gone,
+   activeElement is already <body> -- and focus the same key afterwards. A row's
+   note button and its open editor share one key, so Apply/Cancel land back on
+   the note button. A key that no longer exists is a silent no-op. */
+const focusedKey = () => document.activeElement?.dataset?.fk || null;
+function refocus(k) {
+  if (!k || focusedKey() === k) return;
+  const el = [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k);
+  if (el) el.focus({ preventScroll: true });
+}
+
+/* Modals keep Tab and Shift+Tab inside their card. Computed at keydown time:
+   the bulk dialog rebuilds its icon grid on every pick. */
+const FOCUSABLE = 'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])';
+function trapTab(e, card) {
+  const els = [...card.querySelectorAll(FOCUSABLE)].filter(el => el.getClientRects().length);
+  if (!els.length) return;
+  const first = els[0], last = els.at(-1), a = document.activeElement;
+  if (!card.contains(a)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+}
+
 async function boot() {
   try {
     setStatus("Loading Python runtime…");
@@ -82,9 +108,17 @@ function wireDrop() {
   dz.addEventListener("drop", e => {
     const f = e.dataTransfer.files[0]; if (f) handleFile(f);
   });
+  // A drop that misses the drop zone must not navigate the tab to the file.
+  ["dragover", "drop"].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
 }
 
 async function handleFile(file) {
+  // The drop zone accepts files before the engine has finished booting
+  // (Choose file… stays disabled until then, a drop can't be).
+  if (!window.__cairnReady) {
+    setStatus("Still loading the map engine — try again in a moment.", "err");
+    return;
+  }
   setStatus("Reading " + file.name + "…");
   try {
     const text = await file.text();
@@ -136,6 +170,8 @@ function resetFilters() {
   FILTERS.q = ""; FILTERS.kind = ""; FILTERS.folder = null;
   FILTERS.icons.clear(); FILTERS.attention = false;
   $("#filter").value = "";
+  document.querySelectorAll("#type-filter button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.kind === "")));
 }
 
 const isUnorganized = g => g.key === "orphaned_features" || /^(Unorganized|Uncategorized)$/.test(g.name);
@@ -166,12 +202,14 @@ function renderEdit() {
 }
 
 function renderRail() {
+  const fk = focusedKey();
   // Folders: "All" first, then each folder with its item count.
   const fl = $("#folder-facets"); fl.innerHTML = "";
   const facetBtn = (label, count, key, italic) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "facet-btn" + (italic ? " unorg" : "");
     b.setAttribute("aria-pressed", String(FILTERS.folder === key));
+    b.dataset.fk = "folder|" + (key === null ? "\u0000all" : key);
     b.innerHTML = `<span class="facet-name">${esc(label)}</span><span class="facet-count">${count ?? ""}</span>`;
     b.onclick = () => {
       FILTERS.folder = FILTERS.folder === key && key !== null ? null : key;
@@ -198,7 +236,7 @@ function renderRail() {
     const lab = document.createElement("label");
     lab.className = "icon-facet" + (def ? " default-pin" : "");
     lab.title = def ? "Waypoints that fell back to onX's default pin" : "";
-    lab.innerHTML = `<input type="checkbox"${def ? ' id="only-attention"' : ""} data-icon="${esc(k)}">` +
+    lab.innerHTML = `<input type="checkbox"${def ? ' id="only-attention"' : ""} data-icon="${esc(k)}" data-fk="icon|${esc(k)}">` +
       glyphSVG(def ? "Location" : k) + `<span>${def ? "Default pin" : esc(k)}</span>`;
     const box = lab.querySelector("input");
     box.checked = def ? FILTERS.attention : FILTERS.icons.has(k);
@@ -210,6 +248,7 @@ function renderRail() {
     il.appendChild(lab);
   });
   if (!keys.length) il.innerHTML = `<span class="facet-empty">No waypoints</span>`;
+  refocus(fk);
 }
 
 function renderChips() {
@@ -244,6 +283,7 @@ function renderFolders() {
   // Selection always follows what's on screen -- if a filter change hides a
   // selected row, it drops out of the selection rather than staying an
   // invisible target for the next bulk edit.
+  const fk = focusedKey();
   const shownUids = new Set(shownItems().map(i => i.uid));
   for (const uid of SEL) if (!shownUids.has(uid)) SEL.delete(uid);
   if (NOTE_EDIT && !shownUids.has(NOTE_EDIT.uid)) NOTE_EDIT = null;
@@ -264,12 +304,12 @@ function renderFolders() {
       <div class="folder-head">
         <h2>${esc(g.name)}</h2>
         <span class="folder-sub">${esc(sub)}</span>
-        <button type="button" class="collapse" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
+        <button type="button" class="collapse" data-fk="collapse|${esc(g.key)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
       </div>
       <div class="table-wrap${collapsed ? " hidden" : ""}"><table>
         <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
         <thead><tr>
-          <th class="selcol"><input type="checkbox" class="folder-all" aria-label="Select all shown in ${esc(g.name)}" title="Select every row shown in this folder"></th>
+          <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}" title="Select every row shown in this folder"></th>
           <th>Name</th><th>Note</th><th>Icon</th>
         </tr></thead><tbody></tbody></table></div>`;
     const tb = el.querySelector("tbody");
@@ -291,6 +331,7 @@ function renderFolders() {
   if (!host.children.length)
     host.innerHTML = `<div class="note">Nothing matches these filters.</div>`;
   updateSel();
+  refocus(fk);
 }
 
 const colorList = () => DATA.line_colors || DATA.colors;
@@ -311,17 +352,18 @@ function row(it) {
   if (noteOpen) tr.classList.add("note-open");
   const cname = colorName(it.color);
   const iconLabel = it.needs_attention ? "Default pin" : it.icon;
+  const fk = esc(it.uid) + "|";
   tr.innerHTML = `
-    <td class="selcol"><input type="checkbox" class="sel-box" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
-    <td class="namecol"><input class="name-in" aria-label="Name" value="${esc(it.name)}">${it.included ? ""
-      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
+    <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
+    <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
+      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<button type="button" class="note-btn" aria-label="Open note for ${esc(it.name)}" title="Becomes the markup's Notes in onX">
+      `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}" title="Becomes the markup's Notes in onX">
         <span class="note-text${it.desc ? "" : " empty"}">${esc(oneLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
     <td class="iconcol">${isWp
-      ? `<button type="button" class="icon-btn" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex)}${it.needs_attention
+      ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex)}${it.needs_attention
           ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>` : `<span class="icon-name">${esc(it.icon)}</span>`}</button>`
-      : `<button type="button" class="line-btn" title="${esc(cname)} — ${esc(it.why)}" aria-label="${kindWord(it.kind)}, ${esc(cname)}. Change color">${lineSVG(it.hex, it.kind)}<span class="icon-name kind">${kindWord(it.kind)}</span></button>`}</td>`;
+      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${kindWord(it.kind)}, ${esc(cname)}. Change color">${lineSVG(it.hex, it.kind)}<span class="icon-name kind">${kindWord(it.kind)}</span></button>`}</td>`;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {
@@ -395,19 +437,24 @@ function wireTextField(el, it, key, { required = false } = {}) {
       setStatus("A name is required — onX can only search by name.", "err");
       return;
     }
-    edit(it, { [key]: v });
+    // `change` fires on blur BEFORE focus lands on the next control; a
+    // synchronous re-render would destroy that control mid-Tab. Update the data
+    // now, re-render on the next task, when focus has arrived and can be kept.
+    edit(it, { [key]: v }, { render: false });
+    setTimeout(() => DATA && refreshAfterEdit());
   });
 }
 
 /* ---------- notes: inline multi-line editor ---------- */
 function noteEditor(it) {
   const id = "note-" + it.uid.replace(/[^\w-]/g, "_");
+  const fk = esc(it.uid) + "|note";   // shared with the note button it replaces
   return `<div class="note-ed">
     <label class="label" for="${id}">Note</label>
-    <textarea id="${id}" class="desc-in" rows="5">${esc(NOTE_EDIT.draft)}</textarea>
+    <textarea id="${id}" class="desc-in" data-fk="${fk}" rows="5">${esc(NOTE_EDIT.draft)}</textarea>
     <div class="note-actions">
-      <button type="button" class="btn primary small note-apply">Apply</button>
-      <button type="button" class="btn small note-cancel">Cancel</button>
+      <button type="button" class="btn primary small note-apply" data-fk="${fk}">Apply</button>
+      <button type="button" class="btn small note-cancel" data-fk="${fk}">Cancel</button>
       <span class="hint">Line breaks kept</span>
     </div></div>`;
 }
@@ -638,8 +685,9 @@ function closePop() {
 function openBulk() {
   const items = selectedItems();
   if (!items.length) return;
+  const ret = document.activeElement;
   closeMenu(); closePop();
-  BULK = { uids: items.map(i => i.uid), color: null, icon: null, q: "" };
+  BULK = { uids: new Set(items.map(i => i.uid)), color: null, icon: null, q: "", ret };
   const hasWp = items.some(i => i.kind === "waypoints");
   const hasLines = items.some(i => i.kind !== "waypoints");
   const d = $("#mark-dialog");
@@ -685,7 +733,7 @@ function openBulk() {
 
 function drawBulk() {
   const d = $("#mark-dialog");
-  const items = allItems().filter(i => BULK.uids.includes(i.uid));
+  const items = allItems().filter(i => BULK.uids.has(i.uid));
   const hexOf = rgba => (colorOf(rgba) || {}).hex;
   d.querySelector(".na-rows").innerHTML = items.map(it => {
     const isWp = it.kind === "waypoints";
@@ -718,7 +766,7 @@ function drawBulkGrid() {
 
 function applyBulk() {
   const { color, icon, uids } = BULK;
-  const items = allItems().filter(i => uids.includes(i.uid));
+  const items = allItems().filter(i => uids.has(i.uid));
   closeBulk();
   if (!color && !icon) return;
   let n = 0;
@@ -734,10 +782,12 @@ function applyBulk() {
 
 function closeBulk() {
   if (!BULK) return;
+  const { ret } = BULK;
   BULK = null;
   $("#mark-modal").classList.add("hidden");
   $("#mark-dialog").innerHTML = "";
-  if (!$("#bulk-icon").disabled) $("#bulk-icon").focus({ preventScroll: true });
+  const to = ret && ret !== document.body && ret.isConnected && !ret.disabled ? ret : $("#bulk-icon");
+  if (!to.disabled) to.focus({ preventScroll: true });
 }
 
 /* ---------- More menu ---------- */
@@ -748,6 +798,10 @@ function closeMenu() {
 
 /* ---------- export ---------- */
 async function doExport() {
+  if (!allItems().some(i => i.included)) {
+    setStatus("Everything is excluded — include at least one item to export.", "err");
+    return;
+  }
   setStatus("Building onX files…");
   try {
     closePop(); closeBulk();
@@ -793,8 +847,17 @@ function renderRunbook() {
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-const openHelp = () => $("#help").classList.remove("hidden");
-const closeHelp = () => $("#help").classList.add("hidden");
+let HELP_RETURN = null;   // what had focus when Help opened
+function openHelp() {
+  HELP_RETURN = document.activeElement;
+  $("#help").classList.remove("hidden");
+  $("#help-close").focus();
+}
+function closeHelp() {
+  $("#help").classList.add("hidden");
+  const r = HELP_RETURN; HELP_RETURN = null;
+  if (r && r.isConnected) r.focus({ preventScroll: true });
+}
 
 /* ---------- wire ---------- */
 window.addEventListener("DOMContentLoaded", () => {
@@ -847,6 +910,11 @@ window.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", () => { if (POP && POP.anchor.isConnected) placePop(POP.anchor); });
   document.addEventListener("keydown", e => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ""));
+    if (e.key === "Tab") {
+      if (!$("#help").classList.contains("hidden")) trapTab(e, $("#help .modal-card"));
+      else if (BULK) trapTab(e, $("#mark-dialog"));
+      return;
+    }
     if (e.key === "Escape") {
       // Priority: close what's in front, then an open note, then let a focused
       // field revert its own edit, else clear the selection.

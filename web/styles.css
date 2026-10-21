@@ -24,7 +24,7 @@
   --paper:#EFE8D8; --rail:#E5DCC6; --card:#F7F2E6; --sheet:#FFFDF7; --sheet-head:#F3ECDC;
   --open-row:#FBF6EA; --hover-row:#F2EBDC; --sel-row:#E9EFDF;
   --ink:#2A241C; --muted:#5C5242; --brown:#7A4E25; --green:#3B6534; --green-dark:#2E5029;
-  --link:#2F6690; --link-hover:#1F4A6B; --rule:#B9A887; --rule-soft:#D8CBAE; --control:#9C8B6C;
+  --link:#2F6690; --link-hover:#1F4A6B; --rule:#B9A887; --rule-soft:#D8CBAE; --control:#857555;
   --warning:#8A3F12; --contour:#D2C29F;
   --serif:"Libre Caslon Text",Georgia,"Times New Roman",serif;
   --shadow:0 8px 24px rgba(42,36,28,.18);
@@ -188,7 +188,7 @@ tbody tr.editing{background:var(--open-row);box-shadow:inset 3px 0 0 var(--brown
 .note-btn:hover svg,.note-btn:focus-visible svg{opacity:1}
 .note-btn:hover .note-text{color:var(--ink)}
 .note-text{flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.note-text.empty{opacity:.8}
+.note-text.empty{font-style:italic;color:var(--muted)}
 .note-ed{display:flex;flex-direction:column;gap:8px;padding:4px 0 8px}
 .desc-in{width:100%;line-height:1.5;background:var(--sheet);border:1px solid var(--brown);border-radius:2px;
   padding:8px 10px;color:var(--ink);resize:vertical;min-height:110px}
@@ -263,10 +263,10 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .mark-dialog .pop-foot{position:sticky;bottom:0;background:var(--sheet);border-top:1px solid var(--rule-soft)}
 .bulk-head{padding:4px 20px 18px;border-bottom:1px solid var(--rule-soft);background:var(--sheet-head);
   display:flex;flex-direction:column;gap:8px}
-.modal-head.plain{padding:12px 0 0;border:none;background:none}
+.modal-head.plain{padding:12px 0 0;border:none;background:var(--sheet-head)}
 .now-after{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:6px 10px;align-items:center}
 .na-rows{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:6px 10px;
-  align-items:center;max-height:236px;overflow-y:auto}
+  align-items:center;max-height:min(236px,25vh);overflow-y:auto}
 .na-cell{display:flex;align-items:center;gap:8px;min-width:0}
 .na-cell svg{flex:none}
 .na-name,.na-after{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

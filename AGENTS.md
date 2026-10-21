@@ -33,8 +33,9 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-21: **532 passed, Python 3.14** (with the web dev server up; without
-it the 36 `tests/web` tests skip). The drop from 686 is the CLI/TUI test removal.
+Baseline as of 2026-10-21: **560 passed, Python 3.15** with the web dev server up; without it
+the 49 `tests/web` tests skip, giving **511 passed, 49 skipped**. The drop from 686 is the
+CLI/TUI test removal. (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 
 ## Architecture
@@ -84,8 +85,8 @@ readers, caltopo_gpx, dedup/merge) is engine code not yet wired into the web app
 - **Do not add `try/except Exception` around assertions in tests.** The deleted TUI suite had 35
   tests that swallowed exceptions and asserted nothing. A flaky interaction should be fixed or
   `pytest.skip`ped explicitly.
-- `tests/output/` holds stale generated output from `scripts/test_edge_cases.py` (untracked
-  since 2026-08-30). It is not produced by pytest and is not a fixture. Don't treat it as an
+- `tests/output/` (gitignored) holds stale generated output from an edge-case runner script that
+  has since been deleted. Nothing produces it any more, it is not a fixture, and it is not an
   expectation baseline.
 - `tests/web/test_web_app.py` drives the Pyodide web app in headless Chromium (needs the dev
   server: `uv run python web/serve.py`, and once per machine `uv run playwright install

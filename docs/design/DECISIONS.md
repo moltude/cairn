@@ -401,3 +401,20 @@ all the text boxes — "sent to back". Applied: removed the inline contour SVGs 
 block, drop target, icon popover header). One contour layer is now the page background; the
 rail and every card, field and dialog are opaque, so lines only show in the gaps. Text not
 already in a box (the empty screen's intro, the done screen) sits on a paper panel.
+
+---
+
+## Engineering decisions from the PR #20 red-team review (2026-10-21)
+
+### ENG-01 — Engine wheel cached as "immutable" under an unchanged filename
+Status: decided — **accept the risk**.
+
+Finding: `web/dist/cairn_maps-1.0.0-py3-none-any.whl` changed content but kept its name, and
+`/dist/*` is served `public, max-age=31536000, immutable`. A visitor whose browser cached the old
+wheel gets an import error ("Failed: …") after deploy until their cache clears.
+
+Options considered: bump the package version so the wheel gets a new URL; serve it from a
+content-hashed path; drop `immutable`/long max-age for the wheel; plus a CI check that the
+committed wheel matches the source. **User's call:** breaking previous visitors is acceptable —
+the site has no serious production users — so none of these were done. Revisit before the site
+has real users: any later change to `cairn/` re-creates the same failure.

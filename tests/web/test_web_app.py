@@ -979,3 +979,55 @@ def test_map_content_is_rendered_as_text_not_html(fresh_page: Page, tmp_path):
     assert fresh_page.locator("#pwn").count() == 0
     assert fresh_page.evaluate("() => window.__pwned === undefined")
     assert payload in fresh_page.locator("#folders").inner_text()
+
+
+# ---------------------------------------------------------------------------
+# Keyboard focus
+# ---------------------------------------------------------------------------
+
+
+def test_popover_apply_returns_focus_to_the_rows_marker(loaded: Page):
+    """Apply re-renders the list; focus must land on the SAME row's new marker
+    button, not drop to <body> (which strands a keyboard user at the top)."""
+    # No attention filter here: picking an icon resolves the row, and that
+    # filter would then hide it.
+    row = loaded.locator(ROW, has=loaded.locator(".icon-btn")).first
+    uid = row.get_attribute("data-uid")
+    row.locator(".icon-btn").click()
+    # An icon pick always yields a patch, so Apply really does re-render.
+    loaded.locator('#mark-pop .icon-pick[data-icon="Summit"]').click()
+    loaded.click("#pop-apply")
+    expect(loaded.locator("#mark-pop")).to_be_hidden()
+    assert loaded.evaluate(
+        "uid => document.activeElement === document.querySelector("
+        "`tr[data-uid=\"${CSS.escape(uid)}\"] .icon-btn`)",
+        uid,
+    ), loaded.evaluate("document.activeElement.outerHTML.slice(0, 120)")
+
+
+def test_help_traps_tab_and_returns_focus_on_escape(loaded: Page):
+    loaded.focus("#help-btn")
+    loaded.keyboard.press("Enter")
+    expect(loaded.locator("#help")).to_be_visible()
+    inside = "document.querySelector('#help .modal-card').contains(document.activeElement)"
+    assert loaded.evaluate("document.activeElement.id") == "help-close"
+    for key in ("Tab", "Tab", "Shift+Tab", "Shift+Tab"):
+        loaded.keyboard.press(key)
+        assert loaded.evaluate(inside), f"{key} left the help dialog"
+    loaded.keyboard.press("Escape")
+    expect(loaded.locator("#help")).to_be_hidden()
+    assert loaded.evaluate("document.activeElement.id") == "help-btn"
+
+
+def test_export_with_everything_excluded_stays_on_the_edit_stage(loaded: Page):
+    _select_all_shown(loaded)
+    assert loaded.evaluate("SEL.size") == EXPECTED_TOTALS["items"]
+    _menu_action(loaded, "#bulk-exclude")
+    assert loaded.evaluate("DATA.totals.excluded") == EXPECTED_TOTALS["items"]
+    loaded.click("#export")
+    expect(loaded.locator("#status")).to_have_text(
+        "Everything is excluded — include at least one item to export."
+    )
+    expect(loaded.locator("#status")).to_have_class(re.compile(r"\berr\b"))
+    assert loaded.evaluate("document.body.dataset.stage") == "edit"
+    assert loaded.evaluate("window.__cairnExported") is not True
