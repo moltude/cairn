@@ -118,6 +118,11 @@ def test_edge_dataset_note_lengths_survive_cairn():
         assert len(notes[f"ZZTEST note {n}"]) == n
     for n in gen.TRACK_NOTE_LENGTHS:
         assert len(notes[f"ZZTEST line note {n}"]) == n
+    for n in gen.UTF8_NOTE_BYTES:                       # onX's limit is in UTF-8 bytes
+        note = notes[f"ZZTEST utf8 note {n}B"]
+        assert len(note.encode()) == n and len(note) < n
+    mid = notes["ZZTEST utf8 note mid-char"].encode()
+    assert len(mid) == 514 and mid[511:513] == "é".encode()  # byte 512 splits the é
     assert all(name.startswith("ZZTEST ") for name in notes)
     assert {g["name"] for g in data["groups"]} == {"Edge Cases"}
 
