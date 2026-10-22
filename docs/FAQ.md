@@ -82,7 +82,7 @@ Some edge cases:
 
 ### Do dashed and dotted lines come across?
 
-Only a dashed line, and only from the GeoJSON. Line styles in onX are `solid`, `dash` and `dot`, written as `<onx:style>` on a track (per project docs; `dash` and `solid` have been seen in real onX exports, `dot` hasn't). onX has no arrows.
+Only a dashed line, and only from the GeoJSON. Line styles in onX are `solid`, `dash` and `dot`, written as `<onx:style>` on a track. These three values come from the project's reading of onX's Web Map code. No real onX export containing a line has been inspected yet, so none of them is confirmed from a real file. onX's code shows no arrow style.
 
 CalTopo writes a line's style in the GeoJSON `pattern` property:
 - `solid` is solid.
