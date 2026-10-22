@@ -48,6 +48,8 @@ EXPECTED = {
     "bitterroots/Bitterroots__Complete_.json": (GEOJSON, CALTOPO),
     "bitterroots/bitterroots_subet.gpx": (GPX, CALTOPO),  # the one real CalTopo GPX
     "bitterroots/bitterroots_subset.json": (GEOJSON, CALTOPO),
+    # Digests of the Phase 2 baseline export: JSON, but not a map.
+    "bitterroots/export_zip_sha256_e927aa9.json": (GEOJSON, GENERIC),
     "edge_cases/README.md": (UNKNOWN, NOT_A_MAP),
     "edge_cases/colors.gpx": (GPX, CAIRN),
     "edge_cases/dateline.gpx": (GPX, CAIRN),

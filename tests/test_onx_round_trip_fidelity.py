@@ -195,23 +195,33 @@ def test_round_trip_fidelity_figure(tmp_path):
     scored against SOURCE (the files), so losses at read time count as well as losses
     at write time. Only the fields each item kind has are counted; an item that is
     lost counts all its fields as lost. A regression shows up as a smaller figure."""
-    source = _expected_source()
     after = _snap(_round_trip(_read_source(), tmp_path))
-    applicable = {
-        "Waypoint": ("kind", "notes", "icon", "color", "id"),
-        "Track": ("kind", "line", "notes", "color", "style", "weight", "id", "pts", "ele", "time"),
-        "Shape": ("kind", "notes", "color", "style", "weight", "fill", "id", "pts", "rings"),
-    }
+    # 10 misses: 7 onX ids, the thin weight (item 5) and the Line kind; see ALLOWED_LOSSES.
+    assert fidelity_figure(after) == FIDELITY_FIGURE
+
+
+# Phase 1's headline figure. tests/test_web_bridge_input_dispatch.py holds the web
+# bridge's export (roadmap Phase 2) to the same number.
+FIDELITY_FIGURE = (52, 62)
+
+_APPLICABLE = {
+    "Waypoint": ("kind", "notes", "icon", "color", "id"),
+    "Track": ("kind", "line", "notes", "color", "style", "weight", "id", "pts", "ele", "time"),
+    "Shape": ("kind", "notes", "color", "style", "weight", "fill", "id", "pts", "rings"),
+}
+
+
+def fidelity_figure(after: dict) -> tuple[int, int]:
+    """(fields intact, fields in SOURCE) for a _snap of the re-read output."""
     total = same = 0
-    for name, items in source.items():
+    for name, items in _expected_source().items():
         got = after.get(name, [])
         for i, b in enumerate(items):
             a = got[i] if i < len(got) else None
-            for f in applicable[b["kind"]]:
+            for f in _APPLICABLE[b["kind"]]:
                 total += 1
                 same += a is not None and b[f] == a[f]
-    # 10 misses: 7 onX ids, the thin weight (item 5) and the Line kind; see ALLOWED_LOSSES.
-    assert (same, total) == (52, 62)
+    return same, total
 
 
 @pytest.mark.parametrize("name", ["Slide obs", "Main Wall"])

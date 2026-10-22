@@ -2,9 +2,11 @@
 
 web/bridge.py is the only consumer of `cairn` (the CLI and TUI were removed;
 see git tag `cli-final`). WEB_ENGINE below is the set of modules it actually
-reaches, and each of them carries a "Web engine" header comment. Everything
-else in cairn/ is engine code not yet wired into the web app (onX readers,
-dedup/merge, ...) -- kept as the base for future web features.
+reaches, and each of them carries a "Web engine" header comment. Since roadmap
+Phase 2 that includes the GPX/KML readers (CalTopo GPX, onX GPX and KML), the
+onX GPX+KML merge and the MapDocument->ParsedData adapter. Everything else in
+cairn/ is engine code not yet wired into the web app (dedup, ...) -- kept as
+the base for future web features.
 
 If this test fails because bridge.py started importing something new, add the
 module here AND give it the header comment, so the marking stays truthful.
@@ -22,9 +24,16 @@ WEB_ENGINE = {
     "cairn/core/config.py",
     "cairn/core/icon_resolver.py",
     "cairn/core/mapper.py",
+    "cairn/core/merge.py",
+    "cairn/core/normalization.py",
     "cairn/core/parser.py",
     "cairn/core/writers.py",
+    "cairn/io/caltopo_gpx.py",
+    "cairn/io/document_adapter.py",
     "cairn/io/input_check.py",
+    "cairn/io/onx_gpx.py",
+    "cairn/io/onx_kml.py",
+    "cairn/model.py",
     "cairn/utils/utils.py",
 }
 

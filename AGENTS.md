@@ -139,11 +139,12 @@ readers, caltopo_gpx, dedup/merge) is engine code not yet wired into the web app
   The enforced-CSP e2e test is what caught it; keep that test passing. It also caught an
   inline `<script>` (a since-removed theme-init snippet) that production's CSP silently
   blocked — all JS must live in files under `web/`.
-- **XML parsing uses stock `xml.etree.ElementTree`, behind a pre-parse guard.** XML is becoming
+- **XML parsing uses stock `xml.etree.ElementTree`, behind a pre-parse guard.** XML is
   reachable from the web bridge (GPX/KML input, roadmap `docs/ROADMAP_ONX_ROUND_TRIP.md`
-  Phase 2), so the old "only files the user chose, in the CLI" premise is gone. What protects
-  it now, in order:
-  1. `cairn/io/input_check.py:guard_input`, called first thing in `web/bridge.py:load_document`,
+  Phase 2: `web/bridge.py:load_files` dispatches every file on `detect()`), so the old "only
+  files the user chose, in the CLI" premise is gone. What protects it now, in order:
+  1. `cairn/io/input_check.py:guard_input`, called on every file first thing in
+     `web/bridge.py:load_files` (`load_document` is its one-file wrapper),
      rejects any XML whose prolog declares a DTD (`<!DOCTYPE`, and so any `<!ENTITY`) and any
      XML over 16 MB, with a one-sentence `ValueError` the UI shows as-is. No exporter of
      interest (onX, CalTopo, Google Earth, Cairn) emits a DTD. The scan is prolog-only on

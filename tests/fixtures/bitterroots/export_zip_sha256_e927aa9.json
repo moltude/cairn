@@ -1,0 +1,32 @@
+{
+  "commit": "e927aa9",
+  "note": "Produced at commit e927aa9, before roadmap Phase 2: sha256 of every member of bridge.export_zip() for Bitterroots__Complete_.json loaded with no edits, and of bridge.load_document()'s JSON. tests/test_web_bridge_input_dispatch.py checks the GeoJSON path still produces exactly these bytes.",
+  "members": {
+    "01_Unorganized/Unorganized_Waypoints.gpx": "9e9d4ae97828497b923851e6964fae34f8808eaa5fe18a80e28bdf7fc0e80f72",
+    "01_Unorganized/Unorganized_Tracks.gpx": "6ff0fc9adcb010ab5b597f560b25bfd4393af63f9468380efb47d2d4ab8f9dc2",
+    "01_Unorganized/Unorganized_Areas.kml": "d93ef6edf2f3d64df2c344537b152e9e2dc78b17aa2b1cacbdbd5955c0594a75",
+    "02_Lost_Trail_Pass/Lost_Trail_Pass_Waypoints.gpx": "748c9da9e92bef05606be03649a974adce3dedcc8669a13a3985fc6eb09582da",
+    "02_Lost_Trail_Pass/Lost_Trail_Pass_Tracks.gpx": "e5734592cdbb85c1569ac4dc784b4bb743280426b6a0ea1fa108c5c58738b7d0",
+    "02_Lost_Trail_Pass/Lost_Trail_Pass_Areas.kml": "57bd657b61a9ea38b62546799214e2b9a8231594d13196c25a0bff5d54be1b33",
+    "03_North_Roots/North_Roots_Waypoints.gpx": "1a98e158877b12863a852c82c124f810fa59151a5fb353739bcc590f53f7cb10",
+    "03_North_Roots/North_Roots_Tracks.gpx": "9dd456267de5fd921fbf843c748643c946e648134fafb7fc648d3bb9d99e9a5e",
+    "03_North_Roots/North_Roots_Areas.kml": "9eb8d448ff8d1d792a25b3b4cb7e6e1b64cf13a9058df4b263bf7658365f5d3c",
+    "04_Trapper_area/Trapper_area_Waypoints.gpx": "7deed2752fdeab54e0e804d26b1678ac05eb8bee98add4de15afa6877e36dc3e",
+    "04_Trapper_area/Trapper_area_Tracks.gpx": "60888701943b36094dd07261cc14d558b67910ac6d5a74f98648b2b8bfb02cd6",
+    "05_Lost_Horse_Canyon/Lost_Horse_Canyon_Waypoints.gpx": "4aa85e9664d1d09ef7277f73fc2e7c539cfa74ef1598b57dac5f54e22935306f",
+    "05_Lost_Horse_Canyon/Lost_Horse_Canyon_Tracks.gpx": "8296aa1b76a6e2fd9ab6c57ac93c4d7cd0c958e567d76382e123c17e2979fa8b",
+    "05_Lost_Horse_Canyon/Lost_Horse_Canyon_Areas.kml": "25a5304774e2ae6793517369ec4e4f66c92dce3d932109fcd286119c93afcae0",
+    "06_Blodgett/Blodgett_Waypoints.gpx": "1ea4ffc4a43ff8db5f0ff69d19f3bf66992eb11327836d5682d65826d1c0eb9a",
+    "06_Blodgett/Blodgett_Tracks.gpx": "2901bc4e81adb2813014d841325a154cd14006afc9c79f33ee87d4e65cbfc0d5",
+    "07_Central_roots/Central_roots_Waypoints.gpx": "9a9c929975d968c53a2114fdd4cb56b28ac859e2f2f544655162884c0901fa76",
+    "07_Central_roots/Central_roots_Tracks.gpx": "2afae21d3ec48cbbdf1a1e9d45596351d246bc21a4e4c9d18b4fd6a37e756d4b",
+    "07_Central_roots/Central_roots_Areas.kml": "56bed11baf683faf9e0c463022b6e0de44b6caf534d2117ce55fdfa5d9f13e84",
+    "08_Sheafman_ridge/Sheafman_ridge_Waypoints.gpx": "e89cbf73cd140145427e9f3df4e96549880c1a188738c40b50b1e2faea980b21",
+    "08_Sheafman_ridge/Sheafman_ridge_Tracks.gpx": "d350731b26c491e6fb5722a07991193185257b0daa59ef49eabe5a43f1896d60",
+    "08_Sheafman_ridge/Sheafman_ridge_Areas.kml": "7e9b6c49a1dd7bfc9f76b1e7f77cc8da14202247be2098488808885cde22cb4e",
+    "09_Paddling/Paddling_Tracks.gpx": "fd6731986fd80aa8345d8b142b33d569a282e0d4c9ecf9e0af9e9d3d701d1d69",
+    "10_Mill_Creek_Canyon/Mill_Creek_Canyon_Waypoints.gpx": "47e0d17de112d1f5c2b45cb1bb4225d76ec5e70b9a7ad4bf995ee2cefd3f3713",
+    "RUNBOOK.md": "cd981d1ef2a74b060111c020cc4c6bfaede9667e386adaff82259b22fde03e1b"
+  },
+  "load_document_json": "5bdb446fa1cac678c6d0ede0a641232c6ffb74126745231e4b53278f5df59dab"
+}
