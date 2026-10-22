@@ -107,39 +107,44 @@ function showStage(name) {
 function wireDrop() {
   const dz = $("#dropzone"), fi = $("#file");
   $("#pick").onclick = () => fi.click();
-  fi.onchange = () => fi.files[0] && handleFile(fi.files[0]);
+  fi.onchange = () => fi.files.length && handleFiles([...fi.files]);
   ["dragenter", "dragover"].forEach(ev => dz.addEventListener(ev, e => {
     e.preventDefault(); dz.classList.add("over");
   }));
   ["dragleave", "drop"].forEach(ev => dz.addEventListener(ev, e => {
     e.preventDefault(); dz.classList.remove("over");
   }));
+  // Several files at once (an onX GPX + KML pair, or one export per folder)
+  // go to the bridge TOGETHER, so a pair merges. This is the first load only:
+  // the drop zone exists on the drop screen, and "Start over" clears the map
+  // rather than adding to it (UI-12).
   dz.addEventListener("drop", e => {
-    const f = e.dataTransfer.files[0]; if (f) handleFile(f);
+    const fs = [...e.dataTransfer.files]; if (fs.length) handleFiles(fs);
   });
   // A drop that misses the drop zone must not navigate the tab to the file.
   ["dragover", "drop"].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
 }
 
-async function handleFile(file) {
+async function handleFiles(files) {
   // The drop zone accepts files before the engine has finished booting
   // (Choose file… stays disabled until then, a drop can't be).
   if (!window.__cairnReady) {
     setStatus("Still loading the map engine — try again in a moment.", "err");
     return;
   }
-  setStatus("Reading " + file.name + "…");
+  setStatus("Reading " + (files.length === 1 ? files[0].name : `${files.length} files`) + "…");
   try {
-    const text = await file.text();
+    const payload = await Promise.all(files.map(async f => ({ name: f.name, text: await f.text() })));
     // Data crosses into Python via globals, never by interpolating user
     // content into Python source — JSON escaping happening to be valid
     // Python-literal escaping is not a contract worth betting on.
-    py.globals.set("_cairn_text", text);
-    py.globals.set("_cairn_fname", file.name);
-    const raw = py.runPython("bridge.load_document(_cairn_text, _cairn_fname)");
+    py.globals.set("_cairn_files", JSON.stringify(payload));
+    const raw = py.runPython("bridge.load_files(_cairn_files)");
     DATA = JSON.parse(raw); EDITS = {}; SEL.clear(); ANCHOR = null;
     resetFilters(); COLLAPSED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
     $("#map-title").textContent = mapTitle(DATA);
+    $("#map-label").textContent = mapLabel(DATA);
+    renderSourceNotice(DATA);
     // "Areas" only when the map has any.
     const hasAreas = allItems().some(i => i.kind === "shapes");
     $('#type-filter [data-kind="shapes"]').classList.toggle("hidden", !hasAreas);
@@ -163,15 +168,43 @@ function humanError(e) {
   return last.replace(/^\w*(Error|Exception):\s*/, "").trim().slice(0, 180);
 }
 
-/** The CalTopo map's title. The engine doesn't hand one over, and a CalTopo
+/** The map's title. The engine doesn't hand one over, and a CalTopo
     GeoJSON export carries none; its download filename does, with spaces and
     brackets turned into underscores ("Bitterroots__Complete_.json" for
-    "Bitterroots (Complete)"). Undo that. */
+    "Bitterroots (Complete)"). Undo that. Several files: the first file's
+    title, plus how many others came with it -- except the two halves of one
+    onX export (same name, .gpx and .kml), which are one map. */
+function fileTitle(name) {
+  let s = String(name || "").replace(/\.((geo)?json|gpx|kml)$/i, "");
+  s = s.replace(/__([^_]+(?:_[^_]+)*)_$/, " ($1)").replace(/_/g, " ").replace(/\s+/g, " ").trim();
+  return s;
+}
 function mapTitle(data) {
   if (data.title || data.map_title) return data.title || data.map_title;
-  let s = String(data.filename || "").replace(/\.(geo)?json$/i, "");
-  s = s.replace(/__([^_]+(?:_[^_]+)*)_$/, " ($1)").replace(/_/g, " ").replace(/\s+/g, " ").trim();
-  return s || "Untitled map";
+  const titles = [...new Set((data.filenames || [data.filename]).map(fileTitle))];
+  const first = titles[0] || "Untitled map";
+  const more = titles.length - 1;
+  return more ? `${first} +\u00a0${more}\u00a0more` : first;   // "+ 2 more" never splits
+}
+
+/** The small label over the title: whose map this is. */
+function mapLabel(data) {
+  const src = data.sources || [];
+  const caltopo = src.length && src.every(s => s.dialect === "caltopo");
+  const onx = src.length && src.every(s => s.dialect === "onx" || s.dialect === "onx-like");
+  return caltopo ? "CalTopo map" : onx ? "onX map" : "Map";
+}
+
+/** CalTopo's GPX keeps names and places only (KG 3.2): say that its GeoJSON
+    would have brought icons, colors and folders too. Shown for a CalTopo GPX
+    or KML; only GPX is detected as CalTopo today. */
+const CALTOPO_XML_NOTICE = "CalTopo's GeoJSON keeps icons, colors and folders. Export that if you can.";
+function renderSourceNotice(data) {
+  const el = $("#source-notice");
+  const show = (data.sources || []).some(s =>
+    s.dialect === "caltopo" && (s.kind === "gpx" || s.kind === "kml"));
+  el.textContent = show ? CALTOPO_XML_NOTICE : "";
+  el.classList.toggle("hidden", !show);
 }
 
 /* ---------- filters ---------- */
@@ -348,6 +381,11 @@ const colorList = () => DATA.line_colors || DATA.colors;
 const colorOf = rgba => colorList().find(c => c.rgba === rgba) || DATA.colors.find(c => c.rgba === rgba);
 const colorName = rgba => (colorOf(rgba) || { name: "—" }).name;
 const kindWord = k => k === "shapes" ? "Area" : "Line";
+/** A row's type label. An onX file says whether a line is a Line or a recorded
+    Track, so its rows say so too; everything else is "Line" or "Area" (UI-18:
+    the type filter keeps the one word "Lines"). */
+const SUBKIND_WORD = { line: "Line", track: "Track", area: "Area" };
+const rowKindWord = it => SUBKIND_WORD[it.subkind] || kindWord(it.kind);
 const oneLine = s => String(s || "").replace(/\s*\n\s*/g, " ").trim();
 
 function row(it) {
@@ -372,8 +410,11 @@ function row(it) {
         <span class="note-text${it.desc ? "" : " empty"}">${esc(oneLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex)}${it.needs_attention
-          ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>` : `<span class="icon-name">${esc(it.icon)}</span>`}</button>`
-      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${kindWord(it.kind)}, ${esc(cname)}. Change color">${lineSVG(it.hex, it.kind)}<span class="icon-name kind">${kindWord(it.kind)}</span></button>`}</td>`;
+          ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>`
+          // An icon an onX file named that isn't in onX's list (Phase 2 flags
+          // it): kept and exported as is, but marked so it gets a look.
+          : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
+      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}. Change color">${lineSVG(it.hex, it.kind)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {
@@ -633,7 +674,7 @@ function drawPop() {
   const isWp = it.kind === "waypoints";
   const showIcon = isWp && (POP.iconPicked || !it.needs_attention) ? POP.icon : "Default pin";
   pop.querySelector(".pop-preview").innerHTML = isWp ? markerSVG(POP.icon, hex, 52, 64) : lineSVG(hex, it.kind, 52, 44);
-  pop.querySelector(".pop-desc").textContent = `${isWp ? showIcon : kindWord(it.kind)} · ${colorName(POP.color)}`;
+  pop.querySelector(".pop-desc").textContent = `${isWp ? showIcon : rowKindWord(it)} · ${colorName(POP.color)}`;
   pop.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === POP.color)));
   if (isWp) drawPopGrid();
 }
@@ -755,7 +796,7 @@ function drawBulk() {
     const toIcon = isWp ? (BULK.icon || it.icon) : null;
     const nowMark = isWp ? markerSVG(it.icon, it.hex, 22, 28) : lineSVG(it.hex, it.kind, 22, 20);
     const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28) : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20);
-    const afterIcon = isWp ? (BULK.icon || (it.needs_attention ? "Default pin" : it.icon)) : kindWord(it.kind);
+    const afterIcon = isWp ? (BULK.icon || (it.needs_attention ? "Default pin" : it.icon)) : rowKindWord(it);
     return `<span class="na-cell">${nowMark}<span class="na-name">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
       `<span class="na-cell">${afterMark}<span class="na-after">${esc(afterIcon)} · ${esc(colorName(toColor))}</span></span>`;
   }).join("");
@@ -916,6 +957,7 @@ function resetAll() {
   closePop(); closeBulk();
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
   resetFilters();
+  renderSourceNotice({});
   $("#file").value = "";
   showStage("drop");
   setStatus("Ready", "ready");

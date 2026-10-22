@@ -22,7 +22,7 @@ This matters more than it sounds. Per project docs (Aug 2026), the onX Web Map f
 
 ### What does Cairn actually do?
 
-It runs in your browser and takes a CalTopo GeoJSON export. It sorts every feature it recognizes into waypoints (Marker points), lines (Line or Shape linestrings) and areas (Shape polygons). Any other kind of feature is skipped without a message and isn't counted. It picks an onX icon and color for each item. You can review and edit the results, including bulk edits. Then it downloads one zip, `onx_ready.zip`, with files ready for onX:
+It runs in your browser and takes a CalTopo GeoJSON export. It also opens GPX and KML: a CalTopo GPX (names and places only, so it says CalTopo's GeoJSON would be better), or the GPX and KML you export from onX (see the round-trip question below). You can drop several files at once; each becomes one folder named after the file, and an onX GPX and KML from the same export become one folder together. It sorts every feature it recognizes into waypoints (Marker points), lines (Line or Shape linestrings) and areas (Shape polygons). Any other kind of feature is skipped without a message and isn't counted. It picks an onX icon and color for each item. You can review and edit the results, including bulk edits. Then it downloads one zip, `onx_ready.zip`, with files ready for onX:
 
 - One numbered directory per CalTopo folder (`01_Name/`, `02_Name/`, …). `Name` is the folder name with punctuation removed and spaces turned into underscores.
 - In each directory, up to three kinds of file: `Name_Waypoints.gpx`, `Name_Tracks.gpx` and `Name_Areas.kml`. A large GPX may be split into numbered parts (see below).
@@ -126,7 +126,7 @@ Cairn writes every CalTopo line, including a CalTopo Shape drawn as an open line
 - **Keep you under the account limit.** onX says "Your onX account is limited to 3,000 Markups" (help article updated 2026-09-16; it was 1,500 in August). Cairn warns when *this map* is over 3,000, but it can't see what's already in your account. Splitting into more imports doesn't get around an account-wide cap, so the warning tells you to remove or exclude items. What onX actually does when you go over isn't in any cited onX source.
 - **Support phone-only importing.** The runbook is written for the Web Map. KML import works only on the Web Map (per project docs, Aug 2026), and so does the new-folder checkbox. The phone app can import GPX, then file it with "Add to Folder".
 - **Import without a paid plan.** Importing requires onX Premium or Elite (per project docs, Aug 2026).
-- **Read anything other than CalTopo GeoJSON.** See the round-trip question below.
+- **Read a CalTopo KML properly.** A KML is read with the onX reader, so a CalTopo KML's folders, notes and colors are lost, and Cairn doesn't yet recognize it as CalTopo's. Nobody has a real CalTopo KML to build against yet.
 
 ## Privacy
 
@@ -144,16 +144,13 @@ The site's Content Security Policy only lets the page's scripts load code from, 
 
 ### Can I export from onX, clean it up in Cairn, and import it back?
 
-Not today. Here's what's known and what isn't.
+Partly. The first half works; the second half is untested.
 
-**In the web app: no.** It only accepts CalTopo `.json`/`.geojson` files, and there's no onX → Cairn direction.
-
-**In the engine underneath: partly.** Cairn has readers for onX GPX and KML. A test run went onX files → CalTopo GeoJSON → back through Cairn, and the waypoints, tracks and area survived. The gaps:
-- **No real onX export file has ever been tested.** The test files are synthetic. They match onX's extension tags but not its description format or its flat KML layout, per project docs (Aug 2026).
-- **Areas break in GPX.** onX's GPX export writes areas as `<rte>` with `type=Area` (per project docs, Aug 2026), and Cairn's reader turns every `<rte>` into a track.
-- **Folders aren't recovered.** onX export files carry no folder information (per project docs, Aug 2026). Cairn's readers put everything into fixed "Waypoints", "Tracks" and "Areas" folders, so you'd be renaming folders by hand again. The project docs note that onX can export one folder at a time, which could carry folder names through filenames, but Cairn doesn't support that.
-- **Reading XML would reopen a security decision.** The project chose stock XML parsing because XML isn't reachable from the browser. Making it reachable is the stated trigger for revisiting that.
+**Into Cairn: yes.** The web app opens the GPX and KML files onX exports. Drop the GPX and the KML of one export together and they become one folder: the KML keeps areas' holes, the GPX keeps tracks' times. onX icons and colors are kept as they are, not re-guessed, and each says "Kept from your onX file." An icon name that isn't in Cairn's list of onX icons is kept too, but marked so you check it. Rows say whether a line is an onX Line or a Track. The gaps:
+- **No real onX export file has ever been tested.** The test files are synthetic, written to match onX's export code as decoded in the project's research (Oct 2026), not exported from a real account.
+- **Folders aren't in the files.** onX export files carry no folder information (per project docs, Aug 2026). Each file you drop becomes one folder named after the file, so exporting one onX folder at a time and dropping all the files together brings your folders back. Whether onX lets you name those export files is untested; if it doesn't, rename the files before dropping them. Cairn can't rename a folder yet.
+- **XML input is guarded.** Now that the browser reads XML, Cairn refuses any GPX or KML with a DTD and any XML file over 16 MB before parsing it.
 
 **Re-importing: unknown.** Nobody knows whether re-importing updates your existing markups or creates duplicates. The project owner is "skeptical" that in-place updates are possible. Per project docs (Aug 2026), onX's own help suggests exporting and re-importing to manage the 3,000 limit, but that doesn't settle whether a re-import matches existing markups. Cairn's exports don't include onX's IDs, so there would be nothing to match on, if onX matches by ID at all. If re-import does duplicate, you'd need to delete the originals first, or the copies count against the 3,000-markup limit.
 
-So this round trip is a real possible use case that hasn't been built.
+So the cleanup half works today. Sending the result back to onX without duplicating your markups is the part nobody has worked out yet.

@@ -88,7 +88,7 @@ body[data-stage=edit] .topbar{display:none}
   border:2px solid var(--ink);text-align:center;transition:background .15s,border-color .15s}
 
 .drop-target.over{background:var(--sel-row);border-color:var(--green)}
-.drop-title{font-size:26px;font-weight:700}
+.drop-title{font-size:26px;font-weight:700;text-wrap:balance}
 .drop-sub{color:var(--muted)}
 
 /* ---------- loaded screen: collar rail + content ---------- */
@@ -99,7 +99,7 @@ body[data-stage=edit] .topbar{display:none}
 .rail-head{position:relative;padding:26px 26px 0;display:flex;flex-direction:column;gap:22px}
 .rail-head .wordmark .help-link{margin-left:auto;font-weight:400}
 .title-block{border-top:3px double var(--ink);border-bottom:3px double var(--ink);padding:18px 0}
-.title-block h1{margin-top:4px;font-size:30px;line-height:1.15;overflow-wrap:anywhere}
+.title-block h1{margin-top:4px;font-size:30px;line-height:1.15;overflow-wrap:anywhere;text-wrap:balance}
 .facet{position:relative;padding:18px 26px 0;display:flex;flex-direction:column;gap:2px}
 .facet>.label{padding-bottom:6px}
 .facet-list{display:flex;flex-direction:column;gap:2px}
@@ -211,6 +211,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .note{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--brown);
   padding:11px 14px;font-size:14px}
 .note.warn{border-left-color:var(--warning);color:var(--warning)}
+.icon-name.unknown-icon{color:var(--warning);font-style:italic}
 
 /* ---------- icon & color editor (popover + dialog) ---------- */
 .pop{position:absolute;z-index:40;width:440px;max-width:calc(100vw - 16px);background:var(--sheet);

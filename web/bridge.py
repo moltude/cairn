@@ -288,7 +288,7 @@ def load_files(files_json: str) -> str:
         tmp = base / f"{stem}{_EXT.get(kind, '.json')}"
         tmp.write_text(text, encoding="utf-8")
         entries.append({"name": filename, "stem": stem, "path": tmp, "route": route,
-                        "dialect": dialect, "n": n})
+                        "kind": kind, "dialect": dialect, "n": n})
 
     # (ParsedData, origin) per folder source, in input order. origin is None for
     # the CalTopo paths (styling resolved as before), else "onx"/"cairn"/"file".
@@ -341,6 +341,12 @@ def load_files(files_json: str) -> str:
         {
             "filename": filename,
             "filenames": [f.get("name") or "" for f in files],
+            # What each file was detected as, in input order, so the UI can say
+            # what it is looking at (the rail label, the CalTopo GPX notice).
+            "sources": [
+                {"name": e["name"], "kind": e["kind"], "dialect": e["dialect"]}
+                for e in entries
+            ],
             "groups": groups,
             "icons": sorted(get_all_onx_icons()),
             "colors": [{"name": n, "rgba": r, "hex": h} for n, r, h in ONX_COLORS],

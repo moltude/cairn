@@ -39,10 +39,10 @@
   </div>
   <div id="dropzone" class="drop-target">
     <svg class="drop-glyph" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14 M15 6v14"/></svg>
-    <span class="drop-title">Drop a CalTopo export</span>
-    <span class="drop-sub">.json or .geojson</span>
+    <span class="drop-title">Drop a CalTopo or onX export</span>
+    <span class="drop-sub">.json, .geojson, .gpx or .kml</span>
     <button id="pick" type="button" class="btn primary" disabled>Choose file…</button>
-    <input id="file" type="file" accept=".json,.geojson" hidden>
+    <input id="file" type="file" accept=".json,.geojson,.gpx,.kml" multiple hidden>
   </div>
 </main>
 
@@ -55,7 +55,7 @@
         <a class="linkbtn help-link" href="faq.html" target="_blank" rel="noopener">FAQ</a>
         <a class="linkbtn help-link" href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a></div>
       <div class="title-block">
-        <span class="label">CalTopo map</span>
+        <span id="map-label" class="label">CalTopo map</span>
         <h1 id="map-title"></h1>
       </div>
     </div>
@@ -70,7 +70,7 @@
     <div class="rail-foot">
       <span id="status-rail" class="status-slot"></span>
       <button id="export" type="button" class="btn primary big">Export</button>
-      <button type="button" class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over</button>
+      <button type="button" class="btn newmap" title="Clears this map and your edits. To combine several files, drop them together at the start.">Start over</button>
     </div>
   </aside>
 
@@ -87,6 +87,8 @@
         <button type="button" data-kind="shapes" aria-pressed="false">Areas</button>
       </div>
     </div>
+
+    <div id="source-notice" class="note source-notice hidden" role="note"></div>
 
     <div id="chips" class="chips hidden"></div>
 
@@ -116,7 +118,7 @@
     <div class="done-actions">
       <button id="download" type="button" class="btn primary big">Download</button>
       <button id="back" type="button" class="btn">Back</button>
-      <button type="button" class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over</button>
+      <button type="button" class="btn newmap" title="Clears this map and your edits. To combine several files, drop them together at the start.">Start over</button>
     </div>
   </div>
   <div class="runbook-intro">
@@ -145,6 +147,10 @@
     <p>On your CalTopo map choose <b>Export</b> and pick <b>GeoJSON</b>. It is the only CalTopo
        format that keeps your folders, icons and colors — GPX and KML both discard them.
        Drop that file here.</p>
+    <p>Cairn also opens <b>GPX</b> and <b>KML</b>: a CalTopo GPX (names and places only), or
+       the files you export from onX to clean up an onX map. Drop the GPX and KML of one onX
+       export together; they become one folder. Several files dropped at once become one
+       folder each, named after the file.</p>
 
     <h3>2 · Review the icons</h3>
     <p>Cairn maps each CalTopo symbol to the closest onX icon, and shows each waypoint as the

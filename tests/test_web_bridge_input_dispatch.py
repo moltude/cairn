@@ -74,13 +74,27 @@ def _zip(data_bytes: bytes) -> zipfile.ZipFile:
 # --- the GeoJSON path is unchanged --------------------------------------------------
 
 
+def test_sources_report_each_files_detected_kind_and_dialect_in_input_order():
+    """Phase 3: the UI reads this to label the map and show the CalTopo GPX notice."""
+    caltopo = FX / "bitterroots" / "bitterroots_subet.gpx"
+    data = _load(_file(ONX_KML), _file(caltopo), _file(ONX_GPX))
+    assert data["sources"] == [
+        {"name": ONX_KML.name, "kind": "kml", "dialect": "onx"},
+        {"name": caltopo.name, "kind": "gpx", "dialect": "caltopo"},
+        {"name": ONX_GPX.name, "kind": "gpx", "dialect": "onx"},
+    ]
+
+
 def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     """Every file in the zip, and the UI's JSON, match what commit e927aa9 produced."""
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     raw = bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
     loaded = json.loads(raw)
-    # The one new top-level key; everything else is the old JSON, in the old order.
+    # The new top-level keys; everything else is the old JSON, in the old order.
     assert loaded.pop("filenames") == [BITTERROOTS.name]
+    assert loaded.pop("sources") == [
+        {"name": BITTERROOTS.name, "kind": "geojson", "dialect": "caltopo"}
+    ]
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
