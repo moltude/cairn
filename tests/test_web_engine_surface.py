@@ -24,6 +24,7 @@ WEB_ENGINE = {
     "cairn/core/mapper.py",
     "cairn/core/parser.py",
     "cairn/core/writers.py",
+    "cairn/io/input_check.py",
     "cairn/utils/utils.py",
 }
 

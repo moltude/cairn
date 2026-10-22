@@ -1276,6 +1276,17 @@ def _kml_document(folder_name: str, placemarks: List[ET.Element]) -> str:
     kml.set("xmlns", "http://www.opengis.net/kml/2.2")
     document = ET.SubElement(kml, "Document")
     ET.SubElement(document, "name").text = folder_name
+    # Generator marker, so cairn/io/input_check.detect can tell Cairn's KML
+    # from CalTopo's or Google Earth's (KG section 5.1). Document-level
+    # ExtendedData is valid KML 2.2 and sits outside every Placemark, so it
+    # cannot leak into an item's properties (onx_kml reads Data per Placemark,
+    # and onX's own tokml/togeojson-style handling is per feature). UNVERIFIED:
+    # whether onX's importer shows or keeps it -- nothing suggests it does.
+    # It lives here, not in the callers, so write_kml_shapes_maybe_split's
+    # empty-document size baseline already includes it.
+    marker = ET.SubElement(ET.SubElement(document, "ExtendedData"), "Data")
+    marker.set("name", "generator")
+    ET.SubElement(marker, "value").text = "Cairn"
     for pm in placemarks:
         document.append(pm)
     return prettify_xml(kml)

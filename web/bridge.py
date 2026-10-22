@@ -20,6 +20,7 @@ from cairn.core.config import GENERIC_SYMBOLS, resolve_waypoint_color
 from cairn.core.icon_resolver import IconResolver
 from cairn.core.mapper import map_icon
 from cairn.core.parser import UNORGANIZED_FOLDER_NAME, parse_geojson
+from cairn.io.input_check import guard_input
 from cairn.utils.utils import natural_sort_key
 from cairn.core.writers import (
     clear_name_changes,
@@ -121,6 +122,10 @@ def _explain(decision, symbol: str, default_icon: str = "Location") -> str:
 
 def load_document(text: str, filename: str) -> str:
     """Parse a CalTopo export. Returns JSON describing folders and items."""
+    # Before anything is written or parsed: refuse DTD-bearing or oversized
+    # XML with a sentence the UI can show as-is. (Dispatching on detect() is
+    # roadmap Phase 2; today every input still goes to parse_geojson.)
+    guard_input(text)
     # The filename is load-bearing, not cosmetic: for a CalTopo export with no
     # folder features, cairn/core/parser.py falls back to `filepath.stem` as the
     # folder name. Writing to a fixed /tmp/in.json made every such map produce a

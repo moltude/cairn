@@ -56,6 +56,8 @@ cairn/io/                 READERS (file -> MapDocument)
   caltopo_gpx.py            CalTopo GPX (coordinates + names only — no icons/colors/folders)
   onx_gpx.py                OnX GPX incl. onX extensions + double-escaped entity repair
   onx_kml.py                OnX KML (this is where polygons survive)
+  input_check.py            guard_input (reject DTD / >16 MB XML) + detect(filename, text)
+                            -> (kind, dialect) by content sniffing; runs before any reader
 
 cairn/core/
   writers.py                GPX/KML output; auto-splits at DEFAULT_MAX_GPX_BYTES (3.75 MiB)
@@ -137,12 +139,25 @@ readers, caltopo_gpx, dedup/merge) is engine code not yet wired into the web app
   The enforced-CSP e2e test is what caught it; keep that test passing. It also caught an
   inline `<script>` (a since-removed theme-init snippet) that production's CSP silently
   blocked — all JS must live in files under `web/`.
-- **XML parsing uses stock `xml.etree.ElementTree`, deliberately.** The XML readers aren't
-  reachable from the web app at all (the web app is JSON/GeoJSON-only — `web/bridge.py` imports
-  just `parse_geojson`). Stock ElementTree doesn't resolve external entities (no classic XXE)
-  and modern expat caps entity amplification, so `defusedxml` was evaluated (2026-08-30) and
-  skipped as a dependency not worth its cost. Revisit only if XML parsing ever becomes reachable
-  from the web bridge.
+- **XML parsing uses stock `xml.etree.ElementTree`, behind a pre-parse guard.** XML is becoming
+  reachable from the web bridge (GPX/KML input, roadmap `docs/ROADMAP_ONX_ROUND_TRIP.md`
+  Phase 2), so the old "only files the user chose, in the CLI" premise is gone. What protects
+  it now, in order:
+  1. `cairn/io/input_check.py:guard_input`, called first thing in `web/bridge.py:load_document`,
+     rejects any XML whose prolog declares a DTD (`<!DOCTYPE`, and so any `<!ENTITY`) and any
+     XML over 16 MB, with a one-sentence `ValueError` the UI shows as-is. No exporter of
+     interest (onX, CalTopo, Google Earth, Cairn) emits a DTD. The scan is prolog-only on
+     purpose: pasted HTML in CDATA notes must not trip it, and a fake tag inside a comment must
+     not end the scan early. JSON input is not size-capped (pre-existing path, no amplification).
+  2. Behind it, expat >= 2.4's amplification limit (Pyodide 0.29.5 bundles 2.6.4) and
+     ElementTree's refusal to resolve external entities, both verified in KG section 4.
+  Every new XML entry point must call `guard_input` before parsing -- don't add a reader path
+  that skips it. `defusedxml` was evaluated twice (2026-08-30, 2026-10-22) and not adopted:
+  runtime install is blocked by the production CSP, so it would have to be vendored into
+  `web/dist/`; the guard gives the same fail-fast behaviour without the dependency. Hostile
+  fixtures live in `tests/fixtures/attacks/` (never glob them into "every fixture parses"
+  tests), and `tests/test_input_check.py` pins both the guard and `detect()`'s classification
+  of every file under `tests/fixtures/` -- a new fixture must be added to its `EXPECTED` table.
 - **A subagent-built feature with no commits has no history.** `web/` was built by a subagent via
   Bash/heredoc rather than tracked `Edit`/`Write` calls, across an uncommitted session spanning
   roughly two days (built 2026-08-29, first committed 2026-08-30 as `9c4e14a`). A later session
