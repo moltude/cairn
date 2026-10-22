@@ -313,12 +313,13 @@ def test_no_folders_at_all_gives_one_folder_named_after_the_file(tmp_path):
     assert [(d["name"], len(d["waypoints"])) for d in p.folders.values()] == [("My Trip", 2)]
 
 
-def test_caltopo_type_folders_are_kept_as_folders(tmp_path):
+def test_caltopo_type_folders_alone_fall_back_to_the_file_name(tmp_path):
     """CalTopo puts unfoldered items in folders named after their type
     ("Points", "LineStrings", "Polygons"; 2016: "Markers", "Lines and Polygons").
-    They're read as ordinary folders: the name can't tell them from a user's."""
+    Owner decision 2026-10-22: read them as "no folder", like GeoJSON. With no
+    real folder in the file, that means one folder named after the file."""
     p = _kml(tmp_path, "<Folder><name>Points</name>" + _marker("a") + "</Folder>")
-    assert [d["name"] for d in p.folders.values()] == ["Points"]
+    assert [d["name"] for d in p.folders.values()] != ["Points"]
 
 
 def test_bad_files_raise_value_error(tmp_path):
@@ -334,3 +335,34 @@ def test_bad_files_raise_value_error(tmp_path):
     nothing.write_text(HEAD + TAIL)
     with pytest.raises(ValueError, match="No placemarks"):
         parse_caltopo_kml(nothing)
+
+
+# --- items in no folder: CalTopo's type folders read as "Unorganized" (2026-10-22) ---
+
+_HEAD = ('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
+         '<name>CalTopo Export</name><description>Export from CalTopo</description>')
+
+
+def _pm(name, lon=-121.7):
+    return f"<Placemark><name>{name}</name><Point><coordinates>{lon},46.3,0</coordinates></Point></Placemark>"
+
+
+def _folders(xml, tmp_path):
+    from cairn.io.caltopo_kml import parse_caltopo_kml
+
+    p = tmp_path / "Map_Name.kml"
+    p.write_text(xml, encoding="utf-8")
+    doc = parse_caltopo_kml(p)
+    return {f["name"]: sorted(x.title for x in f["waypoints"]) for f in doc.folders.values()}
+
+
+@pytest.mark.parametrize("bucket", ["Points", "LineStrings", "Polygons", "Markers", "Lines and Polygons"])
+def test_caltopo_type_folder_beside_real_folders_becomes_unorganized(bucket, tmp_path):
+    xml = (_HEAD + f"<Folder><name>Aid Stations</name>{_pm('A')}</Folder>"
+           f"<Folder><name>{bucket}</name>{_pm('Loose')}</Folder></Document></kml>")
+    assert _folders(xml, tmp_path) == {"Aid Stations": ["A"], "Unorganized": ["Loose"]}
+
+
+def test_only_type_folders_use_the_file_name_like_geojson(tmp_path):
+    xml = _HEAD + f"<Folder><name>Points</name>{_pm('Loose')}</Folder></Document></kml>"
+    assert _folders(xml, tmp_path) == {"Map Name": ["Loose"]}

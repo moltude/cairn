@@ -481,3 +481,16 @@ Status: decided 2026-10-22.
 - The kicker stays **"CalTopo → onX Backcountry"**, and step 3 says "onX Backcountry": onX also
   ships Hunt, Fish, Offroad and other products that Cairn has not been tested against, so Cairn
   states it supports **onX Backcountry only** for now.
+
+### ENG-04 — CalTopo KML/GPX input decisions (2026-10-22)
+Status: decided.
+
+- **CalTopo's dashed line** (GeoJSON `pattern` `M0 -1 L0 1,,8,F`) exports as onX `dash`. This
+  changes 6 Bitterroots lines from solid to dash. Accepted.
+- **CalTopo KML type folders** ("Points", "LineStrings", "Polygons"; 2016 "Markers", "Lines and
+  Polygons") at the top level mean "no folder" and become **Unorganized**, matching GeoJSON. A
+  user folder with one of those exact names is folded in too; accepted.
+- **Left as they are** (CalTopo never writes them): a 6-digit KML color with no alpha reads as
+  invalid (default blue); a placemark inside `Folder > Document` is dropped.
+- **Multi-part KML lines** (one placemark, several separate `<LineString>`s) become several lines
+  with the same name, because onX has no multi-part line. Explained to the owner; no change.

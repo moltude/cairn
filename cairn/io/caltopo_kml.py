@@ -15,8 +15,10 @@ tests/fixtures/caltopo_synthetic/README.md for the list):
   ``<description>Export from CalTopo</description>`` (input_check detects it).
 - One ``<Folder>`` per CalTopo folder, never nested. Items in no folder go into
   folders CalTopo names after the geometry type ("Points", "LineStrings",
-  "Polygons"; 2016 exports: "Markers", "Lines and Polygons"). Those are read as
-  ordinary folders: the name alone can't tell them from a user's folder.
+  "Polygons"; 2016 exports: "Markers", "Lines and Polygons"). At the top level
+  those are read as "no folder" -- the same "Unorganized" (or file-stem) rule
+  parse_geojson applies -- so KML and GeoJSON agree (owner decision 2026-10-22).
+  A user folder with one of those exact names is folded in too; accepted.
 - Each ``<Placemark>`` carries an INLINE ``<Style>`` (no ``styleUrl``), child order
   varies, and ``<description>`` is plain text with real newlines.
 - A marker's icon is ``<IconStyle><Icon><href>http://caltopo.com/icon.png?cfg=
@@ -61,6 +63,10 @@ from cairn.core.parser import (
 )
 
 FOLDER_PATH_SEPARATOR = " / "
+# Folders CalTopo creates for items that are in no folder, named after the
+# geometry type (2016 exports used the two older names).
+CALTOPO_TYPE_FOLDERS = frozenset({"Points", "LineStrings", "Polygons", "Markers", "Lines and Polygons"})
+
 # CalTopo never nests folders; a re-saved file nests a few levels. Each nested
 # folder's name is its whole path, so the work grows with depth squared: an
 # unbounded depth lets a 16 MB file (the input cap) take hours. Deeper is refused.
@@ -396,7 +402,13 @@ def parse_caltopo_kml(filepath: Path) -> ParsedData:
             stack.pop()
             continue
         name = _ln(c.tag)
-        if name == "Folder":
+        if name == "Folder" and not path and _text(_child(c, "name")).strip() in CALTOPO_TYPE_FOLDERS:
+            # CalTopo's bucket for items in no folder: treat its placemarks as loose.
+            for pm in _children(c, "Placemark"):
+                loose.extend(_features(pm, counter, shared))
+                counter += 1
+            stack.append((iter(_children(c, "Folder")), path))  # its Placemarks were read above
+        elif name == "Folder":
             any_folder = True
             if len(path) >= MAX_FOLDER_DEPTH:
                 raise ValueError(
