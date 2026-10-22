@@ -109,7 +109,7 @@ def test_holes_are_not_written_and_are_recorded(tmp_path):
     assert count == 2
     donut = _rtes(path)[0]
     assert len(donut.findall("g:rtept", NS)) == len(SQUARE)
-    assert W.get_areas_without_holes() == ["Donut 1"]  # sanitized name, as onX shows it
+    assert W.get_areas_without_holes() == ["Donut #1"]  # names pass through unchanged (ENG-06)
 
 
 def test_unusable_polygons_are_skipped_and_not_counted(tmp_path):
@@ -119,10 +119,10 @@ def test_unusable_polygons_are_skipped_and_not_counted(tmp_path):
     assert [r.findtext("g:name", namespaces=NS) for r in _rtes(path)] == ["ok"]
 
 
-def test_names_are_sanitized_and_tracked(tmp_path):
+def test_names_pass_through_unchanged(tmp_path):
     (path, _s, _c), = _write(tmp_path, [_shape("Zone #1 & 2!")])
-    assert _rtes(path)[0].findtext("g:name", namespaces=NS) == "Zone 1 2"
-    assert W.get_name_changes()["shapes"] == [("Zone #1 & 2!", "Zone 1 2")]
+    assert _rtes(path)[0].findtext("g:name", namespaces=NS) == "Zone #1 & 2!"
+    assert W.get_name_changes()["shapes"] == []
 
 
 def test_large_area_files_split_into_numbered_parts(tmp_path):

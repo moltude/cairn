@@ -21,5 +21,5 @@ are findable.
 
 What Cairn itself does to these before onX sees them (CalTopo GeoJSON is HTML-capable, so
 notes are HTML-cleaned): `<desc>` and `<Lake>` are removed as tags (`5 < 6 and 7 > 4`
-survives), two blank lines collapse to one, `#`, `&` and `!` are dropped from names (listed
-in RUNBOOK.md under "Renamed for onX"), and the trailing space is trimmed.
+survives), two blank lines collapse to one, and the trailing space is trimmed. Names
+keep `#`, `&` and `!` (onX round-trips them unchanged; DECISIONS.md ENG-06).

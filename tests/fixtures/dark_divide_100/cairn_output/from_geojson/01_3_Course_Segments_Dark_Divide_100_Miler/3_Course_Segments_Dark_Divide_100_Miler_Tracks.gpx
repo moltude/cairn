@@ -3727,7 +3727,7 @@ Highest Elevation: 4,686 feet</desc>
     </trkseg>
   </trk>
   <trk>
-    <name>02 - Juniper Ridge AS 1 to Sunrise Peak AS</name>
+    <name>02 - Juniper Ridge AS #1 to Sunrise Peak AS</name>
     <desc>Section Mileage: 7.92 miles
 Section Gain: 3,374 feet
 Section Loss: 2,498 feet
@@ -5321,7 +5321,7 @@ Highest Elevation: 5,857 feet</desc>
     </trkseg>
   </trk>
   <trk>
-    <name>03 - Sunrise Peak AS 1 to Dark Creek AS</name>
+    <name>03 - Sunrise Peak AS #1 to Dark Creek AS</name>
     <desc>Section Mileage: 5.81 miles
 Section Gain: 131 feet
 Section Loss: 2,148 feet
@@ -18463,7 +18463,7 @@ Highest Elevation: 5,237 feet</desc>
     </trkseg>
   </trk>
   <trk>
-    <name>09 - Summit Prairie AS to Sunrise Peak 2 AS</name>
+    <name>09 - Summit Prairie AS to Sunrise Peak #2 AS</name>
     <desc>Section Mileage: 11.67 miles
 Section Gain: 3,152 feet
 Section Loss: 3,204 feet
@@ -22276,7 +22276,7 @@ Highest Elevation: 5,792 feet</desc>
     </trkseg>
   </trk>
   <trk>
-    <name>10 - Sunrise Peak 2 AS to Juniper Ridge 2 AS</name>
+    <name>10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS</name>
     <desc>Section Mileage: 7.53 miles
 Section Gain: 2,108 feet
 Section Loss: 2,984 feet
@@ -23702,7 +23702,7 @@ Highest Elevation: 5,496 feet</desc>
     </trkseg>
   </trk>
   <trk>
-    <name>11 - Juniper Ridge 2 AS to Cispus Learning Center (FINISH)</name>
+    <name>11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)</name>
     <desc>Section Mileage: 8.96 miles
 Section Gain: 220 feet
 Section Loss: 2,575 feet

@@ -542,3 +542,25 @@ Decision:
 - Bitterroots' export changed only in its 6 area files (`*_Areas.kml` → `*_Areas.gpx`, 17 areas;
   names, notes, colors, fills and outer rings identical to what the KML carried; no holes) and
   RUNBOOK.md (those file names, and no KML sentence).
+
+### ENG-06 — Names pass through unchanged (onX verified 2026-10-22 r1 probe)
+Status: decided; revisitable if onX sorting issues are ever reproduced.
+
+Cairn used to drop `! @ # $ % ^ * &` from waypoint, track and area names
+(`sanitize_name_for_onx`), citing "onX sorting issues" that nothing in the project's sources
+ever confirmed. On a real onX account (round r1 of the round-trip harness) onX imported and
+re-exported these names unchanged: `ZZTEST r1 hash #2 & amp`,
+`ZZTEST r1 bang! at@ dollar$ pct% caret^ star*`, `ZZTEST r1 quote's "dq" (paren) <lt>`.
+Stripping therefore altered user data on every onX -> Cairn -> onX pass, the primary use case.
+
+Options considered:
+- **Keep stripping** (and report it under "Renamed for onX"). Rejected: no evidence of benefit,
+  proven harm to round trips.
+- **Pass names through unchanged.** Chosen.
+- **Make stripping optional.** Rejected for now: a setting for a problem nobody has reproduced.
+
+Decision: pass-through. `sanitize_name_for_onx` is now an identity returning `(name, False)`;
+XML escaping stays in the writers and whitespace trimming at load time. The "Renamed for onX"
+tracker and RUNBOOK section are kept but are always empty (they stay as the place to report a
+rename if one is ever needed again). Dark Divide `cairn_output` baselines and `PARITY.md`
+changed only in the five `#1` / `#2` track names (now identical to the review screen).

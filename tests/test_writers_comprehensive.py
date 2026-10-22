@@ -198,22 +198,19 @@ def test_format_waypoint_name_no_prefix_for_default_icon():
     assert result == "My Point"
 
 
-def test_format_waypoint_name_sanitizes_special_chars():
-    """Test that format_waypoint_name sanitizes special characters."""
+def test_format_waypoint_name_keeps_special_chars():
+    """Names pass through unchanged (onX verified 2026-10-22, DECISIONS.md ENG-06)."""
     clear_name_changes()
     result = format_waypoint_name("Name@With#Special$Chars", "Camp", use_prefix=False)
-    # Should remove @, #, $ characters per sanitize_name_for_onx
-    assert "@" not in result
-    assert "#" not in result
-    assert "$" not in result
+    assert result == "Name@With#Special$Chars"
 
 
-def test_format_waypoint_name_tracks_changes():
-    """Test that format_waypoint_name tracks sanitization changes."""
+def test_format_waypoint_name_records_no_renames():
+    """Nothing is renamed any more, so nothing is reported as renamed."""
     clear_name_changes()
     format_waypoint_name("Bad@Name", "Camp", use_prefix=False)
     changes = get_name_changes()
-    assert len(changes["waypoints"]) > 0
+    assert changes["waypoints"] == []
 
 
 # ===== XML Prettify Tests =====
