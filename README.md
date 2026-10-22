@@ -5,7 +5,7 @@
 ## Try it in the browser
 
 Cairn runs entirely client-side as a web app (the same Python engine, via
-[Pyodide](https://pyodide.org)) — your map file never leaves your computer. This is the primary
+[Pyodide](https://pyodide.org)) — your map file never leaves your computer. This is the only
 way to use Cairn:
 
 **[quietmarch.to/cairn](https://quietmarch.to/cairn)**
@@ -138,170 +138,37 @@ Cairn doesn't change onX's limits. It just helps you arrive with your organizati
 
 > "GPX: This is a commonly used file type, you lose line and marker style, and folder organization." [[7]](#ref-7)
 
-### CalTopo GPX Support
+### CalTopo GPX
 
-Cairn now supports CalTopo GPX exports as input. However, CalTopo GPX exports are significantly more limited than GeoJSON:
+The web app takes CalTopo **GeoJSON** exports only. GPX exports carry coordinates and names but
+no icons, colors or folders, so they lose most of what Cairn exists to preserve. The engine has a
+CalTopo GPX reader (`cairn/io/caltopo_gpx.py`) that isn't wired into the web app yet — export
+from CalTopo as GeoJSON.
 
-| Feature | GeoJSON | GPX |
-|---------|---------|-----|
-| Coordinates | ✅ | ✅ |
-| Names | ✅ | ✅ |
-| Icons/Symbols | ✅ | ❌ |
-| Colors | ✅ | ❌ |
-| Folder Structure | ✅ | ❌ |
-| Descriptions | ✅ | ❌ (usually) |
-
-**The value of Cairn for GPX imports is enriching your data.** Since GPX files contain only coordinates and names, Cairn's editing steps become essential:
-
-- **Assign icons** to waypoints based on their purpose (camp, water, hazard, etc.)
-- **Set colors** for routes and waypoints
-- **Add descriptions** for context
-
-Cairn will suggest icons based on keywords in waypoint names (e.g., "Camp spot" → Campsite icon), but walking through the editing steps lets you customize before export.
-
-**Recommendation**: When possible, export from CalTopo as GeoJSON for full fidelity. Use GPX when that's your only option, and use Cairn to add the metadata that GPX cannot store.
-
-Both the web app and CLI accept `.gpx`; Cairn will tell you up front what GPX cannot carry.
-(The CLI/TUI's file browser goes a step further: if a directory holds both a `.json` and a
-`.gpx` export of the same map, it offers the GeoJSON first, since choosing the GPX silently
-loses your icons, colors and folders.)
-
-### Known quirks, blockers and things I learned along the way
-
-*If any of my assumptions are wrong, I want to know — the goal is a faithful migration.*
-
-- **OnX export variance**: similar "linework" can export as `<trk>` vs `<rte>`. Areas/polygons often only appear as polygons in KML.
-- **CalTopo's exported "GeoJSON" is CalTopo-flavored**: it may include extra properties and 4D coordinate arrays like `[lon, lat, ele, time]`. I treat this as normal normalization, not automatically a bug.
-- **Standards aren't fully standard in practice**: GPX/KML/GeoJSON are interchange formats, but platform behavior still matters more than file validity.
-- **Ordering is not reliable after import**: even if I carefully write GPX/KML in a particular order, OnX may re-order items in folders after import and there isn't a stable user-visible "sort by name" / "sort by import order" workflow that guarantees the same outcome every time.
-- **Waypoints and tracks use the same base colors, but tracks have one extra**: OnX waypoints support 10 colors, while tracks/lines support 11 colors. The first 10 colors are identical between waypoints and tracks. Tracks have one additional color (Fuchsia) that waypoints don't support.
-- **Feature with geometry: null.** CalTopo exports GeoJSON that matches their internal model by using Features with `geometry: null` to represent folder organization (with other features linked via folderId), and by sometimes emitting 4-value coordinate arrays like [lon, lat, 0, 0] even though [RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946) positions are intended to be 2D/3D. Cairn handles these CalTopo-specific patterns by parsing them into a normalized internal document model (folders + waypoints + tracks/shapes) and then exporting standards-based GPX/KML for OnX import, avoiding those GeoJSON interoperability pitfalls.
-
-#### Dedupping
-
-During this experiment I found cases where OnX exports include many distinct objects (different IDs) with identical names and identical geometry. CalTopo will happily import them all, which can look like "duplicates everywhere".
-
-By default, Cairn produces a **"most usable"** CalTopo file by:
-
-- **preferring polygons** (from KML) over track/route representations (from GPX) when they refer to the same OnX object
-- **deduplicating shapes** using a fuzzy geometry match (rotation/direction tolerant, coordinate rounding tolerant)
-
-Nothing is deleted permanently: every dropped duplicate is preserved in the secondary GeoJSON.
-
-### A Story
-
-*Hey buddy! Heard you were heading up my way, here is a GPX file with some choice spots!*
-
-That GPX file they made contains details of an area and lots of information, hiking and backpacking routes, great rock climbing, a cool tower and fishing spots. There are important waypoints that indicate hazards, water sources and approaches. When they constructed this dataset they took the time to assign colors, icons and other metadata beyond the lines, dots and polygons to help you and others make the most of this map.
-
-<!-- I am commenting out some of this until I have a more fully implemented CalTopo < -- > onX migration. Right now it is just CalTopo -> onX  -->
-😍 CalTopo 😍 | 🤬  onX 🤬 | 😍 Cairn + onX 😍
-:-------------------------:|:-------------------------:|:-------------------------:
 <img src="./docs/screenshots/bitterroots-subset-caltopo.png" alt="Alt text" style="width:auto; height:auto;"> | <img src="./docs/screenshots/bitterroots-subset-onx-raw.png" alt="Alt text" style="width:auto; height:auto;"> | <img src="./docs/screenshots/bitterroot-subset-final-onx.png" alt="Alt text" style="width:auto; height:auto;">
 
-## Command line
+## Development
 
-The web app calls the same engine as the command line — same writers, same tests. Install from
-source if you want to script a migration, run it offline, or without a browser:
+Cairn is web-only. The Python package in `cairn/` is the conversion engine; the web app runs it
+unmodified in the browser via Pyodide. The command-line tool and the Textual TUI it started as
+were removed in October 2026 — their last state is the git tag `cli-final`.
 
 ```shell
-# Install uv if you don't have it
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Clone and install
-git clone https://github.com/moltude/cairn.git
-cd cairn
-
-uv sync --all-extras   # --all-extras also installs the test dependencies
-
-# Migrate a map
-uv run cairn migrate onx <file>      # CalTopo -> onX  (.json / .geojson / .gpx)
-uv run cairn migrate caltopo <file>  # onX -> CalTopo  (.gpx / .kml)
+uv sync --all-extras          # once, or after dependency changes
+uv run python web/serve.py    # local copy of the web app
+uv run pytest                 # add --no-cov for a single file/test — the coverage table only
+                              # means something on a full run
 ```
 
-Cairn is not on PyPI yet (the distribution name will be `cairn-maps`; the command stays `cairn`).
-
-Useful flags and settings:
+The web app's end-to-end suite (`tests/web/test_web_app.py`) needs that dev server running and
+drives it headlessly; see [`web/README.md`](web/README.md). Engine modules the web app imports
+are marked with a `# Web engine:` header, and `tests/test_web_engine_surface.py` keeps that
+marking honest.
 
 | | |
 |---|---|
-| `--debug` | Include Cairn's internal fields (`id=`, `color=`, `icon=`) in each `<desc>`. By default `<desc>` carries only your own notes. |
-| `--output-dir <path>` | Where to write the generated files. |
-| `--no-sort` | Preserve the original order instead of natural sorting. |
-| `--max-gpx-mb` | Size cap before auto-splitting (onX's import limit is 4 MB; default 3.75). |
 | `CAIRN_DEBUG_LOG=<path>` | Opt in to structured debug logging. Off by default. |
 | `CAIRN_ICON_CATALOG=<path>` | Opt in to recording which CalTopo symbols you encounter. Off by default. |
-
-#### Custom icon mappings (command line)
-
-The CLI/TUI can permanently pre-map a CalTopo symbol to an onX icon, instead of fixing unmapped
-ones per-export in the web app's UI. When a symbol has no mapping, the CLI prints a warning:
-
-```shell
-⚠️  Found 3 unmapped CalTopo symbol(s):
-
-Symbol      Count  Example Waypoint
-climbing-2  3      Main Wall - Lost horse canyon
-circle-p    1      Parking- Main Wall and Starlight Lounge
-climbing-1  1      Pullout boulders
-
-💡 Add these to your config (default: cairn_config.yaml) to map them to OnX icons
-   Run 'cairn config export' to create a template
-   Run 'cairn config show' to see valid OnX icons already used in your mappings
-```
-
-To permanently map `climbing-1` to the OnX climber icon, add this to your `cairn_config.yaml`:
-
-```yaml
-symbol_mappings:
-  climbing-1: Climbing
-```
-
-Cairn uses `cairn_config.yaml` to store custom icon mappings and preferences:
-
-```yaml
-symbol_mappings:
-  # CalTopo symbol → OnX icon name
-  climbing-1: Climbing
-  climbing-2: Climbing
-  campsite-1: Campground
-  circle-p: Parking
-
-# Add more mappings as you encounter unmapped symbols
-```
-
-If you want to *watch* a full CalTopo → OnX migration run (including intentional bad inputs to
-exercise error handling, bulk edits, and re-editing a folder) without interacting, run the
-included replay script:
-
-```shell
-./scripts/run_chaos_demo.sh
-```
-
-This runs `cairn migrate onx` against `demo/bitterroots/` and writes outputs to
-`demo/bitterroots/onx_ready_chaos_watch/` by default.
-
-### Running tests
-
-```shell
-uv sync --all-extras   # once, or after dependency changes
-uv run pytest          # add --no-cov for a single file/test — the coverage table only means
-                        # something on a full run
-```
-
-The web app's own end-to-end suite (`tests/web/test_web_app.py`) needs the dev server running
-(`uv run python web/serve.py`) and drives it headlessly; see [`web/README.md`](web/README.md).
-
-### Interactive TUI (secondary, experimental)
-
-Cairn also has a full-screen terminal app, built on [Textual](https://textual.textualize.io/).
-It predates the web app and still works, but it's no longer the primary way to use Cairn — the
-web app gets the maintenance attention now, and the TUI is a secondary, more experimental way to
-run the same engine locally.
-
-```shell
-uv run cairn tui
-```
 
 ## References
 

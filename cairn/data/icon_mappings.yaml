@@ -143,9 +143,9 @@ caltopo_to_onx:
     picnic: Picnic Area
     shelter: Shelter
     house: House
-    cabin: Cabin
-    hut: Cabin
-    yurt: Cabin
+    cabin: Shelter
+    hut: Shelter
+    yurt: Shelter
     kennels: Kennels
     visitor: Visitor Center
     gear: Gear
@@ -254,8 +254,7 @@ caltopo_to_onx:
     Lookout: [lookout, observation]
 
     # Facilities
-    Cabin: [cabin, hut, yurt]
-    Shelter: [shelter, refuge]
+    Shelter: [shelter, refuge, cabin, hut, yurt]
     Food Source: [food, restaurant, "aid station"]
     Emergency Phone: [emergency, phone, sos]
 
@@ -285,7 +284,6 @@ onx_to_caltopo:
     Campground: camping
 
     Summit: peak
-    Cabin: hut
     Shelter: hut
     House: hut
 

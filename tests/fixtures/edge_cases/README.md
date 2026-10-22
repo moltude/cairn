@@ -56,9 +56,9 @@ python3 scripts/generate_edge_case_fixtures.py
 ```
 
 ### Run Tests
-```bash
-python3 scripts/test_edge_cases.py
-```
+The runner that exercised these fixtures (`scripts/test_edge_cases.py`) has been deleted, and
+no pytest test currently loads them. To use one, load it through the engine directly, e.g.
+`parse_geojson()` from `cairn/core/parser.py`.
 
 ### Validate Individual File
 ```bash
@@ -67,9 +67,5 @@ python3 scripts/validate_output_integrity.py tests/output/edge_cases/some_file.j
 
 ## Test Results
 
-See `docs/QA_TEST_RESULTS.md` for comprehensive test results and analysis.
-
-**Summary:** 21/24 tests pass (87.5% success rate)
-- All geographic, elevation, text, color, duplicate, and GeoJSON tests pass
-- Stress tests with 10,000+ features pass
-- Malformed files correctly rejected with clear error messages
+The 21/24 pass summary that used to live here (and `docs/QA_TEST_RESULTS.md`, which it cited)
+came from the deleted `scripts/test_edge_cases.py` and is no longer reproducible.

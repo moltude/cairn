@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cairn — legend band</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&amp;family=Alegreya+SC:wght@500&amp;display=swap">
+<style>
+body{margin:0;background:#F5F0E4}
+a{color:#2F6690}a:hover{color:#1F4A6B}
+</style>
+</helmet>
+<div style="min-height: 1100px; background: #F5F0E4; color: #2C2720; font-family: 'Alegreya', Georgia, serif; font-size: 17px; display: flex; flex-direction: column;">
+
+  <header style="position: relative; overflow: hidden; background: #E8DFC9; border-bottom: 2px solid #7A4E25;">
+    <svg width="100%" height="100%" viewBox="0 0 1440 260" preserveAspectRatio="none" fill="none" stroke="#C9B48E" stroke-width="1" aria-hidden="true" style="position: absolute; inset: 0;">
+      <path d="M-20 210 C 200 150, 380 240, 600 180 S 980 90, 1460 160"></path>
+      <path d="M-20 180 C 210 120, 390 210, 610 150 S 990 60, 1460 130"></path>
+      <path d="M-20 150 C 220 90, 400 180, 620 120 S 1000 30, 1460 100"></path>
+      <path d="M-20 120 C 230 60, 410 150, 630 90 S 1010 0, 1460 70" stroke="#B89E72" stroke-width="1.6"></path>
+      <path d="M-20 90 C 240 30, 420 120, 640 60 S 1020 -30, 1460 40"></path>
+    </svg>
+    <div style="position: relative; max-width: 1240px; margin: 0 auto; padding: 18px 32px 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h14M7 20l2-5h6l2 5M9 15l1.5-4h3L15 15M10.5 11 12 7l1.5 4"></path></svg>
+        <span style="font-family: 'Alegreya SC', serif; font-size: 20px; letter-spacing: 0.06em;">Cairn</span>
+        <span style="font-style: italic; color: #5A5043;">— CalTopo to onX</span>
+        <a href="#help" style="margin-left: auto;">Help</a>
+        <a href="#load">Load another map</a>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: flex-end; justify-content: space-between;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <h1 style="margin: 0; font-size: 46px; font-weight: 700; line-height: 1;">Bitterroots (Complete)</h1>
+          <span style="font-style: italic; color: #5A5043;">177 markups · 10 folders · 10 onX import batches</span>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <span style="color: #8A3F12; font-style: italic;">25 on onX's default pin</span>
+          <button type="button" style="font: inherit; font-weight: 700; background: #3B6534; color: #FFFFFF; border: none; border-radius: 3px; padding: 12px 22px; min-height: 48px;">Export for onX</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main style="flex-grow: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 24px 32px 56px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px;">
+
+    <section aria-label="Legend and filters" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid #A8936C; background: #FBF8F0;">
+      <div style="padding: 14px 18px; border-right: 1px solid #D8CBAE; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-family: 'Alegreya SC', serif; font-size: 14px; letter-spacing: 0.08em; color: #5A5043;">Find</span>
+        <input type="search" aria-label="Search names and notes" placeholder="Name or note…" style="font: inherit; border: none; border-bottom: 1px solid #7A4E25; background: none; padding: 6px 0; min-height: 36px; color: #2C2720;">
+      </div>
+      <div style="padding: 14px 18px; border-right: 1px solid #D8CBAE; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-family: 'Alegreya SC', serif; font-size: 14px; letter-spacing: 0.08em; color: #5A5043;">Show</span>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <label style="display: flex; gap: 6px; align-items: center;"><input type="radio" name="kind" checked style="accent-color: #3B6534;"> All</label>
+          <label style="display: flex; gap: 6px; align-items: center;"><input type="radio" name="kind" style="accent-color: #3B6534;"> Waypoints</label>
+          <label style="display: flex; gap: 6px; align-items: center;"><input type="radio" name="kind" style="accent-color: #3B6534;"> Tracks</label>
+        </div>
+      </div>
+      <div style="padding: 14px 18px; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-family: 'Alegreya SC', serif; font-size: 14px; letter-spacing: 0.08em; color: #5A5043;">Change selected</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" disabled style="font: inherit; background: none; border: 1px solid #D8CBAE; border-radius: 3px; padding: 4px 12px; min-height: 36px; color: #8C8170;">Icon</button>
+          <button type="button" disabled style="font: inherit; background: none; border: 1px solid #D8CBAE; border-radius: 3px; padding: 4px 12px; min-height: 36px; color: #8C8170;">Color</button>
+          <button type="button" style="font: inherit; background: none; border: none; color: #2F6690; text-decoration: underline; padding: 4px; min-height: 36px;">More…</button>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="Folder: Uncategorized" style="display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 14px; padding: 6px 0 10px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z"></path></svg>
+        <h2 style="margin: 0; font-size: 26px; font-weight: 500;">Uncategorized</h2>
+        <span style="flex-grow: 1; border-bottom: 1px dashed #A8936C; height: 0;" aria-hidden="true"></span>
+        <span style="font-style: italic; color: #5A5043;">43</span>
+      </div>
+      <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="text-align: left; font-family: 'Alegreya SC', serif; font-size: 14px; letter-spacing: 0.06em; color: #5A5043; border-bottom: 1px solid #A8936C;">
+            <th style="padding: 8px; width: 24px;"><input type="checkbox" aria-label="Select all" style="accent-color: #3B6534;"></th>
+            <th style="padding: 8px; font-weight: 500;">Symbol</th>
+            <th style="padding: 8px; font-weight: 500;">Name</th>
+            <th style="padding: 8px; font-weight: 500;">Notes</th>
+            <th style="padding: 8px; font-weight: 500;">Color</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="11">
+          <tr style="border-bottom: 1px solid #E3D8C0;">
+            <td style="padding: 8px;"><input type="checkbox" aria-label="Select {{r.name}}" style="accent-color: #3B6534;"></td>
+            <td style="padding: 8px; white-space: nowrap;">
+              <span style="display: inline-flex; align-items: center; gap: 10px; color: {{r.iconInk}};">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.path}}"></path></svg>
+                <span style="font-style: {{r.iconStyle}};">{{r.icon}}</span>
+              </span>
+            </td>
+            <td style="padding: 8px; font-weight: 500;">{{r.name}}</td>
+            <td style="padding: 8px; color: #5A5043; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{r.desc}}</td>
+            <td style="padding: 8px; white-space: nowrap;">
+              <span style="display: inline-flex; align-items: center; gap: 8px;"><svg width="28" height="10" viewBox="0 0 28 10" aria-hidden="true"><path d="M1 5h26" stroke="{{r.hex}}" stroke-width="4" stroke-linecap="round"></path></svg>{{r.color}}</span>
+            </td>
+          </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section aria-label="Other folders" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px;">
+      <sc-for list="{{folders}}" as="f" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #E3D8C0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z"></path></svg>
+        <span style="font-size: 20px;">{{f.name}}</span>
+        <span style="flex-grow: 1; border-bottom: 1px dashed #C9B48E; height: 0;" aria-hidden="true"></span>
+        <span style="font-style: italic; color: #5A5043;">{{f.count}}</span>
+      </div>
+      </sc-for>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      summit: 'M3 19 L10 7 L14 13 L16 10 L21 19 Z',
+      water: 'M12 3 C12 3 6 10 6 14 a6 6 0 0 0 12 0 C18 10 12 3 12 3 Z',
+      parking: 'M5 3h14v18H5z M10 16V8h3a2.5 2.5 0 0 1 0 5h-3',
+      pin: 'M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z M12 10v.01',
+      climb: 'M7 21l4-7 3 2 2-6 M9 11l3-3 4 2 M13 5.5h.01',
+      hazard: 'M12 3 L22 20 H2 Z M12 9v5 M12 17v.01'
+    };
+    const C = { Red: '#FF0000', Black: '#000000' };
+    const row = (name, desc, icon, path, color, isDefault) => ({
+      name, desc: desc || '', icon: isDefault ? 'Default pin' : icon, path, color, hex: C[color],
+      iconInk: isDefault ? '#8A3F12' : '#2C2720', iconStyle: isDefault ? 'italic' : 'normal'
+    });
+    return {
+      rows: [
+        row('Bass Creek TH', 'http://mt-adventures.blogspot.com/2015/0…', 'Water Source', P.water, 'Red'),
+        row("Steven's Peak", '', 'Summit', P.summit, 'Red'),
+        row('Lindy Peak', '', 'Summit', P.summit, 'Red'),
+        row('El Capitan', '', 'Location', P.pin, 'Red', true),
+        row('Trapper', 'https://www.summitpost.org/trapper-peak…', 'Summit', P.summit, 'Red'),
+        row('Bear Creek Canyon TH', '', 'Parking', P.parking, 'Black'),
+        row('Bass Creek trailhead', '', 'Parking', P.parking, 'Black'),
+        row('Fred Burr trailhead', '', 'Parking', P.parking, 'Black'),
+        row('Ice climbs', '', 'Climbing', P.climb, 'Black'),
+        row('Good looking climbing', '', 'Location', P.pin, 'Red', true),
+        row('Avy debris', '', 'Hazard', P.hazard, 'Red')
+      ],
+      folders: [
+        { name: 'Lost Trail Pass', count: 31 },
+        { name: 'North Roots', count: 22 },
+        { name: 'Trapper area', count: 21 },
+        { name: 'Lost Horse Canyon', count: 18 }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import io
+import sys
+import zipfile
 from pathlib import Path
 
 import yaml
 
-from cairn.commands.convert_cmd import process_and_write_files
-from cairn.core.config import load_config
-from cairn.core.parser import parse_geojson
+# Drive the web app's bridge -- the same Python the browser runs -- so this
+# regression covers the shipped export path, not a CLI helper.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
+import bridge  # noqa: E402
 
 
 FIXTURE = (
@@ -17,11 +21,10 @@ FIXTURE = (
 )
 
 
-def _read_all_gpx_texts(out_dir: Path) -> str:
-    chunks = []
-    for p in sorted(out_dir.glob("*.gpx")):
-        chunks.append(p.read_text(encoding="utf-8", errors="replace"))
-    return "\n".join(chunks)
+def _read_all_gpx_texts(zip_bytes: bytes) -> str:
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        names = sorted(n for n in zf.namelist() if n.endswith(".gpx"))
+        return "\n".join(zf.read(n).decode("utf-8", errors="replace") for n in names)
 
 
 def _assert_contains_near(haystack: str, needle: str, expected_near: str, *, window: int = 8000) -> None:
@@ -39,7 +42,7 @@ def _assert_contains_near(haystack: str, needle: str, expected_near: str, *, win
 
 
 def test_bitterroots_complete_caltopo_to_onx_export_standardizes_icons_and_track_colors(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch
 ) -> None:
     """
     Large, realistic CalTopo→OnX regression test.
@@ -53,7 +56,7 @@ def test_bitterroots_complete_caltopo_to_onx_export_standardizes_icons_and_track
       - climbing-2 → Climbing
       - circle-p   → Parking
       - peak       → Summit
-      - hut        → Cabin
+      - hut        → Shelter
       - danger     → Hazard   (used for “Avy hazard area”)
     - Track colors are quantized to the official OnX palette:
       - #0000FF → rgba(8,122,255,1)  (OnX Blue)
@@ -70,38 +73,24 @@ def test_bitterroots_complete_caltopo_to_onx_export_standardizes_icons_and_track
                     "climbing-2": "Climbing",
                     "circle-p": "Parking",
                     "peak": "Summit",
-                    "hut": "Cabin",
+                    "hut": "Shelter",
                     "danger": "Hazard",
                 }
             }
         ),
         encoding="utf-8",
     )
-    cfg = load_config(cfg_path)
+    monkeypatch.setattr(bridge, "CONFIG_PATH", cfg_path)
 
-    parsed = parse_geojson(FIXTURE)
+    bridge.load_document(FIXTURE.read_text(encoding="utf-8"), FIXTURE.name)
+    zip_bytes = bridge.export_zip()
 
-    # Export using the same helper used by the CLI, but without interactive prompts.
-    out_dir = tmp_path / "onx_ready"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    output_files = process_and_write_files(
-        parsed,
-        out_dir,
-        sort=True,
-        skip_confirmation=True,
-        config=cfg,
-        split_gpx=True,
-        max_gpx_bytes=4 * 1024 * 1024,
-    )
-
-    # Sanity: should produce multiple artifacts for a dataset this size.
-    assert output_files, "No export files were produced"
-    assert any(n.endswith(".gpx") for (n, _fmt, _cnt, _sz) in output_files)
-
-    gpx = _read_all_gpx_texts(out_dir)
+    gpx = _read_all_gpx_texts(zip_bytes)
+    # Sanity: should produce GPX artifacts for a dataset this size.
+    assert gpx, "No GPX files were produced"
 
     # Icon standardization assertions.
-    for icon in ("Climbing", "Parking", "Summit", "Cabin", "Hazard"):
+    for icon in ("Climbing", "Parking", "Summit", "Shelter", "Hazard"):
         assert (
             f"<onx:icon>{icon}</onx:icon>" in gpx
         ), f"Expected OnX icon {icon} to appear in export"

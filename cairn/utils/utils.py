@@ -1,3 +1,5 @@
+# Web engine: imported by web/bridge.py and run in the browser via Pyodide.
+# Keep it free of terminal/UI imports (tests/test_web_engine_surface.py).
 """
 Utility functions for Cairn: chunking, HTML stripping, sorting, and file helpers.
 
@@ -93,6 +95,9 @@ def strip_html(text: str) -> str:
     Args:
         text: Text potentially containing HTML tags
 
+    Line breaks (<br>, </p>, </div>, </li>, CR/LF) are preserved as "\\n"; at most
+    one blank line is kept. Use single_line() for names/titles.
+
     Returns:
         Plain text with HTML tags removed
 
@@ -102,6 +107,11 @@ def strip_html(text: str) -> str:
     """
     if not text:
         return ""
+
+    # Normalize line endings, then turn block-level breaks into newlines
+    # BEFORE tags are stripped so multi-line notes keep their line breaks.
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"<br\s*/?>|</(?:p|div|li)\s*>", "\n", text, flags=re.IGNORECASE)
 
     # Remove HTML tags
     text = re.sub(r"<[^>]+>", "", text)
@@ -120,10 +130,17 @@ def strip_html(text: str) -> str:
     for entity, char in html_entities.items():
         text = text.replace(entity, char)
 
-    # Clean up extra whitespace
-    text = re.sub(r"\s+", " ", text).strip()
+    # Collapse spaces/tabs within each line, trim each line, allow at most one
+    # blank line between paragraphs.
+    text = "\n".join(re.sub(r"[^\S\n]+", " ", ln).strip() for ln in text.split("\n"))
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
 
     return text
+
+
+def single_line(text: str) -> str:
+    """Collapse all whitespace (including newlines) to single spaces. For names/titles."""
+    return re.sub(r"\s+", " ", text or "").strip()
 
 
 def sanitize_name_for_onx(name: str) -> Tuple[str, bool]:

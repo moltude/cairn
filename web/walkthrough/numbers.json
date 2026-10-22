@@ -1,0 +1,42 @@
+{
+ "folders": 10,
+ "items": 177,
+ "waypoints": 68,
+ "lines": 92,
+ "areas": 17,
+ "default_pins": 25,
+ "specific_icons": 43,
+ "distinct_icons": 12,
+ "distinct_caltopo_symbols": 13,
+ "default_pin_by_symbol": {
+  "point": 22,
+  "flag-1": 3
+ },
+ "top_icons": [
+  [
+   "Location",
+   25
+  ],
+  [
+   "Parking",
+   10
+  ],
+  [
+   "Climbing",
+   9
+  ],
+  [
+   "Summit",
+   6
+  ],
+  [
+   "Water Source",
+   4
+  ],
+  [
+   "Shelter",
+   4
+  ]
+ ],
+ "default_pins_after_demo_edit": 22
+}

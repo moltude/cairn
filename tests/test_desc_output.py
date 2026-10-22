@@ -4,17 +4,13 @@ Default: <desc> is user-facing and carries ONLY the user's own note text; a
 feature with no note gets no <desc> element at all. Machine state (id, color,
 icon, style, weight) travels in the <onx:*> extension elements.
 
-Debug (--debug on `migrate onx`, --description-mode debug on `convert`):
+Debug (the writers' `description_mode="debug"`; not exposed in the web app):
 restores the legacy key=value block for troubleshooting.
 """
 
-import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from typer.testing import CliRunner
-
-from cairn.cli import app
 from cairn.core.parser import ParsedFeature
 from cairn.core.writers import (
     write_gpx_tracks,
@@ -26,7 +22,6 @@ from cairn.io.onx_gpx import read_onx_gpx
 
 _NS = {"gpx": "http://www.topografix.com/GPX/1/1"}
 
-runner = CliRunner()
 
 
 def _waypoint(title: str, description: str, wp_id: str = "wp-1") -> ParsedFeature:
@@ -251,104 +246,3 @@ def test_round_trip_no_note_yields_empty_notes(tmp_path):
     (wp,) = doc.waypoints()
     assert wp.notes == ""
     assert wp.name == "Camp spot"
-
-
-# ---------------------------------------------------------------------------
-# CLI wiring
-# ---------------------------------------------------------------------------
-
-
-def _small_caltopo_geojson(tmp_path: Path) -> Path:
-    import json
-
-    doc = {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "id": "folder-1",
-                "geometry": None,
-                "properties": {"class": "Folder", "title": "Demo"},
-            },
-            {
-                "type": "Feature",
-                "id": "wp-note",
-                "geometry": {"type": "Point", "coordinates": [-114.5, 45.5]},
-                "properties": {
-                    "class": "Marker",
-                    "title": "Camp spot",
-                    "description": "Water 100m east",
-                    "marker-symbol": "campsite",
-                    "marker-color": "#FF0000",
-                    "folderId": "folder-1",
-                },
-            },
-            {
-                "type": "Feature",
-                "id": "wp-plain",
-                "geometry": {"type": "Point", "coordinates": [-114.6, 45.6]},
-                "properties": {
-                    "class": "Marker",
-                    "title": "Plain spot",
-                    "description": "",
-                    "marker-symbol": "campsite",
-                    "marker-color": "#FF0000",
-                    "folderId": "folder-1",
-                },
-            },
-        ],
-    }
-    p = tmp_path / "demo.json"
-    p.write_text(json.dumps(doc), encoding="utf-8")
-    return p
-
-
-def test_migrate_onx_help_documents_debug_flag():
-    result = runner.invoke(app, ["migrate", "onx", "--help"])
-    assert result.exit_code == 0
-    # Rich styles "--debug" as two separately-escaped runs ("-" + "-debug"),
-    # so the raw stdout may not contain the literal substring.
-    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
-    assert "--debug" in plain
-
-
-def test_migrate_onx_cli_default_writes_notes_only(tmp_path):
-    src = _small_caltopo_geojson(tmp_path)
-    outdir = tmp_path / "out"
-    result = runner.invoke(
-        app,
-        ["migrate", "onx", str(src), "-o", str(outdir), "--no-interactive"],
-        input="y\n",
-    )
-    assert result.exit_code == 0, result.output
-
-    gpx_files = list(outdir.glob("*Waypoints*.gpx"))
-    assert gpx_files, f"no waypoint GPX written in {list(outdir.iterdir())}"
-    descs = _desc_texts(gpx_files[0], "wpt")
-    assert "Water 100m east" in descs
-    assert None in descs  # the note-less waypoint has no <desc> at all
-    text = gpx_files[0].read_text(encoding="utf-8")
-    for marker in ("notes=", "id=", "icon=", "color=rgba"):
-        assert marker not in text
-
-
-def test_migrate_onx_cli_debug_writes_kv_block(tmp_path):
-    src = _small_caltopo_geojson(tmp_path)
-    outdir = tmp_path / "out"
-    result = runner.invoke(
-        app,
-        ["migrate", "onx", str(src), "-o", str(outdir), "--no-interactive", "--debug"],
-        input="y\n",
-    )
-    assert result.exit_code == 0, result.output
-
-    gpx_files = list(outdir.glob("*Waypoints*.gpx"))
-    assert gpx_files
-    descs = [d for d in _desc_texts(gpx_files[0], "wpt") if d]
-    assert len(descs) == 2  # debug mode emits <desc> even without a note
-    joined = "\n".join(descs)
-    assert "name=Camp spot" in joined
-    assert "notes=Water 100m east" in joined
-    assert "id=wp-note" in joined
-    assert "color=rgba(" in joined
-    assert "icon=" in joined

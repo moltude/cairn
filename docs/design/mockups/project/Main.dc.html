@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cairn — quad sheet layout</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&amp;display=swap">
+<style>
+body{margin:0;background:#F3EEE2}
+a{color:#2F6690}a:hover{color:#1F4A6B}
+</style>
+</helmet>
+<div style="min-height: 1100px; background: #F3EEE2; color: #2B2620; font-family: 'Source Serif 4', Georgia, serif; font-size: 16px; display: flex; flex-direction: column;">
+
+  <header style="border-bottom: 1px solid #CDBF9F; padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8A5A2B" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h14M7 20l2-5h6l2 5M9 15l1.5-4h3L15 15M10.5 11 12 7l1.5 4"></path></svg>
+      <span style="font-size: 22px; font-weight: 700; letter-spacing: 0.02em;">Cairn</span>
+      <span style="font-style: italic; color: #5E5446;">CalTopo to onX, with icons, colors and folders intact</span>
+    </div>
+    <nav style="display: flex; gap: 20px; align-items: center;">
+      <a href="#help">Help</a>
+      <button type="button" style="font: inherit; background: none; border: 1px solid #CDBF9F; border-radius: 3px; padding: 6px 12px; color: #2B2620; min-height: 36px;">Dark sheet</button>
+    </nav>
+  </header>
+
+  <main style="flex-grow: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 28px 32px 120px; box-sizing: border-box; display: flex; flex-direction: column; gap: 22px;">
+
+    <section aria-label="Map summary" style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); border: 2px solid #2B2620; background: #FAF7EF;">
+      <div style="padding: 20px 24px; border-right: 1px solid #2B2620; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #5E5446;">CalTopo export · loaded</span>
+        <h1 style="margin: 0; font-size: 38px; font-weight: 700; line-height: 1.1;">Bitterroots (Complete)</h1>
+        <span style="font-style: italic; color: #5E5446;">Bitterroots__Complete_.json · Montana – Idaho</span>
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 0;" aria-hidden="true">
+          <span style="width: 60px; height: 6px; background: #2B2620;"></span><span style="width: 60px; height: 6px; border: 1px solid #2B2620; box-sizing: border-box;"></span><span style="width: 60px; height: 6px; background: #2B2620;"></span><span style="width: 60px; height: 6px; border: 1px solid #2B2620; box-sizing: border-box;"></span>
+        </div>
+      </div>
+      <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #CDBF9F; border-right: 1px solid #CDBF9F;"><dt style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5E5446;">Folders</dt><dd style="margin: 2px 0 0; font-size: 28px; font-weight: 600;">10</dd></div>
+        <div style="padding: 14px 20px; border-bottom: 1px solid #CDBF9F;"><dt style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5E5446;">Markups</dt><dd style="margin: 2px 0 0; font-size: 28px; font-weight: 600;">177</dd></div>
+        <div style="padding: 14px 20px; border-right: 1px solid #CDBF9F;"><dt style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5E5446;">onX imports</dt><dd style="margin: 2px 0 0; font-size: 28px; font-weight: 600;">10</dd></div>
+        <div style="padding: 14px 20px; background: #F6E7D3;"><dt style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A3F12;">Default pin</dt><dd style="margin: 2px 0 0; font-size: 28px; font-weight: 600; color: #8A3F12;">25</dd></div>
+      </dl>
+    </section>
+
+    <section aria-label="Find and change" style="display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; padding-bottom: 14px; border-bottom: 1px solid #CDBF9F;">
+      <label style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 320px;">
+        <span style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5E5446;">Search</span>
+        <input type="search" placeholder="Names and descriptions" style="font: inherit; background: #FAF7EF; border: 1px solid #A8977A; border-radius: 3px; padding: 8px 12px; color: #2B2620; min-height: 40px; box-sizing: border-box;">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5E5446;">Show</span>
+        <select style="font: inherit; background: #FAF7EF; border: 1px solid #A8977A; border-radius: 3px; padding: 8px 10px; min-height: 40px; color: #2B2620;"><option>All markups</option><option>Waypoints</option><option>Tracks</option></select>
+      </label>
+      <label style="display: flex; gap: 8px; align-items: center; min-height: 40px;"><input type="checkbox" style="accent-color: #3F6B3A; width: 18px; height: 18px;"> Only default pins</label>
+      <div style="display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap;">
+        <button type="button" disabled style="font: inherit; background: none; border: 1px solid #CDBF9F; border-radius: 3px; padding: 8px 14px; min-height: 40px; color: #8C8170;">Set icon</button>
+        <button type="button" disabled style="font: inherit; background: none; border: 1px solid #CDBF9F; border-radius: 3px; padding: 8px 14px; min-height: 40px; color: #8C8170;">Set color</button>
+        <button type="button" style="font: inherit; background: none; border: 1px solid #A8977A; border-radius: 3px; padding: 8px 14px; min-height: 40px; color: #2B2620;">More</button>
+      </div>
+    </section>
+
+    <section aria-label="Folder: Uncategorized">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 4px 0 8px; border-bottom: 2px solid #8A5A2B;">
+        <h2 style="margin: 0; font-size: 24px; font-weight: 600;">Uncategorized</h2>
+        <span style="font-style: italic; color: #5E5446;">43 markups · <span style="color: #8A3F12;">6 on the default pin</span></span>
+      </div>
+      <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
+        <thead>
+          <tr style="text-align: left; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5E5446;">
+            <th style="padding: 10px 8px; width: 28px;"><input type="checkbox" aria-label="Select all in Uncategorized" style="accent-color: #3F6B3A;"></th>
+            <th style="padding: 10px 8px; font-weight: 400;">Name</th>
+            <th style="padding: 10px 8px; font-weight: 400;">Notes for onX</th>
+            <th style="padding: 10px 8px; font-weight: 400;">onX icon</th>
+            <th style="padding: 10px 8px; font-weight: 400;">Color</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="11">
+          <tr style="border-top: 1px solid #DDD2BA; background: {{r.bg}};">
+            <td style="padding: 9px 8px;"><input type="checkbox" aria-label="Select {{r.name}}" style="accent-color: #3F6B3A;"></td>
+            <td style="padding: 9px 8px; font-weight: 600;">{{r.name}}</td>
+            <td style="padding: 9px 8px; color: #5E5446; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{r.desc}}</td>
+            <td style="padding: 9px 8px;">
+              <span style="display: inline-flex; align-items: center; gap: 8px; color: {{r.iconInk}};">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.path}}"></path></svg>
+                <span style="font-style: {{r.iconStyle}};">{{r.icon}}</span>
+              </span>
+            </td>
+            <td style="padding: 9px 8px;">
+              <span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 22px; height: 12px; background: {{r.hex}}; border: 1px solid #2B2620;" aria-hidden="true"></span>{{r.color}}</span>
+            </td>
+          </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section aria-label="Other folders" style="display: flex; flex-direction: column;">
+      <sc-for list="{{folders}}" as="f" hint-placeholder-count="4">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-bottom: 1px solid #CDBF9F;">
+        <span style="font-size: 20px; font-weight: 600;">{{f.name}}</span>
+        <span style="font-style: italic; color: #5E5446;">{{f.count}} markups</span>
+      </div>
+      </sc-for>
+    </section>
+  </main>
+
+  <div style="position: sticky; bottom: 0; background: #2B2620; color: #F3EEE2; padding: 14px 32px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between;">
+    <span>Ready to export <strong>177 markups</strong> as <strong>10 onX imports</strong>. 25 will land on onX's default pin.</span>
+    <div style="display: flex; gap: 10px;">
+      <button type="button" style="font: inherit; background: none; border: 1px solid #A8977A; color: #F3EEE2; border-radius: 3px; padding: 10px 16px; min-height: 44px;">Load another map</button>
+      <button type="button" style="font: inherit; font-weight: 600; background: #3F6B3A; border: 1px solid #3F6B3A; color: #FFFFFF; border-radius: 3px; padding: 10px 20px; min-height: 44px;">Export for onX</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      summit: 'M3 19 L10 7 L14 13 L16 10 L21 19 Z',
+      water: 'M12 3 C12 3 6 10 6 14 a6 6 0 0 0 12 0 C18 10 12 3 12 3 Z',
+      parking: 'M5 3h14v18H5z M10 16V8h3a2.5 2.5 0 0 1 0 5h-3',
+      pin: 'M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z M12 10v.01',
+      climb: 'M7 21l4-7 3 2 2-6 M9 11l3-3 4 2 M13 5.5h.01',
+      hazard: 'M12 3 L22 20 H2 Z M12 9v5 M12 17v.01'
+    };
+    const C = { Red: '#FF0000', Black: '#000000' };
+    const row = (name, desc, icon, path, color, isDefault) => ({
+      name, desc: desc || '—', icon: isDefault ? 'Location (default)' : icon, path,
+      color, hex: C[color], bg: isDefault ? '#F6E7D3' : 'transparent',
+      iconInk: isDefault ? '#8A3F12' : '#2B2620', iconStyle: isDefault ? 'italic' : 'normal'
+    });
+    return {
+      rows: [
+        row('Bass Creek TH', 'http://mt-adventures.blogspot.com/2015/0…', 'Water Source', P.water, 'Red'),
+        row("Steven's Peak", '', 'Summit', P.summit, 'Red'),
+        row('Lindy Peak', '', 'Summit', P.summit, 'Red'),
+        row('El Capitan', '', 'Location', P.pin, 'Red', true),
+        row('Trapper', 'https://www.summitpost.org/trapper-peak…', 'Summit', P.summit, 'Red'),
+        row('Bear Creek Canyon TH', '', 'Parking', P.parking, 'Black'),
+        row('Bass Creek trailhead', '', 'Parking', P.parking, 'Black'),
+        row('Fred Burr trailhead', '', 'Parking', P.parking, 'Black'),
+        row('Ice climbs', '', 'Climbing', P.climb, 'Black'),
+        row('Good looking climbing', '', 'Location', P.pin, 'Red', true),
+        row('Avy debris', '', 'Hazard', P.hazard, 'Red')
+      ],
+      folders: [
+        { name: 'Lost Trail Pass', count: 31 },
+        { name: 'North Roots', count: 22 },
+        { name: 'Trapper area', count: 21 },
+        { name: 'Lost Horse Canyon', count: 18 }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

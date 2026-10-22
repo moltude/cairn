@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cairn — icon and color as one mark</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#EFE8D8}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1000px; box-sizing: border-box; padding: 48px 56px; background: #EFE8D8; color: #2A241C; font-family: 'Libre Caslon Text', Georgia, serif; font-size: 15px; display: flex; flex-direction: column; gap: 28px;">
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <h1 style="margin: 0; font-size: 30px;">One mark for icon + color</h1>
+    <p style="margin: 0; color: #5C5242; font-style: italic;">The same Campsite icon in five onX colors. Yellow and white are the stress test on paper.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px;">
+
+    <section style="background: #F7F2E6; border: 1px solid #B9A887; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+      <h2 style="margin: 0; font-size: 20px;">1 · Tinted line icon</h2>
+      <div style="display: flex; gap: 28px; align-items: flex-end;">
+        <sc-for list="{{colors}}" as="c" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="{{tent}}" stroke="#2A241C" stroke-width="3.4"></path>
+            <path d="{{tent}}" stroke="{{c.hex}}" stroke-width="1.8"></path>
+          </svg>
+          <span style="font-size: 13px; color: #5C5242;">{{c.name}}</span>
+        </div>
+        </sc-for>
+      </div>
+      <p style="margin: 0; color: #5C5242; line-height: 1.5;">Lightest touch. Needs a dark outline under every stroke or yellow and white vanish, and thin colored strokes are hard to tell apart at table size.</p>
+    </section>
+
+    <section style="background: #F7F2E6; border: 1px solid #B9A887; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+      <h2 style="margin: 0; font-size: 20px;">2 · Color disc, icon knocked out</h2>
+      <div style="display: flex; gap: 28px; align-items: flex-end;">
+        <sc-for list="{{colors}}" as="c" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <span style="width: 34px; height: 34px; border-radius: 50%; background: {{c.hex}}; border: 1px solid #2A241C; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{c.fg}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tent}}"></path></svg>
+          </span>
+          <span style="font-size: 13px; color: #5C5242;">{{c.name}}</span>
+        </div>
+        </sc-for>
+      </div>
+      <p style="margin: 0; color: #5C5242; line-height: 1.5;">Color reads first, icon second. Icon ink flips black/white per color for contrast. Compact enough for a table cell.</p>
+    </section>
+
+    <section style="background: #F7F2E6; border: 1px solid #B9A887; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+      <h2 style="margin: 0; font-size: 20px;">3 · onX-style map marker</h2>
+      <div style="display: flex; gap: 28px; align-items: flex-end;">
+        <sc-for list="{{colors}}" as="c" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <svg width="34" height="42" viewBox="0 0 34 42" aria-hidden="true">
+            <path d="M17 41 C17 41 3 26 3 16 A14 14 0 0 1 31 16 C31 26 17 41 17 41 Z" fill="{{c.hex}}" stroke="#2A241C" stroke-width="1"></path>
+            <g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{c.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{tent}}"></path></g>
+          </svg>
+          <span style="font-size: 13px; color: #5C5242;">{{c.name}}</span>
+        </div>
+        </sc-for>
+      </div>
+      <p style="margin: 0; color: #5C5242; line-height: 1.5;">Previews what the waypoint will look like on the onX map. Most literal; taller than a table row likes, and it is a stand-in, not onX's actual artwork.</p>
+    </section>
+
+    <section style="background: #F7F2E6; border: 1px solid #B9A887; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+      <h2 style="margin: 0; font-size: 20px;">4 · Ink icon on a color field (keep separate, but touching)</h2>
+      <div style="display: flex; gap: 28px; align-items: flex-end;">
+        <sc-for list="{{colors}}" as="c" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <span style="display: inline-flex; border: 1px solid #2A241C; border-radius: 2px; overflow: hidden;">
+            <span style="width: 30px; height: 30px; background: #FFFDF7; display: inline-flex; align-items: center; justify-content: center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A241C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tent}}"></path></svg>
+            </span>
+            <span style="width: 10px; height: 30px; background: {{c.hex}}; border-left: 1px solid #2A241C;"></span>
+          </span>
+          <span style="font-size: 13px; color: #5C5242;">{{c.name}}</span>
+        </div>
+        </sc-for>
+      </div>
+      <p style="margin: 0; color: #5C5242; line-height: 1.5;">Icon always fully legible; color is a tab on the same chip. One click target, but icon and color stay visually separable.</p>
+    </section>
+  </div>
+
+  <section style="background: #F7F2E6; border: 1px solid #B9A887; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px;">
+    <h2 style="margin: 0; font-size: 20px;">In a row, with the change popover (treatment 2)</h2>
+    <div style="display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-top: 1px dotted #B9A887; border-bottom: 1px dotted #B9A887; min-width: 420px;">
+        <span style="flex-grow: 1;">Bass Creek camp</span>
+        <button type="button" aria-label="Campsite, Red. Change icon or color" style="width: 36px; height: 36px; border-radius: 50%; background: #FF0000; border: 1px solid #2A241C; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tent}}"></path></svg>
+        </button>
+        <span>Campsite</span>
+      </div>
+      <div role="dialog" aria-label="Change icon and color" style="background: #FFFDF7; border: 1px solid #7A4E25; box-shadow: 0 6px 18px rgba(42,36,28,0.18); padding: 16px; display: flex; flex-direction: column; gap: 12px; width: 360px;">
+        <span style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #5C5242;">Color</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <sc-for list="{{palette}}" as="p" hint-placeholder-count="10">
+          <button type="button" aria-label="{{p.name}}" aria-pressed="{{p.on}}" style="width: 28px; height: 28px; border-radius: 50%; background: {{p.hex}}; border: {{p.ring}}; padding: 0; box-sizing: border-box;"></button>
+          </sc-for>
+        </div>
+        <span style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #5C5242;">Icon</span>
+        <input type="search" aria-label="Find an onX icon" placeholder="Find an onX icon" style="font: inherit; background: #F7F2E6; border: 1px solid #9C8B6C; border-radius: 2px; padding: 6px 10px; min-height: 36px;">
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const colors = [
+      { name: 'Red', hex: '#FF0000', fg: '#FFFFFF' },
+      { name: 'Blue', hex: '#087AFF', fg: '#FFFFFF' },
+      { name: 'Yellow', hex: '#FFFF00', fg: '#2A241C' },
+      { name: 'White', hex: '#FFFFFF', fg: '#2A241C' },
+      { name: 'Black', hex: '#000000', fg: '#FFFFFF' }
+    ];
+    const pal = [
+      ['Red-Orange', '#FF3300'], ['Blue', '#087AFF'], ['Cyan', '#00FFFF'], ['Lime', '#84D400'], ['Black', '#000000'],
+      ['White', '#FFFFFF'], ['Purple', '#800080'], ['Yellow', '#FFFF00'], ['Red', '#FF0000'], ['Brown', '#8B4513']
+    ].map(([name, hex]) => ({ name, hex, on: name === 'Red', ring: name === 'Red' ? '3px solid #2A241C' : '1px solid #2A241C' }));
+    return {
+      tent: 'M3 20 L12 5 L21 20 Z M9 20 L12 14 L15 20',
+      colors,
+      palette: pal
+    };
+  }
+}
+</script>
+</body>
+</html>

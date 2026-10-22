@@ -1,3 +1,5 @@
+# Web engine: imported by web/bridge.py and run in the browser via Pyodide.
+# Keep it free of terminal/UI imports (tests/test_web_engine_surface.py).
 """
 Icon and symbol mapping for CalTopo to OnX Backcountry conversion.
 
@@ -34,7 +36,7 @@ ICON_MAP = {
     ],
     "Photo": ["camera", "photo"],
     "View": ["view", "viewpoint", "vista", "overlook", "scenic"],
-    "Cabin": ["cabin", "hut", "yurt"],
+    "Shelter": ["shelter", "cabin", "hut", "yurt"],
 }
 
 _LEGACY_RESOLVER = IconResolver(

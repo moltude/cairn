@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cairn — change icon and color</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#EFE8D8}
+a{color:#2F6690}a:hover{color:#1F4A6B}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1250px; box-sizing: border-box; padding: 40px 48px; background: #EFE8D8; color: #2A241C; font-family: 'Libre Caslon Text', Georgia, serif; font-size: 15px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; align-items: start;">
+
+  <section aria-label="One item" style="display: flex; flex-direction: column; gap: 14px;">
+    <h2 style="margin: 0; font-size: 22px;">One item — click its marker</h2>
+
+    <div style="background: #F7F2E6; border: 1px solid #B9A887;">
+      <div style="display: flex; align-items: center; gap: 14px; padding: 6px 16px; border-bottom: 1px dotted #B9A887;">
+        <span style="flex-grow: 1;">Trapper</span>
+        <svg width="30" height="38" viewBox="0 0 34 42" aria-hidden="true"><path d="{{pinPath}}" fill="#FF0000" stroke="#2A241C" stroke-width="1"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.summit}}"></path></g></svg>
+        <span style="width: 120px;">Summit</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 6px 16px; background: #FBF6EA; box-shadow: inset 3px 0 0 #7A4E25;">
+        <span style="flex-grow: 1;">El Capitan</span>
+        <svg width="30" height="38" viewBox="0 0 34 42" aria-hidden="true"><path d="{{pinPath}}" fill="#FF0000" stroke="#2A241C" stroke-width="2"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.pin}}"></path></g></svg>
+        <span style="width: 120px; font-style: italic; color: #8A3F12;">Default pin</span>
+      </div>
+    </div>
+
+    <div role="dialog" aria-label="Change icon and color for El Capitan" style="background: #FFFDF7; border: 1px solid #7A4E25; box-shadow: 0 8px 24px rgba(42,36,28,0.18); display: flex; flex-direction: column;">
+      <div style="position: relative; overflow: hidden; display: flex; align-items: center; gap: 18px; padding: 18px 20px; border-bottom: 1px solid #D8CBAE; background: #F3ECDC;">
+        <svg width="100%" height="100%" viewBox="0 0 600 110" preserveAspectRatio="none" fill="none" stroke="#DCCFB2" stroke-width="1" aria-hidden="true" style="position: absolute; inset: 0;">
+          <path d="M-10 95 C 120 60, 220 110, 340 75 S 520 40, 610 60"></path>
+          <path d="M-10 70 C 130 35, 230 85, 350 50 S 530 15, 610 35"></path>
+          <path d="M-10 45 C 140 10, 240 60, 360 25 S 540 -10, 610 10"></path>
+        </svg>
+        <svg width="52" height="64" viewBox="0 0 34 42" aria-hidden="true" style="position: relative;"><path d="{{pinPath}}" fill="{{one.hex}}" stroke="#2A241C" stroke-width="1"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{one.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{one.path}}"></path></g></svg>
+        <div style="position: relative; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 20px; font-weight: 700;">El Capitan</span>
+          <span>{{one.icon}} · {{one.color}}</span>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #D8CBAE;">
+        <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Color</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <sc-for list="{{onePalette}}" as="p" hint-placeholder-count="10">
+          <button type="button" onClick="{{p.pick}}" aria-label="{{p.name}}" aria-pressed="{{p.on}}" title="{{p.name}}" style="width: 32px; height: 32px; border-radius: 50%; background: {{p.hex}}; border: 1px solid #2A241C; padding: 0; box-sizing: border-box; outline: {{p.outline}}; outline-offset: 2px; cursor: pointer;"></button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Icon</span>
+          <a href="#all-icons" style="font-size: 13px;">Browse all 95</a>
+        </div>
+        <input type="search" aria-label="Find an icon" placeholder="Find an icon — try “climb”, “water”, “camp”" style="font: inherit; background: #F7F2E6; border: 1px solid #9C8B6C; border-radius: 2px; padding: 8px 10px; min-height: 40px; box-sizing: border-box;">
+        <span style="font-size: 13px; font-style: italic; color: #5C5242;">Suggested from the name</span>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;">
+          <sc-for list="{{oneIcons}}" as="i" hint-placeholder-count="7">
+          <button type="button" onClick="{{i.pick}}" aria-pressed="{{i.on}}" style="font: inherit; font-size: 13px; background: {{i.bg}}; border: {{i.border}}; border-radius: 2px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #2A241C; min-height: 76px; cursor: pointer;">
+            <svg width="28" height="35" viewBox="0 0 34 42" aria-hidden="true"><path d="{{pinPath}}" fill="{{one.hex}}" stroke="#2A241C" stroke-width="1"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{one.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{i.path}}"></path></g></svg>
+            <span>{{i.name}}</span>
+          </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #D8CBAE;">
+        <button type="button" onClick="{{resetOne}}" style="font: inherit; background: none; border: 1px solid #9C8B6C; border-radius: 2px; padding: 8px 16px; min-height: 40px; color: #2A241C; cursor: pointer;">Cancel</button>
+        <button type="button" style="font: inherit; font-weight: 700; background: #3B6534; color: #FFFFFF; border: none; border-radius: 2px; padding: 8px 18px; min-height: 40px;">Apply</button>
+      </div>
+    </div>
+    <p style="margin: 0; font-size: 13px; font-style: italic; color: #5C5242;">Interactive: pick a color or icon and every marker re-renders. Glyphs are mockup stand-ins for onX's icon set.</p>
+  </section>
+
+  <section aria-label="Several items" style="display: flex; flex-direction: column; gap: 14px;">
+    <h2 style="margin: 0; font-size: 22px;">Several items — from the selection bar</h2>
+
+    <div style="position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #E5DCC6; border: 1px solid #B9A887; flex-wrap: wrap;">
+      <span style="font-style: italic; margin-right: 6px;">4 selected</span>
+      <button type="button" style="font: inherit; background: #2A241C; color: #EFE8D8; border: 1px solid #2A241C; border-radius: 2px; padding: 6px 12px; min-height: 36px;">Icon &amp; color…</button>
+      <button type="button" aria-haspopup="menu" style="font: inherit; background: #F7F2E6; border: 1px solid #9C8B6C; border-radius: 2px; padding: 6px 12px; min-height: 36px; color: #2A241C;">More</button>
+    </div>
+
+    <div role="dialog" aria-label="Change icon and color for 4 items" style="background: #FFFDF7; border: 1px solid #7A4E25; box-shadow: 0 8px 24px rgba(42,36,28,0.18); display: flex; flex-direction: column;">
+      <div style="padding: 18px 20px; border-bottom: 1px solid #D8CBAE; display: flex; flex-direction: column; gap: 12px; background: #F3ECDC;">
+        <span style="font-size: 20px; font-weight: 700;">Change 4 items</span>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); gap: 6px 10px; align-items: center;">
+          <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Now</span><span></span><span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">After</span>
+          <sc-for list="{{bulk}}" as="b" hint-placeholder-count="4">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <sc-if value="{{b.isWpt}}" hint-placeholder-val="{{true}}">
+                <svg width="22" height="28" viewBox="0 0 34 42" aria-hidden="true"><path d="{{pinPath}}" fill="{{b.fromHex}}" stroke="#2A241C" stroke-width="1"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{b.fromFg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{b.fromPath}}"></path></g></svg>
+              </sc-if>
+              <sc-if value="{{b.isLine}}" hint-placeholder-val="{{false}}">
+                <svg width="22" height="28" viewBox="0 0 22 28" aria-hidden="true"><path d="M2 22 C 7 14, 12 20, 20 6" fill="none" stroke="{{b.fromHex}}" stroke-width="4" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <span>{{b.name}}</span>
+            </span>
+            <svg width="24" height="12" viewBox="0 0 24 12" aria-hidden="true"><path d="M2 6h18M15 1l5 5-5 5" fill="none" stroke="#7A4E25" stroke-width="1.6"></path></svg>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <sc-if value="{{b.isWpt}}" hint-placeholder-val="{{true}}">
+                <svg width="22" height="28" viewBox="0 0 34 42" aria-hidden="true"><path d="{{pinPath}}" fill="{{b.toHex}}" stroke="#2A241C" stroke-width="1"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{b.toFg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{b.toPath}}"></path></g></svg>
+              </sc-if>
+              <sc-if value="{{b.isLine}}" hint-placeholder-val="{{false}}">
+                <svg width="22" height="28" viewBox="0 0 22 28" aria-hidden="true"><path d="M2 22 C 7 14, 12 20, 20 6" fill="none" stroke="{{b.toHex}}" stroke-width="4" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <span style="font-style: italic; color: #5C5242;">{{b.after}}</span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #D8CBAE;">
+        <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Color</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+          <button type="button" onClick="{{keepColor.pick}}" aria-pressed="{{keepColor.on}}" style="font: inherit; font-size: 13px; background: {{keepColor.bg}}; border: 1px solid #2A241C; border-radius: 16px; padding: 4px 12px; min-height: 32px; color: {{keepColor.ink}}; cursor: pointer;">Reset</button>
+          <sc-for list="{{bulkPalette}}" as="p" hint-placeholder-count="10">
+          <button type="button" onClick="{{p.pick}}" aria-label="{{p.name}}" aria-pressed="{{p.on}}" title="{{p.name}}" style="width: 32px; height: 32px; border-radius: 50%; background: {{p.hex}}; border: 1px solid #2A241C; padding: 0; box-sizing: border-box; outline: {{p.outline}}; outline-offset: 2px; cursor: pointer;"></button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Icon</span>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+          <button type="button" onClick="{{keepIcon.pick}}" aria-pressed="{{keepIcon.on}}" style="font: inherit; font-size: 13px; background: {{keepIcon.bg}}; border: 1px solid #2A241C; border-radius: 16px; padding: 4px 12px; min-height: 32px; color: {{keepIcon.ink}}; cursor: pointer;">Reset</button>
+          <sc-for list="{{bulkIcons}}" as="i" hint-placeholder-count="4">
+          <button type="button" onClick="{{i.pick}}" aria-pressed="{{i.on}}" title="{{i.name}}" aria-label="{{i.name}}" style="background: {{i.bg}}; border: {{i.border}}; border-radius: 2px; padding: 3px 6px; min-height: 40px; cursor: pointer;">
+            <svg width="24" height="30" viewBox="0 0 34 42" aria-hidden="true"><path d="{{pinPath}}" fill="{{previewHex}}" stroke="#2A241C" stroke-width="1"></path><g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{previewFg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{i.path}}"></path></g></svg>
+          </button>
+          </sc-for>
+          <input type="search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" style="font: inherit; flex: 1 1 140px; background: #F7F2E6; border: 1px solid #9C8B6C; border-radius: 2px; padding: 6px 10px; min-height: 36px;">
+        </div>
+        <span style="font-size: 13px; font-style: italic; color: #5C5242;">Lines take the color only.</span>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #D8CBAE;">
+        <button type="button" onClick="{{resetBulk}}" style="font: inherit; background: none; border: 1px solid #9C8B6C; border-radius: 2px; padding: 8px 16px; min-height: 40px; color: #2A241C; cursor: pointer;">Cancel</button>
+        <button type="button" style="font: inherit; font-weight: 700; background: #3B6534; color: #FFFFFF; border: none; border-radius: 2px; padding: 8px 18px; min-height: 40px;">Apply</button>
+      </div>
+    </div>
+
+    <h2 style="margin: 12px 0 0; font-size: 22px;">More menu</h2>
+    <div role="menu" aria-label="More actions for 4 selected" style="width: 340px; background: #FFFDF7; border: 1px solid #7A4E25; box-shadow: 0 8px 24px rgba(42,36,28,0.18); display: flex; flex-direction: column; padding: 6px 0;">
+      <button type="button" role="menuitem" style="font: inherit; text-align: left; background: none; border: none; padding: 10px 16px; min-height: 40px; color: #2A241C;">Use note as name</button>
+      <button type="button" role="menuitem" style="font: inherit; text-align: left; background: none; border: none; padding: 10px 16px; min-height: 40px; color: #2A241C;">Exclude</button>
+      <button type="button" role="menuitem" style="font: inherit; text-align: left; background: none; border: none; padding: 10px 16px; min-height: 40px; color: #2A241C;">Include</button>
+      <div style="border-top: 1px solid #D8CBAE; margin: 6px 0;"></div>
+      <button type="button" role="menuitem" style="font: inherit; text-align: left; background: none; border: none; padding: 10px 16px; min-height: 40px; color: #2A241C; display: flex; justify-content: space-between;">Rename…<span style="font-size: 12px; font-style: italic; color: #8A3F12;">not built</span></button>
+      <button type="button" role="menuitem" style="font: inherit; text-align: left; background: none; border: none; padding: 10px 16px; min-height: 40px; color: #2A241C; display: flex; justify-content: space-between;">Edit note…<span style="font-size: 12px; font-style: italic; color: #8A3F12;">not built</span></button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { oneColor: 'Purple', oneIcon: 'Climbing', bulkColor: 'Blue', bulkIcon: null };
+  }
+  renderVals() {
+    const g = {
+      summit: 'M3 19 L10 7 L14 13 L16 10 L21 19 Z',
+      water: 'M12 3 C12 3 6 10 6 14 a6 6 0 0 0 12 0 C18 10 12 3 12 3 Z',
+      parking: 'M5 3h14v18H5z M10 16V8h3a2.5 2.5 0 0 1 0 5h-3',
+      pin: 'M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z M12 10v.01',
+      climb: 'M7 21l4-7 3 2 2-6 M9 11l3-3 4 2 M13 5.5h.01',
+      hazard: 'M12 3 L22 20 H2 Z M12 9v5 M12 17v.01',
+      camp: 'M3 20 L12 5 L21 20 Z M9 20 L12 14 L15 20'
+    };
+    const COLORS = [
+      ['Red-Orange', '#FF3300', '#FFFFFF'], ['Blue', '#087AFF', '#FFFFFF'], ['Cyan', '#00FFFF', '#2A241C'], ['Lime', '#84D400', '#2A241C'], ['Black', '#000000', '#FFFFFF'],
+      ['White', '#FFFFFF', '#2A241C'], ['Purple', '#800080', '#FFFFFF'], ['Yellow', '#FFFF00', '#2A241C'], ['Red', '#FF0000', '#FFFFFF'], ['Brown', '#8B4513', '#FFFFFF']
+    ];
+    const C = Object.fromEntries(COLORS.map(([n, h, f]) => [n, { hex: h, fg: f }]));
+    const ICONS = [['Climbing', g.climb], ['Summit', g.summit], ['Hazard', g.hazard], ['Campsite', g.camp], ['Parking', g.parking], ['Water Source', g.water], ['Location', g.pin]];
+    const P = Object.fromEntries(ICONS);
+    const s = this.state;
+    const set = (patch) => () => this.setState(patch);
+
+    const one = { color: s.oneColor, icon: s.oneIcon, hex: C[s.oneColor].hex, fg: C[s.oneColor].fg, path: P[s.oneIcon] };
+    const onePalette = COLORS.map(([name, hex]) => ({ name, hex, on: name === s.oneColor, outline: name === s.oneColor ? '2px solid #2A241C' : 'none', pick: set({ oneColor: name }) }));
+    const oneIcons = ICONS.map(([name, path]) => ({
+      name, path, on: name === s.oneIcon,
+      bg: name === s.oneIcon ? '#E9EFDF' : '#FFFDF7', border: name === s.oneIcon ? '2px solid #3B6534' : '1px solid #D8CBAE',
+      pick: set({ oneIcon: name })
+    }));
+
+    const items = [
+      { name: "Steven's Peak", color: 'Red', icon: 'Summit', isWpt: true },
+      { name: 'Lindy Peak', color: 'Red', icon: 'Summit', isWpt: true },
+      { name: 'Bear Creek Canyon TH', color: 'Black', icon: 'Parking', isWpt: true },
+      { name: 'Lost horse main wall approach', color: 'Red', icon: null, isWpt: false }
+    ];
+    const bulk = items.map(it => {
+      const toColor = s.bulkColor || it.color;
+      const toIcon = it.isWpt ? (s.bulkIcon || it.icon) : null;
+      return {
+        name: it.name, isWpt: it.isWpt, isLine: !it.isWpt,
+        fromHex: C[it.color].hex, fromFg: C[it.color].fg, fromPath: it.icon ? P[it.icon] : '',
+        toHex: C[toColor].hex, toFg: C[toColor].fg, toPath: toIcon ? P[toIcon] : '',
+        after: (it.isWpt ? toIcon : 'Line') + ' · ' + toColor
+      };
+    });
+    const chip = (on, pick) => ({ on, pick, bg: on ? '#2A241C' : '#F7F2E6', ink: on ? '#EFE8D8' : '#2A241C' });
+    const bulkPalette = COLORS.map(([name, hex]) => ({ name, hex, on: name === s.bulkColor, outline: name === s.bulkColor ? '2px solid #2A241C' : 'none', pick: set({ bulkColor: name }) }));
+    const preview = C[s.bulkColor || 'Red'];
+    const bulkIcons = ICONS.slice(0, 4).map(([name, path]) => ({
+      name, path, on: name === s.bulkIcon,
+      bg: name === s.bulkIcon ? '#E9EFDF' : '#FFFDF7', border: name === s.bulkIcon ? '2px solid #3B6534' : '1px solid #D8CBAE',
+      pick: set({ bulkIcon: name })
+    }));
+
+    return {
+      g, pinPath: 'M17 41 C17 41 3 26 3 16 A14 14 0 0 1 31 16 C31 26 17 41 17 41 Z',
+      one, onePalette, oneIcons,
+      bulk, bulkPalette, bulkIcons,
+      previewHex: preview.hex, previewFg: preview.fg,
+      keepColor: chip(!s.bulkColor, set({ bulkColor: null })),
+      keepIcon: chip(!s.bulkIcon, set({ bulkIcon: null })),
+      resetOne: set({ oneColor: 'Red', oneIcon: 'Location' }),
+      resetBulk: set({ bulkColor: null, bulkIcon: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

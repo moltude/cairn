@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cairn — collar layout, revision 2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#EFE8D8}
+a{color:#2F6690}a:hover{color:#1F4A6B}
+</style>
+</helmet>
+<div style="min-height: 1300px; background: #EFE8D8; color: #2A241C; font-family: 'Libre Caslon Text', Georgia, serif; font-size: 15px; display: flex; flex-wrap: wrap; align-items: stretch;">
+
+  <aside aria-label="Map and filters" style="position: relative; overflow: hidden; flex: 1 1 300px; max-width: 340px; background: #E5DCC6; border-right: 1px solid #B9A887; box-sizing: border-box; display: flex; flex-direction: column;">
+    <svg width="100%" height="320" viewBox="0 0 340 320" preserveAspectRatio="none" fill="none" stroke="#D2C29F" stroke-width="1" aria-hidden="true" style="position: absolute; top: 0; left: 0;">
+      <path d="M-10 300 C 60 260, 120 310, 190 270 S 300 230, 350 250"></path>
+      <path d="M-10 260 C 70 220, 130 270, 200 230 S 310 190, 350 210"></path>
+      <path d="M-10 220 C 80 180, 140 230, 210 190 S 320 150, 350 170" stroke="#C4AF85" stroke-width="1.4"></path>
+      <path d="M-10 180 C 90 140, 150 190, 220 150 S 330 110, 350 130"></path>
+      <path d="M-10 140 C 100 100, 160 150, 230 110 S 340 70, 350 90"></path>
+    </svg>
+
+    <div style="position: relative; padding: 26px 26px 0; display: flex; flex-direction: column; gap: 22px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h14M7 20l2-5h6l2 5M9 15l1.5-4h3L15 15M10.5 11 12 7l1.5 4"></path></svg>
+        <span style="font-size: 20px; font-weight: 700;">Cairn</span>
+        <a href="#help" style="margin-left: auto; font-size: 14px;">Help</a>
+      </div>
+      <div style="border-top: 3px double #2A241C; border-bottom: 3px double #2A241C; padding: 18px 0;">
+        <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">CalTopo map</span>
+        <h1 style="margin: 4px 0 0; font-size: 30px; line-height: 1.15; font-weight: 700;">Bitterroots (Complete)</h1>
+      </div>
+    </div>
+
+    <nav aria-label="Filter by folder" style="position: relative; padding: 18px 26px 0; display: flex; flex-direction: column; gap: 2px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px;">
+        <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242;">Folders</span>
+      </div>
+      <sc-for list="{{folders}}" as="f" hint-placeholder-count="11">
+      <button type="button" aria-pressed="{{f.on}}" style="font: inherit; text-align: left; display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px; color: #2A241C; background: {{f.bg}}; border: none; border-left: 3px solid {{f.edge}}; min-height: 34px; font-style: {{f.style}};">
+        <span>{{f.name}}</span><span style="color: #5C5242; font-style: italic;">{{f.count}}</span>
+      </button>
+      </sc-for>
+    </nav>
+
+    <nav aria-label="Filter by icon" style="position: relative; padding: 20px 26px 0; display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #5C5242; padding-bottom: 6px;">Icon</span>
+      <sc-for list="{{icons}}" as="i" hint-placeholder-count="6">
+      <label style="display: flex; align-items: center; gap: 10px; padding: 5px 10px; min-height: 30px; color: {{i.ink}};">
+        <input type="checkbox" style="accent-color: #3B6534; width: 16px; height: 16px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{i.path}}"></path></svg>
+        <span style="font-style: {{i.style}};">{{i.name}}</span>
+      </label>
+      </sc-for>
+    </nav>
+
+    <div style="position: relative; margin-top: auto; padding: 26px; display: flex; flex-direction: column; gap: 10px;">
+      <button type="button" style="font: inherit; font-weight: 700; font-size: 16px; background: #3B6534; color: #FFFFFF; border: none; border-radius: 2px; padding: 12px 16px; min-height: 48px;">Export</button>
+      <button type="button" style="font: inherit; background: none; border: 1px solid #9C8B6C; color: #2A241C; border-radius: 2px; padding: 10px 16px; min-height: 44px;">Start over</button>
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; padding: 26px 36px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+      <label style="flex: 1 1 280px; display: flex; align-items: center; gap: 10px; background: #F7F2E6; border: 1px solid #9C8B6C; border-radius: 2px; padding: 0 12px; min-height: 42px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5C5242" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"></path></svg>
+        <input type="search" aria-label="Search" placeholder="Name or note" style="font: inherit; border: none; background: none; flex-grow: 1; color: #2A241C; min-height: 40px;">
+      </label>
+      <div role="group" aria-label="Markup type" style="display: flex; border: 1px solid #9C8B6C; border-radius: 2px; overflow: hidden;">
+        <button type="button" aria-pressed="true" style="font: inherit; background: #2A241C; color: #EFE8D8; border: none; padding: 0 14px; min-height: 42px;">All</button>
+        <button type="button" aria-pressed="false" style="font: inherit; background: #F7F2E6; color: #2A241C; border: none; border-left: 1px solid #9C8B6C; padding: 0 14px; min-height: 42px;">Waypoints</button>
+        <button type="button" aria-pressed="false" style="font: inherit; background: #F7F2E6; color: #2A241C; border: none; border-left: 1px solid #9C8B6C; padding: 0 14px; min-height: 42px;">Lines</button>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <span style="font-size: 13px; color: #5C5242; font-style: italic;">Showing</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; background: #F7F2E6; border: 1px solid #B9A887; border-radius: 14px; padding: 3px 6px 3px 12px; font-size: 14px;">Folder: Unorganized<button type="button" aria-label="Remove folder filter" style="font: inherit; background: none; border: none; color: #5C5242; min-width: 24px; min-height: 24px; padding: 0;">×</button></span>
+      <button type="button" style="font: inherit; font-size: 14px; background: none; border: none; color: #2F6690; text-decoration: underline; padding: 4px; min-height: 30px;">Clear filters</button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #E5DCC6; border: 1px solid #B9A887; flex-wrap: wrap;">
+      <span style="font-style: italic; margin-right: 6px;">2 selected</span>
+      <button type="button" style="font: inherit; background: #F7F2E6; border: 1px solid #9C8B6C; border-radius: 2px; padding: 6px 12px; min-height: 36px; color: #2A241C;">Icon &amp; color…</button>
+      <button type="button" aria-haspopup="menu" style="font: inherit; background: #F7F2E6; border: 1px solid #9C8B6C; border-radius: 2px; padding: 6px 10px 6px 12px; min-height: 36px; color: #2A241C; display: inline-flex; align-items: center; gap: 6px;">More<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+      <button type="button" style="font: inherit; background: none; border: none; color: #2F6690; text-decoration: underline; padding: 6px 4px; min-height: 36px; margin-left: auto;">Clear</button>
+    </div>
+
+    <section aria-label="Unorganized" style="position: relative; background: #F7F2E6; border: 1px solid #B9A887;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #B9A887;">
+        <h2 style="margin: 0; font-size: 22px;">Unorganized</h2>
+        <span style="font-style: italic; color: #5C5242; font-size: 14px;">Not in any CalTopo folder</span>
+      </div>
+      <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="text-align: left; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #5C5242;">
+            <th style="padding: 10px 12px 10px 18px; width: 24px;"><input type="checkbox" aria-label="Select all shown" style="accent-color: #3B6534;"></th>
+            <th style="padding: 10px 12px; font-weight: 400;">Name</th>
+            <th style="padding: 10px 12px; font-weight: 400;">Notes</th>
+            <th style="padding: 10px 18px 10px 12px; font-weight: 400;">Icon</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+          <tr style="border-top: 1px dotted #B9A887; background: {{r.bg}};">
+            <td style="padding: 10px 12px 10px 18px; vertical-align: top;"><input type="checkbox" checked="{{r.sel}}" aria-label="Select {{r.name}}" style="accent-color: #3B6534;"></td>
+            <td style="padding: 10px 12px; vertical-align: top;">{{r.name}}</td>
+            <td style="padding: 6px 12px; vertical-align: top; max-width: 320px;">
+              <sc-if value="{{r.open}}" hint-placeholder-val="{{false}}">
+                <div style="display: flex; flex-direction: column; gap: 8px; padding: 4px 0 8px;">
+                  <label style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #5C5242;" for="note-trapper">Note</label>
+                  <textarea id="note-trapper" rows="5" style="font: inherit; line-height: 1.5; background: #FFFDF7; border: 1px solid #7A4E25; border-radius: 2px; padding: 8px 10px; color: #2A241C; resize: vertical;">{{r.full}}</textarea>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" style="font: inherit; background: #3B6534; color: #FFFFFF; border: none; border-radius: 2px; padding: 6px 14px; min-height: 36px;">Apply</button>
+                    <button type="button" style="font: inherit; background: none; border: 1px solid #9C8B6C; border-radius: 2px; padding: 6px 12px; min-height: 36px; color: #2A241C;">Cancel</button>
+                    <span style="font-size: 13px; color: #5C5242; font-style: italic;">Line breaks kept</span>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{r.closed}}" hint-placeholder-val="{{true}}">
+                <button type="button" aria-label="Open notes for {{r.name}}" style="font: inherit; text-align: left; width: 100%; background: none; border: none; padding: 4px 0; min-height: 30px; color: #5C5242; font-style: italic; display: flex; gap: 6px; align-items: center; cursor: pointer;">
+                  <span style="flex-grow: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{r.desc}}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>
+                </button>
+              </sc-if>
+            </td>
+            <td style="padding: 6px 18px 6px 12px; vertical-align: top;">
+              <button type="button" aria-label="{{r.icon}}, {{r.color}}. Change icon or color" style="font: inherit; background: none; border: none; padding: 0; display: inline-flex; align-items: center; gap: 10px; color: {{r.iconInk}}; min-height: 44px; cursor: pointer;">
+                <svg width="30" height="38" viewBox="0 0 34 42" aria-hidden="true">
+                  <path d="M17 41 C17 41 3 26 3 16 A14 14 0 0 1 31 16 C31 26 17 41 17 41 Z" fill="{{r.hex}}" stroke="#2A241C" stroke-width="1"></path>
+                  <g transform="translate(8 7) scale(0.75)" fill="none" stroke="{{r.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.path}}"></path></g>
+                </svg>
+                <span style="font-style: {{r.iconStyle}};">{{r.icon}}</span>
+              </button>
+            </td>
+          </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      summit: 'M3 19 L10 7 L14 13 L16 10 L21 19 Z',
+      water: 'M12 3 C12 3 6 10 6 14 a6 6 0 0 0 12 0 C18 10 12 3 12 3 Z',
+      parking: 'M5 3h14v18H5z M10 16V8h3a2.5 2.5 0 0 1 0 5h-3',
+      pin: 'M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z M12 10v.01',
+      climb: 'M7 21l4-7 3 2 2-6 M9 11l3-3 4 2 M13 5.5h.01',
+      hazard: 'M12 3 L22 20 H2 Z M12 9v5 M12 17v.01'
+    };
+    const C = { Red: '#FF0000', Black: '#000000' };
+    const row = (name, desc, icon, path, color, o) => {
+      o = o || {};
+      return {
+        name, desc: desc || 'Add a note', full: o.full || desc, icon: o.def ? 'Default pin' : icon, path, color, hex: C[color], fg: '#FFFFFF',
+        bg: o.sel ? '#E9EFDF' : (o.open ? '#FBF6EA' : 'transparent'),
+        iconInk: o.def ? '#8A3F12' : '#2A241C', iconStyle: o.def ? 'italic' : 'normal',
+        sel: !!o.sel, open: !!o.open, closed: !o.open
+      };
+    };
+    const folder = (name, count, on, style) => ({ name, count, on: !!on, bg: on ? '#F7F2E6' : 'transparent', edge: on ? '#7A4E25' : 'transparent', style: style || 'normal' });
+    const icon = (name, path, def) => ({ name, path, ink: def ? '#8A3F12' : '#2A241C', style: def ? 'italic' : 'normal' });
+    return {
+      folders: [
+        folder('All', ''), folder('Unorganized', 43, true, 'italic'), folder('Lost Trail Pass', 31), folder('North Roots', 22),
+        folder('Trapper area', 21), folder('Lost Horse Canyon', 18), folder('Blodgett', 17),
+        folder('Central roots', 10), folder('Sheafman ridge', 9), folder('Paddling', 5), folder('Mill Creek Canyon', 1)
+      ],
+      icons: [
+        icon('Summit', P.summit), icon('Parking', P.parking), icon('Water Source', P.water),
+        icon('Climbing', P.climb), icon('Hazard', P.hazard), icon('Default pin', P.pin, true)
+      ],
+      rows: [
+        row('Bass Creek TH', 'http://mt-adventures.blogspot.com/2015/0…', 'Water Source', P.water, 'Red'),
+        row("Steven's Peak", '', 'Summit', P.summit, 'Red', { sel: true }),
+        row('Lindy Peak', '', 'Summit', P.summit, 'Red', { sel: true }),
+        row('El Capitan', '', 'Location', P.pin, 'Red', { def: true }),
+        row('Trapper', 'https://www.summitpost.org/trapper-peak/353250 …', 'Summit', P.summit, 'Red', {
+          open: true,
+          full: 'https://www.summitpost.org/trapper-peak/353250\n\nGnarly NE couloir. Most skiers use the standard route: https://www.summitpost.org/standard-trail-133/165144'
+        }),
+        row('Bear Creek Canyon TH', '', 'Parking', P.parking, 'Black'),
+        row('Bass Creek trailhead', '', 'Parking', P.parking, 'Black'),
+        row('Fred Burr trailhead', '', 'Parking', P.parking, 'Black'),
+        row('Ice climbs', '', 'Climbing', P.climb, 'Black'),
+        row('Avy debris', '', 'Hazard', P.hazard, 'Red')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
