@@ -99,8 +99,13 @@ def _export(edits=None):
     return zipfile.ZipFile(io.BytesIO(bridge.export_zip()))
 
 
-def _read(z, suffix):
-    return "".join(z.read(n).decode() for n in z.namelist() if n.endswith(suffix))
+GPX_NS = {"g": "http://www.topografix.com/GPX/1/1", "onx": "https://wwww.onxmaps.com/"}
+
+
+def _gpx_areas(z):
+    """Every <rte> in the export's *_Areas.gpx files."""
+    return [r for n in z.namelist() if n.endswith("_Areas.gpx")
+            for r in ET.fromstring(z.read(n)).findall("g:rte", GPX_NS)]
 
 
 def test_ui_area_color_equals_exported_area_color():
@@ -109,20 +114,19 @@ def test_ui_area_color_equals_exported_area_color():
         _poly_feature("b", "No colour", [SQUARE]),
     ))
     shown = {i["name"]: i["color"] for i in items}
-    kml = _read(_export(), ".kml")
-    exported = {}
-    for pm in _xml(kml).iter("Placemark"):
-        exported[pm.findtext("name")] = pm.findtext("Style/LineStyle/color")
+    # Areas are exported as GPX onX Area routes (ENG-05), so the colour that
+    # matters is <onx:color>.
+    exported = {r.findtext("g:name", namespaces=GPX_NS): r.findtext("g:extensions/onx:color", namespaces=GPX_NS)
+                for r in _gpx_areas(_export())}
     assert shown == {"Odd red": "rgba(255,0,0,1)", "No colour": "rgba(8,122,255,1)"}
-    assert exported == {"Odd red": RED_KML, "No colour": BLUE_KML}
+    assert exported == shown
 
 
 def test_user_area_color_edit_wins_on_line_and_fill():
     items = _load(_doc(_poly_feature("a", "Zone", [SQUARE], stroke="#FF0000", fill="#FF0000")))
-    kml = _read(_export({items[0]["uid"]: {"color": FUCHSIA}}), ".kml")
-    (line, _w, poly), = _styles(kml)
-    assert line == "ffff00ff"
-    assert poly[2:] == "ff00ff"
+    (rte,) = _gpx_areas(_export({items[0]["uid"]: {"color": FUCHSIA}}))
+    assert rte.findtext("g:extensions/onx:color", namespaces=GPX_NS) == FUCHSIA
+    assert rte.findtext("g:extensions/onx:fill_color", namespaces=GPX_NS) == "rgba(255,0,255,0.5)"
 
 
 # ---- (b) holes ------------------------------------------------------------
@@ -185,7 +189,7 @@ def test_runbook_reports_dropped_polygons():
 def test_folder_whose_only_polygon_is_unusable_still_counts_as_dropped():
     _load(_doc(_poly_feature("b", "Broken", [])))
     z = _export()
-    assert not [n for n in z.namelist() if n.endswith(".kml")], "empty KML written"
+    assert not [n for n in z.namelist() if n.endswith((".kml", "_Areas.gpx"))], "empty area file written"
     assert json.loads(bridge.runbook_summary_json())["dropped"] == 1
     assert "**1 item(s) could not be exported**" in z.read("RUNBOOK.md").decode()
 

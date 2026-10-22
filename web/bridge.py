@@ -30,12 +30,14 @@ from cairn.io.onx_gpx import read_onx_gpx
 from cairn.io.onx_kml import read_onx_kml
 from cairn.utils.utils import natural_sort_key
 from cairn.core.writers import (
+    clear_areas_without_holes,
     clear_name_changes,
+    get_areas_without_holes,
     get_name_changes,
     kml_area_color,
+    write_gpx_areas_maybe_split,
     write_gpx_tracks_maybe_split,
     write_gpx_waypoints_maybe_split,
-    write_kml_shapes_maybe_split,
 )
 
 # onX's per-ACCOUNT markup ceiling (FIDELITY_MODEL_2026-08-29.md). Splitting a
@@ -591,6 +593,7 @@ def export_zip() -> bytes:
             d.mkdir(parents=True, exist_ok=True)
             files = []
             clear_name_changes()
+            clear_areas_without_holes()
 
             # Drop anything the user excluded. Done by position because the
             # UI's uid encodes the feature's index within its kind.
@@ -618,10 +621,12 @@ def export_zip() -> bytes:
                     files.append((p, cnt))
             if shapes:
                 shapes = sorted(shapes, key=lambda f: natural_sort_key(f.title or ""))
-                # Split like GPX; the count is placemarks actually WRITTEN, so a
-                # polygon with no usable ring shows up as dropped, not written.
-                for p, size, cnt in write_kml_shapes_maybe_split(
-                    shapes, d / f"{safe}_Areas.kml", g["name"]
+                # GPX <rte type=Area>, not KML: onX ignores area colour and
+                # fill in KML but keeps them from GPX (verified 2026-10-22,
+                # ENG-05). The count is areas actually WRITTEN, so a polygon
+                # with no usable ring shows up as dropped, not written.
+                for p, size, cnt in write_gpx_areas_maybe_split(
+                    shapes, d / f"{safe}_Areas.gpx", g["name"]
                 ):
                     files.append((p, cnt))
 
@@ -645,6 +650,8 @@ def export_zip() -> bytes:
                 for kind in ("waypoints", "tracks", "shapes")
                 for orig, new in get_name_changes().get(kind, [])
             ]
+            # onX areas are single-ring: these were written outer ring only.
+            entry["holes"] = get_areas_without_holes()
             if entry["files"]:
                 manifest.append(entry)
             else:
@@ -676,6 +683,7 @@ def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
         "limit": ONX_ACCOUNT_MARKUP_LIMIT,
         "over_limit": markups > ONX_ACCOUNT_MARKUP_LIMIT,
         "renamed": sum(len(e.get("renamed", ())) for e in manifest),
+        "holes": sum(len(e.get("holes", ())) for e in manifest),
         "kml_batches": sum(1 for e in manifest if any(f["kml"] for f in e["files"])),
     }
 
@@ -744,6 +752,16 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "",
         ]
         L += [f"- `{o}` → `{nw}`  ({folder})" for folder, o, nw in renamed]
+        L += [""]
+    holes = [(e["folder"], name) for e in manifest for name in e.get("holes", ())]
+    if holes:
+        L += [
+            "### Holes not kept in onX",
+            "",
+            "onX areas have one outline, so these areas were exported without their holes.",
+            "",
+        ]
+        L += [f"- `{name}`  ({folder})" for folder, name in holes]
         L += [""]
     L += [
         "---",
