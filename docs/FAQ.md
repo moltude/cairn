@@ -68,7 +68,7 @@ Some edge cases:
 
 Yes. Select rows and set a color for all of them at once. A bulk icon applies to the selected waypoints, since lines and areas have no icon. The "More" menu can also exclude or re-include the selection, and can rename each selected item to its own note ("use note as name"). Excluded items are left out of the export, and your source file is never changed. You can edit names and notes one item at a time. Bulk rename with prefix/suffix or find/replace, and bulk note editing, aren't built yet.
 
-The reason for doing this before import is the owner's own experience: "Making bulk updates in onX is either not possible or very difficult." None of the onX help articles the project cites covers bulk editing, so treat that as unverified.
+The reason for doing this before import: onX's own bulk tools are limited. In the onX Web Map (checked 2026-10-22), My Content's **Select** mode offers only Add to Folder, Share, Export and Delete for a selection. There is no bulk icon, color or rename, so in onX those changes are one markup at a time.
 
 ### Do my notes come across?
 
@@ -151,6 +151,6 @@ Partly. The first half works; the second half is untested.
 - **Folders aren't in the files.** onX export files carry no folder information (per project docs, Aug 2026). Each file you drop becomes one folder named after the file, so exporting one onX folder at a time and dropping all the files together brings your folders back. Whether onX lets you name those export files is untested; if it doesn't, rename the files before dropping them. Cairn can't rename a folder yet.
 - **XML input is guarded.** Now that the browser reads XML, Cairn refuses any GPX or KML with a DTD and any XML file over 16 MB before parsing it.
 
-**Re-importing: unknown.** Nobody knows whether re-importing updates your existing markups or creates duplicates. The project owner is "skeptical" that in-place updates are possible. Per project docs (Aug 2026), onX's own help suggests exporting and re-importing to manage the 3,000 limit, but that doesn't settle whether a re-import matches existing markups. Cairn's exports don't include onX's IDs, so there would be nothing to match on, if onX matches by ID at all. If re-import does duplicate, you'd need to delete the originals first, or the copies count against the 3,000-markup limit.
+**Re-importing creates duplicates. Tested on 2026-10-22.** We exported two waypoints from onX and re-imported that exact file, onX's own IDs included. onX added two *new* markups in a new folder instead of updating the originals. So a round trip today is: export from onX and keep that file as a backup, delete the originals in onX, then import the cleaned files from Cairn. Anything onX keeps outside the file (photos, shares, folder membership) is lost when you delete the originals, so back those up first. Otherwise every markup ends up twice and the copies count against the 3,000-markup limit.
 
-So the cleanup half works today. Sending the result back to onX without duplicating your markups is the part nobody has worked out yet.
+So the cleanup half works today, and the way back into onX is "replace", not "update".

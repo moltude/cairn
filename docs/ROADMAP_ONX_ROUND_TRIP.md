@@ -94,7 +94,7 @@ are KG §8's. The steps are RS §1.6's ten-minute test, extended to capture fixt
 
 | # | Question | What to do | What to hand back | Unblocks |
 |---|---|---|---|---|
-| **P1** | **Does re-import update a markup with a matching `id=`, or duplicate it?** | RS §1.6 Tests A, B and C:<br>• Export 2 waypoints.<br>• Re-import the file unchanged and note the count change: +0 or +2.<br>• If +0, re-import with one name and one colour edited.<br>• Export again and diff the ids. Repeat once with KML. | The counts at each step, the id diff, and whether Notes shows `key=value` text | Phase 5 (wording) and Phase 6 (whether it exists at all) |
+| **P1 ✅ answered 2026-10-22: duplicates** | **Does re-import update a markup with a matching `id=`, or duplicate it?** (Re-importing an unchanged onX GPX export added 2 new markups; see the research doc §1.7.) | RS §1.6 Tests A, B and C:<br>• Export 2 waypoints.<br>• Re-import the file unchanged and note the count change: +0 or +2.<br>• If +0, re-import with one name and one colour edited.<br>• Export again and diff the ids. Repeat once with KML. | The counts at each step, the id diff, and whether Notes shows `key=value` text | Phase 5 (wording) and Phase 6 (whether it exists at all) |
 | **P2** | Does a real Web Map export match the decoded format: `<desc>` key/value lines with `id`/`notes`, `onx:` extensions, Areas as `<rte><type>Area`? | Put **1 waypoint, 1 track, 1 Line and 1 Area** in `ZZ Cairn Test`. If you can, give the Area a hole and the waypoint a two-line note with `&` and `#` in its name. Export the folder as **GPX** and again as **KML**. | Both files, unedited, to commit as `tests/fixtures/onx_real/` (FM W6) | Phase 4. Replaces every synthetic onX fixture |
 | **P3** | Does onX import an `<rte>` with `type=Area` as an Area? (FM probe B2) | Import the P2 GPX by itself into a new folder | Whether you get a filled Area or a stray Line/Track | Whether a GPX-only onX export keeps its areas (Phase 1 reader fix stays either way) |
 | **P4** | Does the **iOS app's** GPX export carry the extensions and `<desc>` lines, or only name and location, as the help centre claims? | Export the same 4 markups from the phone app | The file | Whether phone users can round trip at all. If not, the feature is Web Map only |
@@ -331,7 +331,7 @@ The sizes are KG §7's estimates, regrouped.
 
 ### Phase 5: Round-trip runbook ("replace" mode)
 
-*The text can be drafted now. Ship it after P1.*
+*P1 is answered (duplicates), so the wording is "replace": back up, delete the originals, import. Ready to build.*
 
 - **Goal:** turn an exported onX account back into onX without duplicates, safely.
 - **User-visible outcome:** when the input came from onX, the zip's RUNBOOK.md and the in-app
@@ -370,6 +370,8 @@ The sizes are KG §7's estimates, regrouped.
     **unknown**.
 
 ### Phase 6: Update in place (id write-back)
+
+*Dropped 2026-10-22: P1 showed onX duplicates on re-import, even with matching ids.*
 
 *Conditional. Exists only if P1 shows onX upserts by id.*
 
