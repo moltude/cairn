@@ -17,6 +17,26 @@
 
 ## Core engine (used by the web app)
 
+* **2026-10-22 review fixes (areas + runbook).** Fixed and tested
+  (`tests/test_polygons_end_to_end.py`, `tests/test_web_bridge_review_fixes.py`): area colours
+  quantized to onX's 11-colour track palette (missing/malformed → Blue in UI and KML alike);
+  holes written as `<innerBoundaryIs>`; CalTopo `stroke-width`, `stroke-opacity` and
+  `fill-opacity` carried; unusable polygons counted as dropped; KML size-split like GPX; area
+  names sanitized like waypoints/tracks and every rename listed in RUNBOOK.md; colourless
+  waypoints show and export the same colour; the 1,500 warning says "remove", not "split".
+  Still open from that pass:
+  * **How onX renders KML `<width>` and `PolyStyle` fill is unverified.** Needs one real
+    Web Map import of an area with `fill-opacity` 0.1 and 0 to see whether onX honours them.
+  * **The KML size cap is assumed.** onX documents 4 MB for GPX; areas now split at the same
+    3.75 MiB without a source saying KML shares that limit.
+  * **`MultiPolygon` and other non-LineString/Polygon `Shape`s are silently ignored at parse
+    time** (`core/parser.py:add_feature_to_folder`), so they never reach the dropped count.
+    No CalTopo export seen so far contains one (Bitterroots: 17 single-ring Polygons).
+  * **CalTopo `pattern` on areas is not carried** — KML 2.2 has no dash style.
+  * **The `! @ # $ % ^ * &` name rule has no cited onX reason** (utils.py says "sorting
+    issues"). Verify against a real import, then keep or drop it.
+  * `docs/FAQ.md:123` ("Area names are left alone", "the app doesn't tell you") is now stale.
+
 * **`load_config(None)` still reads `cairn_config.yaml` from the current directory**
   (`core/config.py`). The web app is safe because `web/bridge.py:_config` passes an explicit
   path, but the ambient fallback is a trap for any future caller — make the path mandatory, or

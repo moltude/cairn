@@ -16,16 +16,23 @@ from pathlib import Path
 
 from cairn.core.config import get_all_onx_icons, load_config
 from cairn.core.color_mapper import ColorMapper
-from cairn.core.config import GENERIC_SYMBOLS
+from cairn.core.config import GENERIC_SYMBOLS, resolve_waypoint_color
 from cairn.core.icon_resolver import IconResolver
 from cairn.core.mapper import map_icon
 from cairn.core.parser import UNORGANIZED_FOLDER_NAME, parse_geojson
 from cairn.utils.utils import natural_sort_key
 from cairn.core.writers import (
+    clear_name_changes,
+    get_name_changes,
+    kml_area_color,
     write_gpx_tracks_maybe_split,
     write_gpx_waypoints_maybe_split,
-    write_kml_shapes,
+    write_kml_shapes_maybe_split,
 )
+
+# onX's per-ACCOUNT markup ceiling (FIDELITY_MODEL_2026-08-29.md). Splitting a
+# map into more files or imports does not get around it.
+ONX_ACCOUNT_MARKUP_LIMIT = 1500
 
 # onX's waypoint palette (10). Track/line adds Fuchsia -> 11. See README.md's color reference.
 ONX_COLORS = [
@@ -45,8 +52,9 @@ FUCHSIA = ("Fuchsia", "rgba(255,0,255,1)", "#FF00FF")
 LINE_COLORS = ONX_COLORS + [FUCHSIA]
 _RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in LINE_COLORS}
 
-# "edited": uids with any UI edit. "color_edited": uids whose edit set a colour --
-# only those get feature.color/stroke rewritten on export (see export_zip).
+# "edited": uids with any UI edit. "color_edited": uids whose edit set a colour.
+# Both are bookkeeping only now: export_zip pins EVERY item to the colour the UI
+# shows, so the colour no longer depends on whether it was edited.
 _STATE: dict = {"doc": None, "groups": [], "config": None, "edited": set(), "color_edited": set()}
 
 # Path the UI writes the user's cairn_config.yaml to before loading a document.
@@ -75,7 +83,7 @@ def _hex_for(rgba: str) -> str:
     return _RGBA_TO_HEX.get(rgba, "#087AFF")
 
 
-def _explain(decision, symbol: str) -> str:
+def _explain(decision, symbol: str, default_icon: str = "Location") -> str:
     """Turn the engine's IconDecision into a sentence a hiker can act on.
 
     IconResolver already records WHY it chose an icon (icon_resolver.py:24-32)
@@ -87,6 +95,13 @@ def _explain(decision, symbol: str) -> str:
     sym = (symbol or "").strip()
     src = getattr(decision, "source", "default")
     if src == "symbol":
+        if getattr(decision, "icon", "") == default_icon:
+            # A mapping (e.g. `flag-1: Location`) explicitly sends this symbol
+            # to the default pin. The UI flags it "Default pin", so saying it
+            # "maps to this icon" contradicted the flag.
+            return (f"Your mappings send CalTopo\u2019s \u201c{sym}\u201d symbol to "
+                    f"onX\u2019s default pin, so it carries no specific icon. "
+                    f"Pick one if it should be something.")
         return f"Your CalTopo symbol \u201c{sym}\u201d maps to this icon."
     if src == "keyword":
         terms = ", ".join(getattr(decision, "matched_terms", ()) or ())
@@ -143,17 +158,26 @@ def load_document(text: str, filename: str) -> str:
                 if kind == "waypoints":
                     decision = resolver.resolve(title, feat.description or "", feat.symbol or "")
                     icon = decision.icon
-                    why = _explain(decision, feat.symbol or "")
+                    why = _explain(decision, feat.symbol or "", cfg.default_icon)
                 else:
                     icon = ""
                     why = "Tracks and areas don\u2019t take an icon in onX."
-                # NOT cairn.core.mapper.map_color -- that converts to KML's
-                # AABBGGRR. The onX waypoint palette mapper is what writers.py:429
-                # uses, and it is what the <onx:color> element needs.
+                # The colour shown here is the colour exported: export_zip pins
+                # every item to item["color"]. Waypoints use the engine's one
+                # rule (config.resolve_waypoint_color): the CalTopo colour
+                # quantized to onX's 10, else the icon's conventional colour
+                # (Shelter -> Brown), else the default. It is fixed at load --
+                # a later icon change does NOT recolour the pin, because the
+                # UI would not show that change.
                 if kind == "waypoints":
-                    color = ColorMapper.map_waypoint_color(feat.color or feat.stroke or "")
+                    color = resolve_waypoint_color(
+                        feat.color or feat.stroke or "", icon, default=cfg.default_color
+                    )
+                elif kind == "shapes":
+                    # Same function the KML writer uses (11-colour track palette).
+                    color = kml_area_color(feat)
                 else:
-                    # Lines/areas use the 11-color track palette (keeps Fuchsia).
+                    # Lines use the 11-color track palette (keeps Fuchsia).
                     color = ColorMapper.map_track_color(feat.stroke or feat.color or "")
                 items.append(
                     {
@@ -256,34 +280,27 @@ def export_zip() -> bytes:
             for item, feat in zip(items, feats):
                 feat.title = item["name"]
                 feat.description = item.get("desc") or ""
+                # Every item is exported in EXACTLY the colour the UI showed
+                # (item["color"]: the load-time value, or the user's pick).
+                # This used to be gated on "the user edited the colour", which
+                # let the writers recompute a colourless item's colour by a
+                # different rule than the UI's -- a colourless Shelter showed
+                # Blue and exported Brown; a strokeless area showed Blue and
+                # exported White. load_document now computes the colour with
+                # the engine's own rules, so pinning it is safe and WYSIWYG.
                 if item["kind"] == "waypoints":
-                    # writers.py:407 reads this key.
+                    # writers.py reads both override keys.
                     feat.properties["cairn_onx_icon_override"] = item["icon"]
-                # There is NO colour-override key: writers.py:429 recomputes the
-                # colour from feature.color through ColorMapper. Setting a
-                # "cairn_onx_color_override" property silently did nothing, so a
-                # user could pick a colour, see it in the UI, and export the old
-                # one. Write the hex onto feature.color instead -- an exact
-                # palette hex maps to its own rgba, so this round-trips exactly.
-                #
-                # ONLY for items whose COLOUR the user edited. Writing it for every
-                # item gave features with no source colour an invented default
-                # (a shape with no stroke came out Blue instead of the engine's
-                # white), which silently changed output the user never touched.
-                # Gating on "any edit" was not enough: item["color"] is a
-                # parse-time default for a colourless feature, so merely
-                # renaming one changed its exported colour.
-                if item["uid"] in _STATE.get("color_edited", ()):
-                    hex_ = _hex_for(item["color"])
-                    feat.color = hex_
-                    if item["kind"] != "waypoints" or getattr(feat, "stroke", None):
-                        # Track writers read feature.stroke (track palette,
-                        # so Fuchsia round-trips); KML shapes read feature.color.
-                        feat.stroke = hex_
+                    feat.properties["cairn_onx_color_override"] = item["color"]
+                else:
+                    # Track GPX and area KML both read feature.stroke first
+                    # (track palette, so Fuchsia round-trips).
+                    feat.stroke = _hex_for(item["color"])
 
     out = Path("/tmp/out")
     buf = io.BytesIO()
     manifest = []
+    unlisted_dropped = 0  # dropped items in folders that produced no file at all
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for n, g in enumerate(groups, 1):
             fdata = doc.folders[g["key"]]
@@ -291,6 +308,7 @@ def export_zip() -> bytes:
             d = out / f"{n:02d}_{safe}"
             d.mkdir(parents=True, exist_ok=True)
             files = []
+            clear_name_changes()
 
             # Drop anything the user excluded. Done by position because the
             # UI's uid encodes the feature's index within its kind.
@@ -303,7 +321,7 @@ def export_zip() -> bytes:
                 return [f for n, f in enumerate(feats) if n not in dropped]
 
             wps = _keep("waypoints", fdata.get("waypoints") or [])
-            trks = _keep("tracks", (fdata.get("tracks") or []) + (fdata.get("routes") or []))
+            trks = _keep("tracks", fdata.get("tracks") or [])
             shapes = _keep("shapes", fdata.get("shapes") or [])
 
             if wps:
@@ -318,12 +336,19 @@ def export_zip() -> bytes:
                     files.append((p, cnt))
             if shapes:
                 shapes = sorted(shapes, key=lambda f: natural_sort_key(f.title or ""))
-                p = d / f"{safe}_Areas.kml"
-                write_kml_shapes(shapes, p, g["name"])
-                files.append((p, len(shapes)))
+                # Split like GPX; the count is placemarks actually WRITTEN, so a
+                # polygon with no usable ring shows up as dropped, not written.
+                for p, size, cnt in write_kml_shapes_maybe_split(
+                    shapes, d / f"{safe}_Areas.kml", g["name"]
+                ):
+                    files.append((p, cnt))
 
             entry = {"n": n, "folder": g["name"], "files": [], "count": 0}
             for p, cnt in files:
+                if not cnt:
+                    # Every item of this kind was unusable: an empty file would
+                    # be an import step that imports nothing.
+                    continue
                 rel = f"{n:02d}_{safe}/{p.name}"
                 zf.writestr(rel, p.read_bytes())
                 entry["files"].append({"path": rel, "count": cnt, "kml": p.suffix == ".kml"})
@@ -333,28 +358,63 @@ def export_zip() -> bytes:
                 1 for i in g["items"] if not i.get("included", True)
             )
             entry["dropped"] = max(0, entry["expected"] - entry["count"])
+            entry["renamed"] = [
+                [orig, new]
+                for kind in ("waypoints", "tracks", "shapes")
+                for orig, new in get_name_changes().get(kind, [])
+            ]
             if entry["files"]:
                 manifest.append(entry)
+            else:
+                unlisted_dropped += entry["dropped"]
 
-        runbook = build_runbook(manifest)
+        runbook = build_runbook(manifest, unlisted_dropped=unlisted_dropped)
         zf.writestr("RUNBOOK.md", runbook)
 
     _STATE["manifest"] = manifest
+    _STATE["unlisted_dropped"] = unlisted_dropped
     _STATE["runbook"] = runbook
     return buf.getvalue()
 
 
-def build_runbook(manifest) -> str:
+def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
+    """The numbers BOTH runbooks report (RUNBOOK.md and the on-screen one in
+    web/app.js renderRunbook), computed once so they cannot disagree."""
+    written = sum(e["count"] for e in manifest)
+    expected = sum(e.get("expected", e["count"]) for e in manifest) + unlisted_dropped
+    dropped = sum(e.get("dropped", 0) for e in manifest) + unlisted_dropped
+    # Check the limit against what the user was SHOWN, not just what survived --
+    # otherwise dropped items can mask a genuine over-limit map.
+    markups = max(written, expected)
+    return {
+        "written": written,
+        "expected": expected,
+        "dropped": dropped,
+        "markups": markups,
+        "limit": ONX_ACCOUNT_MARKUP_LIMIT,
+        "over_limit": markups > ONX_ACCOUNT_MARKUP_LIMIT,
+        "renamed": sum(len(e.get("renamed", ())) for e in manifest),
+        "kml_batches": sum(1 for e in manifest if any(f["kml"] for f in e["files"])),
+    }
+
+
+def runbook_summary_json() -> str:
+    """runbook_summary for the last export, for the on-screen runbook."""
+    return json.dumps(
+        runbook_summary(_STATE.get("manifest") or [], _STATE.get("unlisted_dropped", 0))
+    )
+
+
+def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
     """The artifact that was missing: how to actually get this INTO onX.
 
     onX creates one folder per import BATCH, and a batch accepts several files
     at once. The folder is named "Import <timestamp>" -- never from the file --
     so the user must rename it. That is why this document has to exist.
     """
-    total_items = sum(e["count"] for e in manifest)
-    total_expected = sum(e.get("expected", e["count"]) for e in manifest)
-    total_dropped = sum(e.get("dropped", 0) for e in manifest)
-    kml_batches = sum(1 for e in manifest if any(f["kml"] for f in e["files"]))
+    s = runbook_summary(manifest, unlisted_dropped)
+    total_items = s["written"]
+    kml_batches = s["kml_batches"]
     L = [
         "# Import checklist",
         "",
@@ -367,18 +427,18 @@ def build_runbook(manifest) -> str:
         "- Each numbered step is ONE import. Drag in **all** the files for that step together.",
         "",
     ]
-    if total_dropped:
+    if s["dropped"]:
         L += [
-            f"> **{total_dropped} item(s) could not be exported** because they have no usable",
-            f"> coordinates. {total_items} of {total_expected} were written.",
+            f"> **{s['dropped']} item(s) could not be exported** because they have no usable",
+            f"> coordinates. {total_items} of {s['expected']} were written.",
             "",
         ]
-    # Check the limit against what the user was SHOWN, not just what survived --
-    # otherwise dropped items can mask a genuine over-limit map.
-    if max(total_items, total_expected) > 1500:
+    if s["over_limit"]:
+        # 1,500 is an ACCOUNT ceiling: splitting into more files or imports
+        # does not help, so the only advice that works is to send fewer.
         L += [
-            f"> **Warning:** this map has {total_expected} markups, which exceeds onX's",
-            "> 1,500-markup account limit. The import will fail unless you split it.",
+            f"> **Warning:** onX accounts hold at most {s['limit']:,} markups; this map has",
+            f"> {s['markups']:,}. Remove or exclude some before importing.",
             "",
         ]
     for e in manifest:
@@ -393,6 +453,16 @@ def build_runbook(manifest) -> str:
             f"**Rename it to:** `{e['folder']}`",
             "",
         ]
+    renamed = [(e["folder"], o, nw) for e in manifest for o, nw in e.get("renamed", ())]
+    if renamed:
+        L += [
+            "### Renamed for onX",
+            "",
+            "These names had `! @ # $ % ^ * &` removed. Search onX for the new name.",
+            "",
+        ]
+        L += [f"- `{o}` → `{nw}`  ({folder})" for folder, o, nw in renamed]
+        L += [""]
     L += [
         "---",
         "",

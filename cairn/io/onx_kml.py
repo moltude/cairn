@@ -118,7 +118,7 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
         name = normalize_name(name_raw)
 
         kv = _parse_extended_data(pm)
-        onx_id = kv.get("id") or kv.get("OnX:id")
+        onx_id = kv.get("id") or kv.get("onx:id")  # keys are lowercased in _parse_extended_data
         onx_icon = kv.get("icon")
         onx_color = kv.get("color")
         notes = kv.get("notes", "")

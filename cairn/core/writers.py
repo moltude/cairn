@@ -18,9 +18,9 @@ from datetime import datetime, timezone
 import math
 
 from cairn.core.parser import ParsedFeature
-from cairn.core.mapper import map_icon, map_color
+from cairn.core.mapper import map_icon
 from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_onx
-from cairn.core.config import IconMappingConfig, get_icon_color
+from cairn.core.config import IconMappingConfig, resolve_waypoint_color
 from cairn.core.color_mapper import (
     ColorMapper,
     pattern_to_style,
@@ -94,18 +94,29 @@ def _desc_text(notes_clean: str, kv_lines: List[str], debug_desc: bool) -> str:
 
 # Global change tracker for name sanitization
 # Format: {feature_type: [(original_name, sanitized_name), ...]}
-_name_changes: dict[str, list[tuple[str, str]]] = {"waypoints": [], "tracks": []}
+#
+# The rule itself (utils.sanitize_name_for_onx: drop ! @ # $ % ^ * &) is
+# inherited. Its docstring says those characters "cause OnX sorting issues";
+# nothing in docs/ or onX's published help confirms onX rejects or mis-sorts
+# them. It is kept, applied the same way to waypoints, tracks AND areas, and
+# every change is reported (web RUNBOOK.md "Renamed for onX") rather than
+# made silently.
+_name_changes: dict[str, list[tuple[str, str]]] = {
+    "waypoints": [],
+    "tracks": [],
+    "shapes": [],
+}
 
 
 def get_name_changes() -> dict[str, list[tuple[str, str]]]:
     """Get all tracked name changes."""
-    return _name_changes.copy()
+    return {k: list(v) for k, v in _name_changes.items()}
 
 
 def clear_name_changes() -> None:
     """Clear tracked name changes (call before processing new folder)."""
-    _name_changes["waypoints"] = []
-    _name_changes["tracks"] = []
+    for k in _name_changes:
+        _name_changes[k] = []
 
 
 def track_name_change(feature_type: str, original: str, sanitized: str) -> None:
@@ -426,11 +437,21 @@ def write_gpx_waypoints_maybe_split(
         )
         formatted_name = escape(formatted_name)
 
-        # Waypoint color policy (unchanged)
-        if feature.color:
-            onx_color = ColorMapper.map_waypoint_color(feature.color)
+        # Waypoint color: an explicit per-feature override (set by web/bridge.py
+        # to exactly the color its UI showed) wins; otherwise the shared rule in
+        # config.resolve_waypoint_color (source color, else icon color, else
+        # default). The override is still quantized, so a non-palette value
+        # cannot reach <onx:color>.
+        color_override = ""
+        if isinstance(getattr(feature, "properties", None), dict):
+            color_override = str(
+                feature.properties.get("cairn_onx_color_override") or ""
+            ).strip()
+        if color_override:
+            onx_color = ColorMapper.map_waypoint_color(color_override)
         else:
-            onx_color = get_icon_color(
+            onx_color = resolve_waypoint_color(
+                feature.color,
                 mapped_icon,
                 default=(
                     config.default_color
@@ -898,10 +919,17 @@ def write_gpx_waypoints(
         # - If CalTopo provided a marker color, preserve intent but quantize to one of
         #   OnX's official 10 waypoint colors (OnX ignores unsupported values).
         # - Otherwise, fall back to a default color per icon type.
-        if feature.color:
-            onx_color = ColorMapper.map_waypoint_color(feature.color)
+        # Same rule (and override key) as write_gpx_waypoints_maybe_split.
+        color_override = ""
+        if isinstance(getattr(feature, "properties", None), dict):
+            color_override = str(
+                feature.properties.get("cairn_onx_color_override") or ""
+            ).strip()
+        if color_override:
+            onx_color = ColorMapper.map_waypoint_color(color_override)
         else:
-            onx_color = get_icon_color(
+            onx_color = resolve_waypoint_color(
+                feature.color,
                 mapped_icon,
                 default=(
                     config.default_color
@@ -1080,85 +1108,256 @@ def write_gpx_tracks(
     return output_path.stat().st_size
 
 
+# --- KML areas -------------------------------------------------------------
+#
+# Size cap: onX documents a 4 MB import limit for GPX; KML is ASSUMED to share
+# it (unverified). Area files are split at the same 3.75 MiB as GPX so a large
+# map never produces one oversized KML.
+DEFAULT_MAX_KML_BYTES = DEFAULT_MAX_GPX_BYTES
+
+# KML <width> when CalTopo gives no stroke-width (the writer's historical value).
+_DEFAULT_KML_WIDTH = "2"
+# PolyStyle alpha when CalTopo gives no fill-opacity (historical 50% fill).
+_DEFAULT_FILL_ALPHA = 0x7F
+
+
+def _is_position(p) -> bool:
+    return (
+        isinstance(p, (list, tuple))
+        and len(p) >= 2
+        and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in p[:2])
+        and all(math.isfinite(float(v)) for v in p[:2])
+    )
+
+
+def _polygon_rings(coordinates) -> List[List[list]]:
+    """Normalize a Polygon's coordinates into [outer, hole, hole, ...].
+
+    GeoJSON Polygon coordinates are a list of linear rings, the first the
+    outer boundary and the rest holes. Depth is detected from the data rather
+    than trusted: a bare ring (one level too shallow) is accepted as the outer
+    ring, and a MultiPolygon-shaped array (one level too deep) contributes its
+    FIRST polygon only. Invalid positions are dropped; a ring with fewer than 3
+    usable positions is discarded. Returns [] when there is no usable outer
+    ring -- the caller then skips the feature and does not count it.
+    """
+    c = coordinates
+    if not isinstance(c, (list, tuple)) or not c:
+        return []
+    # Peel down to "list of rings" (each ring a list of positions).
+    if _is_position(c[0]):
+        c = [c]  # a single bare ring
+    elif (
+        isinstance(c[0], (list, tuple))
+        and c[0]
+        and all(isinstance(r, (list, tuple)) for r in c[0])
+        and not any(_is_position(r) for r in c[0])
+        and any(
+            isinstance(r, (list, tuple)) and any(_is_position(q) for q in r)
+            for r in c[0]
+        )
+    ):
+        # c[0] holds no positions but holds rings: MultiPolygon-shaped, so
+        # take its first polygon. (A Polygon whose first vertex alone is bad
+        # still has positions in c[0] and is NOT misread as this.)
+        c = c[0]
+    rings: List[List[list]] = []
+    for idx, ring in enumerate(c):
+        if not isinstance(ring, (list, tuple)):
+            continue
+        pts = [list(p) for p in ring if _is_position(p)]
+        if len(pts) < 3:
+            if idx == 0:
+                return []  # no usable outer boundary
+            continue
+        if pts[0][:2] != pts[-1][:2]:
+            pts.append(list(pts[0]))  # KML LinearRings must be closed
+        rings.append(pts)
+    return rings
+
+
+def _rgba_to_kml(rgba: str, alpha: int) -> str:
+    """onX rgba(...) -> KML aabbggrr with the given alpha (0-255)."""
+    r, g, b = ColorMapper.parse_color(rgba)
+    return f"{alpha:02x}{b:02x}{g:02x}{r:02x}"
+
+
+def _opacity_alpha(value, default: int) -> int:
+    """CalTopo opacity (0..1) -> 0..255 alpha; missing/malformed -> default."""
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return default
+    if not math.isfinite(v):
+        return default
+    return int(round(max(0.0, min(1.0, v)) * 255))
+
+
+def kml_area_color(feature: ParsedFeature) -> str:
+    """The onX rgba an area is exported (and shown in the web UI) with.
+
+    Nearest of onX's 11-color TRACK palette to the CalTopo stroke (falling back
+    to marker-color). Missing or malformed -> Blue, via parse_color's default --
+    the same value web/bridge.py displays. A user color edit reaches here as the
+    rewritten feature.stroke, so it wins.
+    """
+    return ColorMapper.map_track_color(
+        getattr(feature, "stroke", "") or getattr(feature, "color", "") or ""
+    )
+
+
+def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
+    """Build one area Placemark, or None when the polygon has no usable ring."""
+    rings = _polygon_rings(feature.coordinates)
+    if not rings:
+        return None
+
+    placemark = ET.Element("Placemark")
+
+    name_elem = ET.SubElement(placemark, "name")
+    # Same sanitizing rule as waypoint/track names (see _name_changes above).
+    sanitized, was_changed = sanitize_name_for_onx(feature.title)
+    if was_changed:
+        track_name_change("shapes", feature.title, sanitized)
+    name_elem.text = sanitized
+
+    if feature.description:
+        desc = ET.SubElement(placemark, "description")
+        desc.text = strip_html(feature.description)
+
+    # Style. HOW onX RENDERS KML <width> AND PolyStyle fill IS UNVERIFIED --
+    # these carry CalTopo's values faithfully in standard KML 2.2; whether onX
+    # honors them (or substitutes its own area style) has not been tested
+    # against a real import. KML 2.2 has no dash pattern, so CalTopo's
+    # `pattern` cannot be expressed and is not written.
+    area_rgba = kml_area_color(feature)
+    style = ET.SubElement(placemark, "Style")
+    line_style = ET.SubElement(style, "LineStyle")
+    ET.SubElement(line_style, "color").text = _rgba_to_kml(
+        area_rgba, _opacity_alpha(getattr(feature, "stroke_opacity", None), 0xFF)
+    )
+    width = _DEFAULT_KML_WIDTH
+    raw_width = (getattr(feature, "properties", None) or {}).get("stroke-width")
+    try:
+        w = float(raw_width)
+        if math.isfinite(w) and w > 0:
+            width = f"{w:g}"
+    except (TypeError, ValueError):
+        pass
+    ET.SubElement(line_style, "width").text = width
+
+    # Fill hue follows the area's (displayed, possibly user-edited) color, not
+    # CalTopo's separate `fill`: the UI shows one color per area, and following
+    # the raw fill would leave e.g. a red fill under a user's blue outline.
+    # CalTopo's fill-opacity IS carried (0.1 -> 1a, 0 -> 00 = outline only).
+    poly_style = ET.SubElement(style, "PolyStyle")
+    ET.SubElement(poly_style, "color").text = _rgba_to_kml(
+        area_rgba,
+        _opacity_alpha(getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA),
+    )
+
+    polygon = ET.SubElement(placemark, "Polygon")
+    for i, ring in enumerate(rings):
+        boundary = ET.SubElement(
+            polygon, "outerBoundaryIs" if i == 0 else "innerBoundaryIs"
+        )
+        linear_ring = ET.SubElement(boundary, "LinearRing")
+        coords_elem = ET.SubElement(linear_ring, "coordinates")
+        coords_elem.text = " ".join(
+            f"{p[0]},{p[1]},{p[2] if len(p) > 2 else 0}" for p in ring
+        )
+    return placemark
+
+
+def _kml_document(folder_name: str, placemarks: List[ET.Element]) -> str:
+    kml = ET.Element("kml")
+    kml.set("xmlns", "http://www.opengis.net/kml/2.2")
+    document = ET.SubElement(kml, "Document")
+    ET.SubElement(document, "name").text = folder_name
+    for pm in placemarks:
+        document.append(pm)
+    return prettify_xml(kml)
+
+
+def write_kml_shapes_maybe_split(
+    features: List[ParsedFeature],
+    output_path: Path,
+    folder_name: str,
+    *,
+    split: bool = True,
+    max_bytes: int = DEFAULT_MAX_KML_BYTES,
+) -> List[tuple[Path, int, int]]:
+    """Write areas (polygons) to KML, splitting into numbered parts
+    (`<stem>_1.kml`, `<stem>_2.kml`, ...) like the GPX writers when one file
+    would exceed max_bytes. Preserves order.
+
+    Returns [(path, size_bytes, written_placemark_count)]. Polygons with no
+    usable outer ring are skipped and NOT counted, so callers can report them
+    as dropped. When nothing is writable an empty file set is still produced
+    (one file, count 0) to keep the old single-file contract.
+    """
+    import copy
+
+    placemarks = [pm for pm in (_kml_placemark(f) for f in features) if pm is not None]
+
+    full = _kml_document(folder_name, [copy.deepcopy(pm) for pm in placemarks])
+    if not split or len(full.encode("utf-8")) <= max_bytes or len(placemarks) <= 1:
+        output_path.write_text(full, encoding="utf-8")
+        return [(output_path, output_path.stat().st_size, len(placemarks))]
+
+    # Measure each placemark as it serializes inside a document, then pack
+    # greedily. Each part is rebuilt from fresh copies (ET.indent mutates).
+    empty = len(_kml_document(folder_name, []).encode("utf-8"))
+    sizes = [
+        len(_kml_document(folder_name, [copy.deepcopy(pm)]).encode("utf-8")) - empty
+        for pm in placemarks
+    ]
+    # The empty <Document> serializes its closing tag differently from a
+    # populated one; a small margin absorbs that difference.
+    budget = max_bytes - empty - 64
+    groups: List[List[ET.Element]] = []
+    cur: List[ET.Element] = []
+    cur_size = 0
+    for pm, sz in zip(placemarks, sizes):
+        if cur and cur_size + sz > budget:
+            groups.append(cur)
+            cur, cur_size = [], 0
+        if not cur and sz > budget:
+            logger.warning(
+                f"A single KML area exceeds max_bytes={max_bytes} ({sz + empty} bytes). "
+                f"Writing it as a single-part file anyway."
+            )
+        cur.append(pm)
+        cur_size += sz
+    if cur:
+        groups.append(cur)
+
+    if len(groups) == 1:
+        output_path.write_text(full, encoding="utf-8")
+        return [(output_path, output_path.stat().st_size, len(placemarks))]
+
+    out: List[tuple[Path, int, int]] = []
+    for i, group in enumerate(groups, 1):
+        part_path = output_path.with_name(f"{output_path.stem}_{i}{output_path.suffix}")
+        part_path.write_text(
+            _kml_document(folder_name, [copy.deepcopy(pm) for pm in group]),
+            encoding="utf-8",
+        )
+        out.append((part_path, part_path.stat().st_size, len(group)))
+    return out
+
+
 def write_kml_shapes(
     features: List[ParsedFeature], output_path: Path, folder_name: str
 ) -> int:
+    """Write areas to ONE KML file (no splitting). Returns the file size.
+
+    Kept for existing callers; new code should use write_kml_shapes_maybe_split,
+    which also reports how many areas were actually written.
     """
-    Write shapes (polygons) to a KML file.
-
-    Args:
-        features: List of shape features to write
-        output_path: Path to write the KML file
-        folder_name: Name for the document
-
-    Returns:
-        File size in bytes
-    """
-    # Create KML root element
-    kml = ET.Element("kml")
-    kml.set("xmlns", "http://www.opengis.net/kml/2.2")
-
-    document = ET.SubElement(kml, "Document")
-
-    # Add document name
-    doc_name = ET.SubElement(document, "name")
-    doc_name.text = folder_name
-
-    # Process shapes
-    for feature in features:
-        if not feature.coordinates:
-            continue
-
-        placemark = ET.SubElement(document, "Placemark")
-
-        # Add name
-        name_elem = ET.SubElement(placemark, "name")
-        name_elem.text = feature.title
-
-        # Add description if present
-        if feature.description:
-            desc = ET.SubElement(placemark, "description")
-            desc.text = strip_html(feature.description)
-
-        # Add style
-        style = ET.SubElement(placemark, "Style")
-        line_style = ET.SubElement(style, "LineStyle")
-        line_color = ET.SubElement(line_style, "color")
-
-        # Convert CalTopo hex color to KML format
-        line_color.text = map_color(feature.color)
-        line_width = ET.SubElement(line_style, "width")
-        line_width.text = "2"
-
-        poly_style = ET.SubElement(style, "PolyStyle")
-        poly_color = ET.SubElement(poly_style, "color")
-        # Make fill semi-transparent
-        color_value = map_color(feature.color)
-        poly_color.text = "7f" + color_value[2:]  # 50% opacity
-
-        # Add polygon geometry
-        polygon = ET.SubElement(placemark, "Polygon")
-        outer_boundary = ET.SubElement(polygon, "outerBoundaryIs")
-        linear_ring = ET.SubElement(outer_boundary, "LinearRing")
-        coordinates_elem = ET.SubElement(linear_ring, "coordinates")
-
-        # Format coordinates (KML format: lon,lat,elevation)
-        coord_strings = []
-        coords = (
-            feature.coordinates[0]
-            if isinstance(feature.coordinates[0][0], list)
-            else feature.coordinates
-        )
-        for coord in coords:
-            if len(coord) >= 2:
-                lon, lat = coord[0], coord[1]
-                elevation = coord[2] if len(coord) > 2 else 0
-                coord_strings.append(f"{lon},{lat},{elevation}")
-
-        coordinates_elem.text = " ".join(coord_strings)
-
-    # Write to file
-    xml_string = prettify_xml(kml)
-    output_path.write_text(xml_string, encoding="utf-8")
-
-    return output_path.stat().st_size
+    (path, size, _count), = write_kml_shapes_maybe_split(
+        features, output_path, folder_name, split=False
+    )
+    return size

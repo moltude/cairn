@@ -1,7 +1,11 @@
-"""web/bridge.py rewrites a feature's colour on export only when the user changed
-its COLOUR -- not on any edit. A feature with no source colour carries a
-parse-time default in item["color"]; writing that back after a mere rename
-silently changed the exported colour."""
+"""A non-colour edit (rename, note, icon) must never change an item's exported
+colour, and an explicit colour edit must apply.
+
+History: web/bridge.py once rewrote colours only for colour-edited items,
+because item["color"] was a parse-time default that disagreed with the
+writers. Since 2026-10-22 load_document computes item["color"] with the
+engine's own rules and export_zip pins EVERY item to it, so these tests now
+guard WYSIWYG colour rather than the old gating."""
 
 from __future__ import annotations
 

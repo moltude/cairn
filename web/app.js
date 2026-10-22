@@ -834,14 +834,17 @@ async function doExport() {
 }
 
 function renderRunbook() {
-  const total = MANIFEST.reduce((n, e) => n + e.count, 0);
-  const kml = MANIFEST.filter(e => e.files.some(f => f.kml)).length;
+  // Same numbers as RUNBOOK.md: both come from bridge.runbook_summary, so the
+  // over-limit check uses max(written, expected) and dropped items are reported.
+  const S = JSON.parse(py.runPython("bridge.runbook_summary_json()"));
+  const kml = S.kml_batches;
   const host = $("#runbook");
   host.innerHTML =
     `<div class="note">onX Premium or Elite is required to import.${kml
       ? ` <b>${kml}</b> of these batches contain a KML file, which the phone app can't import — use the Web Map on a computer.`
       : ""}</div>` +
-    (total > 1500 ? `<div class="note warn">This map has ${total} markups; an onX account holds 1,500.</div>` : "");
+    (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
+    (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   MANIFEST.forEach(e => {
     const d = document.createElement("div");
     d.className = "rb-step";

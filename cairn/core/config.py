@@ -223,6 +223,24 @@ def get_icon_color(icon_name: str, *, default: str = "rgba(8,122,255,1)") -> str
     return ICON_COLOR_MAP.get(icon_name, default)
 
 
+def resolve_waypoint_color(
+    source_color: str, icon_name: str, *, default: str = "rgba(8,122,255,1)"
+) -> str:
+    """The ONE rule for a waypoint's onX color, shared by the GPX writer and
+    the web UI (web/bridge.py) so what the user is shown is what gets exported.
+
+    1. The CalTopo color, quantized to onX's 10-color waypoint palette.
+    2. No source color: the icon's conventional color from ICON_COLOR_MAP
+       (Shelter -> Brown, Water Source -> Cyan, ...).
+    3. Neither: `default` (Blue unless the user's config sets default_color).
+    """
+    if source_color:
+        from cairn.core.color_mapper import ColorMapper
+
+        return ColorMapper.map_waypoint_color(source_color)
+    return get_icon_color(icon_name, default=default)
+
+
 # Default CalTopo marker-symbol to OnX Backcountry icon mappings
 # Based on actual OnX GPX analysis and icon screenshots (100+ icons)
 DEFAULT_SYMBOL_MAP = {

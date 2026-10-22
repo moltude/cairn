@@ -1188,3 +1188,27 @@ def test_csp_cdn_allowance_is_pinned_to_the_pyodide_version_in_use():
         jsdelivr = [s for s in sources if "jsdelivr" in s]
         assert jsdelivr == [index_url], f"{name} should allow only {index_url}, got {jsdelivr}"
     assert script.startswith(index_url)
+
+
+def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
+    """renderRunbook reads bridge.runbook_summary_json, so the on-screen
+    runbook reports a polygon with no usable coordinates as dropped -- the
+    same numbers RUNBOOK.md gives -- instead of silently counting it."""
+    square = [[-114.0, 45.0], [-114.1, 45.0], [-114.1, 45.1], [-114.0, 45.0]]
+    doc = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "id": "f1", "geometry": None,
+         "properties": {"class": "Folder", "title": "Zones"}},
+        {"type": "Feature", "id": "a", "geometry": {"type": "Polygon", "coordinates": [square]},
+         "properties": {"class": "Shape", "title": "Good", "folderId": "f1"}},
+        {"type": "Feature", "id": "b", "geometry": {"type": "Polygon", "coordinates": []},
+         "properties": {"class": "Shape", "title": "Broken", "folderId": "f1"}},
+    ]}
+    path = tmp_path / "zones.json"
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    fresh_page.set_input_files("#file", str(path))
+    fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    zf = zipfile.ZipFile(io.BytesIO(export_zip_bytes(fresh_page)))
+    assert "**1 item(s) could not be exported**" in zf.read("RUNBOOK.md").decode()
+    text = fresh_page.locator("#runbook").inner_text()
+    assert "1 item could not be exported" in text
+    assert "1 of 2 were written" in text

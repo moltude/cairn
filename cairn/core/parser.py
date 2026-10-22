@@ -47,6 +47,15 @@ class ParsedFeature:
         self.pattern = self.properties.get(
             "pattern", "solid"
         )  # Line pattern (solid, dash, etc.)
+        # Area (Polygon) styling as CalTopo exports it. Real exports carry
+        # fill, fill-opacity, stroke-opacity and stroke-width on every Shape
+        # (tests/fixtures/bitterroots: fill-opacity 0.1 or 0, stroke-opacity 1).
+        # None means "not provided" so the KML writer can keep its defaults.
+        # `fill` (hue) is parsed for completeness but NOT exported: the KML
+        # writer ties fill hue to the area's displayed/edited colour.
+        self.fill = self.properties.get("fill") or ""
+        self.fill_opacity = self.properties.get("fill-opacity")
+        self.stroke_opacity = self.properties.get("stroke-opacity")
 
     @property
     def geometry_type(self) -> Optional[str]:
