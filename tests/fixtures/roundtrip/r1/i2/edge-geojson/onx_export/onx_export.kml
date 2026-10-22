@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>[r1i2] ZZTEST Peak 3</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST Peak 3</value></Data><Data name="notes"><value>Name probe: ZZTEST Peak #3
+— edited r1i2</value></Data><Data name="id"><value>076883e7-f17f-4366-b15c-7eec035cc858</value></Data><Data name="color"><value>rgba(0, 255, 255, 1)</value></Data><Data name="icon"><value>Camp</value></Data></ExtendedData><Point><coordinates>-121.85,46.21,1077.650024414</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST url</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST url</value></Data><Data name="notes"><value>Trail report: https://example.com/trails?id=42&amp;view=map#section-3 (see the map).
+— edited r1i2</value></Data><Data name="id"><value>0bf1fc14-0d87-4f65-9f0b-d67d0f86fa68</value></Data><Data name="color"><value>rgba(255, 255, 255, 1)</value></Data><Data name="icon"><value>Hazard</value></Data></ExtendedData><Point><coordinates>-121.87,46.21,1161.050048828</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST line note 513</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST line note 513</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>1157fa81-dd0b-4e10-b98b-50613295ee2d</value></Data><Data name="color"><value>rgba(0,0,0,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.262,0 -121.946,46.2634,0 -121.944,46.262,0 -121.94,46.2634,0 -121.938,46.262,0 -121.934,46.2634,0 -121.932,46.262,0 -121.928,46.2634,0</coordinates></LineString></Placemark><Placemark><name>[r1i2] ZZTEST note 500</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST note 500</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>1b8bab1e-1cd7-490a-a411-b21dd6301c0a</value></Data><Data name="color"><value>rgba(139, 69, 19, 1)</value></Data><Data name="icon"><value>Lookout</value></Data></ExtendedData><Point><coordinates>-121.89,46.2,1020.849975586</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST note 511</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST note 511</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>2add0380-6f38-4138-a3a8-bfbf24db79bb</value></Data><Data name="color"><value>rgba(255, 51, 0, 1)</value></Data><Data name="icon"><value>Water Source</value></Data></ExtendedData><Point><coordinates>-121.88,46.2,866.549987793</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST line note 3000</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST line note 3000</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>319d8a3f-a7ba-4df9-a052-769a60794f68</value></Data><Data name="color"><value>rgba(0,255,255,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.266,0 -121.946,46.2674,0 -121.944,46.266,0 -121.94,46.2674,0 -121.938,46.266,0 -121.934,46.2674,0 -121.932,46.266,0 -121.928,46.2674,0</coordinates></LineString></Placemark><Placemark><name>[r1i2] ZZTEST filled area</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST filled area</value></Data><Data name="notes"><value>Fill #FF00FF at opacity 0.3.
+— edited r1i2</value></Data><Data name="id"><value>3666ecc0-7693-40b6-9809-2d448f2b1519</value></Data><Data name="type"><value>Area</value></Data><Data name="color"><value>rgba(255,51,0,1)</value></Data><Data name="weight"><value>4.0</value></Data><Data name="fill_color"><value>rgba(74,144,226,0.1)</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>-121.8,46.3,0 -121.78,46.3,0 -121.78,46.32,0 -121.8,46.32,0 -121.8,46.3,0</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark><Placemark><name>[r1i2] ZZTEST Wow</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST Wow</value></Data><Data name="notes"><value>Name probe: ZZTEST Wow!
+— edited r1i2</value></Data><Data name="id"><value>38b1e101-c9c6-481d-8c55-838c0b526491</value></Data><Data name="color"><value>rgba(0, 0, 0, 1)</value></Data><Data name="icon"><value>Parking</value></Data></ExtendedData><Point><coordinates>-121.89,46.22,1236.099975586</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST Camp (lower)</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST Camp (lower)</value></Data><Data name="notes"><value>Name probe: ZZTEST Camp (lower)
+— edited r1i2</value></Data><Data name="id"><value>6567a7f2-4a46-4aae-96f7-26b9406e9b90</value></Data><Data name="color"><value>rgba(255, 51, 0, 1)</value></Data><Data name="icon"><value>Summit</value></Data></ExtendedData><Point><coordinates>-121.88,46.22,1154.150024414</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST blank lines</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST blank lines</value></Data><Data name="notes"><value>First paragraph.
+
+Second, after one blank line.
+
+Third, after two blank lines.
+— edited r1i2</value></Data><Data name="id"><value>7fdd3305-3086-423d-b72e-2c5ce35bf3b4</value></Data><Data name="color"><value>rgba(255, 255, 255, 1)</value></Data><Data name="icon"><value>Hazard</value></Data></ExtendedData><Point><coordinates>-121.88,46.21,1111.300048828</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST dashed line</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST dashed line</value></Data><Data name="notes"><value>CalTopo dash pattern.
+— edited r1i2</value></Data><Data name="id"><value>8369cf0a-f687-477f-9253-36d5a604e3e1</value></Data><Data name="color"><value>rgba(255,51,0,1)</value></Data><Data name="style"><value>solid</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.27,0 -121.946,46.2714,0 -121.944,46.27,0 -121.94,46.2714,0 -121.938,46.27,0 -121.934,46.2714,0 -121.932,46.27,0 -121.928,46.2714,0</coordinates></LineString></Placemark><Placemark><name>[r1i2] ZZTEST note 600</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST note 600</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>856ed968-1c7d-4199-9c3a-789ebb84d3c3</value></Data><Data name="color"><value>rgba(132, 212, 0, 1)</value></Data><Data name="icon"><value>Trailhead</value></Data></ExtendedData><Point><coordinates>-121.85,46.2,829.299987793</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST line note 512</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST line note 512</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>921a98fb-5c60-4882-b712-f9ce9c06f977</value></Data><Data name="color"><value>rgba(132,212,0,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.258,0 -121.946,46.2594,0 -121.944,46.258,0 -121.94,46.2594,0 -121.938,46.258,0 -121.934,46.2594,0 -121.932,46.258,0 -121.928,46.2594,0</coordinates></LineString></Placemark><Placemark><name>[r1i2] ZZTEST note 512</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST note 512</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>962d8d7c-3a9f-41d9-b192-a4bfd42ada14</value></Data><Data name="color"><value>rgba(8, 122, 255, 1)</value></Data><Data name="icon"><value>Water Source</value></Data></ExtendedData><Point><coordinates>-121.87,46.2,1010.049987793</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST Rock Roll</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST Rock Roll</value></Data><Data name="notes"><value>Name probe: ZZTEST Rock &amp; Roll
+— edited r1i2</value></Data><Data name="id"><value>9bd388f6-02c4-475a-967d-1dd5ac6b7508</value></Data><Data name="color"><value>rgba(0, 0, 0, 1)</value></Data><Data name="icon"><value>Trailhead</value></Data></ExtendedData><Point><coordinates>-121.9,46.22,1207.699951172</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST O&apos;Neil&apos;s Spring</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST O&apos;Neil&apos;s Spring</value></Data><Data name="notes"><value>Name probe: ZZTEST O&apos;Neil&apos;s Spring
+— edited r1i2</value></Data><Data name="id"><value>9cbc1694-6769-45ad-ad91-f85caf413b7c</value></Data><Data name="color"><value>rgba(8, 122, 255, 1)</value></Data><Data name="icon"><value>Camp</value></Data></ExtendedData><Point><coordinates>-121.87,46.22,1260.949951172</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST wide line</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST wide line</value></Data><Data name="notes"><value>CalTopo stroke-width 6.
+— edited r1i2</value></Data><Data name="id"><value>a1423ed9-17be-4d72-a296-46a2c11b3fed</value></Data><Data name="color"><value>rgba(255,255,255,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>4.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.274,0 -121.946,46.2754,0 -121.944,46.274,0 -121.94,46.2754,0 -121.938,46.274,0 -121.934,46.2754,0 -121.932,46.274,0 -121.928,46.2754,0</coordinates></LineString></Placemark><Placemark><name>[r1i2] ZZTEST note 1000</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST note 1000</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>b8d9fd6d-19fb-4a30-a44d-5cb8707e8f3a</value></Data><Data name="color"><value>rgba(255, 255, 0, 1)</value></Data><Data name="icon"><value>Shelter</value></Data></ExtendedData><Point><coordinates>-121.9,46.21,1142.349975586</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST literal tags</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST literal tags</value></Data><Data name="notes"><value>Plain text, not markup: and must survive.
+Also 5 &lt; 6 and 7 &gt; 4.
+— edited r1i2</value></Data><Data name="id"><value>c9bf1388-8b61-4a8f-b7ea-8df22f619fd2</value></Data><Data name="color"><value>rgba(128, 0, 128, 1)</value></Data><Data name="icon"><value>Photo</value></Data></ExtendedData><Point><coordinates>-121.86,46.21,1172.050048828</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST trailing space</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST trailing space</value></Data><Data name="notes"><value>Name probe: ZZTEST trailing space
+— edited r1i2</value></Data><Data name="id"><value>ce39e6c6-207e-4444-bfde-d0dc776163e4</value></Data><Data name="color"><value>rgba(0, 0, 0, 1)</value></Data><Data name="icon"><value>Parking</value></Data></ExtendedData><Point><coordinates>-121.86,46.22,1349.150024414</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST note 3000</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST note 3000</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>d7272982-889b-472e-8afc-2ccbadddf1aa</value></Data><Data name="color"><value>rgba(139, 69, 19, 1)</value></Data><Data name="icon"><value>View</value></Data></ExtendedData><Point><coordinates>-121.89,46.21,995.5</coordinates></Point></Placemark><Placemark><name>[r1i2] ZZTEST line note 511</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST line note 511</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>f014656a-0d9d-4e75-9ad0-fb67820b4a00</value></Data><Data name="color"><value>rgba(0,255,255,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.254,0 -121.946,46.2554,0 -121.944,46.254,0 -121.94,46.2554,0 -121.938,46.254,0 -121.934,46.2554,0 -121.932,46.254,0 -121.928,46.2554,0</coordinates></LineString></Placemark><Placemark><name>[r1i2] ZZTEST note 513</name><ExtendedData><Data name="name"><value>[r1i2] ZZTEST note 513</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1</value></Data><Data name="id"><value>f9ee08a4-34a5-48b7-b088-7370ee5ce77b</value></Data><Data name="color"><value>rgba(0, 255, 255, 1)</value></Data><Data name="icon"><value>Camp</value></Data></ExtendedData><Point><coordinates>-121.86,46.2,894.799987793</coordinates></Point></Placemark></Document></kml>

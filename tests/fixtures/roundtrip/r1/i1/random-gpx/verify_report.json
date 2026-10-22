@@ -1,0 +1,67 @@
+{
+ "run": "r1",
+ "stage": "i1",
+ "set": "random-gpx",
+ "onx_files": [
+  "onx_export.gpx",
+  "onx_export.kml"
+ ],
+ "expected_items": 6,
+ "actual_items": 6,
+ "items": 6,
+ "counts": {
+  "PASS": 4,
+  "KNOWN_ONX_LIMIT": 2,
+  "FAIL": 0
+ },
+ "results": [
+  {
+   "kind": "track",
+   "name": "[r1i1] Chaos line",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 230 -> 218 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] section 1",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 28 -> 26 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] Fire zone",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] straight line",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] Hiker",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] blerg",
+   "status": "PASS",
+   "fields": []
+  }
+ ]
+}

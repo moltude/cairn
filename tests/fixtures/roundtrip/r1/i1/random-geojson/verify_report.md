@@ -1,0 +1,12 @@
+# Verify r1 · i1 · random-geojson
+
+onX folder: `ZZTEST · r1 · i1 · random · geojson`  
+onX export read: onx_export.gpx, onx_export.kml  
+Expected 6 items, onX export has 6.
+
+**4 PASS · 2 KNOWN_ONX_LIMIT · 0 FAIL**
+
+| Status | Kind | Name | Field | Detail |
+|---|---|---|---|---|
+| KNOWN_ONX_LIMIT | track | [r1i1] Chaos line | points | thinned by onX: 230 -> 210 points, same end points |
+| KNOWN_ONX_LIMIT | track | [r1i1] section 1 | points | thinned by onX: 28 -> 24 points, same end points |

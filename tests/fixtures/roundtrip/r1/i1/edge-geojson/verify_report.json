@@ -1,0 +1,227 @@
+{
+ "run": "r1",
+ "stage": "i1",
+ "set": "edge-geojson",
+ "onx_files": [
+  "onx_export.gpx",
+  "onx_export.kml"
+ ],
+ "expected_items": 23,
+ "actual_items": 23,
+ "items": 23,
+ "counts": {
+  "PASS": 13,
+  "KNOWN_ONX_LIMIT": 10,
+  "FAIL": 0
+ },
+ "results": [
+  {
+   "kind": "track",
+   "name": "[r1i1] ZZTEST dashed line",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 12 -> 8 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] ZZTEST line note 3000",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "notes",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "3000-char note cut to 512 by onX import"
+    },
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 12 -> 8 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] ZZTEST line note 511",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 12 -> 8 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] ZZTEST line note 512",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 12 -> 8 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] ZZTEST line note 513",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "notes",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "513-char note cut to 512 by onX import"
+    },
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 12 -> 8 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "track",
+   "name": "[r1i1] ZZTEST wide line",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "points",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "thinned by onX: 12 -> 8 points, same end points"
+    }
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST note 1000",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "notes",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "1000-char note cut to 512 by onX import"
+    }
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST note 3000",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "notes",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "3000-char note cut to 512 by onX import"
+    }
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST note 513",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "notes",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "513-char note cut to 512 by onX import"
+    }
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST note 600",
+   "status": "KNOWN_ONX_LIMIT",
+   "fields": [
+    {
+     "field": "notes",
+     "status": "KNOWN_ONX_LIMIT",
+     "detail": "600-char note cut to 512 by onX import"
+    }
+   ]
+  },
+  {
+   "kind": "area",
+   "name": "[r1i1] ZZTEST filled area",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST Camp (lower)",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST O'Neil's Spring",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST Peak 3",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST Rock Roll",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST Wow",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST blank lines",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST literal tags",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST note 500",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST note 511",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST note 512",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST trailing space",
+   "status": "PASS",
+   "fields": []
+  },
+  {
+   "kind": "waypoint",
+   "name": "[r1i1] ZZTEST url",
+   "status": "PASS",
+   "fields": []
+  }
+ ]
+}

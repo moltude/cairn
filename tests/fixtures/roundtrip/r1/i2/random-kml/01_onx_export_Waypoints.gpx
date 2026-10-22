@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>onx export</name>
+  </metadata>
+  <wpt lat="46.398629999" lon="-121.646013754">
+    <name>[r1i2] blerg</name>
+    <desc>berg
+
+belrgb berg
+— edited r1i2</desc>
+    <extensions>
+      <onx:icon>Water Source</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.391289697" lon="-121.625671881">
+    <name>[r1i2] Hiker</name>
+    <desc>— edited r1i2</desc>
+    <extensions>
+      <onx:icon>Summit</onx:icon>
+      <onx:color>rgba(255,51,0,1)</onx:color>
+    </extensions>
+  </wpt>
+</gpx>
