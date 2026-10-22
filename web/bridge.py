@@ -247,6 +247,24 @@ def _pair(entries: list) -> list:
     return units
 
 
+def _require_items(parsed: ParsedData, unit: list) -> None:
+    """Refuse a GPX/KML file that yields nothing, as parse_geojson does for JSON.
+
+    Without this an empty or unreadable-dialect file (GPX 1.0, a GPX or KML
+    with no namespace or an older KML namespace: the readers look for one
+    namespace each) opened as a map of 0 items with an empty folder, and the
+    export then wrote nothing.
+    """
+    if any(fdata.get(k) for fdata in parsed.folders.values()
+           for k in ("waypoints", "tracks", "shapes")):
+        return
+    names = " or ".join(e["name"] or "the file" for e in unit)
+    raise ValueError(
+        f"Cairn found no waypoints, lines or areas in {names}. It reads GPX 1.1 "
+        f"and KML 2.2 as exported by onX and CalTopo."
+    )
+
+
 def _folder_name(stem: str) -> str:
     # The rule parse_caltopo_gpx uses for its one folder: the (safe) stem with
     # underscores as spaces.
@@ -273,9 +291,16 @@ def load_files(files_json: str) -> str:
         text, filename = f.get("text") or "", f.get("name") or ""
         # Before anything is written or parsed: refuse DTD-bearing or oversized
         # XML with a sentence the UI can show as-is.
-        guard_input(text)
-        kind, dialect = detect(filename, text)
-        route = _route(kind, dialect)
+        try:
+            guard_input(text)
+            kind, dialect = detect(filename, text)
+            route = _route(kind, dialect)
+        except ValueError as e:
+            # Several files: say WHICH one was refused, or the user can't tell
+            # which of the dropped files to take out.
+            if multi:
+                raise ValueError(f"{filename or 'One of the files'}: {e}") from None
+            raise
         # The filename is load-bearing, not cosmetic: a CalTopo export with no
         # folder features, a CalTopo GPX and every onX file are named after
         # the file's stem. Writing to a fixed /tmp/in.json made every such map
@@ -299,6 +324,7 @@ def load_files(files_json: str) -> str:
         onx_units[first["n"]] = (g, k)
     for e in entries:
         if e["route"] in (_ROUTE_GEOJSON, _ROUTE_CALTOPO_GPX):
+            # Both raise their own error for a file with no features.
             sources.append((_read_one(e["path"], e["route"], e["name"]), None))
             continue
         if e["n"] not in onx_units:
@@ -310,7 +336,9 @@ def load_files(files_json: str) -> str:
         stem = (g or k)["stem"]
         origin = "onx" if any(x and _origin(x["dialect"]) == "onx" for x in (g, k)) \
             else _origin((g or k)["dialect"])
-        sources.append((to_parsed_data(doc, _folder_name(stem)), origin))
+        parsed = to_parsed_data(doc, _folder_name(stem))
+        _require_items(parsed, [x for x in (g, k) if x])
+        sources.append((parsed, origin))
 
     cfg = _config()
     resolver = IconResolver(

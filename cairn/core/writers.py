@@ -536,7 +536,9 @@ def write_gpx_waypoints_maybe_split(
             # Real newlines are written inside <desc>; whether onX keeps them is UNVERIFIED (see TODO.md).
             block.append(f"    <desc>{escape(desc_content)}</desc>")
         block.append("    <extensions>")
-        block.append(f"      <onx:icon>{mapped_icon}</onx:icon>")
+        # The icon can be any text an input file carried (an onX icon
+        # outside the catalogue is kept as is), so it is escaped like the name.
+        block.append(f"      <onx:icon>{escape(mapped_icon)}</onx:icon>")
         block.append(f"      <onx:color>{onx_color}</onx:color>")
         block.append("    </extensions>")
         block.append("  </wpt>")
@@ -988,7 +990,7 @@ def write_gpx_waypoints(
 
         # Add OnX extensions (use lowercase `onx:` prefix to match OnX exports)
         lines.append("    <extensions>")
-        lines.append(f"      <onx:icon>{mapped_icon}</onx:icon>")
+        lines.append(f"      <onx:icon>{escape(mapped_icon)}</onx:icon>")
         lines.append(f"      <onx:color>{onx_color}</onx:color>")
         lines.append("    </extensions>")
         lines.append("  </wpt>")

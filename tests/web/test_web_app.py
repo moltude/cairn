@@ -1349,3 +1349,55 @@ def test_bitterroots_geojson_still_reads_as_a_caltopo_map_without_the_notice(csp
     expect(page.locator("#map-label")).to_have_text("CalTopo map")
     expect(page.locator("#source-notice")).to_be_hidden()
     expect(page.locator(".folder")).to_have_count(EXPECTED_TOTALS["folders"])
+
+
+# --- review fixes: an input file's icon names and markup are data, not code ---------
+
+_ONX_GPX_HEAD = ('<?xml version="1.0" encoding="UTF-8"?>\n<gpx xmlns:onx="https://wwww.onxmaps.com/" '
+                 'xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="onXmaps backcountry web">\n')
+
+
+def _onx_wpt(i: int, name: str, icon: str, notes: str = "") -> str:
+    return (f'<wpt lat="46.{i}" lon="-114.{i}"><name>{name}</name><desc>name={name}\nnotes={notes}\n'
+            f'id=id-{i}\ncolor=rgba(255,51,0,1)\nicon={icon}</desc><extensions>'
+            f'<onx:color>rgba(255,51,0,1)</onx:color><onx:icon>{icon}</onx:icon></extensions></wpt>\n')
+
+
+def _gpx_payload(name: str, wpts: str) -> dict:
+    return {"name": name, "mimeType": "application/gpx+xml",
+            "buffer": (_ONX_GPX_HEAD + wpts + "</gpx>\n").encode("utf-8")}
+
+
+def test_icon_names_that_are_object_prototype_keys_still_render(csp_page: Page):
+    """icons.js looked glyphs up with ONX_GLYPHS[icon]: an onX file whose icon was
+    "constructor" or "toString" found Object.prototype's function, and the render
+    threw -- the whole file failed to open ("Cannot read properties of undefined")."""
+    page = csp_page
+    names = ["constructor", "toString", "__proto__", "hasOwnProperty"]
+    page.set_input_files("#file", files=[_gpx_payload(
+        "proto.gpx", "".join(_onx_wpt(i + 1, f"P{i}", n) for i, n in enumerate(names)))])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    expect(page.locator(f"{ROW} .icon-btn .icon-name")).to_have_text(names)
+
+
+def test_gpx_names_notes_icons_and_filename_render_as_text_not_html(fresh_page: Page):
+    """The GPX twin of test_map_content_is_rendered_as_text_not_html: markup in a
+    GPX <name>, its notes, its onX icon and the file's own name stays literal text
+    in the rows, the folder heading, the title, the rail and the icon editor."""
+    page = fresh_page
+    payload = '<img src=x id=pwn onerror="window.__pwned=1">'
+    xml = payload.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    page.set_input_files("#file", files=[_gpx_payload(
+        payload + ".gpx", _onx_wpt(1, "Name " + xml, xml, notes="Note " + xml))])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    page.locator("#folders .icon-btn").first.click()
+    assert page.locator("#pwn").count() == 0
+    assert page.evaluate("() => window.__pwned === undefined")
+    # (The note goes in too, as a sink to exercise; its tags are stripped by
+    # strip_html on the way in, so its text isn't asserted.)
+    assert page.locator(f"{ROW} .icon-name").inner_text() == payload
+    assert page.locator(f"{ROW} .name-in").input_value() == "Name " + payload
+    # The title undoes CalTopo's filename underscores, so "__pwned" reads " pwned".
+    assert page.locator("#map-title").inner_text().startswith("<img src=x id=pwn onerror=")
+    assert payload in page.locator("#icon-facets").inner_text()
+    assert payload in page.locator("#mark-pop").inner_text()

@@ -382,3 +382,47 @@ def test_dtd_is_refused_before_any_reader_runs_in_a_multi_file_load():
     bad = {"name": "evil.kml", "text": (FX / "attacks" / "quadratic_blowup.kml").read_text()}
     with pytest.raises(ValueError, match="DOCTYPE"):
         bridge.load_files(json.dumps([ok, bad]))
+
+
+# --- review fixes: which file, and files that hold nothing -------------------------
+
+_EMPTY_GPX = ('<?xml version="1.0"?><gpx xmlns="http://www.topografix.com/GPX/1/1" '
+              'version="1.1" creator="onXmaps backcountry web"></gpx>')
+_GPX10 = ('<?xml version="1.0"?><gpx xmlns="http://www.topografix.com/GPX/1/0" version="1.0" '
+          'creator="x"><wpt lat="46.1" lon="-114.1"><name>a</name></wpt></gpx>')
+_EMPTY_KML = ('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
+              '<Folder><name>x</name></Folder></Document></kml>')
+_DTD_KML = ('<?xml version="1.0"?>\n<!DOCTYPE kml [<!ENTITY a "aaaa">]>\n'
+            '<kml xmlns="http://www.opengis.net/kml/2.2"><Document/></kml>')
+
+
+@pytest.mark.parametrize("name,text", [
+    ("empty.gpx", _EMPTY_GPX),
+    ("old.gpx", _GPX10),
+    ("empty.kml", _EMPTY_KML),
+])
+def test_a_gpx_or_kml_with_nothing_readable_is_refused_by_name(name, text):
+    """It used to open as a map of 0 items (an empty folder, an export that writes
+    nothing), where an empty GeoJSON already says "No features found"."""
+    with pytest.raises(ValueError, match=rf"^Cairn found no waypoints, lines or areas in {name}\."):
+        bridge.load_document(text, name)
+
+
+def test_an_empty_file_among_several_is_named():
+    with pytest.raises(ValueError, match=r"in blank\.gpx\."):
+        _load(_file(ONX_GPX), {"name": "blank.gpx", "text": _EMPTY_GPX})
+
+
+@pytest.mark.parametrize("bad,expect", [
+    ({"name": "evil.kml", "text": _DTD_KML}, r"^evil\.kml: This file contains a <!DOCTYPE>"),
+    ({"name": "notes.txt", "text": "hello"}, r"^notes\.txt: This isn't a map file"),
+])
+def test_a_refused_file_among_several_is_named(bad, expect):
+    """Several files dropped together: the error must say which one to take out."""
+    with pytest.raises(ValueError, match=expect):
+        _load(_file(ONX_GPX), bad)
+
+
+def test_a_refused_single_file_keeps_its_unprefixed_message():
+    with pytest.raises(ValueError, match=r"^This file contains a <!DOCTYPE>"):
+        bridge.load_document(_DTD_KML, "evil.kml")

@@ -392,3 +392,31 @@ def test_onx_kml_notes_with_url_read_unchanged(tmp_path):
             '</Data></ExtendedData><Point><coordinates>1,2</coordinates></Point></Placemark>')
     (wp,) = read_onx_kml(_write(tmp_path, "n.kml", _kml(body))).items
     assert wp.notes == AVY_NOTES
+
+
+# --- review fix: a file-supplied icon name is escaped in <onx:icon> ------------------
+
+
+@pytest.mark.parametrize("split", [True, False])
+def test_an_icon_name_with_markup_characters_is_escaped_in_onx_icon(tmp_path, split):
+    """An onX icon outside the catalogue is exported unchanged (web/bridge.py keeps
+    it), so <onx:icon> carries text straight from an input file. Written raw, an
+    icon like 'A & <B>' made the whole GPX malformed: onX would refuse it and Cairn
+    could not re-read its own output."""
+    from cairn.core.writers import write_gpx_waypoints
+
+    icon = 'A & <B> "c"'
+    feat = ParsedFeature({
+        "id": "w1",
+        "geometry": {"type": "Point", "coordinates": [-114.1, 46.2]},
+        "properties": {"class": "Marker", "title": "Pin", "marker-color": "#FF0000",
+                       "cairn_onx_icon_override": icon},
+    })
+    out = tmp_path / "w.gpx"
+    if split:
+        write_gpx_waypoints_maybe_split([feat], out, "F")
+    else:
+        write_gpx_waypoints([feat], out, "F")
+    root = ET.parse(out).getroot()
+    got = root.find("g:wpt/g:extensions/{https://wwww.onxmaps.com/}icon", GPX_NS)
+    assert got is not None and got.text == icon
