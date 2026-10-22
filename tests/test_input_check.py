@@ -77,6 +77,21 @@ EXPECTED = {
     "edge_cases/unicode.gpx": (GPX, CAIRN),
     "edge_cases/xml_chars.gpx": (GPX, CAIRN),
     "onx_dialect/README.md": (UNKNOWN, NOT_A_MAP),
+    "dark_divide_100/README.md": (UNKNOWN, NOT_A_MAP),
+    "dark_divide_100/PARITY.md": (UNKNOWN, NOT_A_MAP),
+    "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.json": (GEOJSON, CALTOPO),  # REAL CalTopo export
+    "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.gpx": (GPX, CALTOPO),       # REAL CalTopo export
+    "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.kml": (KML, GENERIC),       # REAL CalTopo KML (no CalTopo-KML dialect yet)
+    "dark_divide_100/cairn_output/from_geojson/RUNBOOK.md": (UNKNOWN, NOT_A_MAP),
+    "dark_divide_100/cairn_output/from_geojson/01_3_Course_Segments_Dark_Divide_100_Miler/3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_geojson/02_2_Aid_Stations_Dark_Divide_100_Miler/2_Aid_Stations_Dark_Divide_100_Miler_Waypoints.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_geojson/03_1_Course_GPX_Dark_Divide_100_Miler/1_Course_GPX_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_gpx/RUNBOOK.md": (UNKNOWN, NOT_A_MAP),
+    "dark_divide_100/cairn_output/from_gpx/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_gpx/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Waypoints.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_kml/RUNBOOK.md": (UNKNOWN, NOT_A_MAP),
+    "dark_divide_100/cairn_output/from_kml/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_kml/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Waypoints.gpx": (GPX, CAIRN),
     "onx_real/README.md": (UNKNOWN, NOT_A_MAP),
     "onx_real/onx_web_export_2_waypoints.gpx": (GPX, ONX),   # REAL onX Web Map export, 2026-10-22
     "onx_real/onx_web_export_2_waypoints.kml": (KML, ONX),   # REAL onX Web Map export, 2026-10-22

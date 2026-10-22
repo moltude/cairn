@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>2027 Dark Divide 100 Mile Endurance Run</name>
+  </metadata>
+  <wpt lat="46.43959103090049" lon="-121.84721644755243">
+    <name>01 - Cispus Learning Center Start/Finish</name>
+    <desc>START:
+Mile 0
+Miles to next AS: 11.93
+Elevation Gain to next AS: 4,517 feet
+Elevation Loss to next AS: 2,163 feet
+Drop Bags: n/a
+Crew Access: Yes
+Restrooms: Yes
+
+No Cutoff
+
+FINISH:
+Mile 102.14
+Miles to Next AS: n/a
+Elevation Gain to next AS: n/a
+Elevation Loss to next AS: n/a
+Drop Bags: n/a
+Crew Access: Yes
+Restrooms: Yes
+
+Cutoff Time: 5:00 AM Sunday
+Total Hours to Cutoff: 48 hours</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.39661832418346" lon="-121.76522294477462">
+    <name>02 - Juniper Ridge AS (Used Twice)</name>
+    <desc>JUNIPER RIDGE AS #1:
+
+Mile 11.93
+Miles to next AS: 7.92
+Elevation Gain to next AS: 3,374 feet
+Elevation Loss to next AS: 2,498 feet
+Drop Bags: Yes
+Crew Access: SEE FOOTNOTE BELOW*
+Restrooms: No
+
+No Cutoff
+
+JUNIPER RIDGE AS #2:
+
+Mile 93.18
+Miles to Next AS: 8.96
+Elevation Gain to next AS: 220 feet
+Elevation Loss to next AS: 2,575 feet
+Drop Bags: Yes
+Crew Access: SEE FOOTNOTE BELOW*
+Restrooms: No
+
+Cutoff Time: 2:00 AM Sunday
+Total Hours to Cutoff: 45 hours
+
+Crew access to Juniper Ridge Aid Station is only allowed from 6:00 PM on Friday until 2:00 AM on Sunday. NO CREW ACCESS IS ALLOWED OUTSIDE OF THIS TIMEFRAME!</desc>
+    <extensions>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.335484631869015" lon="-121.74331521842002">
+    <name>03 - Sunrise AS (Used Twice)</name>
+    <desc>SUNRISE AS #1:
+Mile 19.85
+Miles to next AS: 5.81
+Elevation Gain to next AS: 131 feet
+Elevation Loss to next AS: 2,148 feet
+Drop Bags: No
+Crew Access: No
+Restrooms: No
+
+No Cutoff
+
+SUNRISE AS #2:
+Mile 85.65
+Miles to next AS: 7.53
+Elevation Gain to next AS: 2,108 feet
+Elevation Loss to next AS: 2,984 feet
+Drop Bags: No
+Crew Access: No
+Restrooms: No
+
+No Cutoff</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.311960167261105" lon="-121.73167760978698">
+    <name>04 - Dark Creek AS</name>
+    <desc>Mile 25.66
+Miles to next AS: 13.05
+Elevation Gain to next AS: 4,290 feet
+Elevation Loss to next AS: 2,626 feet
+Drop Bags: Yes
+Crew Access: Yes
+Restrooms: No
+
+Cutoff Time: 5:00 PM Friday
+Total Hours to Cutoff: 12 hours</desc>
+    <extensions>
+      <onx:icon>Water Source</onx:icon>
+      <onx:color>rgba(0,255,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.275128617318636" lon="-121.82902291015625">
+    <name>05 - Wilderness Crossing AS</name>
+    <desc>Mile 38.71
+Miles to Next AS: 14.25
+Elevation Gain to next AS: 3,984 feet
+Elevation Gain to next AS: 4,418 feet
+Drop Bags: Yes
+Crew Access: Yes
+Restrooms: No
+
+No Cutoff</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.208771496190735" lon="-121.90199139304161">
+    <name>06 - Wright Meadow AS</name>
+    <desc>Mile 52.96
+Miles to Next AS: 5.46
+Elevation Gain to next AS: 465 feet
+Elevation Gain to next AS: 2,155 feet
+Drop Bags: Yes
+Crew Access: Yes
+Restrooms: No
+
+Cutoff Time: 6:00 AM Saturday
+Total Time to Cutoff: 25 hours</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.176200576557456" lon="-121.85981851520539">
+    <name>07 - Lewis River AS</name>
+    <desc>Mile 58.42
+Miles to Next AS: 9.13
+Elevation Gain to next AS: 2,807 feet
+Elevation Gain to next AS: 1,527 feet
+Drop Bags: Yes
+Crew Access: Yes
+Restrooms: No
+
+No Cutoff</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.20076375064616" lon="-121.77380128339766">
+    <name>08 - Quartz Butte AS</name>
+    <desc>Mile 67.55
+Miles to Next AS: 6.43
+Elevation Gain to next AS: 2,437 feet
+Elevation Gain to next AS: 1,189 feet
+Drop Bags: No
+Crew Access: No
+Restrooms: No
+
+No Cutoff</desc>
+    <extensions>
+      <onx:icon>Location</onx:icon>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+    </extensions>
+  </wpt>
+  <wpt lat="46.24177927530343" lon="-121.72971556869985">
+    <name>09 - Summit Prairie AS</name>
+    <desc>Mile 73.98
+Miles to Next AS: 11.67
+Elevation Gain to next AS: 3,152 feet
+Elevation Gain to next AS: 3,204 feet
+Drop Bags: Yes
+Crew Access: Yes
+Restrooms: No
+
+Cutoff Time: 5:00 PM Saturday
+Total Time to Cutoff: 36 hours</desc>
+    <extensions>
+      <onx:icon>Summit</onx:icon>
+      <onx:color>rgba(255,0,0,1)</onx:color>
+    </extensions>
+  </wpt>
+</gpx>
