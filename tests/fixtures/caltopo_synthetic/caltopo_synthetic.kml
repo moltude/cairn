@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Document><name>CalTopo Export</name><description>Export from CalTopo</description><Folder><open>1</open><name>Camps &amp; Water #1</name><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=camping%2C000000%231.0</href></Icon></IconStyle></Style><description>Water: filter it &amp; boil it.
+
+Map: https://example.com/trail?a=1&amp;b=2#camp
+
+
+&lt; 2 mi from the TH; site #3 of 5 &gt; the rest</description><name>Camp #3 &amp; &lt;Lake&gt; spring</name><Point><coordinates>-114.2701,46.1101,0</coordinates></Point></Placemark><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=circle-p%2C0000FF%231.0</href></Icon></IconStyle></Style><description>Room for 6 cars.</description><name>Trailhead lot</name><Point><coordinates>-114.2602,46.1023,0</coordinates></Point></Placemark><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=peak%2CFF0000%231.0</href></Icon></IconStyle></Style><description></description><name>North summit</name><Point><coordinates>-114.2905,46.1302,0</coordinates></Point></Placemark><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=danger%2CFF0000%231.0</href></Icon></IconStyle></Style><description>Avoid after noon.
+Looker's left is safer.</description><name>Cornice</name><Point><coordinates>-114.2851,46.1255,0</coordinates></Point></Placemark><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=point%2CFF0000%231.0</href></Icon></IconStyle></Style><description></description><name>Plain red point</name><Point><coordinates>-114.275,46.115,0</coordinates></Point></Placemark><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=flag-1%2C00CD00%231.0</href></Icon></IconStyle></Style><description></description><name>Green flag</name><Point><coordinates>-114.276,46.116,0</coordinates></Point></Placemark><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=hut%2C8B4513%231.0</href></Icon></IconStyle></Style><description></description><name>Old cabin</name><Point><coordinates>-114.277,46.117,0</coordinates></Point></Placemark><Placemark><Style><IconStyle><hotSpot x="0.5" xunits="fraction" y="0.5" yunits="fraction"/><Icon><href>http://caltopo.com/icon.png?cfg=point%231.0</href></Icon></IconStyle></Style><description></description><name>Point with no colour</name><Point><coordinates>-114.278,46.118,0</coordinates></Point></Placemark></Folder><Folder><open>1</open><name>Routes</name><Placemark><Style><LineStyle><color>FF0000FF</color><width>2.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle></Style><description>Section 1.
+Section 2.</description><name>Red approach</name><LineString><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><coordinates>-114.2602,46.1023,1500.0
+-114.265,46.106,1612.0
+-114.2701,46.1101,1704.0</coordinates></LineString></Placemark><Placemark><Style><LineStyle><color>FFFF0000</color><width>4.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle></Style><description></description><name>Blue ridge</name><LineString><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><coordinates>-114.2701,46.1101,0.0
+-114.28,46.12,0.0
+-114.2905,46.1302,0.0</coordinates></LineString></Placemark><Placemark><Style><LineStyle><color>FFFF00FF</color><width>6.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle></Style><description></description><name>Magenta ski line</name><LineString><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><coordinates>-114.2905,46.1302,2210.5
+-114.288,46.128,2150.25
+-114.2851,46.1255,2088.0</coordinates></LineString></Placemark><Placemark><Style><LineStyle><color>FF00CD00</color><width>1.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle></Style><description>Dashed in CalTopo.</description><name>Green dashed skin track</name><LineString><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><coordinates>-114.2851,46.1255,0.0
+-114.276,46.116,0.0</coordinates></LineString></Placemark><Placemark><Style><LineStyle><color>FF0000ff</color><width>2.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle></Style><description>Water: filter it &amp; boil it.
+
+Map: https://example.com/trail?a=1&amp;b=2#camp
+
+
+&lt; 2 mi from the TH; site #3 of 5 &gt; the rest</description><name>Note test: a &lt;b&gt; &amp; #c</name><LineString><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><coordinates>-114.276,46.116,0.0
+-114.2701,46.1101,0.0</coordinates></LineString></Placemark><Folder><open>1</open><name>Spur lines</name><Placemark><Style><LineStyle><color>FF000000</color><width>2.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle></Style><description></description><name>Spur to cabin</name><LineString><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><coordinates>-114.275,46.115,0.0
+-114.277,46.117,0.0</coordinates></LineString></Placemark></Folder></Folder><Folder><open>1</open><name>Areas</name><Placemark><Style><LineStyle><color>FF0000FF</color><width>2.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle><PolyStyle><color>1A0000FF</color><fill>1</fill><outline>1</outline><width>2.0</width></PolyStyle><IconStyle><scale>0</scale></IconStyle></Style><description>Burned 2025.
+
+Island unburned.</description><name>Burn area with island</name><MultiGeometry><Point><coordinates>-114.3,46.1,0</coordinates></Point><Polygon><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>-114.3,46.1,0.0
+-114.28,46.1,0.0
+-114.28,46.12,0.0
+-114.3,46.12,0.0
+-114.3,46.1,0.0</coordinates></LinearRing></outerBoundaryIs><innerBoundaryIs><LinearRing><coordinates>-114.295,46.105,0.0
+-114.295,46.115,0.0
+-114.285,46.115,0.0
+-114.285,46.105,0.0
+-114.295,46.105,0.0</coordinates></LinearRing></innerBoundaryIs></Polygon></MultiGeometry></Placemark><Placemark><Style><LineStyle><color>FFFF0000</color><width>3.0</width><gx:labelVisibility>1</gx:labelVisibility></LineStyle><PolyStyle><color>40FF0000</color><fill>1</fill><outline>1</outline><width>3.0</width></PolyStyle><IconStyle><scale>0</scale></IconStyle></Style><description>Both parts closed.</description><name>Two-part closure</name><MultiGeometry><Point><coordinates>-114.26,46.13,0</coordinates></Point><Polygon><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>-114.26,46.13,0.0
+-114.25,46.13,0.0
+-114.25,46.14,0.0
+-114.26,46.13,0.0</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><altitudeMode>clampToGround</altitudeMode><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>-114.24,46.13,0.0
+-114.23,46.13,0.0
+-114.23,46.14,0.0
+-114.24,46.13,0.0</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry></Placemark></Folder></Document></kml>

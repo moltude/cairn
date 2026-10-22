@@ -23,6 +23,7 @@ from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.parser import UNORGANIZED_FOLDER_NAME, ParsedData, parse_geojson
 from cairn.io import input_check
 from cairn.io.caltopo_gpx import parse_caltopo_gpx
+from cairn.io.caltopo_kml import parse_caltopo_kml
 from cairn.io.document_adapter import ONX_ICON_KEY, ONX_ID_KEY, ONX_KIND_KEY, to_parsed_data
 from cairn.io.input_check import detect, guard_input
 from cairn.io.onx_gpx import read_onx_gpx
@@ -140,6 +141,7 @@ KEPT_FROM_FILE = "Kept from the file you loaded."
 # load_files' routes, chosen from input_check.detect()'s (kind, dialect).
 _ROUTE_GEOJSON = "geojson"          # parse_geojson, unchanged
 _ROUTE_CALTOPO_GPX = "caltopo-gpx"  # parse_caltopo_gpx (already ParsedData)
+_ROUTE_CALTOPO_KML = "caltopo-kml"  # parse_caltopo_kml (already ParsedData)
 _ROUTE_ONX_GPX = "onx-gpx"          # read_onx_gpx -> to_parsed_data
 _ROUTE_ONX_KML = "onx-kml"          # read_onx_kml -> to_parsed_data
 
@@ -151,17 +153,18 @@ def _route(kind: str, dialect: str) -> str:
 
     - GeoJSON of any dialect, and an empty or unparseable file, go to
       parse_geojson exactly as before this dispatch existed (same errors).
-    - CalTopo GPX carries no styling, so it keeps the CalTopo path: icons
-      from the keyword/symbol resolver.
+    - CalTopo GPX and CalTopo KML keep the CalTopo path, as GeoJSON does:
+      their readers build the same ParsedData parse_geojson does, and icons and
+      colours come from the same symbol/keyword resolver and colour rules.
     - Every other GPX (onX, onX-like, Cairn's own, generic) goes to the onX
       GPX reader, which reads onX's extensions when present and plain GPX
-      otherwise. Every KML goes to the onX KML reader -- the only KML reader
-      until roadmap Phase 7; it falls back to <description> for notes.
+      otherwise. Every other KML goes to the onX KML reader, which falls back
+      to <description> for notes.
     """
     if kind == input_check.GPX:
         return _ROUTE_CALTOPO_GPX if dialect == input_check.CALTOPO else _ROUTE_ONX_GPX
     if kind == input_check.KML:
-        return _ROUTE_ONX_KML
+        return _ROUTE_CALTOPO_KML if dialect == input_check.CALTOPO else _ROUTE_ONX_KML
     if kind == input_check.UNKNOWN and dialect == input_check.NOT_A_MAP:
         raise ValueError(
             "This isn't a map file Cairn can read. Cairn opens CalTopo GeoJSON, "
@@ -208,6 +211,8 @@ def _read_one(path: Path, route: str, display_name: str):
     try:
         if route == _ROUTE_CALTOPO_GPX:
             return parse_caltopo_gpx(path)
+        if route == _ROUTE_CALTOPO_KML:
+            return parse_caltopo_kml(path)
         if route == _ROUTE_ONX_GPX:
             return read_onx_gpx(path)
         return read_onx_kml(path)
@@ -323,9 +328,13 @@ def load_files(files_json: str) -> str:
         first = min((e for e in (g, k) if e), key=lambda e: e["n"])
         onx_units[first["n"]] = (g, k)
     for e in entries:
-        if e["route"] in (_ROUTE_GEOJSON, _ROUTE_CALTOPO_GPX):
-            # Both raise their own error for a file with no features.
-            sources.append((_read_one(e["path"], e["route"], e["name"]), None))
+        if e["route"] in (_ROUTE_GEOJSON, _ROUTE_CALTOPO_GPX, _ROUTE_CALTOPO_KML):
+            # GeoJSON and GPX raise their own error for a file with no
+            # features; a CalTopo KML of empty folders is refused here.
+            parsed = _read_one(e["path"], e["route"], e["name"])
+            if e["route"] == _ROUTE_CALTOPO_KML:
+                _require_items(parsed, [e])
+            sources.append((parsed, None))
             continue
         if e["n"] not in onx_units:
             continue  # the second file of a pair, read with the first

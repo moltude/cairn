@@ -14,7 +14,7 @@ Cumulative Loss: 2,163 feet
 Lowest Elevation: 1,286 feet
 Highest Elevation: 4,686 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -3737,7 +3737,7 @@ Cumulative Loss: 4,661 feet
 Lowest Elevation: 3,642 feet
 Highest Elevation: 5,857 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -6119,7 +6119,7 @@ Cumulative Loss: 6,809 feet
 Lowest Elevation: 2,487 feet
 Highest Elevation: 4,518 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -7298,7 +7298,7 @@ Cumulative Loss: 9,735 feet
 Lowest Elevation: 2,499 feet
 Highest Elevation: 4,728 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -11243,7 +11243,7 @@ Cumulative Loss: 14,153 feet
 Lowest Elevation: 3,730 feet
 Highest Elevation: 5,307 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -15380,7 +15380,7 @@ Cumulative Loss: 16,308 feet
 Lowest Elevation: 1,647 feet
 Highest Elevation: 3,739 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -16682,7 +16682,7 @@ Cumulative Loss: 17,835 feet
 Lowest Elevation: 1,610 feet
 Highest Elevation: 3,321 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -19625,7 +19625,7 @@ Cumulative Loss: 19,024 feet
 Lowest Elevation: 3,321 feet
 Highest Elevation: 5,237 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -21755,7 +21755,7 @@ Cumulative Loss: 22,228 feet
 Lowest Elevation: 4,243 feet
 Highest Elevation: 5,792 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -27698,7 +27698,7 @@ Cumulative Loss: 27,787 feet
 Lowest Elevation: 1,286 feet
 Highest Elevation: 3,642 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>
@@ -29519,7 +29519,7 @@ Loss: 27,787 feet
 Lowest Elevation: 1,286 feet
 Highest Elevation: 5,862 feet</desc>
     <extensions>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:color>rgba(255,0,0,1)</onx:color>
       <onx:style>solid</onx:style>
       <onx:weight>4.0</onx:weight>
     </extensions>

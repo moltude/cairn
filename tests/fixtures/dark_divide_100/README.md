@@ -7,6 +7,10 @@ It is the project's most complex real source: 3 folders, 9 aid-station waypoints
 CalTopo icon, 12 course lines with thousands of points each, and **21 multi-line notes**
 (mileage, cutoffs, `#` in text). No areas.
 
+Since roadmap Phase 7 the KML reads with its 3 folders and red lines, like the GeoJSON, and the
+GPX reads its line colours from Garmin's `DisplayColor`. `PARITY.md` lists the differences that
+remain, and why each one exists.
+
 `cairn_output/from_<format>/` is what Cairn produces for each input with no edits: the exact
 unzipped contents of the download, ready to import into onX one numbered folder at a time.
 `PARITY.md` compares source, review screen, export and the three formats.

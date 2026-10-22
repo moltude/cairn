@@ -53,9 +53,15 @@ cairn/model.py            MapDocument{folders, waypoints, tracks, shapes} + Styl
 cairn/io/                 READERS (file -> MapDocument)
   caltopo_geojson.py        CalTopo-flavored GeoJSON: geometry:null folder features,
                             4-element [lon,lat,ele,time] positions, folderId links
-  caltopo_gpx.py            CalTopo GPX (coordinates + names only — no icons/colors/folders)
+  caltopo_gpx.py            CalTopo GPX -> ParsedData: names, multi-line <desc>, Garmin
+                            gpxx:DisplayColor (16 names) as stroke, <sym> if present; no
+                            folders / waypoint colours / areas in CalTopo's GPX
+  caltopo_kml.py            CalTopo KML -> the SAME ParsedData parse_geojson builds (folders,
+                            icon href cfg -> marker-symbol/colour, LineStyle/PolyStyle,
+                            MultiGeometry, holes). Parity with GeoJSON is pinned by
+                            tests/test_caltopo_format_parity.py and dark_divide_100/PARITY.md
   onx_gpx.py                OnX GPX incl. onX extensions + double-escaped entity repair
-  onx_kml.py                OnX KML (this is where polygons survive)
+  onx_kml.py                OnX KML (this is where polygons survive); any non-CalTopo KML
   input_check.py            guard_input (reject DTD / >16 MB XML) + detect(filename, text)
                             -> (kind, dialect) by content sniffing; runs before any reader
 
@@ -78,8 +84,10 @@ web/                      THE INTERFACE. index.html + app.js + styles.css; bridg
 ```
 
 Modules web/bridge.py reaches carry a `# Web engine:` header; `tests/test_web_engine_surface.py`
-fails if that marking drifts from bridge.py's real import graph. Everything else in cairn/ (onX
-readers, caltopo_gpx, dedup/merge) is engine code not yet wired into the web app.
+fails if that marking drifts from bridge.py's real import graph. bridge.py routes by
+`input_check.detect()`: CalTopo GeoJSON / GPX / KML go to parse_geojson / caltopo_gpx /
+caltopo_kml (the CalTopo icon and colour rules); onX, Cairn and generic GPX/KML go to the onX
+readers via document_adapter.
 
 ## Testing conventions
 

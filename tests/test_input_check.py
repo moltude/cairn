@@ -81,7 +81,7 @@ EXPECTED = {
     "dark_divide_100/PARITY.md": (UNKNOWN, NOT_A_MAP),
     "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.json": (GEOJSON, CALTOPO),  # REAL CalTopo export
     "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.gpx": (GPX, CALTOPO),       # REAL CalTopo export
-    "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.kml": (KML, GENERIC),       # REAL CalTopo KML (no CalTopo-KML dialect yet)
+    "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.kml": (KML, CALTOPO),       # REAL CalTopo KML
     "dark_divide_100/cairn_output/from_geojson/RUNBOOK.md": (UNKNOWN, NOT_A_MAP),
     "dark_divide_100/cairn_output/from_geojson/01_3_Course_Segments_Dark_Divide_100_Miler/3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_geojson/02_2_Aid_Stations_Dark_Divide_100_Miler/2_Aid_Stations_Dark_Divide_100_Miler_Waypoints.gpx": (GPX, CAIRN),
@@ -90,8 +90,13 @@ EXPECTED = {
     "dark_divide_100/cairn_output/from_gpx/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Tracks.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_gpx/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Waypoints.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_kml/RUNBOOK.md": (UNKNOWN, NOT_A_MAP),
-    "dark_divide_100/cairn_output/from_kml/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Tracks.gpx": (GPX, CAIRN),
-    "dark_divide_100/cairn_output/from_kml/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Waypoints.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_kml/01_3_Course_Segments_Dark_Divide_100_Miler/3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_kml/02_2_Aid_Stations_Dark_Divide_100_Miler/2_Aid_Stations_Dark_Divide_100_Miler_Waypoints.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_kml/03_1_Course_GPX_Dark_Divide_100_Miler/1_Course_GPX_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "caltopo_synthetic/README.md": (UNKNOWN, NOT_A_MAP),
+    "caltopo_synthetic/caltopo_synthetic.json": (GEOJSON, CALTOPO),   # synthetic, scripts/generate_caltopo_synthetic.py
+    "caltopo_synthetic/caltopo_synthetic.kml": (KML, CALTOPO),
+    "caltopo_synthetic/caltopo_synthetic.gpx": (GPX, CALTOPO),
     "onx_real/README.md": (UNKNOWN, NOT_A_MAP),
     "onx_real/onx_web_export_2_waypoints.gpx": (GPX, ONX),   # REAL onX Web Map export, 2026-10-22
     "onx_real/onx_web_export_2_waypoints.kml": (KML, ONX),   # REAL onX Web Map export, 2026-10-22
@@ -162,6 +167,45 @@ def test_onx_web_gpx_by_creator():
 
 def test_onx_kml_by_placemark_id():
     assert detect("onx-markups.kml", ONX_KML) == (KML, ONX)
+
+
+# CalTopo KML: the Document's own <name>/<description>, as all ten real CalTopo
+# KMLs seen write them (2016 exports are pretty-printed; one was re-saved by
+# Google Earth, which adds <open> and namespaces).
+_KML_ROOT = '<?xml version="1.0"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">'
+_PM = '<Placemark><name>a</name><Point><coordinates>1,1</coordinates></Point></Placemark>'
+
+
+@pytest.mark.parametrize("doc", [
+    "<Document><name>CalTopo Export</name><description>Export from CalTopo</description>",
+    "<Document>\n    <name>CalTopo Export</name>\n    <description>Export from CalTopo</description>",
+    "<Document>\n\t<name>CalTopo Export</name>\n\t<open>1</open>\n\t<description>Export from CalTopo</description>",
+    "<Document><name>CalTopo Export</name>",            # either signal is enough
+    "<Document><name>My map</name><description>Export from CalTopo</description>",
+], ids=["compact", "pretty", "google-earth-resave", "name-only", "description-only"])
+def test_caltopo_kml_by_document_signature(doc):
+    assert detect("x.kml", _KML_ROOT + doc + _PM + "</Document></kml>") == (KML, CALTOPO)
+
+
+def test_caltopo_phrase_deep_in_a_note_does_not_make_a_kml_caltopo():
+    filler = _PM * 80  # > 4 KB of placemarks before the phrase
+    text = (_KML_ROOT + "<Document><name>Trip</name>" + filler
+            + "<Placemark><name>CalTopo Export</name><description>Export from CalTopo</description>"
+            "<Point><coordinates>1,1</coordinates></Point></Placemark></Document></kml>")
+    assert detect("x.kml", text) == (KML, GENERIC)
+
+
+def test_caltopo_icon_href_alone_is_not_the_caltopo_signature():
+    # A Google Earth file can point at CalTopo's icon server too.
+    text = (_KML_ROOT + "<Document><name>Trip</name><Placemark><Style><IconStyle><Icon><href>"
+            "http://caltopo.com/icon.png?cfg=point%231.0</href></Icon></IconStyle></Style>"
+            "<Point><coordinates>1,1</coordinates></Point></Placemark></Document></kml>")
+    assert detect("x.kml", text) == (KML, GENERIC)
+
+
+def test_onx_and_cairn_markers_win_over_the_caltopo_signature():
+    onx = ONX_KML.replace("<Document>", "<Document><name>CalTopo Export</name>")
+    assert detect("x.kml", onx) == (KML, ONX)
 
 
 def test_generic_gpx_without_creator_or_onx_namespace():

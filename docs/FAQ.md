@@ -4,7 +4,7 @@
 
 ### Why can't I just import my CalTopo map into onX?
 
-onX Backcountry imports only GPX and KML. It doesn't take GeoJSON (per project docs, Aug 2026). GeoJSON is also the only CalTopo export that keeps your styling. CalTopo calls it "a full back-up for CalTopo including line and marker styles, and folder organization." CalTopo's GPX and KML exports drop the styles and the folders. With GPX you also have to choose Track or Route for each line when you export. So the one file that has everything is the one file onX won't open.
+onX Backcountry imports only GPX and KML. It doesn't take GeoJSON (per project docs, Aug 2026). GeoJSON is also CalTopo's most complete export. CalTopo calls it "a full back-up for CalTopo including line and marker styles, and folder organization." CalTopo's KML keeps less than that, and its GPX keeps much less (see the next question). With GPX you also have to choose Track or Route for each line when you export. So the one file that has everything is the one file onX won't open.
 
 ### Does this work with onX Hunt, Fish, Offroad or other onX apps?
 
@@ -14,7 +14,22 @@ Backcountry's icons, colors and import behavior. Use it with the others at your 
 
 ### What gets lost if I move CalTopo GPX or KML into onX myself?
 
-CalTopo's own export page says its GPX and KML exports lose line and marker styles and folder organization. The CalTopo GPX in the project's test data carries only waypoint names and coordinates: no icons, colors, descriptions or folders.
+CalTopo's own export page says its GPX and KML exports lose line and marker styles and folder organization. Real exports of one map in all three formats (the Dark Divide 100 course, October 2026) show the detail:
+
+| | GeoJSON | KML | GPX |
+|---|---|---|---|
+| Names and notes (multi-line) | yes | yes | yes |
+| Folders | yes | yes | no (one folder) |
+| Marker icon (CalTopo symbol) | yes | yes | no |
+| Marker color | yes | yes, for built-in symbols; not for a custom icon | no |
+| Line color | yes | yes | yes, as one of Garmin's 16 color names, and not always |
+| Line width | yes | yes | no |
+| Line pattern (dashes, arrows) | yes | no | no |
+| Areas | yes | yes, with fill | none seen |
+
+Notes are carried in all three: the Dark Divide export has 21 multi-line notes, and each format has every one of them, word for word. (An older project note said CalTopo's GPX has no descriptions; that was a GPX with no notes in it.)
+
+Cairn reads all three and treats them the same way. When you start from the KML or the GPX, the only differences are the gaps in the table. Each difference is listed with its reason in `tests/fixtures/dark_divide_100/PARITY.md`.
 
 This matters more than it sounds. Per project docs (Aug 2026), the onX Web Map filters markups by icon and color, the phone app filters by icon only, and search covers names only, not notes. If 300 waypoints arrive without their icons and colors, you can't filter them or tell them apart at a glance, and you end up fixing them one at a time. (What onX shows for a GPX waypoint that has no onX icon hasn't been tested. It's an open probe in the project docs.)
 
@@ -22,7 +37,7 @@ This matters more than it sounds. Per project docs (Aug 2026), the onX Web Map f
 
 ### What does Cairn actually do?
 
-It runs in your browser and takes a CalTopo GeoJSON export. It also opens GPX and KML: a CalTopo GPX (names and places only, so it says CalTopo's GeoJSON would be better), or the GPX and KML you export from onX (see the round-trip question below). You can drop several files at once; each becomes one folder named after the file, and an onX GPX and KML from the same export become one folder together. It sorts every feature it recognizes into waypoints (Marker points), lines (Line or Shape linestrings) and areas (Shape polygons). Any other kind of feature is skipped without a message and isn't counted. It picks an onX icon and color for each item. You can review and edit the results, including bulk edits. Then it downloads one zip, `onx_ready.zip`, with files ready for onX:
+It runs in your browser and takes a CalTopo GeoJSON export. It also opens a CalTopo KML (folders, icons, colors and notes, like the GeoJSON), a CalTopo GPX (names, notes and line colors, with no folders or icons, so it says the GeoJSON or KML would be better), or the GPX and KML you export from onX (see the round-trip question below). You can drop several files at once; each becomes one folder named after the file, and an onX GPX and KML from the same export become one folder together. It sorts every feature it recognizes into waypoints (Marker points), lines (Line or Shape linestrings) and areas (Shape polygons). Any other kind of feature is skipped without a message and isn't counted. It picks an onX icon and color for each item. You can review and edit the results, including bulk edits. Then it downloads one zip, `onx_ready.zip`, with files ready for onX:
 
 - One numbered directory per CalTopo folder (`01_Name/`, `02_Name/`, …). `Name` is the folder name with punctuation removed and spaces turned into underscores.
 - In each directory, up to three kinds of file: `Name_Waypoints.gpx`, `Name_Tracks.gpx` and `Name_Areas.kml`. A large GPX may be split into numbered parts (see below).
@@ -62,7 +77,19 @@ Some edge cases:
 - **Waypoint with no color:** Cairn writes the icon's usual color, for example Brown for `Shelter`. It uses Blue only when the icon has no usual color. This is not "onX's default blue", as the README says, because Cairn always writes an explicit color. The on-screen preview still shows such a waypoint as blue while the export uses the icon's color. If it matters to you, set the color yourself.
 - **Line with no color, or a color Cairn can't read:** it gets Blue. Short hex like `#abc` is treated as unreadable.
 - **Areas are not snapped to the palette.** The KML gets the raw CalTopo hex, or white if the color is missing or isn't 6 hex characters (an `rgb()`/`rgba()` value also becomes white). Line width is fixed at 2. The fill is the line color at 50% transparency, and CalTopo's separate fill color isn't read. The swatch on screen shows the nearest palette color, so an area you haven't edited can export in a slightly different color than it previews. If you set an area's color, the preview and the export agree.
-- **Line style:** the CalTopo pattern becomes `solid`, `dash` or `dot`. Width collapses to two weights, 4.0 or 6.0 (6.0 when the CalTopo width is over 4).
+- **Line style:** see "Do dashed and dotted lines come across?" below. Width collapses to two weights, 4.0 or 6.0 (6.0 when the CalTopo width is over 4).
+- **From a CalTopo GPX:** a line's color is read from its Garmin color name (`Red`, `Magenta`, `DarkBlue` and so on) and then snapped like any other. A line with no name gets Blue, and a waypoint never has a color in a GPX, so it gets its icon's usual color.
+
+### Do dashed and dotted lines come across?
+
+Only a dashed line, and only from the GeoJSON. Line styles in onX are `solid`, `dash` and `dot`, written as `<onx:style>` on a track (per project docs; `dash` and `solid` have been seen in real onX exports, `dot` hasn't). onX has no arrows.
+
+CalTopo writes a line's style in the GeoJSON `pattern` property:
+- `solid` is solid.
+- `M0 -1 L0 1,,8,F` is CalTopo's dashed line. It's a short stroke repeated every 8 pixels, written as an SVG path. This value appears in real exports, and Cairn exports it as `dash`.
+- CalTopo's dotted and arrow styles exist, but nobody has seen what they write yet, so Cairn exports them as `solid` for now. Once a CalTopo export with each style turns up, mapping them takes one line each. A directional arrow can only become `solid` or `dash`.
+
+CalTopo's KML and GPX don't carry a pattern at all, so every line read from them is solid.
 
 ### Can I bulk-edit before export?
 
@@ -72,7 +99,9 @@ The reason for doing this before import: onX's own bulk tools are limited. In th
 
 ### Do my notes come across?
 
-Yes. Each waypoint's or line's notes go into the GPX `<desc>`. HTML is stripped, and an empty note means no `<desc>` at all. Area notes go into the KML `<description>`. Multi-line notes are kept: `<br>`, paragraphs, `<div>`s and list items become real line breaks.
+Yes. Each waypoint's or line's notes go into the GPX `<desc>`. HTML is stripped, and an empty note means no `<desc>` at all. Area notes go into the KML `<description>`. Multi-line notes are kept: `<br>`, paragraphs, `<div>`s and list items become real line breaks. This is true whether the map came in as CalTopo GeoJSON, KML or GPX: all three carry the same note text.
+
+One known gap, the same from every format: HTML stripping treats anything between `<` and `>` as a tag. So a note like `< 2 mi to camp, > 1 mi to water` loses the text in between, and more than one blank line in a row becomes one.
 
 Two things are unverified:
 - That onX shows `<desc>` as the markup's Notes. This is only the owner's observation.
@@ -126,7 +155,7 @@ Cairn writes every CalTopo line, including a CalTopo Shape drawn as an open line
 - **Keep you under the account limit.** onX says "Your onX account is limited to 3,000 Markups" (help article updated 2026-09-16; it was 1,500 in August). Cairn warns when *this map* is over 3,000, but it can't see what's already in your account. Splitting into more imports doesn't get around an account-wide cap, so the warning tells you to remove or exclude items. What onX actually does when you go over isn't in any cited onX source.
 - **Support phone-only importing.** The runbook is written for the Web Map. KML import works only on the Web Map (per project docs, Aug 2026), and so does the new-folder checkbox. The phone app can import GPX, then file it with "Add to Folder".
 - **Import without a paid plan.** Importing requires onX Premium or Elite (per project docs, Aug 2026).
-- **Read a CalTopo KML properly.** A KML is read with the onX reader, so a CalTopo KML's folders, notes and colors are lost, and Cairn doesn't yet recognize it as CalTopo's. Nobody has a real CalTopo KML to build against yet.
+- **Get icons, waypoint colors or folders out of a CalTopo GPX.** The GPX doesn't have them. You can still add icons and colors in Cairn before you export, and they go into the files Cairn writes. Folders come from the GeoJSON or KML.
 
 ## Privacy
 

@@ -144,6 +144,11 @@ coverage. FIDELITY's provenance table stands: no genuine onX export is in the re
 
 ### 3.2 CalTopo GPX
 
+> **Corrected 2026-10-22.** The sample below has no tracks and no notes. The Dark Divide export
+> and 60 public CalTopo GPX files show that CalTopo's GPX does carry `<desc>`, multi-line and
+> verbatim. Tracks carry Garmin `<gpxx:DisplayColor>`, which `caltopo_gpx.py` now reads. There
+> is still no `<sym>`, no waypoint color and no folders.
+
 - **Verified [RUN]**: `creator="CALTOPO"`, Garmin `gpxx` namespace declared, names in plain or
   CDATA form, `<wpt>` only in the one real sample. Names and coordinates only. That matches
   [DOC] and the CalTopo training page as quoted by search: *"GPX: ... you lose line and marker
@@ -157,6 +162,13 @@ coverage. FIDELITY's provenance table stands: no genuine onX export is in the re
   The UI should say so when it detects `creator="CALTOPO"`.
 
 ### 3.3 CalTopo KML
+
+> **Superseded 2026-10-22 (roadmap Phase 7).** Real CalTopo KMLs were read: the owner's Dark
+> Divide 100 export, and nine public files. They have flat `<Folder>`s, inline `<Style>`s,
+> icon hrefs `caltopo.com/icon.png?cfg=<symbol>[,RRGGBB]#1.0`, and plain-text descriptions. A
+> polygon is written as a `MultiGeometry` with a label Point. `cairn/io/caltopo_kml.py` reads
+> it. The dialect is in `tests/fixtures/caltopo_synthetic/README.md`, and the parity results
+> are in `tests/fixtures/dark_divide_100/PARITY.md`. The original notes follow.
 
 - **Unverified.** No sample in the repo. `training.caltopo.com/.../export` returned 503 twice.
   **Discrepancy:** `PLATFORM_CONSTRAINTS` marks KML as losing both styles and folders, but the

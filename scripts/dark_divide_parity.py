@@ -39,6 +39,26 @@ REPORT = FIX / "PARITY.md"
 STEM = "2027_Dark_Divide_100_Mile_Endurance_Run"
 INPUTS = {"geojson": f"{STEM}.json", "gpx": f"{STEM}.gpx", "kml": f"{STEM}.kml"}
 FIELDS = ("name", "desc", "icon", "color")
+# Cross-format comparisons also compare the folder: an export re-read is named
+# by Cairn's output files, so folder is not compared there.
+CROSS_FIELDS = FIELDS + ("folder",)
+
+# Why each remaining cross-format difference exists. tests/test_dark_divide_parity.py
+# pins the exact set of differences, so this text can't silently go stale.
+WHY = [
+    "**Waypoint colours (KML and GPX, 8 markers).** The aid stations use a custom CalTopo icon "
+    "(`icon-P9JLNVA6-24-0.5-0.5-ff`). CalTopo's GeoJSON gives each of those markers a "
+    "`stroke: #FF0000`, which Cairn reads as the marker colour; the KML icon href carries no "
+    "colour for a custom icon (`cfg=icon-P9JLNVA6-24-0.5-0.5-ff#1.0`) and a GPX waypoint "
+    "can't carry one at all (Garmin's schema has no waypoint DisplayColor). So from KML and "
+    "GPX the colour comes from the icon Cairn picks, and from GeoJSON it's red. The ninth "
+    "marker comes out red either way.",
+    "**GPX folders.** CalTopo's GPX has no folders: the whole map is one folder named after "
+    "the file.",
+    "**GPX colour of line 10.** It is the one line whose CalTopo colour is the lower-case "
+    "`#ff0000`, and the only `<trk>` without a `<gpxx:DisplayColor>`: CalTopo appears to name "
+    "a Garmin colour only for an exact match. With no colour it gets onX's default blue.",
+]
 
 
 def _load(files: list[tuple[str, str]]) -> dict:
@@ -104,7 +124,7 @@ def convert(tag: str) -> tuple[dict, dict, dict, dict]:
     return review, review_geo, reread, reread_geo
 
 
-def _diff(a: dict, b: dict, ga: dict, gb: dict) -> list[str]:
+def _diff(a: dict, b: dict, ga: dict, gb: dict, fields: tuple = FIELDS) -> list[str]:
     """Field-by-field differences between two item sets, plus geometry."""
     out = []
     for kind in ("waypoints", "tracks", "shapes"):
@@ -112,7 +132,7 @@ def _diff(a: dict, b: dict, ga: dict, gb: dict) -> list[str]:
         if len(la) != len(lb):
             out.append(f"{kind}: count {len(la)} vs {len(lb)}")
         for x, y in zip(la, lb):
-            for f in FIELDS:
+            for f in fields:
                 if kind != "waypoints" and f == "icon":
                     continue
                 if (x.get(f) or "") != (y.get(f) or ""):
@@ -160,9 +180,17 @@ def main() -> int:
     lines += ["## Cross-format parity (review screens, GeoJSON as the reference)", ""]
     ref, rgeo_ref = results["geojson"][0], results["geojson"][1]
     for tag in ("gpx", "kml"):
-        d = _diff(ref, results[tag][0], rgeo_ref, results[tag][1])
+        d = _diff(ref, results[tag][0], rgeo_ref, results[tag][1], CROSS_FIELDS)
         lines.append(f"### geojson vs {tag}: {'identical' if not d else f'{len(d)} difference(s)'}")
         lines += [f"- {x}" for x in d] + [""]
+
+    lines += ["## Why the remaining differences exist", ""]
+    lines += [f"- {w}" for w in WHY] + [""]
+    lines += [
+        "Everything else -- names, multi-line notes, icons, line colours, folders (KML), point",
+        "counts and end points -- is identical across the three formats.",
+        "",
+    ]
 
     REPORT.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
     print(REPORT.read_text(encoding="utf-8"))

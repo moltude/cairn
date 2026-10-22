@@ -11,7 +11,7 @@ Cairn with no edits, exported (`cairn_output/from_<format>/`) and the export re-
 |---|---|---|---|---|---|---|---|
 | geojson | 3 | 9 | 12 | 0 | 21 | 6 | rgba(255,0,0,1) |
 | gpx | 1 | 9 | 12 | 0 | 21 | 6 | rgba(0,255,255,1), rgba(139,69,19,1), rgba(255,0,0,1), rgba(8,122,255,1) |
-| kml | 1 | 9 | 12 | 0 | 21 | 6 | rgba(0,255,255,1), rgba(139,69,19,1), rgba(255,0,0,1), rgba(8,122,255,1) |
+| kml | 3 | 9 | 12 | 0 | 21 | 6 | rgba(0,255,255,1), rgba(139,69,19,1), rgba(255,0,0,1), rgba(8,122,255,1) |
 
 ## Review screen vs re-read export (what Cairn hands onX)
 
@@ -38,29 +38,39 @@ Cairn with no edits, exported (`cairn_output/from_<format>/`) and the export re-
 
 ## Cross-format parity (review screens, GeoJSON as the reference)
 
-### geojson vs gpx: 20 difference(s)
+### geojson vs gpx: 30 difference(s)
 - waypoints '01 - Cispus Learning Center Start/Finish': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+- waypoints '01 - Cispus Learning Center Start/Finish': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - waypoints '02 - Juniper Ridge AS (Used Twice)': color 'rgba(255,0,0,1)' vs 'rgba(139,69,19,1)'
+- waypoints '02 - Juniper Ridge AS (Used Twice)': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - waypoints '03 - Sunrise AS (Used Twice)': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+- waypoints '03 - Sunrise AS (Used Twice)': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - waypoints '04 - Dark Creek AS': color 'rgba(255,0,0,1)' vs 'rgba(0,255,255,1)'
+- waypoints '04 - Dark Creek AS': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - waypoints '05 - Wilderness Crossing AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+- waypoints '05 - Wilderness Crossing AS': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - waypoints '06 - Wright Meadow AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+- waypoints '06 - Wright Meadow AS': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - waypoints '07 - Lewis River AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+- waypoints '07 - Lewis River AS': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - waypoints '08 - Quartz Butte AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '01 - Cispus Learning Center (START) to Juniper Ridge AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '02 - Juniper Ridge AS #1 to Sunrise Peak AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '03 - Sunrise Peak AS #1 to Dark Creek AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '04 - Dark Creek AS to Wilderness Crossing AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '05 - Wilderness Crossing AS to Wright Meadow AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '06 - Wright Meadow AS to Lewis River AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '07 - Lewis River AS to Quartz Butte AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '08 - Quartz Butte AS to Summit Prairie AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '09 - Summit Prairie AS to Sunrise Peak #2 AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+- waypoints '08 - Quartz Butte AS': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- waypoints '09 - Summit Prairie AS': folder '2 - Aid Stations Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '01 - Cispus Learning Center (START) to Juniper Ridge AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '02 - Juniper Ridge AS #1 to Sunrise Peak AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '03 - Sunrise Peak AS #1 to Dark Creek AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '04 - Dark Creek AS to Wilderness Crossing AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '05 - Wilderness Crossing AS to Wright Meadow AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '06 - Wright Meadow AS to Lewis River AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '07 - Lewis River AS to Quartz Butte AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '08 - Quartz Butte AS to Summit Prairie AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '09 - Summit Prairie AS to Sunrise Peak #2 AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 - tracks '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '2027 Dark Divide 100 Mile Endurance Run': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+- tracks '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)': folder '3 - Course Segments Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
+- tracks '2027 Dark Divide 100 Mile Endurance Run': folder '1 - Course GPX Dark Divide 100 Miler' vs '2027 Dark Divide 100 Mile Endurance Run'
 
-### geojson vs kml: 20 difference(s)
+### geojson vs kml: 8 difference(s)
 - waypoints '01 - Cispus Learning Center Start/Finish': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
 - waypoints '02 - Juniper Ridge AS (Used Twice)': color 'rgba(255,0,0,1)' vs 'rgba(139,69,19,1)'
 - waypoints '03 - Sunrise AS (Used Twice)': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
@@ -69,15 +79,12 @@ Cairn with no edits, exported (`cairn_output/from_<format>/`) and the export re-
 - waypoints '06 - Wright Meadow AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
 - waypoints '07 - Lewis River AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
 - waypoints '08 - Quartz Butte AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '01 - Cispus Learning Center (START) to Juniper Ridge AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '02 - Juniper Ridge AS #1 to Sunrise Peak AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '03 - Sunrise Peak AS #1 to Dark Creek AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '04 - Dark Creek AS to Wilderness Crossing AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '05 - Wilderness Crossing AS to Wright Meadow AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '06 - Wright Meadow AS to Lewis River AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '07 - Lewis River AS to Quartz Butte AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '08 - Quartz Butte AS to Summit Prairie AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '09 - Summit Prairie AS to Sunrise Peak #2 AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
-- tracks '2027 Dark Divide 100 Mile Endurance Run': color 'rgba(255,0,0,1)' vs 'rgba(8,122,255,1)'
+
+## Why the remaining differences exist
+
+- **Waypoint colours (KML and GPX, 8 markers).** The aid stations use a custom CalTopo icon (`icon-P9JLNVA6-24-0.5-0.5-ff`). CalTopo's GeoJSON gives each of those markers a `stroke: #FF0000`, which Cairn reads as the marker colour; the KML icon href carries no colour for a custom icon (`cfg=icon-P9JLNVA6-24-0.5-0.5-ff#1.0`) and a GPX waypoint can't carry one at all (Garmin's schema has no waypoint DisplayColor). So from KML and GPX the colour comes from the icon Cairn picks, and from GeoJSON it's red. The ninth marker comes out red either way.
+- **GPX folders.** CalTopo's GPX has no folders: the whole map is one folder named after the file.
+- **GPX colour of line 10.** It is the one line whose CalTopo colour is the lower-case `#ff0000`, and the only `<trk>` without a `<gpxx:DisplayColor>`: CalTopo appears to name a Garmin colour only for an exact match. With no colour it gets onX's default blue.
+
+Everything else -- names, multi-line notes, icons, line colours, folders (KML), point
+counts and end points -- is identical across the three formats.

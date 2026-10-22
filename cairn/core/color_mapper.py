@@ -19,17 +19,35 @@ from typing import Iterable, Tuple
 import re
 
 
+# CalTopo's GeoJSON `pattern` values that have been SEEN in a real export.
+# CalTopo draws non-solid lines as a Google-Maps-style symbol sequence,
+# "<SVG path>,<offset>,<repeat>,<flag>". "M0 -1 L0 1" is a 2-unit stroke along
+# the line, repeated every 8 units: a dashed line (the Google Maps JS API's own
+# dashed-polyline recipe is the same path, 'M 0,-1 0,1'). Seen on 6 lines of
+# tests/fixtures/bitterroots/Bitterroots__Complete_.json.
+CALTOPO_PATTERN_STYLES = {
+    "solid": "solid",
+    "M0 -1 L0 1,,8,F": "dash",
+}
+# What CalTopo writes for its dotted and arrow styles is NOT known: no real
+# export with one has been seen (docs/FAQ.md, "line patterns"). They fall back
+# to solid until an owner export shows the values. onX's own styles are solid,
+# dash and dot; it has no arrows, so a directional CalTopo style will be solid
+# (or dash) at best.
+
+
 def pattern_to_style(caltopo_pattern: str) -> str:
     """
-    Map CalTopo line pattern to OnX style.
+    Map a CalTopo line pattern to an onX style: "solid", "dash" or "dot".
 
-    Args:
-        caltopo_pattern: CalTopo pattern value (e.g., "solid", "dash", "dot", "dotted")
-
-    Returns:
-        OnX style value: "solid", "dash", or "dot"
+    Accepts CalTopo's verified GeoJSON values (CALTOPO_PATTERN_STYLES) and the
+    plain names Cairn itself writes and reads back from onX ("solid", "dash",
+    "dashed", "dot", "dotted"). Anything else -- including CalTopo's dotted and
+    arrow patterns, whose values are unverified -- is "solid".
 
     Example:
+        >>> pattern_to_style("M0 -1 L0 1,,8,F")
+        'dash'
         >>> pattern_to_style("dashed")
         'dash'
         >>> pattern_to_style("dotted")
@@ -40,18 +58,16 @@ def pattern_to_style(caltopo_pattern: str) -> str:
     if not caltopo_pattern:
         return "solid"
 
-    pattern_lower = caltopo_pattern.lower().strip()
+    raw = caltopo_pattern.strip()
+    if raw in CALTOPO_PATTERN_STYLES:
+        return CALTOPO_PATTERN_STYLES[raw]
 
-    # Direct mappings
-    if pattern_lower in ("solid", ""):
-        return "solid"
-    elif pattern_lower in ("dash", "dashed"):
+    pattern_lower = raw.lower()
+    if pattern_lower in ("dash", "dashed"):
         return "dash"
-    elif pattern_lower in ("dot", "dotted"):
+    if pattern_lower in ("dot", "dotted"):
         return "dot"
-    else:
-        # Default to solid for unknown patterns
-        return "solid"
+    return "solid"
 
 
 def stroke_width_to_weight(stroke_width) -> str:

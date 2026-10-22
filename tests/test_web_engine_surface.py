@@ -29,6 +29,7 @@ WEB_ENGINE = {
     "cairn/core/parser.py",
     "cairn/core/writers.py",
     "cairn/io/caltopo_gpx.py",
+    "cairn/io/caltopo_kml.py",
     "cairn/io/document_adapter.py",
     "cairn/io/input_check.py",
     "cairn/io/onx_gpx.py",

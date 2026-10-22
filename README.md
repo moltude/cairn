@@ -138,12 +138,21 @@ Cairn doesn't change onX's limits. It just helps you arrive with your organizati
 
 > "GPX: This is a commonly used file type, you lose line and marker style, and folder organization." [[7]](#ref-7)
 
-### CalTopo GPX
+### CalTopo GeoJSON, KML or GPX
 
-The web app takes CalTopo **GeoJSON** exports only. GPX exports carry coordinates and names but
-no icons, colors or folders, so they lose most of what Cairn exists to preserve. The engine has a
-CalTopo GPX reader (`cairn/io/caltopo_gpx.py`) that isn't wired into the web app yet — export
-from CalTopo as GeoJSON.
+The web app reads all three CalTopo exports and maps each to onX the same way.
+
+- **GeoJSON** keeps everything CalTopo has.
+- **KML** keeps folders, icons, colors, widths, notes and areas. It loses line patterns
+  (dashes), and a custom icon's marker color.
+- **GPX** keeps names, notes and most line colors (as Garmin color names). It has no folders,
+  no icons, no waypoint colors and no areas. You can add icons and colors in Cairn before
+  exporting.
+
+The project tests check that the three formats give the same result except for those gaps.
+They use one real map exported all three ways
+(`tests/fixtures/dark_divide_100/PARITY.md`) and one synthetic map
+(`tests/fixtures/caltopo_synthetic/`).
 
 <img src="./docs/screenshots/bitterroots-subset-caltopo.png" alt="Alt text" style="width:auto; height:auto;"> | <img src="./docs/screenshots/bitterroots-subset-onx-raw.png" alt="Alt text" style="width:auto; height:auto;"> | <img src="./docs/screenshots/bitterroot-subset-final-onx.png" alt="Alt text" style="width:auto; height:auto;">
 

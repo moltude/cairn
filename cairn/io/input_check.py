@@ -48,7 +48,7 @@ KML = "kml"
 UNKNOWN = "unknown"
 
 # Dialects. Phase 2 dispatches on these, so they are constants, not prose.
-CALTOPO = "caltopo"      # CalTopo GeoJSON, or a CalTopo GPX (creator="CALTOPO")
+CALTOPO = "caltopo"      # CalTopo GeoJSON, GPX (creator="CALTOPO") or KML ("CalTopo Export" Document)
 ONX = "onx"              # onX Web Map export (GPX creator "onXmaps ... web"; KML <Data name="id">)
 ONX_LIKE = "onx-like"    # GPX declaring an onX namespace but not written by onX's web exporter
 CAIRN = "cairn"          # Cairn's own output (GPX creator "Cairn..."; KML generator marker)
@@ -71,6 +71,18 @@ _ONX_ID_RE = re.compile(r"""<Data\s+name\s*=\s*["']id["']""")
 _CAIRN_KML_RE = re.compile(
     r"""<Data\s+name\s*=\s*["']%s["']\s*>\s*<value>\s*%s"""
     % (CAIRN_KML_MARKER_NAME, CAIRN_KML_MARKER_VALUE)
+)
+# CalTopo's KML signature: every CalTopo KML seen (Dark Divide 2026 and nine
+# public exports from 2016-2026, one re-saved by Google Earth) opens its
+# <Document> with <name>CalTopo Export</name> and <description>Export from
+# CalTopo</description>. Either one is enough; whitespace between tags is
+# tolerated (older exports are pretty-printed). Searched only in the 4 KB
+# after the root tag -- where the Document's own name and description sit --
+# so a placemark note quoting the phrase deeper in the file can't flip the
+# dialect. The icon hrefs (caltopo.com/icon.png) are NOT used: a line-only
+# CalTopo map has none, and a Google Earth file can reference them too.
+_CALTOPO_KML_RE = re.compile(
+    r"<name>\s*CalTopo Export\s*</name>|<description>\s*Export from CalTopo\s*</description>"
 )
 _WS = " \t\r\n"
 
@@ -206,6 +218,8 @@ def _detect_xml(body: str) -> tuple[str, str]:
         return (KML, CAIRN)
     if _ONX_ID_RE.search(body):
         return (KML, ONX)
+    if _CALTOPO_KML_RE.search(body, m.end(), m.end() + 4096):
+        return (KML, CALTOPO)
     return (KML, GENERIC)
 
 

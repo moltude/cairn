@@ -65,19 +65,74 @@ def test_every_format_reads_the_same_items_notes_and_geometry(results):
                     assert a["icon"] == b["icon"], (tag, a["name"])
 
 
-def test_known_format_losses_are_exactly_folders_and_colors(results):
-    """GeoJSON keeps 3 folders and CalTopo's red; GPX has neither, and Cairn
-    does not read CalTopo KML's <Folder> or LineStyle yet (roadmap Phase 7)."""
+DD_FOLDERS = {
+    "1 - Course GPX Dark Divide 100 Miler",
+    "2 - Aid Stations Dark Divide 100 Miler",
+    "3 - Course Segments Dark Divide 100 Miler",
+}
+CUSTOM_ICON_MARKERS = {
+    "01 - Cispus Learning Center Start/Finish", "02 - Juniper Ridge AS (Used Twice)",
+    "03 - Sunrise AS (Used Twice)", "04 - Dark Creek AS", "05 - Wilderness Crossing AS",
+    "06 - Wright Meadow AS", "07 - Lewis River AS", "08 - Quartz Butte AS",
+}
+LINE_10 = "10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS"
+
+
+def _cross(res, tag):
+    """{(kind, name, field)} where `tag`'s review screen differs from GeoJSON's."""
+    out = set()
+    for d in parity._diff(res["geojson"][0], res[tag][0], res["geojson"][1], res[tag][1],
+                          parity.CROSS_FIELDS):
+        head, field = d.split("': ", 1)
+        kind, name = head.split(" '", 1)
+        out.add((kind, name, field.split(" ", 1)[0]))
+    return out
+
+
+def test_kml_matches_geojson_except_custom_icon_marker_colours(results):
+    """CalTopo KML now keeps the folders and line colours (roadmap Phase 7).
+    What's left: GeoJSON gives the custom-icon markers a stroke #FF0000 that
+    the KML's icon cfg doesn't carry."""
     _, _, res = results
-    assert {i["folder"] for i in _all(res["geojson"][0])} == {
-        "1 - Course GPX Dark Divide 100 Miler",
-        "2 - Aid Stations Dark Divide 100 Miler",
-        "3 - Course Segments Dark Divide 100 Miler",
-    }
+    assert {i["folder"] for i in _all(res["geojson"][0])} == DD_FOLDERS
+    assert {i["folder"] for i in _all(res["kml"][0])} == DD_FOLDERS
     assert {i["color"] for i in _all(res["geojson"][0])} == {"rgba(255,0,0,1)"}
-    for tag in ("gpx", "kml"):
-        assert len({i["folder"] for i in _all(res[tag][0])}) == 1, tag
-        assert {i["color"] for i in res[tag][0]["tracks"]} == {"rgba(8,122,255,1)"}, tag
+    assert {i["color"] for i in res["kml"][0]["tracks"]} == {"rgba(255,0,0,1)"}
+    assert _cross(res, "kml") == {("waypoints", n, "color") for n in CUSTOM_ICON_MARKERS}
+
+
+def test_gpx_differs_only_where_gpx_lacks_the_data(results):
+    """GPX losses: folders (none in GPX), waypoint colours (Garmin's schema has
+    no waypoint colour) and line 10's colour (its lower-case #ff0000 got no
+    DisplayColor). Every other line's red now comes from DisplayColor."""
+    _, _, res = results
+    gpx = res["gpx"][0]
+    assert {i["folder"] for i in _all(gpx)} == {"2027 Dark Divide 100 Mile Endurance Run"}
+    assert {i["name"]: i["color"] for i in gpx["tracks"]}[LINE_10] == "rgba(8,122,255,1)"
+    assert {i["color"] for i in gpx["tracks"] if i["name"] != LINE_10} == {"rgba(255,0,0,1)"}
+    expected = (
+        {(k, i["name"], "folder") for k in ("waypoints", "tracks") for i in res["geojson"][0][k]}
+        | {("waypoints", n, "color") for n in CUSTOM_ICON_MARKERS}
+        | {("tracks", LINE_10, "color")}
+    )
+    assert _cross(res, "gpx") == expected
+
+
+def test_kml_export_is_the_geojson_export_but_the_marker_colours(results):
+    """What onX is handed from the KML: the same files and bytes as from the
+    GeoJSON (folders, line colours, elevations -- CalTopo's 0.0 altitude is not
+    written as sea level), except the 8 custom-icon markers' <onx:color>."""
+    out, _, _ = results
+    a, b = out / "cairn_output" / "from_geojson", out / "cairn_output" / "from_kml"
+    fa = {p.relative_to(a): p.read_text() for p in a.rglob("*") if p.is_file()}
+    fb = {p.relative_to(b): p.read_text() for p in b.rglob("*") if p.is_file()}
+    assert fa.keys() == fb.keys()
+    changed = [k for k in fa if fa[k] != fb[k]]
+    assert [k.name for k in changed] == ["2_Aid_Stations_Dark_Divide_100_Miler_Waypoints.gpx"]
+    la, lb = fa[changed[0]].splitlines(), fb[changed[0]].splitlines()
+    assert len(la) == len(lb)
+    diff = [(x, y) for x, y in zip(la, lb) if x != y]
+    assert len(diff) == 8 and all("<onx:color>" in x and "<onx:color>" in y for x, y in diff)
 
 
 def test_export_reread_differs_only_by_hash_stripped_from_names(results):

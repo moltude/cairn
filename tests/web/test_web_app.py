@@ -1224,7 +1224,8 @@ def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
 FX_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 ONX_PAIR = [FX_DIR / "onx_dialect" / "onx_dialect.gpx", FX_DIR / "onx_dialect" / "onx_dialect.kml"]
 CALTOPO_GPX = FX_DIR / "bitterroots" / "bitterroots_subet.gpx"
-CALTOPO_NOTICE = "CalTopo's GeoJSON keeps icons, colors and folders. Export that if you can."
+CALTOPO_NOTICE = ("CalTopo's GPX has no folders, icons or waypoint colors. "
+                  "Its GeoJSON or KML export keeps them.")
 
 
 @pytest.fixture()
@@ -1401,3 +1402,87 @@ def test_gpx_names_notes_icons_and_filename_render_as_text_not_html(fresh_page: 
     assert page.locator("#map-title").inner_text().startswith("<img src=x id=pwn onerror=")
     assert payload in page.locator("#icon-facets").inner_text()
     assert payload in page.locator("#mark-pop").inner_text()
+
+
+# ---------------------------------------------------------------------------
+# CalTopo KML and GPX (roadmap Phase 7)
+# ---------------------------------------------------------------------------
+
+CALTOPO_SYN = FX_DIR / "caltopo_synthetic"
+
+
+def _row(page: Page, name: str):
+    box = page.get_by_role("checkbox", name=f"Select {name}", exact=True)
+    return page.locator(ROW, has=box)
+
+
+def _wpts(gpx: str) -> dict:
+    """name -> (onx:icon, onx:color) for every <wpt> in a Cairn GPX."""
+    import html
+    out = {}
+    for block in re.findall(r"<wpt\b.*?</wpt>", gpx, flags=re.S):
+        name = html.unescape(re.search(r"<name>(.*?)</name>", block, flags=re.S).group(1))
+        icon = re.search(r"<onx:icon>(.*?)</onx:icon>", block)
+        color = re.search(r"<onx:color>(.*?)</onx:color>", block)
+        out[name] = (icon and icon.group(1), color and color.group(1))
+    return out
+
+
+def test_caltopo_kml_loads_with_its_folders_and_no_notice(csp_page: Page):
+    page = csp_page
+    _load_files(page, [CALTOPO_SYN / "caltopo_synthetic.kml"])
+    expect(page.locator("#map-label")).to_have_text("CalTopo map")
+    expect(page.locator("#source-notice")).to_be_hidden()
+    expect(page.locator(".folder h2")).to_have_text(
+        ["Camps & Water #1", "Routes", "Areas", "Routes / Spur lines"])
+    # The CalTopo symbol mapped to an onX icon, as it does from the GeoJSON.
+    expect(_row(page, "Trailhead lot").locator(".icon-btn .icon-name")).to_have_text("Parking")
+
+
+def test_caltopo_gpx_icons_and_colors_set_in_cairn_reach_the_exported_gpx(csp_page: Page):
+    """Additive icons: a CalTopo GPX carries no icons or waypoint colors, so its
+    waypoints arrive as name guesses or the default pin. Icons and colors set in
+    Cairn -- one waypoint through the marker popover, two through the bulk
+    dialog -- are written to the export as onx:icon / onx:color."""
+    page = csp_page
+    _load_files(page, [CALTOPO_SYN / "caltopo_synthetic.gpx"])
+    expect(page.locator("#source-notice")).to_have_text(CALTOPO_NOTICE)
+    expect(page.locator(".folder h2")).to_have_text(["caltopo synthetic"])
+    # Nothing in the GPX said "danger" or "camping": one is a default pin, the
+    # other a guess from "spring" in its name.
+    expect(_row(page, "Cornice").locator(".icon-btn")).to_have_text("Default pin")
+    expect(_row(page, "Camp #3 & <Lake> spring").locator(".icon-btn")).to_have_text("Water Source")
+
+    # One waypoint, through the marker popover.
+    _row(page, "Cornice").locator(".icon-btn").click()
+    pop = page.locator("#mark-pop")
+    pop.locator(".icon-search").fill("hazard")
+    pop.locator('.icon-pick[data-icon="Hazard"]').click()
+    pop.locator('.swatch-btn[aria-label="Red-Orange"]').click()
+    page.click("#pop-apply")
+    expect(pop).to_be_hidden()
+    expect(_row(page, "Cornice").locator(".icon-btn .icon-name")).to_have_text("Hazard")
+
+    # Two waypoints, through the bulk dialog.
+    for name in ("Camp #3 & <Lake> spring", "Plain red point"):
+        _row(page, name).locator(".sel-box").check()
+    page.click("#bulk-icon")
+    page.click('#mark-dialog .icon-pick[data-icon="Camp Backcountry"]')
+    page.locator('#mark-dialog .swatch-btn[aria-label="Yellow"]').click()
+    page.click("#bulk-apply")
+    expect(page.locator("#mark-modal")).to_be_hidden()
+
+    page.click("#export")
+    expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+    with page.expect_download() as dl:
+        page.click("#download")
+    zf = zipfile.ZipFile(dl.value.path())
+    (wpt_file,) = [n for n in zf.namelist() if n.endswith("_Waypoints.gpx")]
+    got = _wpts(zf.read(wpt_file).decode())
+    assert got["Cornice"] == ("Hazard", "rgba(255,51,0,1)")
+    # onX-unsafe characters are removed from names on export (P5, RUNBOOK lists them).
+    assert got["Camp 3 <Lake> spring"] == ("Camp Backcountry", "rgba(255,255,0,1)")
+    assert got["Plain red point"] == ("Camp Backcountry", "rgba(255,255,0,1)")
+    # The rest keep what Cairn chose at load, still written as onX styling.
+    assert got["Point with no colour"][0] == "Location"
+    assert all(icon and color for icon, color in got.values())

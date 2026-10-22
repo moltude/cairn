@@ -86,7 +86,10 @@ def test_sources_report_each_files_detected_kind_and_dialect_in_input_order():
 
 
 def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
-    """Every file in the zip, and the UI's JSON, match what commit e927aa9 produced."""
+    """Every file in the zip, and the UI's JSON, match what commit e927aa9 produced,
+    except one intended change: CalTopo's dashed pattern ("M0 -1 L0 1,,8,F", 6
+    lines) now exports as onx:style dash instead of solid (roadmap Phase 7). The
+    dash lines are put back to solid before hashing, so nothing else may move."""
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     raw = bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
     loaded = json.loads(raw)
@@ -98,8 +101,10 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
+    dash, solid = b"<onx:style>dash</onx:style>", b"<onx:style>solid</onx:style>"
+    assert sum(zf.read(n).count(dash) for n in zf.namelist()) == 6
     for name, digest in baseline["members"].items():
-        assert hashlib.sha256(zf.read(name)).hexdigest() == digest, name
+        assert hashlib.sha256(zf.read(name).replace(dash, solid)).hexdigest() == digest, name
 
 
 def test_single_file_load_document_is_load_files_with_one_file():
@@ -139,6 +144,10 @@ def _cairn_kml(tmp_path: Path) -> Path:
         # CalTopo GPX: coordinates and names only.
         ([FX / "bitterroots" / "bitterroots_subet.gpx"], [("gpx", "caltopo")],
          [("bitterroots subet", (10, 0, 0))]),
+        # CalTopo KML: its folders (largest first), like the GeoJSON (Phase 7).
+        ([FX / "caltopo_synthetic" / "caltopo_synthetic.kml"], [("kml", "caltopo")],
+         [("Camps & Water #1", (8, 0, 0)), ("Routes", (0, 5, 0)), ("Areas", (0, 0, 3)),
+          ("Routes / Spur lines", (0, 1, 0))]),
         # Cairn's own GPX output.
         ([FX / "rattlesnake_test_waypoints.gpx"], [("gpx", "cairn")],
          [("rattlesnake test waypoints", (34, 0, 0))]),
@@ -146,12 +155,32 @@ def _cairn_kml(tmp_path: Path) -> Path:
         ([FX / "onx_export_with_tracks.gpx", FX / "onx_export_with_tracks.kml"],
          [("gpx", "onx-like"), ("kml", "generic")], [("onx export with tracks", (2, 2, 1))]),
     ],
-    ids=["onx-gpx", "onx-kml", "onx-pair", "caltopo-gpx", "cairn-gpx", "onx-like-pair"],
+    ids=["onx-gpx", "onx-kml", "onx-pair", "caltopo-gpx", "caltopo-kml", "cairn-gpx",
+         "onx-like-pair"],
 )
 def test_each_dialect_loads_with_expected_counts_by_kind_and_folder(paths, dialects, expected):
     files = [_file(p) for p in paths]
     assert [detect(f["name"], f["text"]) for f in files] == dialects
     assert _counts(_load(*files)) == expected
+
+
+def test_caltopo_kml_takes_the_caltopo_path_not_the_onx_one():
+    """CalTopo KML is resolved like CalTopo GeoJSON: icons from the symbol
+    resolver (no onX-reader fields on the items), colours from CalTopo's."""
+    data = _load(_file(FX / "caltopo_synthetic" / "caltopo_synthetic.kml"))
+    assert data["sources"] == [{"name": "caltopo_synthetic.kml", "kind": "kml", "dialect": "caltopo"}]
+    items = {i["name"]: i for i in _items(data)}
+    assert not any("onx_id" in i or "subkind" in i for i in items.values())
+    assert items["Trailhead lot"]["icon"] == "Parking"  # CalTopo symbol circle-p
+    assert items["Trailhead lot"]["why"] == "Your CalTopo symbol “circle-p” maps to this icon."
+    assert items["Magenta ski line"]["color"] == "rgba(255,0,255,1)"  # Fuchsia
+
+
+def test_caltopo_kml_with_only_empty_folders_is_refused_by_name():
+    text = ('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
+            '<name>CalTopo Export</name><Folder><name>x</name></Folder></Document></kml>')
+    with pytest.raises(ValueError, match=r"^Cairn found no waypoints, lines or areas in empty\.kml"):
+        _load({"name": "empty.kml", "text": text})
 
 
 def test_cairn_kml_loads_and_keeps_its_colour(tmp_path):

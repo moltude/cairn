@@ -1,0 +1,526 @@
+{
+ "features": [
+  {
+   "type": "Feature",
+   "id": "f-camps",
+   "geometry": null,
+   "properties": {
+    "title": "Camps & Water #1",
+    "class": "Folder",
+    "visible": true
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "f-routes",
+   "geometry": null,
+   "properties": {
+    "title": "Routes",
+    "class": "Folder",
+    "visible": true
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "f-spurs",
+   "geometry": null,
+   "properties": {
+    "title": "Routes / Spur lines",
+    "class": "Folder",
+    "visible": true
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "f-areas",
+   "geometry": null,
+   "properties": {
+    "title": "Areas",
+    "class": "Folder",
+    "visible": true
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-0",
+   "properties": {
+    "title": "Camp #3 & <Lake> spring",
+    "description": "Water: filter it & boil it.\n\nMap: https://example.com/trail?a=1&b=2#camp\n\n\n< 2 mi from the TH; site #3 of 5 > the rest",
+    "marker-symbol": "camping",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker",
+    "marker-color": "#000000"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.2701,
+     46.1101,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-1",
+   "properties": {
+    "title": "Trailhead lot",
+    "description": "Room for 6 cars.",
+    "marker-symbol": "circle-p",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker",
+    "marker-color": "#0000FF"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.2602,
+     46.1023,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-2",
+   "properties": {
+    "title": "North summit",
+    "description": "",
+    "marker-symbol": "peak",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker",
+    "marker-color": "#FF0000"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.2905,
+     46.1302,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-3",
+   "properties": {
+    "title": "Cornice",
+    "description": "Avoid after noon.\nLooker's left is safer.",
+    "marker-symbol": "danger",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker",
+    "marker-color": "#FF0000"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.2851,
+     46.1255,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-4",
+   "properties": {
+    "title": "Plain red point",
+    "description": "",
+    "marker-symbol": "point",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker",
+    "marker-color": "#FF0000"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.275,
+     46.115,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-5",
+   "properties": {
+    "title": "Green flag",
+    "description": "",
+    "marker-symbol": "flag-1",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker",
+    "marker-color": "#00CD00"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.276,
+     46.116,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-6",
+   "properties": {
+    "title": "Old cabin",
+    "description": "",
+    "marker-symbol": "hut",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker",
+    "marker-color": "#8B4513"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.277,
+     46.117,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "m-7",
+   "properties": {
+    "title": "Point with no colour",
+    "description": "",
+    "marker-symbol": "point",
+    "marker-size": 1,
+    "folderId": "f-camps",
+    "class": "Marker"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -114.278,
+     46.118,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "l-0",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -114.2602,
+      46.1023,
+      1500
+     ],
+     [
+      -114.265,
+      46.106,
+      1612
+     ],
+     [
+      -114.2701,
+      46.1101,
+      1704
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Red approach",
+    "description": "Section 1.\nSection 2.",
+    "stroke": "#FF0000",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "folderId": "f-routes",
+    "class": "Shape"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "l-1",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -114.2701,
+      46.1101
+     ],
+     [
+      -114.28,
+      46.12
+     ],
+     [
+      -114.2905,
+      46.1302
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Blue ridge",
+    "description": "",
+    "stroke": "#0000FF",
+    "stroke-width": 4,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "folderId": "f-routes",
+    "class": "Shape"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "l-2",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -114.2905,
+      46.1302,
+      2210.5
+     ],
+     [
+      -114.288,
+      46.128,
+      2150.25
+     ],
+     [
+      -114.2851,
+      46.1255,
+      2088
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Magenta ski line",
+    "description": "",
+    "stroke": "#FF00FF",
+    "stroke-width": 6,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "folderId": "f-routes",
+    "class": "Shape"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "l-3",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -114.2851,
+      46.1255
+     ],
+     [
+      -114.276,
+      46.116
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Green dashed skin track",
+    "description": "Dashed in CalTopo.",
+    "stroke": "#00CD00",
+    "stroke-width": 1,
+    "stroke-opacity": 1,
+    "pattern": "M0 -1 L0 1,,8,F",
+    "folderId": "f-routes",
+    "class": "Shape"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "l-4",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -114.276,
+      46.116
+     ],
+     [
+      -114.2701,
+      46.1101
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Note test: a <b> & #c",
+    "description": "Water: filter it & boil it.\n\nMap: https://example.com/trail?a=1&b=2#camp\n\n\n< 2 mi from the TH; site #3 of 5 > the rest",
+    "stroke": "#ff0000",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "folderId": "f-routes",
+    "class": "Shape"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "l-5",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -114.275,
+      46.115
+     ],
+     [
+      -114.277,
+      46.117
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Spur to cabin",
+    "description": "",
+    "stroke": "#000000",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "folderId": "f-spurs",
+    "class": "Shape"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "a-0",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -114.3,
+       46.1
+      ],
+      [
+       -114.28,
+       46.1
+      ],
+      [
+       -114.28,
+       46.12
+      ],
+      [
+       -114.3,
+       46.12
+      ],
+      [
+       -114.3,
+       46.1
+      ]
+     ],
+     [
+      [
+       -114.295,
+       46.105
+      ],
+      [
+       -114.295,
+       46.115
+      ],
+      [
+       -114.285,
+       46.115
+      ],
+      [
+       -114.285,
+       46.105
+      ],
+      [
+       -114.295,
+       46.105
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Burn area with island",
+    "description": "Burned 2025.\n\nIsland unburned.",
+    "stroke": "#FF0000",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "fill": "#FF0000",
+    "fill-opacity": 0.1,
+    "pattern": "solid",
+    "folderId": "f-areas",
+    "class": "Shape"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "a-1",
+   "geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+     [
+      [
+       [
+        -114.26,
+        46.13
+       ],
+       [
+        -114.25,
+        46.13
+       ],
+       [
+        -114.25,
+        46.14
+       ],
+       [
+        -114.26,
+        46.13
+       ]
+      ]
+     ],
+     [
+      [
+       [
+        -114.24,
+        46.13
+       ],
+       [
+        -114.23,
+        46.13
+       ],
+       [
+        -114.23,
+        46.14
+       ],
+       [
+        -114.24,
+        46.13
+       ]
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "title": "Two-part closure",
+    "description": "Both parts closed.",
+    "stroke": "#0000FF",
+    "stroke-width": 3,
+    "stroke-opacity": 1,
+    "fill": "#0000FF",
+    "fill-opacity": 0.25,
+    "pattern": "solid",
+    "folderId": "f-areas",
+    "class": "Shape"
+   }
+  }
+ ],
+ "type": "FeatureCollection"
+}

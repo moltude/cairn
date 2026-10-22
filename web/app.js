@@ -195,15 +195,14 @@ function mapLabel(data) {
   return caltopo ? "CalTopo map" : onx ? "onX map" : "Map";
 }
 
-/** CalTopo's GPX keeps names and places only (KG 3.2): say that its GeoJSON
-    would have brought icons, colors and folders too. Shown for a CalTopo GPX
-    or KML; only GPX is detected as CalTopo today. */
-const CALTOPO_XML_NOTICE = "CalTopo's GeoJSON keeps icons, colors and folders. Export that if you can.";
+/** CalTopo's GPX has no folders, waypoint icons or waypoint colors (only line
+    colors, as Garmin color names): say that its GeoJSON or KML would have
+    brought them. CalTopo KML keeps them (roadmap Phase 7), so it gets no notice. */
+const CALTOPO_GPX_NOTICE = "CalTopo's GPX has no folders, icons or waypoint colors. Its GeoJSON or KML export keeps them.";
 function renderSourceNotice(data) {
   const el = $("#source-notice");
-  const show = (data.sources || []).some(s =>
-    s.dialect === "caltopo" && (s.kind === "gpx" || s.kind === "kml"));
-  el.textContent = show ? CALTOPO_XML_NOTICE : "";
+  const show = (data.sources || []).some(s => s.dialect === "caltopo" && s.kind === "gpx");
+  el.textContent = show ? CALTOPO_GPX_NOTICE : "";
   el.classList.toggle("hidden", !show);
 }
 
