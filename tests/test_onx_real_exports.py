@@ -46,3 +46,47 @@ def test_real_onx_export_keeps_icons_colors_notes_and_ids(files):
     for i in items:
         assert i["desc"] == "Cairn re-import probe. Safe to delete."
         assert not i["needs_attention"]
+
+
+def test_onx_line_long_note_with_tag_like_text_is_kept_verbatim():
+    """onX notes are plain text. The owner's 3,000+ character note contains
+    "<desc>" and "<description>" as text; HTML stripping used to delete them."""
+    text = (FIX / "onx_web_line_long_note.gpx").read_text(encoding="utf-8")
+    doc = json.loads(bridge.load_files(json.dumps([{"name": "long.gpx", "text": text}])))
+    (item,) = [i for g in doc["groups"] for i in g["items"]]
+    assert "`<desc>`" in item["desc"] and "<descriptio\nn>" in item["desc"]
+    assert len(item["desc"]) > 3000
+
+
+@pytest.mark.parametrize("stem, style", [("onx_web_line_solid", "solid"), ("onx_web_line_dash", "dash")])
+def test_onx_drawn_lines_keep_style_and_weight_through_export(stem, style):
+    import io, re, zipfile
+    for ext in ("gpx", "kml"):
+        text = (FIX / f"{stem}.{ext}").read_text(encoding="utf-8")
+        bridge.load_files(json.dumps([{"name": f"{stem}.{ext}", "text": text}]))
+        z = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
+        gpx = "".join(z.read(n).decode() for n in z.namelist() if n.endswith("Tracks.gpx"))
+        assert f"<onx:style>{style}</onx:style>" in gpx and "<onx:weight>6.0</onx:weight>" in gpx, ext
+
+
+def test_cairn_note_with_tag_like_text_survives_export():
+    """A note edited in Cairn is plain text: '<Lake>' must reach the export."""
+    import io, zipfile
+    src = (ROOT / "tests/fixtures/caltopo-random/onx-test-random.json").read_text(encoding="utf-8")
+    doc = json.loads(bridge.load_files(json.dumps([{"name": "r.json", "text": src}])))
+    item = next(i for g in doc["groups"] for i in g["items"] if i["name"] == "Hiker")
+    bridge.apply_edits(json.dumps({item["uid"]: {"desc": "Meet at <Lake> & go"}}))
+    z = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
+    wpts = "".join(z.read(n).decode() for n in z.namelist() if n.endswith("Waypoints.gpx"))
+    assert "<desc>Meet at &lt;Lake&gt; &amp; go</desc>" in wpts
+
+
+def test_runbook_lists_notes_longer_than_onx_imports():
+    import io, zipfile
+    src = (ROOT / "tests/fixtures/dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.json").read_text(encoding="utf-8")
+    bridge.load_files(json.dumps([{"name": "dd.json", "text": src}]))
+    z = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
+    rb = z.read("RUNBOOK.md").decode()
+    assert "### Notes longer than onX keeps on import (512 characters)" in rb
+    assert "`02 - Juniper Ridge AS (Used Twice)`: 617 characters" in rb
+    assert json.loads(bridge.runbook_summary_json())["long_notes"] == 1

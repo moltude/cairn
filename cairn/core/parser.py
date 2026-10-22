@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 import json
-from cairn.utils.utils import strip_html
+from cairn.utils.utils import PLAIN_NOTES_KEY, clean_notes, strip_html
 
 # Name of the group for items not in any CalTopo folder. PROVISIONAL label --
 # a product decision still under review (see docs/design/DECISIONS.md UI-10).
@@ -37,7 +37,8 @@ class ParsedFeature:
         # strip it so the three formats agree (caltopo-random fixture).
         title = self.properties.get("title", "Untitled")
         self.title = title.strip() if isinstance(title, str) else title
-        self.description = strip_html(self.properties.get("description", ""))
+        self.description = clean_notes(self.properties.get("description", ""),
+                                       bool(self.properties.get(PLAIN_NOTES_KEY)))
         self.class_type = self.properties.get("class", "Unknown")
         self.color = self.properties.get("marker-color") or self.properties.get(
             "stroke", ""

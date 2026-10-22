@@ -116,6 +116,19 @@ EXPECTED = {
     "caltopo_synthetic/caltopo_synthetic.json": (GEOJSON, CALTOPO),   # synthetic, scripts/generate_caltopo_synthetic.py
     "caltopo_synthetic/caltopo_synthetic.kml": (KML, CALTOPO),
     "caltopo_synthetic/caltopo_synthetic.gpx": (GPX, CALTOPO),
+    "dark_divide_100/onx_roundtrip/from_geojson/1_Course_GPX.onx.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "dark_divide_100/onx_roundtrip/from_geojson/2_Aid_Stations.onx.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "dark_divide_100/onx_roundtrip/from_geojson/3_Course_Segments.onx.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "dark_divide_100/onx_roundtrip/from_gpx/2027_Dark_Divide.onx.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "dark_divide_100/onx_roundtrip/from_kml/1_Course_GPX.onx.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "dark_divide_100/onx_roundtrip/from_kml/2_Aid_Stations.onx.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "dark_divide_100/onx_roundtrip/from_kml/3_Course_Segments.onx.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "onx_real/onx_web_line_dash.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "onx_real/onx_web_line_dash.kml": (KML, ONX),   # REAL onX export, 2026-10-22
+    "onx_real/onx_web_line_long_note.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "onx_real/onx_web_line_long_note.kml": (KML, ONX),   # REAL onX export, 2026-10-22
+    "onx_real/onx_web_line_solid.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
+    "onx_real/onx_web_line_solid.kml": (KML, ONX),   # REAL onX export, 2026-10-22
     "onx_real/README.md": (UNKNOWN, NOT_A_MAP),
     "onx_real/onx_web_export_2_waypoints.gpx": (GPX, ONX),   # REAL onX Web Map export, 2026-10-22
     "onx_real/onx_web_export_2_waypoints.kml": (KML, ONX),   # REAL onX Web Map export, 2026-10-22

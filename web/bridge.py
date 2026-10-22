@@ -28,7 +28,7 @@ from cairn.io.document_adapter import ONX_ICON_KEY, ONX_ID_KEY, ONX_KIND_KEY, to
 from cairn.io.input_check import detect, guard_input
 from cairn.io.onx_gpx import read_onx_gpx
 from cairn.io.onx_kml import read_onx_kml
-from cairn.utils.utils import natural_sort_key
+from cairn.utils.utils import PLAIN_NOTES_KEY, natural_sort_key
 from cairn.core.writers import (
     clear_areas_without_holes,
     clear_name_changes,
@@ -43,6 +43,10 @@ from cairn.core.writers import (
 # onX's per-ACCOUNT markup ceiling (FIDELITY_MODEL_2026-08-29.md). Splitting a
 # map into more files or imports does not get around it.
 ONX_ACCOUNT_MARKUP_LIMIT = 3000  # onX help 360052239052, updated 2026-09-16 (was 1,500)
+# Longest note onX kept on import in testing (2026-10-22): a 617-character
+# waypoint note arrived cut to 512; a 3,000+ character line note was dropped.
+# Notes typed in onX itself can be much longer.
+ONX_IMPORT_NOTE_LIMIT = 512
 
 # onX's waypoint palette (10). Track/line adds Fuchsia -> 11. See README.md's color reference.
 ONX_COLORS = [
@@ -564,6 +568,8 @@ def export_zip() -> bytes:
             for item, feat in zip(items, feats):
                 feat.title = item["name"]
                 feat.description = item.get("desc") or ""
+                # Already cleaned at load (or typed by the user): plain text now.
+                feat.properties[PLAIN_NOTES_KEY] = True
                 # Every item is exported in EXACTLY the colour the UI showed
                 # (item["color"]: the load-time value, or the user's pick).
                 # This used to be gated on "the user edited the colour", which
@@ -652,6 +658,13 @@ def export_zip() -> bytes:
             ]
             # onX areas are single-ring: these were written outer ring only.
             entry["holes"] = get_areas_without_holes()
+            # onX cut a 617-character note to 512 on import and dropped a
+            # 3,000+ character one entirely (owner's tests, 2026-10-22).
+            entry["long_notes"] = [
+                [i["name"], len(i.get("desc") or "")]
+                for i in g["items"]
+                if i.get("included", True) and len(i.get("desc") or "") > ONX_IMPORT_NOTE_LIMIT
+            ]
             if entry["files"]:
                 manifest.append(entry)
             else:
@@ -684,6 +697,8 @@ def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
         "over_limit": markups > ONX_ACCOUNT_MARKUP_LIMIT,
         "renamed": sum(len(e.get("renamed", ())) for e in manifest),
         "holes": sum(len(e.get("holes", ())) for e in manifest),
+        "long_notes": sum(len(e.get("long_notes", ())) for e in manifest),
+        "note_limit": ONX_IMPORT_NOTE_LIMIT,
         "kml_batches": sum(1 for e in manifest if any(f["kml"] for f in e["files"])),
     }
 
@@ -762,6 +777,17 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "",
         ]
         L += [f"- `{name}`  ({folder})" for folder, name in holes]
+        L += [""]
+    long_notes = [(e["folder"], n, c) for e in manifest for n, c in e.get("long_notes", ())]
+    if long_notes:
+        L += [
+            f"### Notes longer than onX keeps on import ({ONX_IMPORT_NOTE_LIMIT} characters)",
+            "",
+            f"onX cut a longer imported note to {ONX_IMPORT_NOTE_LIMIT} characters, and dropped a "
+            "much longer one entirely. Shorten these, or paste the rest into onX after import.",
+            "",
+        ]
+        L += [f"- `{n}`: {c} characters  ({folder})" for folder, n, c in long_notes]
         L += [""]
     L += [
         "---",

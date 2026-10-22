@@ -24,6 +24,12 @@ These names had `! @ # $ % ^ * &` removed. Search onX for the new name.
 - `10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS` → `10 - Sunrise Peak 2 AS to Juniper Ridge 2 AS`  (2027 Dark Divide 100 Mile Endurance Run)
 - `11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)` → `11 - Juniper Ridge 2 AS to Cispus Learning Center (FINISH)`  (2027 Dark Divide 100 Mile Endurance Run)
 
+### Notes longer than onX keeps on import (512 characters)
+
+onX cut a longer imported note to 512 characters, and dropped a much longer one entirely. Shorten these, or paste the rest into onX after import.
+
+- `02 - Juniper Ridge AS (Used Twice)`: 617 characters  (2027 Dark Divide 100 Mile Endurance Run)
+
 ---
 
 When finished, My Content should show **1 folders** and **21 markups**.

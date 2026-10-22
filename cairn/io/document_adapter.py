@@ -32,6 +32,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, Optional
 
+from cairn.utils.utils import PLAIN_NOTES_KEY
 from cairn.core.parser import ParsedData, ParsedFeature
 from cairn.model import MapDocument, Shape, Track, Waypoint
 
@@ -67,7 +68,8 @@ def sub_kind(item: Any) -> str:
 def to_parsed_feature(item: Any) -> ParsedFeature:
     """One MapDocument item as the ParsedFeature the bridge and writers read."""
     s = item.style
-    props: Dict[str, Any] = {"title": item.name, "description": item.notes}
+    # onX notes are plain text: never HTML-strip them (a note may contain "<desc>").
+    props: Dict[str, Any] = {"title": item.name, "description": item.notes, PLAIN_NOTES_KEY: True}
     if isinstance(item, Waypoint):
         props.update({
             "class": "Marker",

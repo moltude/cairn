@@ -19,7 +19,7 @@ import math
 
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon
-from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_onx
+from cairn.utils.utils import PLAIN_NOTES_KEY, clean_notes, strip_html, natural_sort_key, sanitize_name_for_onx
 from cairn.core.config import IconMappingConfig, resolve_waypoint_color
 from cairn.core.color_mapper import (
     ColorMapper,
@@ -513,7 +513,7 @@ def write_gpx_waypoints_maybe_split(
         # endregion
 
         wp_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -742,7 +742,7 @@ def write_gpx_tracks_maybe_split(
         # endregion
 
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -973,7 +973,7 @@ def write_gpx_waypoints(
         # <desc> is user-facing: notes only by default; the legacy key=value
         # block (matching OnX's own export format) is available via debug_desc.
         wp_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -1087,7 +1087,7 @@ def write_gpx_tracks(
         # <desc> is user-facing: notes only by default; the legacy key=value
         # block (matching OnX's own export format) is available via debug_desc.
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -1251,7 +1251,7 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
         track_name_change("shapes", feature.title, sanitized)
     name_elem.text = sanitized
 
-    notes_text = strip_html(feature.description or "")
+    notes_text = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
     if notes_text:
         desc = ET.SubElement(placemark, "description")
         desc.text = notes_text
@@ -1513,7 +1513,7 @@ def write_gpx_areas_maybe_split(
 
         area_rgba = kml_area_color(feature)
         fill_rgba = _area_fill_rgba(feature, area_rgba)
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         area_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         desc_content = _desc_text(
             notes_clean,

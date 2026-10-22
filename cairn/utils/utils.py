@@ -85,6 +85,20 @@ def chunk_data(items: List[Any], limit: int = 2500) -> Iterator[List[Any]]:
         yield items[i : i + limit]
 
 
+# A feature property marking its notes as PLAIN TEXT (onX notes, or text the
+# user already saw/edited in Cairn), so no HTML stripping is applied: a note may
+# legitimately contain "<desc>" or "<Lake>" as text.
+PLAIN_NOTES_KEY = "cairn_plain_notes"
+
+
+def clean_notes(text: str, plain: bool = False) -> str:
+    """Notes for display/export: HTML-stripped for HTML-capable sources (CalTopo),
+    verbatim (line endings normalized, outer whitespace trimmed) for plain text."""
+    if not plain:
+        return strip_html(text)
+    return (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+
+
 def strip_html(text: str) -> str:
     """
     Remove HTML tags from text.
