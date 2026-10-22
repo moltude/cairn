@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from cairn.core.parser import UNORGANIZED_FOLDER_NAME, parse_geojson
-from cairn.io.caltopo_kml import kml_color, parse_caltopo_kml, parse_icon_cfg
+from cairn.io.caltopo_kml import MAX_FOLDER_DEPTH, kml_color, parse_caltopo_kml, parse_icon_cfg
 
 ROOT = Path(__file__).resolve().parents[1]
 DD = ROOT / "tests" / "fixtures" / "dark_divide_100" / "caltopo" / "2027_Dark_Divide_100_Mile_Endurance_Run"
@@ -253,6 +253,48 @@ def test_nested_folders_flatten_to_their_path(tmp_path):
              + "<Folder><name>Deep</name>" + _marker("deepest") + "</Folder></Folder></Folder>")
     got = {d["name"]: [w.title for w in d["waypoints"]] for d in p.folders.values()}
     assert got == {"Routes": ["top"], "Routes / Spurs": ["inner"], "Routes / Spurs / Deep": ["deepest"]}
+
+
+def _nested_folders(depth):
+    return "<Folder><name>F</name>" * depth + _marker("deep") + "</Folder>" * depth
+
+
+def test_folders_nested_to_the_cap_read(tmp_path):
+    p = _kml(tmp_path, _nested_folders(MAX_FOLDER_DEPTH))
+    assert len(p.folders) == MAX_FOLDER_DEPTH
+    [(name, wps)] = [(d["name"], d["waypoints"]) for d in p.folders.values() if d["waypoints"]]
+    assert name.count(" / ") == MAX_FOLDER_DEPTH - 1
+    assert [w.title for w in wps] == ["deep"]
+
+
+def test_hostile_folder_nesting_is_refused_with_value_error(tmp_path):
+    """Nesting past the cap is a ValueError (the bridge shows only those as a
+    message), not a RecursionError past Python's ~1000 limit, and not the
+    depth-squared folder-path work that let a 16 MB file run for hours."""
+    with pytest.raises(ValueError, match="nested more than 64 deep"):
+        _kml(tmp_path, _nested_folders(2000))
+    with pytest.raises(ValueError, match="nested more than 64 deep"):
+        _kml(tmp_path, _nested_folders(MAX_FOLDER_DEPTH + 1))
+
+
+def test_hostile_folder_nesting_reaches_the_web_app_as_a_sentence(tmp_path):
+    import json
+    import sys
+
+    sys.path.insert(0, str(ROOT / "web"))
+    import bridge
+
+    text = HEAD + _nested_folders(2000) + TAIL
+    with pytest.raises(ValueError, match=r"^deep\.kml couldn’t be read: Its folders are nested"):
+        bridge.load_files(json.dumps([{"name": "deep.kml", "text": text}]))
+
+
+def test_deeply_nested_multigeometry_reads_without_recursion_error(tmp_path):
+    depth = 2000
+    p = _kml(tmp_path, "<Folder><name>F</name><Placemark><name>m</name>" + "<MultiGeometry>" * depth
+             + "<Point><coordinates>-121,46</coordinates></Point>" + "</MultiGeometry>" * depth
+             + "</Placemark></Folder>")
+    assert [w.title for w in _all(p, "waypoints")] == ["m"]
 
 
 def test_empty_folder_is_kept_like_a_geojson_folder_feature(tmp_path):

@@ -61,6 +61,10 @@ from cairn.core.parser import (
 )
 
 FOLDER_PATH_SEPARATOR = " / "
+# CalTopo never nests folders; a re-saved file nests a few levels. Each nested
+# folder's name is its whole path, so the work grows with depth squared: an
+# unbounded depth lets a 16 MB file (the input cap) take hours. Deeper is refused.
+MAX_FOLDER_DEPTH = 64
 
 _HEX6 = re.compile(r"^[0-9A-Fa-f]{6}$")
 _KML_COLOR = re.compile(r"^\s*([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})\s*$")
@@ -285,26 +289,30 @@ def _geometries(el: ET.Element) -> List[Tuple[str, Any]]:
     flattened. Points beside a line or polygon are CalTopo's label anchors and
     are dropped."""
     found: List[Tuple[str, Any]] = []
-
-    def walk(node: ET.Element) -> None:
-        for c in node:
-            name = _ln(c.tag)
-            if name == "Point":
-                pts = _coords(c)
-                if pts:
-                    found.append(("Point", pts[0]))
-            elif name == "LineString":
-                pts = _coords(c)
-                if pts:
-                    found.append(("LineString", pts))
-            elif name == "Polygon":
-                rings = _polygon(c)
-                if rings:
-                    found.append(("Polygon", rings))
-            elif name == "MultiGeometry":
-                walk(c)
-
-    walk(el)
+    # Depth-first in document order with an explicit stack, not recursion: a
+    # hostile file can nest MultiGeometry past Python's recursion limit, and
+    # the bridge reports only ValueError as a readable error.
+    stack = [iter(el)]
+    while stack:
+        c = next(stack[-1], None)
+        if c is None:
+            stack.pop()
+            continue
+        name = _ln(c.tag)
+        if name == "Point":
+            pts = _coords(c)
+            if pts:
+                found.append(("Point", pts[0]))
+        elif name == "LineString":
+            pts = _coords(c)
+            if pts:
+                found.append(("LineString", pts))
+        elif name == "Polygon":
+            rings = _polygon(c)
+            if rings:
+                found.append(("Polygon", rings))
+        elif name == "MultiGeometry":
+            stack.append(iter(c))
     if any(t != "Point" for t, _ in found):
         found = [g for g in found if g[0] != "Point"]
     return found
@@ -374,32 +382,42 @@ def parse_caltopo_kml(filepath: Path) -> ParsedData:
     shared = _shared_styles(root)
     parsed = ParsedData()
     loose: List[ParsedFeature] = []
-    counter = [0]
-    any_folder = [False]
+    counter = 0
+    any_folder = False
 
-    def walk(node: ET.Element, path: List[str]) -> None:
-        for c in node:
-            name = _ln(c.tag)
-            if name == "Folder":
-                any_folder[0] = True
-                fpath = path + [_text(_child(c, "name")).strip() or "Untitled"]
-                key = f"kml_folder_{len(parsed.folders)}"
-                parsed.add_folder(key, FOLDER_PATH_SEPARATOR.join(fpath))
-                for pm in _children(c, "Placemark"):
-                    for feat in _features(pm, counter[0], shared):
-                        parsed.add_feature_to_folder(key, feat)
-                    counter[0] += 1
-                walk(c, fpath)  # its sub-Folders; its Placemarks were read above
-            elif name == "Document":
-                walk(c, path)
-            elif name == "Placemark" and not path:
-                loose.extend(_features(c, counter[0], shared))
-                counter[0] += 1
-
-    walk(root, [])
+    # Depth-first in document order with an explicit stack of (children, folder
+    # path), not recursion: a hostile file can nest Folders past Python's
+    # recursion limit, and the bridge reports only ValueError as a readable error.
+    stack = [(iter(root), [])]
+    while stack:
+        it, path = stack[-1]
+        c = next(it, None)
+        if c is None:
+            stack.pop()
+            continue
+        name = _ln(c.tag)
+        if name == "Folder":
+            any_folder = True
+            if len(path) >= MAX_FOLDER_DEPTH:
+                raise ValueError(
+                    f"Its folders are nested more than {MAX_FOLDER_DEPTH} deep, which CalTopo "
+                    f"never writes.\nFile: {filepath}")
+            fpath = path + [_text(_child(c, "name")).strip() or "Untitled"]
+            key = f"kml_folder_{len(parsed.folders)}"
+            parsed.add_folder(key, FOLDER_PATH_SEPARATOR.join(fpath))
+            for pm in _children(c, "Placemark"):
+                for feat in _features(pm, counter, shared):
+                    parsed.add_feature_to_folder(key, feat)
+                counter += 1
+            stack.append((iter(c), fpath))  # its sub-Folders; its Placemarks were read above
+        elif name == "Document":
+            stack.append((iter(c), path))
+        elif name == "Placemark" and not path:
+            loose.extend(_features(c, counter, shared))
+            counter += 1
 
     if loose:
-        if not any_folder[0]:
+        if not any_folder:
             parsed.add_folder("default", filepath.stem.replace("_", " "))
             key = "default"
         else:
