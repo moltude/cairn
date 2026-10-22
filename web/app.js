@@ -73,7 +73,16 @@ async function boot() {
     } catch (_) { /* defaults are a fine fallback */ }
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
     const v = py.runPython("import cairn; cairn.__version__");
-    setStatus(`Ready · engine v${v}`, "ready");
+    setStatus("Ready · ", "ready");
+    // The engine version links to the source on GitHub. Built with DOM nodes,
+    // not innerHTML, like every other status write.
+    const repo = document.createElement("a");
+    repo.className = "plain-link repo-link";
+    repo.href = "https://github.com/moltude/cairn";
+    repo.target = "_blank"; repo.rel = "noopener noreferrer";
+    repo.title = "Cairn on GitHub";
+    repo.textContent = `engine v${v} on GitHub`;
+    $("#status").appendChild(repo);
     $("#pick").disabled = false;
     window.__cairnReady = true;
   } catch (e) {
