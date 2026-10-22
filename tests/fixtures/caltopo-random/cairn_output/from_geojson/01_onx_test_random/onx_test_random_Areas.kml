@@ -1,0 +1,48 @@
+<?xml version="1.0" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>onx test random</name>
+    <ExtendedData>
+      <Data name="generator">
+        <value>Cairn</value>
+      </Data>
+    </ExtendedData>
+    <Placemark>
+      <name>Fire zone</name>
+      <description>blue, center opacity</description>
+      <Style>
+        <LineStyle>
+          <color>33ff7a08</color>
+          <width>4</width>
+        </LineStyle>
+        <PolyStyle>
+          <color>00ff7a08</color>
+        </PolyStyle>
+      </Style>
+      <ExtendedData>
+        <Data name="notes">
+          <value>blue, center opacity</value>
+        </Data>
+        <Data name="color">
+          <value>rgba(8,122,255,1)</value>
+        </Data>
+        <Data name="style">
+          <value>solid</value>
+        </Data>
+        <Data name="weight">
+          <value>4.0</value>
+        </Data>
+        <Data name="fill_color">
+          <value>rgba(8,122,255,0)</value>
+        </Data>
+      </ExtendedData>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>-121.65313770101447,46.3997546359621,0 -121.63923312948127,46.40271409501781,0 -121.63794566915412,46.39472318715248,0 -121.64884616659064,46.39276967612307,0 -121.65262271688361,46.39963625426088,0 -121.65313770101447,46.3997546359621,0</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>

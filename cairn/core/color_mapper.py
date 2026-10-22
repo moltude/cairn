@@ -27,8 +27,15 @@ import re
 # tests/fixtures/bitterroots/Bitterroots__Complete_.json.
 CALTOPO_PATTERN_STYLES = {
     "solid": "solid",
-    "M0 -1 L0 1,,8,F": "dash",
+    "M0 -1 L0 1,,8,F": "dash",  # Bitterroots
+    "M0 -3 L0 3,,12,F": "dash",  # longer dash (owner's caltopo-random export, 2026-10-22)
+    # Chevron arrows that rotate with the line ("T"). onX has no arrow style, so
+    # an arrow line exports solid (owner's caltopo-random export, 2026-10-22).
+    "M-6 8L0 -8M6 8L0 -8M0 0L-6 8M0 0L6 8,20,40,T": "solid",
 }
+# CalTopo patterns are Google-Maps-style symbols: "<svg path>,<offset>,<repeat>,<F|T>".
+# Any single vertical stroke ("M0 -a L0 a") repeated along the line is a dash.
+_CALTOPO_DASH_RE = re.compile(r"^M0 -(\d+(?:\.\d+)?) L0 \1,[^,]*,\d+(?:\.\d+)?,[FT]$")
 # What CalTopo writes for its dotted and arrow styles is NOT known: no real
 # export with one has been seen (docs/FAQ.md, "line patterns"). They fall back
 # to solid until an owner export shows the values. onX's own styles are solid,
@@ -62,6 +69,8 @@ def pattern_to_style(caltopo_pattern: str) -> str:
     if raw in CALTOPO_PATTERN_STYLES:
         return CALTOPO_PATTERN_STYLES[raw]
 
+    if _CALTOPO_DASH_RE.match(raw):
+        return "dash"
     pattern_lower = raw.lower()
     if pattern_lower in ("dash", "dashed"):
         return "dash"

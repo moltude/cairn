@@ -88,8 +88,10 @@ def test_sources_report_each_files_detected_kind_and_dialect_in_input_order():
 def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     """Every file in the zip, and the UI's JSON, match what commit e927aa9 produced,
     except one intended change: CalTopo's dashed pattern ("M0 -1 L0 1,,8,F", 6
-    lines) now exports as onx:style dash instead of solid (roadmap Phase 7). The
-    dash lines are put back to solid before hashing, so nothing else may move."""
+    lines) now exports as onx:style dash instead of solid (roadmap Phase 7); and
+    4 titles with a trailing space ("Stimson ", ...) are now stripped on load, so
+    GeoJSON names match KML/GPX (caltopo-random fixture); the export already
+    stripped them. Both are put back before hashing, so nothing else may move."""
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     raw = bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
     loaded = json.loads(raw)
@@ -98,13 +100,19 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert loaded.pop("sources") == [
         {"name": BITTERROOTS.name, "kind": "geojson", "dialect": "caltopo"}
     ]
+    padded = {"Stimson", "Parking", "Ingress", "Sample run"}
+    stripped = [i for g in loaded["groups"] for i in g["items"] if i["name"] in padded]
+    assert len(stripped) == 4
+    for i in stripped:
+        i["name"] += " "
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
     dash, solid = b"<onx:style>dash</onx:style>", b"<onx:style>solid</onx:style>"
     assert sum(zf.read(n).count(dash) for n in zf.namelist()) == 6
     for name, digest in baseline["members"].items():
-        assert hashlib.sha256(zf.read(name).replace(dash, solid)).hexdigest() == digest, name
+        data = zf.read(name).replace(dash, solid)  # exported names were already stripped
+        assert hashlib.sha256(data).hexdigest() == digest, name
 
 
 def test_single_file_load_document_is_load_files_with_one_file():

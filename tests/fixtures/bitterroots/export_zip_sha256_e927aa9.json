@@ -26,7 +26,10 @@
     "08_Sheafman_ridge/Sheafman_ridge_Areas.kml": "7e9b6c49a1dd7bfc9f76b1e7f77cc8da14202247be2098488808885cde22cb4e",
     "09_Paddling/Paddling_Tracks.gpx": "fd6731986fd80aa8345d8b142b33d569a282e0d4c9ecf9e0af9e9d3d701d1d69",
     "10_Mill_Creek_Canyon/Mill_Creek_Canyon_Waypoints.gpx": "47e0d17de112d1f5c2b45cb1bb4225d76ec5e70b9a7ad4bf995ee2cefd3f3713",
-    "RUNBOOK.md": "cd981d1ef2a74b060111c020cc4c6bfaede9667e386adaff82259b22fde03e1b"
+    "RUNBOOK.md": "5ca0256e8abc3dc9c26692a6205729cac68cb187c3a2f7b7e2807da7b697e3bf"
   },
-  "load_document_json": "5bdb446fa1cac678c6d0ede0a641232c6ffb74126745231e4b53278f5df59dab"
+  "load_document_json": "5bdb446fa1cac678c6d0ede0a641232c6ffb74126745231e4b53278f5df59dab",
+  "notes": [
+    "2026-10-22: RUNBOOK.md re-pinned. GeoJSON titles are now stripped on load, so the 4 trailing-space names ('Stimson ', 'Parking ', 'Ingress ', 'Sample run ') no longer appear as spurious 'Renamed for onX' entries. No other member changed."
+  ]
 }

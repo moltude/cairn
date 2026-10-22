@@ -80,3 +80,24 @@ def test_bitterroots_dashed_lines_export_as_onx_dash(tmp_path):
     (path, _s, n), = write_gpx_tracks_maybe_split(tracks, tmp_path / "t.gpx", "x")
     assert n == 6
     assert path.read_text().count("<onx:style>dash</onx:style>") == 6
+
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("pattern, style", [
+    ("M0 -3 L0 3,,12,F", "dash"),                                       # owner's export
+    ("M0 -1 L0 1,,8,F", "dash"),
+    ("M0 -2 L0 2,,10,F", "dash"),                                       # same shape, other spacing
+    ("M-6 8L0 -8M6 8L0 -8M0 0L-6 8M0 0L6 8,20,40,T", "solid"),          # arrows: onX has none
+    ("M0 -3 L0 4,,12,F", "solid"),                                      # not symmetric: unknown
+])
+def test_caltopo_patterns_from_the_random_export(pattern, style):
+    from cairn.core.color_mapper import pattern_to_style
+    assert pattern_to_style(pattern) == style
+
+
+def test_geojson_titles_are_stripped_like_kml_and_gpx():
+    from cairn.core.parser import ParsedFeature
+    f = ParsedFeature({"type": "Feature", "geometry": None, "properties": {"title": "section 1 "}})
+    assert f.title == "section 1"

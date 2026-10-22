@@ -33,7 +33,10 @@ class ParsedFeature:
         self.properties = props if isinstance(props, dict) else {}
 
         # Extract common properties
-        self.title = self.properties.get("title", "Untitled")
+        # CalTopo keeps a title's trailing space in GeoJSON but not in KML/GPX;
+        # strip it so the three formats agree (caltopo-random fixture).
+        title = self.properties.get("title", "Untitled")
+        self.title = title.strip() if isinstance(title, str) else title
         self.description = strip_html(self.properties.get("description", ""))
         self.class_type = self.properties.get("class", "Unknown")
         self.color = self.properties.get("marker-color") or self.properties.get(
