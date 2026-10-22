@@ -265,3 +265,20 @@ def test_verify_cli_exits_nonzero_on_a_wrong_icon(tmp_path):
     (bad,) = [x for x in rep["results"] if x["status"] == rt.FAIL]
     assert [f["field"] for f in bad["fields"]] == ["icon"]
     assert "FAIL" in (r["dir"] / "verify_report.md").read_text()
+
+
+def test_snapshot_reads_a_real_onx_export():
+    """The one check here that is not Cairn reading Cairn: onX's own GPX + KML export of
+    the caltopo-random map (2026-10-22) reads as 6 items, the area once (not doubled by
+    the GPX/KML merge), notes as the user's text rather than onX's key=value block, and
+    colours as palette rgba without onX's spaces."""
+    d = ROOT / "tests" / "fixtures" / "caltopo-random" / "onx_roundtrip" / "from_geojson"
+    rt._load([d / "onx_export.gpx", d / "onx_export.kml"])
+    snap = {r["name"]: r for r in rt.snapshot()}
+    assert sorted((r["kind"], n) for n, r in snap.items()) == [
+        ("area", "Fire zone"), ("track", "Chaos line"), ("track", "section 1"),
+        ("track", "straight line"), ("waypoint", "Hiker"), ("waypoint", "blerg")]
+    assert (snap["Chaos line"]["style"], snap["Chaos line"]["weight"]) == ("dash", "4.0")
+    assert (snap["straight line"]["style"], snap["straight line"]["weight"]) == ("solid", "6.0")
+    assert snap["blerg"]["notes"] == "berg\n\nbelrgb berg" and snap["blerg"]["icon"] == "Camp"
+    assert all(" " not in r["color"] and r["color"].startswith("rgba(") for r in snap.values())

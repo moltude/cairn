@@ -98,3 +98,7 @@ measures only what onX changed. `tests/test_onx_roundtrip_harness.py` runs the w
 offline with Cairn's output standing in for onX's export: every item must PASS at both stages.
 Line style / weight edits (`apply_edits` `style`: solid|dash|dot, `weight`: 4.0|6.0, tracks
 only) exist in the bridge for this harness; the web UI has no control for them yet.
+
+Naming caveat: only the `edge` dataset's markups start with `ZZTEST`. `random` and `dd100`
+markups carry the iteration tag only (`[r1i1] Hiker`), so after their folder is gone search
+All Content for `[r1` (the run id) rather than `ZZTEST` (rule 2).
