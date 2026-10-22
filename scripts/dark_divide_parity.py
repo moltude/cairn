@@ -164,10 +164,11 @@ def main() -> int:
     for tag, (review, *_rest) in results.items():
         allitems = [i for k in review.values() for i in k]
         colors = sorted({i["color"] for i in allitems})
+        multiline = sum("\n" in (i.get("desc") or "") for i in allitems)  # no backslash inside f-string (py<3.12)
         lines.append(
             f"| {tag} | {len({i['folder'] for i in allitems})} | {len(review['waypoints'])} | "
             f"{len(review['tracks'])} | {len(review['shapes'])} | "
-            f"{sum('\n' in (i.get('desc') or '') for i in allitems)} | "
+            f"{multiline} | "
             f"{sum(i['needs_attention'] for i in allitems)} | {', '.join(colors)} |"
         )
 

@@ -113,8 +113,11 @@ def strip_html(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"<br\s*/?>|</(?:p|div|li)\s*>", "\n", text, flags=re.IGNORECASE)
 
-    # Remove HTML tags
-    text = re.sub(r"<[^>]+>", "", text)
+    # Remove HTML tags -- only things that look like a real tag: "<" (or "</")
+    # immediately followed by a letter, and no "<" inside. A bare "<[^>]+>"
+    # also ate plain-text notes such as "< 2 mi from the TH ... > the rest" or
+    # "Bring <2L water>", which onX and CalTopo notes contain as ordinary text.
+    text = re.sub(r"</?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?/?>", "", text)
 
     # Decode common HTML entities
     html_entities = {

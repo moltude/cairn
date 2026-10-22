@@ -35,9 +35,9 @@
     `MultiLineString` and `GeometryCollection` are not handled. No CalTopo export seen so far
     contains any of these (Bitterroots: 17 single-ring Polygons).
   * **CalTopo `pattern` on areas is not carried** — KML 2.2 has no dash style.
-  * **`strip_html` eats `<...>` that isn't HTML** (`utils.py`: `<[^>]+>`), in every input
-    format alike: a note `< 2 mi to camp, > 1 mi` loses the text between. Only strip things that
-    look like tags (`</?[A-Za-z]...>`), and decide whether `<Lake>` in a note is a tag.
+  * ~~**`strip_html` eats `<...>` that isn't HTML**~~ **Fixed 2026-10-22**: only tag-shaped text
+    (`</?[A-Za-z]...>`) is stripped. Still open: a tag-shaped word in a note, e.g. `<Lake>`, is
+    removed.
 
 * **CalTopo KML/GPX input (roadmap Phase 7, done 2026-10-22).** Still open, all needing one
   styled CalTopo export from the owner (a small map with a dotted line, an arrow line, an

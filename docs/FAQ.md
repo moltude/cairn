@@ -101,7 +101,7 @@ The reason for doing this before import: onX's own bulk tools are limited. In th
 
 Yes. Each waypoint's or line's notes go into the GPX `<desc>`. HTML is stripped, and an empty note means no `<desc>` at all. Area notes go into the KML `<description>`. Multi-line notes are kept: `<br>`, paragraphs, `<div>`s and list items become real line breaks. This is true whether the map came in as CalTopo GeoJSON, KML or GPX: all three carry the same note text.
 
-One known gap, the same from every format: HTML stripping treats anything between `<` and `>` as a tag. So a note like `< 2 mi to camp, > 1 mi to water` loses the text in between, and more than one blank line in a row becomes one.
+Only real HTML tags are removed (CalTopo descriptions can contain HTML), so plain-text angle brackets such as `< 2 mi to camp, > 1 mi to water` or `Bring <2L water>` survive. One caveat: a note that contains something tag-shaped, like `<Lake>`, is still treated as a tag. More than one blank line in a row becomes one.
 
 Two things are unverified:
 - That onX shows `<desc>` as the markup's Notes. This is only the owner's observation.
