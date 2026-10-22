@@ -56,7 +56,7 @@ def test_bitterroots_complete_caltopo_to_onx_export_standardizes_icons_and_track
       - climbing-2 → Climbing
       - circle-p   → Parking
       - peak       → Summit
-      - hut        → Cabin
+      - hut        → Shelter
       - danger     → Hazard   (used for “Avy hazard area”)
     - Track colors are quantized to the official OnX palette:
       - #0000FF → rgba(8,122,255,1)  (OnX Blue)
@@ -73,7 +73,7 @@ def test_bitterroots_complete_caltopo_to_onx_export_standardizes_icons_and_track
                     "climbing-2": "Climbing",
                     "circle-p": "Parking",
                     "peak": "Summit",
-                    "hut": "Cabin",
+                    "hut": "Shelter",
                     "danger": "Hazard",
                 }
             }
@@ -90,7 +90,7 @@ def test_bitterroots_complete_caltopo_to_onx_export_standardizes_icons_and_track
     assert gpx, "No GPX files were produced"
 
     # Icon standardization assertions.
-    for icon in ("Climbing", "Parking", "Summit", "Cabin", "Hazard"):
+    for icon in ("Climbing", "Parking", "Summit", "Shelter", "Hazard"):
         assert (
             f"<onx:icon>{icon}</onx:icon>" in gpx
         ), f"Expected OnX icon {icon} to appear in export"

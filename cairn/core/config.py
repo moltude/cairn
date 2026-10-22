@@ -204,7 +204,6 @@ ICON_COLOR_MAP = {
     "Photo": "rgba(255,255,0,1)",  # Yellow
     "View": "rgba(255,255,0,1)",  # Yellow
     "Lookout": "rgba(255,255,0,1)",  # Yellow
-    "Cabin": "rgba(139,69,19,1)",  # Brown
     "Shelter": "rgba(139,69,19,1)",  # Brown
     "House": "rgba(139,69,19,1)",  # Brown
     "Food Source": "rgba(139,69,19,1)",  # Brown
@@ -327,9 +326,11 @@ DEFAULT_SYMBOL_MAP = {
     "picnic": "Picnic Area",
     "shelter": "Shelter",
     "house": "House",
-    "cabin": "Cabin",
-    "hut": "Cabin",
-    "yurt": "Cabin",
+    # "Cabin" is not an onX icon (it exported as the default pin); huts,
+    # yurts and cabins are backcountry shelters in onX's vocabulary.
+    "cabin": "Shelter",
+    "hut": "Shelter",
+    "yurt": "Shelter",
     "kennels": "Kennels",
     "visitor": "Visitor Center",
     "gear": "Gear",
@@ -429,8 +430,7 @@ DEFAULT_KEYWORD_MAP = {
     "View": ["view", "viewpoint", "vista", "overlook", "scenic"],
     "Lookout": ["lookout", "observation"],
     # Facilities
-    "Cabin": ["cabin", "hut", "yurt"],
-    "Shelter": ["shelter", "refuge"],
+    "Shelter": ["shelter", "refuge", "cabin", "hut", "yurt"],
     "Food Source": ["food", "restaurant", "aid station"],
     "Emergency Phone": ["emergency", "phone", "sos"],
 }
@@ -752,11 +752,11 @@ symbol_mappings:
   lookout: Lookout
 
   # ---------------------------------------------------------------------------
-  # FACILITIES -> Cabin (brown icon)
+  # FACILITIES -> Shelter (brown icon)
   # ---------------------------------------------------------------------------
-  cabin: Cabin
-  hut: Cabin
-  yurt: Cabin
+  cabin: Shelter
+  hut: Shelter
+  yurt: Shelter
   shelter: Shelter
   house: House
 
@@ -840,8 +840,10 @@ keyword_mappings:
     - overlook
     - scenic
 
-  # Cabin keywords
-  Cabin:
+  # Shelter keywords (huts, yurts and cabins included)
+  Shelter:
+    - shelter
+    - refuge
     - cabin
     - hut
     - yurt

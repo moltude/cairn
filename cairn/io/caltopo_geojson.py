@@ -46,7 +46,6 @@ _OnX_ICON_TO_CALTOPO_SYMBOL: Dict[str, str] = {
     "Camp Backcountry": "camping",
     "Campground": "camping",
     "Summit": "peak",
-    "Cabin": "hut",
     "Shelter": "hut",
     "House": "hut",
     # Camera/star aren’t present in our CalTopo exports; use a safe, non-default icon.

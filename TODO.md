@@ -21,12 +21,7 @@
   (`core/config.py`). The web app is safe because `web/bridge.py:_config` passes an explicit
   path, but the ambient fallback is a trap for any future caller — make the path mandatory, or
   drop the CWD lookup.
-* **Cairn ships an icon onX does not accept.** `Cabin` is absent from onX's 95-icon vocabulary
-  (`normalize_onx_icon_name("Cabin")` → `None`), but `DEFAULT_SYMBOL_MAP` maps `cabin`/`hut`/`yurt`
-  to it. 4 waypoints in the Bitterroots fixture export `<onx:icon>Cabin</onx:icon>` and will land
-  as the default pin. `save_user_mapping()` already rejects icons that fail this check — the
-  validation exists and isn't applied to Cairn's own defaults. `Shelter` is the right target.
-  A full audit of all three default tables found exactly one such name.
+* ~~**Cairn ships an icon onX does not accept.**~~ **Fixed 2026-10-22**: cabin/hut/yurt (and CalTopo's `hut` symbol) now map to `Shelter`; `Cabin` is gone from every table and config, and `tests/test_mapper.py::test_every_default_mapping_targets_a_real_onx_icon` guards the vocabulary.
 * **Numbered waypoints defeat keyword matching.** `_TOKEN_RE = r"[a-z0-9]+"`
   (`core/icon_resolver.py:35`) merges trailing digits: `Chute1` → `chute1`, which never matches
   the keyword `chute`. `Camp 2` resolves; `Camp2` doesn't. Strip trailing digits before tokenizing.

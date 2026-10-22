@@ -44,7 +44,6 @@ const ONX_GLYPHS = (() => {
     "Shelter": "M3 11 L12 4 L21 11 M5 10v10h14V10 M10 20v-5h4v5",
     // Not one of onX's 95 names, but the engine's keyword map emits it
     // (cairn/core/config.py "cabin"/"hut"/"yurt"); draw it as a shelter.
-    "Cabin": "M3 11 L12 4 L21 11 M5 10v10h14V10 M10 20v-5h4v5",
     "House": "M4 11L12 4l8 7v9H4z M10 20v-6h4v6 M16 7.5V4h2v5",
     "Photo": "M4 8h4l1.5-2h5L16 8h4v11H4z M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
     "View": "M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",

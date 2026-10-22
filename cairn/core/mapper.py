@@ -36,7 +36,7 @@ ICON_MAP = {
     ],
     "Photo": ["camera", "photo"],
     "View": ["view", "viewpoint", "vista", "overlook", "scenic"],
-    "Cabin": ["cabin", "hut", "yurt"],
+    "Shelter": ["shelter", "cabin", "hut", "yurt"],
 }
 
 _LEGACY_RESOLVER = IconResolver(

@@ -54,9 +54,9 @@ symbol_mappings:
   vista: View
   overlook: View
   lookout: Lookout
-  cabin: Cabin
-  hut: Cabin
-  yurt: Cabin
+  cabin: Shelter
+  hut: Shelter
+  yurt: Shelter
   shelter: Shelter
   house: House
   climbing-2: Climbing
@@ -119,7 +119,3 @@ keyword_mappings:
   - vista
   - overlook
   - scenic
-  Cabin:
-  - cabin
-  - hut
-  - yurt

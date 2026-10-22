@@ -54,10 +54,10 @@ class TestMapIcon:
         assert map_icon("Scenic overlook", "") == "View"
 
     def test_cabin_keyword(self):
-        """Cabin keywords matched."""
-        assert map_icon("Cabin location", "") == "Cabin"
-        assert map_icon("Mountain hut", "") == "Cabin"
-        assert map_icon("Yurt site", "") == "Cabin"
+        """Cabin/hut/yurt keywords map to onX's Shelter ("Cabin" isn't an onX icon)."""
+        assert map_icon("Cabin location", "") == "Shelter"
+        assert map_icon("Mountain hut", "") == "Shelter"
+        assert map_icon("Yurt site", "") == "Shelter"
 
     def test_trailhead_keyword(self):
         """Trailhead keywords matched."""
@@ -278,9 +278,9 @@ class TestSymbolMappingsWithConfig:
     # -------------------------------------------------------------------------
     def test_facility_symbols(self, config):
         """Facility symbols map correctly."""
-        assert map_icon("", "", "cabin", config) == "Cabin"
-        assert map_icon("", "", "hut", config) == "Cabin"
-        assert map_icon("", "", "yurt", config) == "Cabin"
+        assert map_icon("", "", "cabin", config) == "Shelter"
+        assert map_icon("", "", "hut", config) == "Shelter"
+        assert map_icon("", "", "yurt", config) == "Shelter"
         assert map_icon("", "", "shelter", config) == "Shelter"
         assert map_icon("", "", "house", config) == "House"
 
@@ -407,10 +407,10 @@ class TestKeywordMappingsWithConfig:
     # CABIN KEYWORDS
     # -------------------------------------------------------------------------
     def test_cabin_keywords(self, config):
-        """Cabin keywords match correctly."""
-        assert map_icon("Cabin location", "", "", config) == "Cabin"
-        assert map_icon("Mountain hut", "", "", config) == "Cabin"
-        assert map_icon("Yurt site", "", "", config) == "Cabin"
+        """Cabin/hut/yurt keywords map to Shelter."""
+        assert map_icon("Cabin location", "", "", config) == "Shelter"
+        assert map_icon("Mountain hut", "", "", config) == "Shelter"
+        assert map_icon("Yurt site", "", "", config) == "Shelter"
 
     # -------------------------------------------------------------------------
     # TRAILHEAD KEYWORDS
@@ -477,3 +477,18 @@ class TestIconEmojiConfigRemoved:
             load_config(cfg)
 
         assert "icon_emojis" in str(e.value)
+
+
+def test_every_default_mapping_targets_a_real_onx_icon():
+    """Every icon Cairn can produce from its own default tables must be one of
+    onX's icon names. 'Cabin' used to slip through and exported as the
+    default pin."""
+    from cairn.core.config import (
+        DEFAULT_KEYWORD_MAP, DEFAULT_SYMBOL_MAP, get_all_onx_icons, load_config,
+    )
+
+    valid = set(get_all_onx_icons())
+    produced = set(DEFAULT_SYMBOL_MAP.values()) | set(DEFAULT_KEYWORD_MAP)
+    cfg = load_config(None)
+    produced |= set(getattr(cfg, "symbol_mappings", {}).values() if hasattr(cfg, "symbol_mappings") else [])
+    assert produced - valid == set(), f"not onX icons: {sorted(produced - valid)}"
