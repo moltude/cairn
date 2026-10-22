@@ -101,6 +101,9 @@ def test_dark_divide_lower_case_stroke_survives_with_its_case(dd):
     ("1A0000FF", ("#FF0000", 0.1)),     # CalTopo's default area fill
     ("440000FF", ("#FF0000", 0.27)),
     ("ffff0000", ("#0000ff", 1.0)),     # blue: BGR order
+    ("0000FF", ("#FF0000", 1.0)),       # six digits: no alpha -> solid (ENG-04)
+    ("00FF00", ("#00FF00", 1.0)),
+    ("0000F", (None, None)),            # five digits: invalid
     ("", (None, None)),
     ("red", (None, None)),
 ])

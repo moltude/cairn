@@ -490,7 +490,11 @@ Status: decided.
 - **CalTopo KML type folders** ("Points", "LineStrings", "Polygons"; 2016 "Markers", "Lines and
   Polygons") at the top level mean "no folder" and become **Unorganized**, matching GeoJSON. A
   user folder with one of those exact names is folded in too; accepted.
-- **Left as they are** (CalTopo never writes them): a 6-digit KML color with no alpha reads as
-  invalid (default blue); a placemark inside `Folder > Document` is dropped.
-- **Multi-part KML lines** (one placemark, several separate `<LineString>`s) become several lines
-  with the same name, because onX has no multi-part line. Explained to the owner; no change.
+- **6-digit KML colors** (`BBGGRR`, no alpha; CalTopo never writes them) are read as the color at
+  full opacity — a solid line — instead of invalid/default blue. (Revised by the owner the same day.)
+- **Left as is** (CalTopo never writes it): a placemark inside `Folder > Document` is dropped.
+- **Multi-part KML lines** (one placemark, several separate `<LineString>`s) become several onX
+  tracks with the same name. **Provisional, subject to revision on user feedback.** Alternative to
+  test: one GPX `<trk>` with one `<trkseg>` per part — a single entity in the GPX format; whether
+  onX keeps it as one Track with gaps, joins the gaps, or splits it is unknown. Include one in the
+  onX import test before deciding.

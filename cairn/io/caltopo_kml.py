@@ -73,7 +73,7 @@ CALTOPO_TYPE_FOLDERS = frozenset({"Points", "LineStrings", "Polygons", "Markers"
 MAX_FOLDER_DEPTH = 64
 
 _HEX6 = re.compile(r"^[0-9A-Fa-f]{6}$")
-_KML_COLOR = re.compile(r"^\s*([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})\s*$")
+_KML_COLOR = re.compile(r"^\s*([0-9A-Fa-f]{2})?([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})\s*$")
 _SCALE_SUFFIX = re.compile(r"#[0-9.]*$")
 
 
@@ -108,13 +108,15 @@ def kml_color(value: str) -> Tuple[Optional[str], Optional[float]]:
     """KML ``AABBGGRR`` -> (``#RRGGBB``, opacity 0-1 rounded to 2 places).
 
     The hex digits keep their case: CalTopo builds the KML colour by slicing its
-    GeoJSON hex string, so ``#ff0000`` comes back as ``#ff0000``. (None, None) for
-    anything that isn't eight hex digits.
+    GeoJSON hex string, so ``#ff0000`` comes back as ``#ff0000``. Six digits
+    (``BBGGRR``, no alpha -- CalTopo never writes this, other tools might) are
+    read as fully opaque (owner decision ENG-04). (None, None) for anything else.
     """
     m = _KML_COLOR.match(value or "")
     if not m:
         return None, None
     aa, bb, gg, rr = m.groups()
+    aa = aa or "ff"
     return f"#{rr}{gg}{bb}", round(int(aa, 16) / 255, 2)
 
 
