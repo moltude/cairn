@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>Edge Cases</name>
+  </metadata>
+  <rte>
+    <name>[r1i1] ZZTEST filled area</name>
+    <desc>Fill #FF00FF at opacity 0.3.</desc>
+    <type>Area</type>
+    <extensions>
+      <onx:color>rgba(255,0,255,1)</onx:color>
+      <onx:fill_color>rgba(255,0,255,0.3)</onx:fill_color>
+    </extensions>
+    <rtept lat="46.3" lon="-121.8"/>
+    <rtept lat="46.3" lon="-121.78"/>
+    <rtept lat="46.32" lon="-121.78"/>
+    <rtept lat="46.32" lon="-121.8"/>
+    <rtept lat="46.3" lon="-121.8"/>
+  </rte>
+</gpx>

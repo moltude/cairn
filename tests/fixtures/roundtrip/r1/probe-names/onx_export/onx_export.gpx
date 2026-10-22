@@ -1,0 +1,13 @@
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="onXmaps backcountry web"><metadata/><wpt lat="46.381" lon="-121.7"><name>ZZTEST r1 bang! at@ dollar$ pct% caret^ star*</name><desc>name=ZZTEST r1 bang! at@ dollar$ pct% caret^ star*
+notes=Name keeps ! @ $ % ^ *?
+id=52fb59ff-b3cf-48f4-a68c-206747365ff8
+color=rgba(255, 0, 0, 1)
+icon=Summit</desc><extensions><onx:color>rgba(255, 0, 0, 1)</onx:color><onx:icon>Summit</onx:icon></extensions></wpt><wpt lat="46.382" lon="-121.7"><name>ZZTEST r1 quote's "dq" (paren) &lt;lt&gt;</name><desc>name=ZZTEST r1 quote's "dq" (paren) &lt;lt&gt;
+notes=Name keeps quotes, parens, &lt; &gt;?
+id=5ad2a74c-6dc3-47cb-9d17-fb830b2556e5
+color=rgba(255, 0, 0, 1)
+icon=Summit</desc><extensions><onx:color>rgba(255, 0, 0, 1)</onx:color><onx:icon>Summit</onx:icon></extensions></wpt><wpt lat="46.38" lon="-121.7"><name>ZZTEST r1 hash #2 &amp; amp</name><desc>name=ZZTEST r1 hash #2 &amp; amp
+notes=Name keeps # and &amp;?
+id=fd1b99ab-42ff-4bf9-a5cd-e12fc81cf375
+color=rgba(255, 0, 0, 1)
+icon=Summit</desc><extensions><onx:color>rgba(255, 0, 0, 1)</onx:color><onx:icon>Summit</onx:icon></extensions></wpt></gpx>

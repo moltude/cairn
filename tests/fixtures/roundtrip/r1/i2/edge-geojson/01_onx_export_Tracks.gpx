@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>onx export</name>
+  </metadata>
+  <trk>
+    <name>[r1i2] ZZTEST dashed line</name>
+    <desc>CalTopo dash pattern.
+— edited r1i2</desc>
+    <extensions>
+      <onx:color>rgba(255,51,0,1)</onx:color>
+      <onx:style>solid</onx:style>
+      <onx:weight>6.0</onx:weight>
+    </extensions>
+    <trkseg>
+      <trkpt lat="46.27" lon="-121.95">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2714" lon="-121.946">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.27" lon="-121.944">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2714" lon="-121.94">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.27" lon="-121.938">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2714" lon="-121.934">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.27" lon="-121.932">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2714" lon="-121.928">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>[r1i2] ZZTEST line note 511</name>
+    <desc>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1i2</desc>
+    <extensions>
+      <onx:color>rgba(0,255,255,1)</onx:color>
+      <onx:style>dash</onx:style>
+      <onx:weight>6.0</onx:weight>
+    </extensions>
+    <trkseg>
+      <trkpt lat="46.254" lon="-121.95">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2554" lon="-121.946">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.254" lon="-121.944">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2554" lon="-121.94">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.254" lon="-121.938">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2554" lon="-121.934">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.254" lon="-121.932">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2554" lon="-121.928">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>[r1i2] ZZTEST line note 512</name>
+    <desc>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1i2</desc>
+    <extensions>
+      <onx:color>rgba(132,212,0,1)</onx:color>
+      <onx:style>dash</onx:style>
+      <onx:weight>6.0</onx:weight>
+    </extensions>
+    <trkseg>
+      <trkpt lat="46.258" lon="-121.95">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2594" lon="-121.946">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.258" lon="-121.944">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2594" lon="-121.94">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.258" lon="-121.938">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2594" lon="-121.934">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.258" lon="-121.932">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2594" lon="-121.928">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>[r1i2] ZZTEST line note 513</name>
+    <desc>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1i2</desc>
+    <extensions>
+      <onx:color>rgba(0,0,0,1)</onx:color>
+      <onx:style>dash</onx:style>
+      <onx:weight>6.0</onx:weight>
+    </extensions>
+    <trkseg>
+      <trkpt lat="46.262" lon="-121.95">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2634" lon="-121.946">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.262" lon="-121.944">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2634" lon="-121.94">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.262" lon="-121.938">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2634" lon="-121.934">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.262" lon="-121.932">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2634" lon="-121.928">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>[r1i2] ZZTEST line note 3000</name>
+    <desc>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near the
+— edited r1i2</desc>
+    <extensions>
+      <onx:color>rgba(0,255,255,1)</onx:color>
+      <onx:style>dash</onx:style>
+      <onx:weight>6.0</onx:weight>
+    </extensions>
+    <trkseg>
+      <trkpt lat="46.266" lon="-121.95">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2674" lon="-121.946">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.266" lon="-121.944">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2674" lon="-121.94">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.266" lon="-121.938">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2674" lon="-121.934">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.266" lon="-121.932">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2674" lon="-121.928">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>[r1i2] ZZTEST wide line</name>
+    <desc>CalTopo stroke-width 6.
+— edited r1i2</desc>
+    <extensions>
+      <onx:color>rgba(255,255,255,1)</onx:color>
+      <onx:style>dash</onx:style>
+      <onx:weight>4.0</onx:weight>
+    </extensions>
+    <trkseg>
+      <trkpt lat="46.274" lon="-121.95">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2754" lon="-121.946">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.274" lon="-121.944">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2754" lon="-121.94">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.274" lon="-121.938">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2754" lon="-121.934">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.274" lon="-121.932">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+      <trkpt lat="46.2754" lon="-121.928">
+        <ele>0.0</ele>
+        <time>2026-10-22T21:22:30.756Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

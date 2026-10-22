@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">
+  <metadata>
+    <name>onx test random</name>
+  </metadata>
+  <rte>
+    <name>[r1i1] Fire zone</name>
+    <desc>blue, center opacity</desc>
+    <type>Area</type>
+    <extensions>
+      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:fill_color>rgba(8,122,255,0)</onx:fill_color>
+    </extensions>
+    <rtept lat="46.3997546359621" lon="-121.65313770101447"/>
+    <rtept lat="46.40271409501781" lon="-121.63923312948127"/>
+    <rtept lat="46.39472318715248" lon="-121.63794566915412"/>
+    <rtept lat="46.39276967612307" lon="-121.64884616659064"/>
+    <rtept lat="46.39963625426088" lon="-121.65262271688361"/>
+    <rtept lat="46.3997546359621" lon="-121.65313770101447"/>
+  </rte>
+</gpx>
