@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" creator="CALTOPO" version="1.1"><metadata><name><![CDATA[caltopo_synthetic]]></name></metadata><wpt lat="46.1101" lon="-114.2701"><name>Camp #3 &amp; &lt;Lake&gt; spring</name><desc>Water: filter it &amp; boil it.
+
+Map: https://example.com/trail?a=1&amp;b=2#camp
+
+
+&lt; 2 mi from the TH; site #3 of 5 &gt; the rest</desc></wpt><wpt lat="46.1023" lon="-114.2602"><name>Trailhead lot</name><desc>Room for 6 cars.</desc></wpt><wpt lat="46.1302" lon="-114.2905"><name>North summit</name></wpt><wpt lat="46.1255" lon="-114.2851"><name>Cornice</name><desc>Avoid after noon.
+Looker's left is safer.</desc></wpt><wpt lat="46.115" lon="-114.275"><name>Plain red point</name></wpt><wpt lat="46.116" lon="-114.276"><name>Green flag</name></wpt><wpt lat="46.117" lon="-114.277"><name>Old cabin</name></wpt><wpt lat="46.118" lon="-114.278"><name>Point with no colour</name></wpt><trk><name>Red approach</name><desc>Section 1.
+Section 2.</desc><extensions><gpxx:TrackExtension><gpxx:DisplayColor>Red</gpxx:DisplayColor></gpxx:TrackExtension></extensions><trkseg><trkpt lat="46.1023" lon="-114.2602"><ele>1500.0</ele></trkpt><trkpt lat="46.106" lon="-114.265"><ele>1612.0</ele></trkpt><trkpt lat="46.1101" lon="-114.2701"><ele>1704.0</ele></trkpt></trkseg></trk><trk><name>Blue ridge</name><extensions><gpxx:TrackExtension><gpxx:DisplayColor>Blue</gpxx:DisplayColor></gpxx:TrackExtension></extensions><trkseg><trkpt lat="46.1101" lon="-114.2701"></trkpt><trkpt lat="46.12" lon="-114.28"></trkpt><trkpt lat="46.1302" lon="-114.2905"></trkpt></trkseg></trk><trk><name>Magenta ski line</name><extensions><gpxx:TrackExtension><gpxx:DisplayColor>Magenta</gpxx:DisplayColor></gpxx:TrackExtension></extensions><trkseg><trkpt lat="46.1302" lon="-114.2905"><ele>2210.5</ele></trkpt><trkpt lat="46.128" lon="-114.288"><ele>2150.25</ele></trkpt><trkpt lat="46.1255" lon="-114.2851"><ele>2088.0</ele></trkpt></trkseg></trk><trk><name>Green dashed skin track</name><desc>Dashed in CalTopo.</desc><trkseg><trkpt lat="46.1255" lon="-114.2851"></trkpt><trkpt lat="46.116" lon="-114.276"></trkpt></trkseg></trk><trk><name>Note test: a &lt;b&gt; &amp; #c</name><desc>Water: filter it &amp; boil it.
+
+Map: https://example.com/trail?a=1&amp;b=2#camp
+
+
+&lt; 2 mi from the TH; site #3 of 5 &gt; the rest</desc><trkseg><trkpt lat="46.116" lon="-114.276"></trkpt><trkpt lat="46.1101" lon="-114.2701"></trkpt></trkseg></trk><trk><name>Spur to cabin</name><extensions><gpxx:TrackExtension><gpxx:DisplayColor>Black</gpxx:DisplayColor></gpxx:TrackExtension></extensions><trkseg><trkpt lat="46.115" lon="-114.275"></trkpt><trkpt lat="46.117" lon="-114.277"></trkpt></trkseg></trk></gpx>

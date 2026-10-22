@@ -1,3 +1,5 @@
+# Web engine: imported by web/bridge.py and run in the browser via Pyodide.
+# Keep it free of terminal/UI imports (tests/test_web_engine_surface.py).
 """
 Merge utilities for combining multiple inputs into a single MapDocument.
 
@@ -46,7 +48,9 @@ def merge_onx_gpx_and_kml(
         oid = (
             getattr(item, "style", None) and getattr(item.style, "OnX_id", None)
         ) or None
-        if not oid:
+        # Part 2+ of a KML MultiGeometry shares the first part's onX id; it is a
+        # separate area, not a duplicate of the first, so it is always kept.
+        if not oid or item.extra.get("kml_part", 0) > 0:
             out.items.append(item)
             if trace is not None:
                 trace.emit(
@@ -184,9 +188,23 @@ def merge_onx_gpx_and_kml(
             continue
 
         if isinstance(item, Shape) and isinstance(existing, Shape):
-            # Shapes usually only exist in KML; if present in both, keep GPX but merge rings if missing.
-            if not existing.rings and item.rings:
+            # An onX Area is in both files: the GPX <rte type=Area> (outer ring only,
+            # since a route has no holes) and the KML Polygon (with innerBoundaryIs).
+            # Keep the GPX item, take the KML rings when they carry more (the holes),
+            # and fill any styling or notes the GPX side lacks.
+            if len(item.rings) > len(existing.rings):
                 existing.rings = item.rings
+            if not (existing.notes or "").strip() and (item.notes or "").strip():
+                existing.notes = item.notes
+            for attr in ("OnX_color_rgba", "OnX_style", "OnX_weight"):
+                if not (getattr(existing.style, attr) or "").strip() and (
+                    getattr(item.style, attr) or ""
+                ).strip():
+                    setattr(existing.style, attr, getattr(item.style, attr))
+            if not existing.style.extra.get("fill_color") and item.style.extra.get(
+                "fill_color"
+            ):
+                existing.style.extra["fill_color"] = item.style.extra["fill_color"]
             continue
 
     # Prefer base metadata but record that a merge occurred.

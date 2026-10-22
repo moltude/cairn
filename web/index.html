@@ -39,10 +39,10 @@
   </div>
   <div id="dropzone" class="drop-target">
     <svg class="drop-glyph" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14 M15 6v14"/></svg>
-    <span class="drop-title">Drop a CalTopo export</span>
-    <span class="drop-sub">.json or .geojson</span>
+    <span class="drop-title">Drop a CalTopo or onX export</span>
+    <span class="drop-sub">.json, .geojson, .gpx or .kml</span>
     <button id="pick" type="button" class="btn primary" disabled>Choose file…</button>
-    <input id="file" type="file" accept=".json,.geojson" hidden>
+    <input id="file" type="file" accept=".json,.geojson,.gpx,.kml" multiple hidden>
   </div>
 </main>
 
@@ -55,7 +55,7 @@
         <a class="linkbtn help-link" href="faq.html" target="_blank" rel="noopener">FAQ</a>
         <a class="linkbtn help-link" href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a></div>
       <div class="title-block">
-        <span class="label">CalTopo map</span>
+        <span id="map-label" class="label">CalTopo map</span>
         <h1 id="map-title"></h1>
       </div>
     </div>
@@ -70,7 +70,7 @@
     <div class="rail-foot">
       <span id="status-rail" class="status-slot"></span>
       <button id="export" type="button" class="btn primary big">Export</button>
-      <button type="button" class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over</button>
+      <button type="button" class="btn newmap" title="Clears this map and your edits. To combine several files, drop them together at the start.">Start over</button>
     </div>
   </aside>
 
@@ -87,6 +87,8 @@
         <button type="button" data-kind="shapes" aria-pressed="false">Areas</button>
       </div>
     </div>
+
+    <div id="source-notice" class="note source-notice hidden" role="note"></div>
 
     <div id="chips" class="chips hidden"></div>
 
@@ -116,7 +118,7 @@
     <div class="done-actions">
       <button id="download" type="button" class="btn primary big">Download</button>
       <button id="back" type="button" class="btn">Back</button>
-      <button type="button" class="btn newmap" title="Clears this map and your edits. Combining several CalTopo maps into one export isn't supported yet.">Start over</button>
+      <button type="button" class="btn newmap" title="Clears this map and your edits. To combine several files, drop them together at the start.">Start over</button>
     </div>
   </div>
   <div class="runbook-intro">
@@ -142,9 +144,14 @@
   <div class="modal-head"><h2 id="help-title">How to use Cairn</h2><button id="help-close" type="button" class="x" aria-label="Close" data-ui-icon="close"></button></div>
   <div class="help-body">
     <h3>1 · Export from CalTopo as GeoJSON</h3>
-    <p>On your CalTopo map choose <b>Export</b> and pick <b>GeoJSON</b>. It is the only CalTopo
-       format that keeps your folders, icons and colors — GPX and KML both discard them.
+    <p>On your CalTopo map choose <b>Export</b> and pick <b>GeoJSON</b>. It keeps everything.
+       CalTopo's <b>KML</b> works too: it keeps folders, icons and colors but not dashed lines.
        Drop that file here.</p>
+    <p>Cairn also opens <b>GPX</b>: a CalTopo GPX (names, notes and line colors, but no folders
+       or icons, which you can add here), or the GPX and KML you export from onX to clean up an
+       onX map. Drop the GPX and KML of one onX
+       export together; they become one folder. Several files dropped at once become one
+       folder each, named after the file.</p>
 
     <h3>2 · Review the icons</h3>
     <p>Cairn maps each CalTopo symbol to the closest onX icon, and shows each waypoint as the
@@ -189,13 +196,13 @@
       <tr><th>Icon</th><td>Yes, for waypoints. onX has 95; CalTopo has many more, so some map approximately.</td></tr>
       <tr><th>Color</th><td>Yes, snapped to onX's 10 waypoint colors (11 for lines).</td></tr>
       <tr><th>Folders</th><td>Yes — but only if you follow the import checklist.</td></tr>
-      <tr><th>Lines vs areas</th><td>Handled automatically: lines and tracks go to GPX, areas to KML.</td></tr>
+      <tr><th>Lines vs areas</th><td>Handled automatically: lines go to GPX as tracks, areas to GPX as onX areas with their color and fill. An area's holes aren't kept; the checklist lists those areas.</td></tr>
     </table>
 
     <h3>Good to know</h3>
     <ul>
       <li>Importing needs an onX <b>Premium or Elite</b> membership.</li>
-      <li>KML files (areas) can only be imported on the onX <b>Web Map</b>, not the phone app.</li>
+      <li>Import on the onX <b>Web Map</b> on a computer: that is where the new-folder checkbox is.</li>
       <li>An onX account holds <b>3,000 markups</b>; Cairn warns you if a map exceeds it.</li>
       <li>Your map never leaves this computer — the conversion runs entirely in your browser.</li>
       <li>The markers here are Cairn's own drawings, not onX's artwork; the icon <i>name</i> is

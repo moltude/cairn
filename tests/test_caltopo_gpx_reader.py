@@ -297,3 +297,77 @@ class TestOnxDefaults:
 
         rgba = ColorMapper.map_track_color("")
         assert rgba == "rgba(8,122,255,1)"  # Blue
+
+
+# --- Garmin DisplayColor and <sym> (roadmap Phase 7) -----------------------------------
+
+from cairn.io.caltopo_gpx import GARMIN_DISPLAY_COLORS  # noqa: E402
+
+_GPX_HEAD = ('<?xml version="1.0"?><gpx xmlns="http://www.topografix.com/GPX/1/1" '
+             'xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" creator="CALTOPO" '
+             'version="1.1">')
+
+
+def _gpx(tmp_path: Path, body: str):
+    p = tmp_path / "c.gpx"
+    p.write_text(_GPX_HEAD + body + "</gpx>", encoding="utf-8")
+    return parse_caltopo_gpx(p).folders["default"]
+
+
+def _trk(name: str, color: str = "") -> str:
+    ext = (f"<extensions><gpxx:TrackExtension><gpxx:DisplayColor>{color}</gpxx:DisplayColor>"
+           "</gpxx:TrackExtension></extensions>" if color else "")
+    return (f"<trk><name>{name}</name>{ext}<trkseg><trkpt lat=\"1\" lon=\"1\"/>"
+            "<trkpt lat=\"2\" lon=\"2\"/></trkseg></trk>")
+
+
+def test_garmin_table_is_the_schemas_16_colours():
+    # The DisplayColor_t enumeration in GpxExtensionsv3.xsd, minus Transparent.
+    assert sorted(GARMIN_DISPLAY_COLORS) == sorted([
+        "Black", "DarkRed", "DarkGreen", "DarkYellow", "DarkBlue", "DarkMagenta", "DarkCyan",
+        "LightGray", "DarkGray", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"])
+    # GPSBabel stores BGR; spot-check the byte order was flipped.
+    assert (GARMIN_DISPLAY_COLORS["DarkRed"], GARMIN_DISPLAY_COLORS["DarkBlue"],
+            GARMIN_DISPLAY_COLORS["Yellow"], GARMIN_DISPLAY_COLORS["Cyan"]) == (
+        "#8B0000", "#00008B", "#FFFF00", "#00FFFF")
+
+
+@pytest.mark.parametrize("name, rgb", sorted(GARMIN_DISPLAY_COLORS.items()))
+def test_track_display_color_becomes_stroke(tmp_path, name, rgb):
+    (t,) = _gpx(tmp_path, _trk("t", name))["tracks"]
+    assert t.stroke == rgb
+
+
+@pytest.mark.parametrize("value", ["", "Transparent", "red", "Chartreuse"])
+def test_missing_transparent_or_unknown_display_color_is_no_colour(tmp_path, value):
+    (t,) = _gpx(tmp_path, _trk("t", value))["tracks"]
+    assert t.stroke == ""
+
+
+def test_route_display_color_becomes_stroke(tmp_path):
+    body = ('<rte><name>r</name><extensions><gpxx:RouteExtension><gpxx:DisplayColor>Magenta'
+            '</gpxx:DisplayColor></gpxx:RouteExtension></extensions>'
+            '<rtept lat="1" lon="1"/><rtept lat="2" lon="2"/></rte>')
+    (r,) = _gpx(tmp_path, body)["tracks"]
+    assert r.stroke == "#FF00FF"
+
+
+def test_waypoint_sym_becomes_marker_symbol(tmp_path):
+    body = ('<wpt lat="1" lon="1"><name>a</name><sym>Campground</sym></wpt>'
+            '<wpt lat="1" lon="1"><name>b</name></wpt>')
+    a, b = _gpx(tmp_path, body)["waypoints"]
+    assert (a.symbol, b.symbol) == ("Campground", "")
+    assert (a.color, b.color) == ("", "")
+
+
+def test_dark_divide_gpx_track_colours_and_notes():
+    dd = Path(__file__).parent / "fixtures" / "dark_divide_100" / "caltopo"
+    folder = parse_caltopo_gpx(dd / "2027_Dark_Divide_100_Mile_Endurance_Run.gpx").folders["default"]
+    strokes = {t.title: t.stroke for t in folder["tracks"]}
+    # Every line is red in CalTopo; the one written as lower-case "#ff0000"
+    # has no DisplayColor in the GPX.
+    assert strokes.pop("10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS") == ""
+    assert set(strokes.values()) == {"#FF0000"} and len(strokes) == 11
+    # CalTopo GPX does carry notes, newlines included.
+    notes = [f.description for k in ("waypoints", "tracks") for f in folder[k]]
+    assert sum("\n" in n for n in notes) == 21

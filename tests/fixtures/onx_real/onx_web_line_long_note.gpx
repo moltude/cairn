@@ -1,0 +1,42 @@
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="onXmaps backcountry web"><metadata/><rte><name xmlns="http://www.topografix.com/GPX/1/1">Route 10/22/26 13:47</name><desc xmlns="http://www.topografix.com/GPX/1/1">name=Route 10/22/26 13:47
+notes=
+Yes. Each waypoint's or line's notes go into the GPX `&lt;desc&gt;`. HTML is stripped, and an empty note means no `&lt;desc&gt;` at all. Area notes go into the KML `&lt;descriptio
+n&gt;`. Multi-line notes are kept: `&lt;br&gt;`, paragraphs, `&lt;div&gt;`s and list items become real line breaks. This is true whether the map came in as CalTopo GeoJSON, KML or
+ GPX: all three carry the same note text.
+Yes. Each waypoint's or line's notes go into the GPX `&lt;desc&gt;`. HTML is stripped, and an empty note means no `&lt;desc&gt;` at all. Area notes go into the area's GPX `&lt;des
+c&gt;` the same way. Multi-line notes are kept: `&lt;br&gt;`, paragraphs, `&lt;div&gt;`s and list items become real line breaks. This is true whether the map came in as CalTopo Ge
+oJSON, KML or GPX: all three carry the same note text.
+
+Only real HTML tags are removed (CalTopo descriptions can contain HTML), so plain-text angle brackets such as `&lt; 2 mi to camp, &gt; 1 mi to water` or `Bring &lt;2L water&gt;
+` survive. One caveat: a note that contains something tag-shaped, like `&lt;Lake&gt;`, is still treated as a tag. More than one blank line in a row becomes one.
+
+Two things are unverified:
+- That onX shows `&lt;desc&gt;` as the markup's Notes. This is only the owner's observation.
+- **Whether onX keeps those line breaks is unknown.** It's an open item in the project's to-do list, and nobody has run that test import yet. Whether onX reads KML
+descriptions on areas is also unverified.
+- **Whether onX keeps those line breaks is unknown.** It's an open item in the project's to-do list. In a real import on 2026-10-22, multi-line track notes came thr
+ough intact, but onX also showed a `&lt;desc&gt;` written as `key=value` lines verbatim as the note, which is why Cairn's `&lt;desc&gt;` holds only your note text.
+
+### How do folders work? Why is there a runbook?
+
+
+
+There are up to three kinds of file per folder, one each for waypoints, tracks and areas. They all go into the same import, so they should land in one onX folder. T
+hat comes from onX's Web Map code (per project docs, Aug 2026). A real two-file import that would confirm it hasn't been run yet.
+
+onX's limit is under 4 MB per file (per project docs, Aug 2026). Cairn splits any waypoint or track GPX over 3.75 MiB into `_1.gpx`, `_2.gpx` and so on, without eve
+r cutting an item in half. If a single item is bigger than the cap, it's written on its own anyway, and the app doesn't warn you. **KML area files are never split**
+, so a huge areas file could go over the limit.
+onX's limit is under 4 MB per file (per project docs, Aug 2026). Cairn splits any waypoint or track GPX over 3.75 MiB into `_1.gpx`, `_2.gpx` and so on, without eve
+r cutting an item in half. Area GPX files are split the same way. If a single item is bigger than the cap, it's written on its own anyway, and the app doesn't warn
+you.
+… 31 more lines
+Allowed by auto mode classifier
+
+⏺ Bash(cd /Users/scott/_code/cairn &amp;&amp; grep -rn "areas to KML\|KML files (areas)\|Web Map&lt;/b&gt;, not the phone" tests/ web/*.js web/*.py docs/*.md 2&gt;/dev/null | head; pyt…)
+25:   exactly what to rename each folder to. KML-containing batches are flagged, be
+id=01M5JJFCS6D268MR45Q0X3HWC9
+type=Line
+color=rgba(0,255,255,1)
+style=dash
+weight=6.0</desc><type>Line</type><extensions><onx:color>rgba(0,255,255,1)</onx:color><onx:style>dash</onx:style><onx:weight>6.0</onx:weight></extensions><rtept lat="46.94794" lon="-113.99563"/><rtept lat="46.95094" lon="-113.97961"/><rtept lat="46.95984" lon="-113.98228"/></rte></gpx>

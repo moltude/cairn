@@ -337,13 +337,15 @@ def test_export_manifest_batch_and_markup_counts_match_totals(loaded: Page):
     assert sum(entry["count"] for entry in manifest) == totals["items"]
 
 
-def test_export_produces_a_readable_zip_with_gpx_and_kml(loaded: Page):
+def test_export_produces_a_readable_zip_of_gpx_with_areas_as_gpx(loaded: Page):
     zip_bytes = export_zip_bytes(loaded)
     zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
 
     names = zf.namelist()
     assert any(n.endswith(".gpx") for n in names)
-    assert any(n.endswith(".kml") for n in names)
+    # Areas are onX Area routes in GPX (ENG-05): onX ignores KML area colours.
+    assert any(n.endswith("_Areas.gpx") for n in names)
+    assert not [n for n in names if n.endswith(".kml")]
     assert "RUNBOOK.md" in names
     # Every member must actually be readable/valid (CRC checks out).
     assert zf.testzip() is None
@@ -354,7 +356,7 @@ def test_export_produces_a_readable_zip_with_gpx_and_kml(loaded: Page):
 # ---------------------------------------------------------------------------
 
 
-def test_runbook_names_each_folder_and_flags_kml_batches(loaded: Page):
+def test_runbook_names_each_folder_and_has_no_kml_warning(loaded: Page):
     zip_bytes = export_zip_bytes(loaded)
     manifest = loaded.evaluate("MANIFEST")
     zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
@@ -364,12 +366,11 @@ def test_runbook_names_each_folder_and_flags_kml_batches(loaded: Page):
         heading = f"### {entry['n']}. {entry['folder']}"
         assert heading in runbook, f"missing runbook heading: {heading!r}"
 
-    kml_batches = sum(1 for e in manifest if any(f["kml"] for f in e["files"]))
-    if kml_batches:
-        assert "KML" in runbook
-        assert f"{kml_batches} of these batches contain KML" in runbook
-    else:
-        assert "of these batches contain KML" not in runbook
+    # Areas no longer go out as KML (ENG-05), so nothing triggers the
+    # Web-Map-only KML warning, in RUNBOOK.md or on screen.
+    assert not any(f["kml"] for e in manifest for f in e["files"])
+    assert "KML" not in runbook
+    assert "KML" not in loaded.locator("#runbook").inner_text()
 
 
 # ---------------------------------------------------------------------------
@@ -607,8 +608,8 @@ def test_excluded_items_are_left_out_of_the_export(fresh_page):
     _set_type(fresh_page, "")
     fresh_page.wait_for_timeout(300)
     zf = _export_zip(fresh_page)
-    kml = [n for n in zf.namelist() if n.endswith(".kml")]
-    assert kml == [], f"excluded areas still exported: {kml}"
+    areas = [n for n in zf.namelist() if n.endswith((".kml", "_Areas.gpx"))]
+    assert areas == [], f"excluded areas still exported: {areas}"
 
 
 def test_description_edit_reaches_the_exported_gpx(fresh_page):
@@ -1212,3 +1213,281 @@ def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
     text = fresh_page.locator("#runbook").inner_text()
     assert "1 item could not be exported" in text
     assert "1 of 2 were written" in text
+
+
+# ---------------------------------------------------------------------------
+# Roadmap Phase 3: GPX/KML input. Every test here runs under the ENFORCED CSP
+# (no bypass_csp), so only CSP-safe waits are used -- no evaluate, no
+# wait_for_function, no window.__cairn* flags -- and any CSP console message
+# fails the test.
+# ---------------------------------------------------------------------------
+
+FX_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+ONX_PAIR = [FX_DIR / "onx_dialect" / "onx_dialect.gpx", FX_DIR / "onx_dialect" / "onx_dialect.kml"]
+CALTOPO_GPX = FX_DIR / "bitterroots" / "bitterroots_subet.gpx"
+CALTOPO_NOTICE = ("CalTopo's GPX has no folders, icons or waypoint colors. "
+                  "Its GeoJSON or KML export keeps them.")
+
+
+@pytest.fixture()
+def csp_page(browser):
+    """A booted page in a context that enforces the production CSP."""
+    ctx = browser.new_context(accept_downloads=True)  # deliberately no bypass_csp
+    page = ctx.new_page()
+    violations = []
+    page.on("console", lambda m: violations.append(m.text)
+            if "Content Security Policy" in m.text else None)
+    page.goto(f"{BASE_URL}/index.html")
+    expect(page.locator("#status")).to_contain_text("Ready", timeout=60000)
+    yield page
+    ctx.close()
+    assert not violations, f"CSP violations: {violations}"
+
+
+def _load_files(page: Page, paths) -> None:
+    page.set_input_files("#file", [str(p) for p in paths])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+
+
+def test_file_input_accepts_gpx_kml_and_several_files(csp_page: Page):
+    inp = csp_page.locator("#file")
+    assert inp.get_attribute("accept") == ".json,.geojson,.gpx,.kml"
+    assert inp.get_attribute("multiple") is not None
+    expect(csp_page.locator(".drop-sub")).to_have_text(".json, .geojson, .gpx or .kml")
+
+
+def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page):
+    page = csp_page
+    _load_files(page, ONX_PAIR)
+    # The pair merged: ONE folder, named from the file, in the rail and the list.
+    expect(page.locator(".folder")).to_have_count(1)
+    expect(page.locator(".folder h2")).to_have_text("onx dialect")
+    expect(page.locator("#folder-facets .facet-btn")).to_have_text(["All", "onx dialect8"])
+    # Title loses .gpx; the label says whose map it is; no CalTopo notice.
+    expect(page.locator("#map-title")).to_have_text("onx dialect")
+    expect(page.locator("#map-label")).to_have_text("onX map")
+    expect(page.locator("#source-notice")).to_be_hidden()
+    # 3 waypoints, 2 lines (a Track and a Line), 3 areas (a hole-y one + 2 parts).
+    expect(page.locator(f"{ROW} .icon-btn")).to_have_count(3)
+    expect(page.locator(f"{ROW} .line-btn .icon-name")).to_have_text(
+        ["Track", "Line", "Area", "Area", "Area"])
+    # onX's own icons, shown unchanged, explained, and none needing attention.
+    expect(page.locator(f"{ROW} .icon-btn .icon-name")).to_have_text(
+        ["Climbing", "Campsite", "Hazard"])
+    for i in (0, 2):
+        expect(page.locator(f"{ROW} .icon-btn").nth(i)).to_have_attribute(
+            "title", "Kept from your onX file.")
+    expect(page.locator(f"{ROW}.attention")).to_have_count(0)
+    # The fixture's "Campsite" isn't in onX's icon list: kept, but marked and explained.
+    expect(page.locator(f"{ROW} .icon-name.unknown-icon")).to_have_text(["Campsite"])
+    expect(page.locator(f"{ROW} .icon-btn").nth(1)).to_have_attribute(
+        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which isn’t in"))
+    # The lines' color came from the file too.
+    expect(page.locator(f"{ROW} .line-btn").first).to_have_attribute(
+        "title", re.compile(r"Kept from your onX file\.$"))
+    # The type filter keeps the one word "Lines" (UI-18) and still finds the Track.
+    page.click('#type-filter [data-kind="tracks"]')
+    expect(page.locator(ROW)).to_have_count(2)
+
+
+def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
+    page = csp_page
+    _load_files(page, ONX_PAIR)
+    page.click("#export")
+    expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+    expect(page.locator(".rb-step")).to_have_count(1)
+    expect(page.locator(".rb-count")).to_have_text("8 markups")
+    with page.expect_download() as dl:
+        page.click("#download")
+    zf = zipfile.ZipFile(dl.value.path())
+    assert sorted(zf.namelist()) == [
+        "01_onx_dialect/onx_dialect_Areas.gpx",
+        "01_onx_dialect/onx_dialect_Tracks.gpx",
+        "01_onx_dialect/onx_dialect_Waypoints.gpx",
+        "RUNBOOK.md",
+    ]
+    wpts = zf.read("01_onx_dialect/onx_dialect_Waypoints.gpx").decode()
+    # The writer sorts by name (Camp & water, Main Wall, Slide obs).
+    assert re.findall(r"<onx:icon>([^<]*)</onx:icon>", wpts) == ["Campsite", "Climbing", "Hazard"]
+    assert zf.read("01_onx_dialect/onx_dialect_Tracks.gpx").decode().count("<trk>") == 2
+    areas = zf.read("01_onx_dialect/onx_dialect_Areas.gpx").decode()
+    assert areas.count("<rte>") == 3 and areas.count("<type>Area</type>") == 3
+    runbook = zf.read("RUNBOOK.md").decode()
+    assert "Rename it to:** `onx dialect`" in runbook
+    # The KML's holed polygon can't be an onX area with its hole: reported.
+    assert "### Holes not kept in onX" in runbook and "- `Hunt unit`  (onx dialect)" in runbook
+
+
+def test_caltopo_gpx_shows_the_geojson_notice(csp_page: Page):
+    page = csp_page
+    _load_files(page, [CALTOPO_GPX])
+    expect(page.locator("#source-notice")).to_be_visible()
+    expect(page.locator("#source-notice")).to_have_text(CALTOPO_NOTICE)
+    expect(page.locator("#map-title")).to_have_text("bitterroots subet")
+    expect(page.locator("#map-label")).to_have_text("CalTopo map")
+    expect(page.locator(".folder h2")).to_have_text("bitterroots subet")
+    expect(page.locator(ROW)).to_have_count(10)
+
+
+def test_several_files_become_one_folder_each_and_start_over_clears_the_notice(csp_page: Page):
+    page = csp_page
+    rattlesnake = FX_DIR / "rattlesnake_test_waypoints.gpx"
+    _load_files(page, [*ONX_PAIR, CALTOPO_GPX, rattlesnake])
+    expect(page.locator(".folder h2")).to_have_text(
+        ["rattlesnake test waypoints", "bitterroots subet", "onx dialect"])
+    expect(page.locator("#map-title")).to_have_text("onx dialect + 2 more")
+    expect(page.locator("#map-label")).to_have_text("Map")
+    expect(page.locator("#source-notice")).to_have_text(CALTOPO_NOTICE)
+    # Start over goes back to an empty drop screen; it never adds (UI-12, UI-21).
+    page.locator("#edit-stage .newmap").click()
+    page.click("#confirm .confirm-actions button:text-is('Start over')")
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    expect(page.locator("#source-notice")).to_be_hidden()
+    _load_files(page, ONX_PAIR)
+    expect(page.locator(".folder")).to_have_count(1)
+    expect(page.locator("#source-notice")).to_be_hidden()
+
+
+def test_bitterroots_geojson_still_reads_as_a_caltopo_map_without_the_notice(csp_page: Page):
+    page = csp_page
+    _load_files(page, [FIXTURE])
+    expect(page.locator("#map-title")).to_have_text("Bitterroots (Complete)")
+    expect(page.locator("#map-label")).to_have_text("CalTopo map")
+    expect(page.locator("#source-notice")).to_be_hidden()
+    expect(page.locator(".folder")).to_have_count(EXPECTED_TOTALS["folders"])
+
+
+# --- review fixes: an input file's icon names and markup are data, not code ---------
+
+_ONX_GPX_HEAD = ('<?xml version="1.0" encoding="UTF-8"?>\n<gpx xmlns:onx="https://wwww.onxmaps.com/" '
+                 'xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="onXmaps backcountry web">\n')
+
+
+def _onx_wpt(i: int, name: str, icon: str, notes: str = "") -> str:
+    return (f'<wpt lat="46.{i}" lon="-114.{i}"><name>{name}</name><desc>name={name}\nnotes={notes}\n'
+            f'id=id-{i}\ncolor=rgba(255,51,0,1)\nicon={icon}</desc><extensions>'
+            f'<onx:color>rgba(255,51,0,1)</onx:color><onx:icon>{icon}</onx:icon></extensions></wpt>\n')
+
+
+def _gpx_payload(name: str, wpts: str) -> dict:
+    return {"name": name, "mimeType": "application/gpx+xml",
+            "buffer": (_ONX_GPX_HEAD + wpts + "</gpx>\n").encode("utf-8")}
+
+
+def test_icon_names_that_are_object_prototype_keys_still_render(csp_page: Page):
+    """icons.js looked glyphs up with ONX_GLYPHS[icon]: an onX file whose icon was
+    "constructor" or "toString" found Object.prototype's function, and the render
+    threw -- the whole file failed to open ("Cannot read properties of undefined")."""
+    page = csp_page
+    names = ["constructor", "toString", "__proto__", "hasOwnProperty"]
+    page.set_input_files("#file", files=[_gpx_payload(
+        "proto.gpx", "".join(_onx_wpt(i + 1, f"P{i}", n) for i, n in enumerate(names)))])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    expect(page.locator(f"{ROW} .icon-btn .icon-name")).to_have_text(names)
+
+
+def test_gpx_names_notes_icons_and_filename_render_as_text_not_html(fresh_page: Page):
+    """The GPX twin of test_map_content_is_rendered_as_text_not_html: markup in a
+    GPX <name>, its notes, its onX icon and the file's own name stays literal text
+    in the rows, the folder heading, the title, the rail and the icon editor."""
+    page = fresh_page
+    payload = '<img src=x id=pwn onerror="window.__pwned=1">'
+    xml = payload.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    page.set_input_files("#file", files=[_gpx_payload(
+        payload + ".gpx", _onx_wpt(1, "Name " + xml, xml, notes="Note " + xml))])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    page.locator("#folders .icon-btn").first.click()
+    assert page.locator("#pwn").count() == 0
+    assert page.evaluate("() => window.__pwned === undefined")
+    # (The note goes in too, as a sink to exercise; its tags are stripped by
+    # strip_html on the way in, so its text isn't asserted.)
+    assert page.locator(f"{ROW} .icon-name").inner_text() == payload
+    assert page.locator(f"{ROW} .name-in").input_value() == "Name " + payload
+    # The title undoes CalTopo's filename underscores, so "__pwned" reads " pwned".
+    assert page.locator("#map-title").inner_text().startswith("<img src=x id=pwn onerror=")
+    assert payload in page.locator("#icon-facets").inner_text()
+    assert payload in page.locator("#mark-pop").inner_text()
+
+
+# ---------------------------------------------------------------------------
+# CalTopo KML and GPX (roadmap Phase 7)
+# ---------------------------------------------------------------------------
+
+CALTOPO_SYN = FX_DIR / "caltopo_synthetic"
+
+
+def _row(page: Page, name: str):
+    box = page.get_by_role("checkbox", name=f"Select {name}", exact=True)
+    return page.locator(ROW, has=box)
+
+
+def _wpts(gpx: str) -> dict:
+    """name -> (onx:icon, onx:color) for every <wpt> in a Cairn GPX."""
+    import html
+    out = {}
+    for block in re.findall(r"<wpt\b.*?</wpt>", gpx, flags=re.S):
+        name = html.unescape(re.search(r"<name>(.*?)</name>", block, flags=re.S).group(1))
+        icon = re.search(r"<onx:icon>(.*?)</onx:icon>", block)
+        color = re.search(r"<onx:color>(.*?)</onx:color>", block)
+        out[name] = (icon and icon.group(1), color and color.group(1))
+    return out
+
+
+def test_caltopo_kml_loads_with_its_folders_and_no_notice(csp_page: Page):
+    page = csp_page
+    _load_files(page, [CALTOPO_SYN / "caltopo_synthetic.kml"])
+    expect(page.locator("#map-label")).to_have_text("CalTopo map")
+    expect(page.locator("#source-notice")).to_be_hidden()
+    expect(page.locator(".folder h2")).to_have_text(
+        ["Camps & Water #1", "Routes", "Areas", "Routes / Spur lines"])
+    # The CalTopo symbol mapped to an onX icon, as it does from the GeoJSON.
+    expect(_row(page, "Trailhead lot").locator(".icon-btn .icon-name")).to_have_text("Parking")
+
+
+def test_caltopo_gpx_icons_and_colors_set_in_cairn_reach_the_exported_gpx(csp_page: Page):
+    """Additive icons: a CalTopo GPX carries no icons or waypoint colors, so its
+    waypoints arrive as name guesses or the default pin. Icons and colors set in
+    Cairn -- one waypoint through the marker popover, two through the bulk
+    dialog -- are written to the export as onx:icon / onx:color."""
+    page = csp_page
+    _load_files(page, [CALTOPO_SYN / "caltopo_synthetic.gpx"])
+    expect(page.locator("#source-notice")).to_have_text(CALTOPO_NOTICE)
+    expect(page.locator(".folder h2")).to_have_text(["caltopo synthetic"])
+    # Nothing in the GPX said "danger" or "camping": one is a default pin, the
+    # other a guess from "spring" in its name.
+    expect(_row(page, "Cornice").locator(".icon-btn")).to_have_text("Default pin")
+    expect(_row(page, "Camp #3 & <Lake> spring").locator(".icon-btn")).to_have_text("Water Source")
+
+    # One waypoint, through the marker popover.
+    _row(page, "Cornice").locator(".icon-btn").click()
+    pop = page.locator("#mark-pop")
+    pop.locator(".icon-search").fill("hazard")
+    pop.locator('.icon-pick[data-icon="Hazard"]').click()
+    pop.locator('.swatch-btn[aria-label="Red-Orange"]').click()
+    page.click("#pop-apply")
+    expect(pop).to_be_hidden()
+    expect(_row(page, "Cornice").locator(".icon-btn .icon-name")).to_have_text("Hazard")
+
+    # Two waypoints, through the bulk dialog.
+    for name in ("Camp #3 & <Lake> spring", "Plain red point"):
+        _row(page, name).locator(".sel-box").check()
+    page.click("#bulk-icon")
+    page.click('#mark-dialog .icon-pick[data-icon="Camp Backcountry"]')
+    page.locator('#mark-dialog .swatch-btn[aria-label="Yellow"]').click()
+    page.click("#bulk-apply")
+    expect(page.locator("#mark-modal")).to_be_hidden()
+
+    page.click("#export")
+    expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+    with page.expect_download() as dl:
+        page.click("#download")
+    zf = zipfile.ZipFile(dl.value.path())
+    (wpt_file,) = [n for n in zf.namelist() if n.endswith("_Waypoints.gpx")]
+    got = _wpts(zf.read(wpt_file).decode())
+    assert got["Cornice"] == ("Hazard", "rgba(255,51,0,1)")
+    # onX-unsafe characters are removed from names on export (P5, RUNBOOK lists them).
+    assert got["Camp 3 <Lake> spring"] == ("Camp Backcountry", "rgba(255,255,0,1)")
+    assert got["Plain red point"] == ("Camp Backcountry", "rgba(255,255,0,1)")
+    # The rest keep what Cairn chose at load, still written as onX styling.
+    assert got["Point with no colour"][0] == "Location"
+    assert all(icon and color for icon, color in got.values())

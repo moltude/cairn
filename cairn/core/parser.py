@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 import json
-from cairn.utils.utils import strip_html
+from cairn.utils.utils import PLAIN_NOTES_KEY, clean_notes, strip_html
 
 # Name of the group for items not in any CalTopo folder. PROVISIONAL label --
 # a product decision still under review (see docs/design/DECISIONS.md UI-10).
@@ -33,8 +33,12 @@ class ParsedFeature:
         self.properties = props if isinstance(props, dict) else {}
 
         # Extract common properties
-        self.title = self.properties.get("title", "Untitled")
-        self.description = strip_html(self.properties.get("description", ""))
+        # CalTopo keeps a title's trailing space in GeoJSON but not in KML/GPX;
+        # strip it so the three formats agree (caltopo-random fixture).
+        title = self.properties.get("title", "Untitled")
+        self.title = title.strip() if isinstance(title, str) else title
+        self.description = clean_notes(self.properties.get("description", ""),
+                                       bool(self.properties.get(PLAIN_NOTES_KEY)))
         self.class_type = self.properties.get("class", "Unknown")
         self.color = self.properties.get("marker-color") or self.properties.get(
             "stroke", ""
@@ -144,6 +148,33 @@ class ParsedData:
         return [(fid, data["name"]) for fid, data in self.folders.items()]
 
 
+def _split_multipolygon(feature_dict: Dict[str, Any]) -> List[ParsedFeature]:
+    """One Polygon ParsedFeature per part of a MultiPolygon feature.
+
+    Nothing downstream handles MultiPolygon (is_shape() wants a Polygon, and onX
+    areas are single polygons), so it used to be dropped without a count. Each part
+    keeps the feature's properties and title (so it stays in the same folder with
+    the same name, colour and notes); the first part keeps the id, later parts get
+    "<id>:part<n>". A part with no rings is skipped; a non-list coordinates value
+    yields nothing.
+    """
+    coords = (feature_dict.get("geometry") or {}).get("coordinates")
+    if not isinstance(coords, list):
+        return []
+    base_id = feature_dict.get("id", "")
+    out: List[ParsedFeature] = []
+    for polygon in coords:
+        if not isinstance(polygon, list) or not polygon:
+            continue
+        part = dict(feature_dict)
+        part["properties"] = dict(feature_dict.get("properties") or {})
+        part["geometry"] = {"type": "Polygon", "coordinates": polygon}
+        if out:
+            part["id"] = f"{base_id}:part{len(out) + 1}"
+        out.append(ParsedFeature(part))
+    return out
+
+
 def parse_geojson(filepath: Path) -> ParsedData:
     """
     Parse a CalTopo GeoJSON export file.
@@ -224,6 +255,8 @@ def parse_geojson(filepath: Path) -> ParsedData:
         if feature.is_folder():
             folder_features.append(feature)
             parsed_data.add_folder(feature.id, feature.title)
+        elif feature.geometry_type == "MultiPolygon":
+            non_folder_features.extend(_split_multipolygon(feature_dict))
         else:
             non_folder_features.append(feature)
 

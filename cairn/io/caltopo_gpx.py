@@ -1,19 +1,29 @@
+# Web engine: imported by web/bridge.py and run in the browser via Pyodide.
+# Keep it free of terminal/UI imports (tests/test_web_engine_surface.py).
 """
 CalTopo GPX adapter.
 
 Reads a CalTopo-exported GPX file into the ParsedData structure used by the TUI.
 
-Important notes:
-- CalTopo GPX exports contain ONLY coordinates and names
-- NO icon/symbol information (no <sym> element)
-- NO color information (no extensions)
-- NO folder structure
-- NO description text (usually)
+What a CalTopo GPX carries (verified on the Dark Divide 100 export and 60 public
+CalTopo GPX files, 2026-10-22; see tests/fixtures/caltopo_synthetic/README.md):
+- names and coordinates, track <ele> (CalTopo fills it in), and <desc> with the
+  CalTopo note verbatim, newlines included (Dark Divide: 21 multi-line notes);
+- a track's colour as Garmin's ``<gpxx:TrackExtension><gpxx:DisplayColor>``, one
+  of 16 names (seen: Red, Magenta, DarkBlue). It is missing on some tracks: in
+  Dark Divide exactly on the one line whose CalTopo colour is the lower-case
+  ``#ff0000``, so CalTopo apparently only writes a name for an exact match;
+- NO folders, NO waypoint colour (Garmin's schema has no DisplayColor for a
+  waypoint), NO <sym> (none in 61 files), NO line pattern or width.
 
 This parser produces ParsedData with:
-- A single default folder named after the file
-- Waypoints with empty symbol/color (triggers keyword mapping and OnX defaults)
-- Tracks/routes with empty color (uses OnX default blue)
+- a single default folder named after the file;
+- waypoints with an empty symbol (keyword mapping, then the default pin) unless a
+  <sym> is present -- other exporters write one, and it is read as GeoJSON's
+  marker-symbol so the same symbol rules apply;
+- tracks/routes whose DisplayColor, when present, becomes ``stroke`` (the RGB in
+  GARMIN_DISPLAY_COLORS), so onX's nearest-colour rule applies as it does to
+  GeoJSON's stroke; without one, the default blue.
 """
 
 from __future__ import annotations
@@ -28,7 +38,48 @@ from cairn.utils.utils import strip_html
 
 # GPX 1.1 namespace
 _GPX_NS = "http://www.topografix.com/GPX/1/1"
-_NS = {"gpx": _GPX_NS}
+_GPXX_NS = "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
+_NS = {"gpx": _GPX_NS, "gpxx": _GPXX_NS}
+
+# Garmin's DisplayColor_t, name -> RGB. The 17 names (16 colours + Transparent)
+# are the enumeration in Garmin's schema,
+# https://www8.garmin.com/xmlschemas/GpxExtensionsv3.xsd (DisplayColor_t), which
+# defines no RGB. The RGB values are GPSBabel's garmin_tables.cc gt_colors
+# (https://github.com/GPSBabel/gpsbabel/blob/master/garmin_tables.cc), which
+# stores them as 0xBBGGRR: "Red" 0x0000FF is #FF0000, "DarkRed" 0x00008B is
+# #8B0000 -- the X11/CSS colours of the same names ("Green" is CSS green,
+# #008000; CSS has no DarkYellow, GPSBabel uses #8B8B00). Transparent carries
+# no colour.
+GARMIN_DISPLAY_COLORS = {
+    "Black": "#000000",
+    "DarkRed": "#8B0000",
+    "DarkGreen": "#006400",
+    "DarkYellow": "#8B8B00",
+    "DarkBlue": "#00008B",
+    "DarkMagenta": "#8B008B",
+    "DarkCyan": "#008B8B",
+    "LightGray": "#D3D3D3",
+    "DarkGray": "#A9A9A9",
+    "Red": "#FF0000",
+    "Green": "#008000",
+    "Yellow": "#FFFF00",
+    "Blue": "#0000FF",
+    "Magenta": "#FF00FF",
+    "Cyan": "#00FFFF",
+    "White": "#FFFFFF",
+}
+
+
+def _display_color(elem: ET.Element) -> str:
+    """``#RRGGBB`` from a Garmin DisplayColor anywhere in elem's <extensions>
+    (TrackExtension or RouteExtension; read under a waypoint too, though the
+    schema doesn't define one there), else "". Unknown names and Transparent
+    give ""."""
+    ext = elem.find("gpx:extensions", _NS)
+    if ext is None:
+        return ""
+    dc = ext.find(".//gpxx:DisplayColor", _NS)
+    return GARMIN_DISPLAY_COLORS.get(_text(dc), "")
 
 
 def _text(elem: Optional[ET.Element]) -> str:
@@ -36,6 +87,22 @@ def _text(elem: Optional[ET.Element]) -> str:
     if elem is None or elem.text is None:
         return ""
     return elem.text.strip()
+
+
+def _ele(pt: ET.Element) -> List[float]:
+    """[ele] when the point has a usable <ele>, else [].
+
+    A missing elevation stays missing: it used to become 0, which the GPX writer
+    then emitted as <ele>0</ele>, inventing sea level. A malformed <ele> is
+    treated as missing rather than dropping the point.
+    """
+    text = _text(pt.find("gpx:ele", _NS))
+    if not text:
+        return []
+    try:
+        return [float(text)]
+    except ValueError:
+        return []
 
 
 def _parse_waypoint(wpt: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
@@ -57,8 +124,8 @@ def _parse_waypoint(wpt: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
     name = _text(wpt.find("gpx:name", _NS))
     desc = _text(wpt.find("gpx:desc", _NS)) or _text(wpt.find("gpx:cmt", _NS))
 
-    # CalTopo GPX does NOT include <sym> or color extensions
-    # We explicitly set empty values to trigger OnX defaults (Location icon, Blue color)
+    # CalTopo writes neither <sym> nor a waypoint colour; other exporters may.
+    # Empty values trigger the keyword mapping and onX defaults.
 
     return {
         "type": "Feature",
@@ -71,8 +138,8 @@ def _parse_waypoint(wpt: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
             "class": "Marker",
             "title": name or f"Waypoint {idx + 1}",
             "description": strip_html(desc),
-            "marker-symbol": "",  # Empty triggers keyword mapping, then OnX default
-            "marker-color": "",   # Empty triggers OnX default (blue)
+            "marker-symbol": _text(wpt.find("gpx:sym", _NS)),
+            "marker-color": _display_color(wpt),
         },
     }
 
@@ -96,9 +163,7 @@ def _parse_track(trk: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
                 if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
                     continue
 
-                ele_elem = pt.find("gpx:ele", _NS)
-                ele = float(_text(ele_elem)) if ele_elem is not None and _text(ele_elem) else 0
-                coords.append([lon, lat, ele, 0])  # [lon, lat, ele, time_ms]
+                coords.append([lon, lat] + _ele(pt))
             except (ValueError, TypeError):
                 continue
 
@@ -116,7 +181,7 @@ def _parse_track(trk: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
             "class": "Shape",  # CalTopo uses "Shape" for lines
             "title": name or f"Track {idx + 1}",
             "description": strip_html(desc),
-            "stroke": "",       # Empty triggers OnX default (blue)
+            "stroke": _display_color(trk),  # "" -> onX default blue
             "stroke-width": 4,
             "pattern": "solid",
         },
@@ -141,9 +206,7 @@ def _parse_route(rte: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
             if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
                 continue
 
-            ele_elem = pt.find("gpx:ele", _NS)
-            ele = float(_text(ele_elem)) if ele_elem is not None and _text(ele_elem) else 0
-            coords.append([lon, lat, ele, 0])
+            coords.append([lon, lat] + _ele(pt))
         except (ValueError, TypeError):
             continue
 
@@ -161,7 +224,7 @@ def _parse_route(rte: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
             "class": "Shape",
             "title": name or f"Route {idx + 1}",
             "description": strip_html(desc),
-            "stroke": "",       # Empty triggers OnX default (blue)
+            "stroke": _display_color(rte),  # "" -> onX default blue
             "stroke-width": 4,
             "pattern": "solid",
         },

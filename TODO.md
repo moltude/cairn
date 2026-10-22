@@ -29,10 +29,30 @@
     Web Map import of an area with `fill-opacity` 0.1 and 0 to see whether onX honours them.
   * **The KML size cap is assumed.** onX documents 4 MB for GPX; areas now split at the same
     3.75 MiB without a source saying KML shares that limit.
-  * **`MultiPolygon` and other non-LineString/Polygon `Shape`s are silently ignored at parse
-    time** (`core/parser.py:add_feature_to_folder`), so they never reach the dropped count.
-    No CalTopo export seen so far contains one (Bitterroots: 17 single-ring Polygons).
+  * **Non-LineString/Polygon `Shape`s other than `MultiPolygon` are still silently ignored at
+    parse time** (`core/parser.py:add_feature_to_folder`), so they never reach the dropped
+    count. `MultiPolygon` is now split into one area per part (2026-10-22, roadmap Phase 1);
+    `MultiLineString` and `GeometryCollection` are not handled. No CalTopo export seen so far
+    contains any of these (Bitterroots: 17 single-ring Polygons).
   * **CalTopo `pattern` on areas is not carried** — KML 2.2 has no dash style.
+  * ~~**`strip_html` eats `<...>` that isn't HTML**~~ **Fixed 2026-10-22**: only tag-shaped text
+    (`</?[A-Za-z]...>`) is stripped. Still open: a tag-shaped word in a note, e.g. `<Lake>`, is
+    removed.
+
+* **CalTopo KML/GPX input (roadmap Phase 7, done 2026-10-22).** Still open, all needing one
+  styled CalTopo export from the owner (a small map with a dotted line, an arrow line, an
+  unfoldered marker, a multi-part area and a polygon, exported as GeoJSON + KML + GPX):
+  * CalTopo's GeoJSON `pattern` values for dotted and arrow lines (only `solid` and the dashed
+    `M0 -1 L0 1,,8,F` are known; the rest export as solid).
+  * What CalTopo's GPX does with an area (closed `<trk>`, or left out) and whether its
+    DisplayColor is exact-match or nearest (Dark Divide: lower-case `#ff0000` got none; other
+    public files show `DarkBlue`).
+  * Whether a multi-part area is one KML `<MultiGeometry>` with two `<Polygon>`s, and how a
+    hole is written.
+  * Unfoldered items: the KML puts them in "Points"/"LineStrings"/"Polygons" folders, the
+    GeoJSON in no folder (Cairn shows "Unorganized"). Cairn keeps the KML's folder names;
+    decide whether to map those three names to "Unorganized".
+  * What the `#1.0` at the end of every icon cfg means (not marker-size: Dark Divide's is 0.75).
   * **The `! @ # $ % ^ * &` name rule has no cited onX reason** (utils.py says "sorting
     issues"). Verify against a real import, then keep or drop it.
   * `docs/FAQ.md:123` ("Area names are left alone", "the app doesn't tell you") is now stale.

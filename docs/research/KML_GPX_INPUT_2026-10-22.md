@@ -144,6 +144,11 @@ coverage. FIDELITY's provenance table stands: no genuine onX export is in the re
 
 ### 3.2 CalTopo GPX
 
+> **Corrected 2026-10-22.** The sample below has no tracks and no notes. The Dark Divide export
+> and 60 public CalTopo GPX files show that CalTopo's GPX does carry `<desc>`, multi-line and
+> verbatim. Tracks carry Garmin `<gpxx:DisplayColor>`, which `caltopo_gpx.py` now reads. There
+> is still no `<sym>`, no waypoint color and no folders.
+
 - **Verified [RUN]**: `creator="CALTOPO"`, Garmin `gpxx` namespace declared, names in plain or
   CDATA form, `<wpt>` only in the one real sample. Names and coordinates only. That matches
   [DOC] and the CalTopo training page as quoted by search: *"GPX: ... you lose line and marker
@@ -157,6 +162,13 @@ coverage. FIDELITY's provenance table stands: no genuine onX export is in the re
   The UI should say so when it detects `creator="CALTOPO"`.
 
 ### 3.3 CalTopo KML
+
+> **Superseded 2026-10-22 (roadmap Phase 7).** Real CalTopo KMLs were read: the owner's Dark
+> Divide 100 export, and nine public files. They have flat `<Folder>`s, inline `<Style>`s,
+> icon hrefs `caltopo.com/icon.png?cfg=<symbol>[,RRGGBB]#1.0`, and plain-text descriptions. A
+> polygon is written as a `MultiGeometry` with a label Point. `cairn/io/caltopo_kml.py` reads
+> it. The dialect is in `tests/fixtures/caltopo_synthetic/README.md`, and the parity results
+> are in `tests/fixtures/dark_divide_100/PARITY.md`. The original notes follow.
 
 - **Unverified.** No sample in the repo. `training.caltopo.com/.../export` returned 503 twice.
   **Discrepancy:** `PLATFORM_CONSTRAINTS` marks KML as losing both styles and folders, but the
@@ -436,6 +448,16 @@ Steps 1–5 are about 4–5 days and fully offline. Shipping "onX GPX/KML in" cr
 | P6 | Real CalTopo KML structure (Folders? Styles? description HTML?) | Export one small map from CalTopo as KML | Whether a CalTopo KML reader is worth building (step 9) |
 | P7 | Does onX read `<time>` on import, and elevation on waypoints? | Import a 3-point track with times | Whether fixing the time writer matters for onX |
 | P8 | The simplify tolerance `x.Kr` (module `vOPT`) | Grep the entry bundles (not fetched; only lazy chunks were) | How much geometry onX's own export destroys on long tracks |
+
+> **Answered later on 2026-10-22, in a real Web Map import (design decision ENG-05).**
+> **P2:** a real Web Map GPX export matches §3.4 (`tests/fixtures/caltopo-random/onx_roundtrip/
+> from_geojson/onx_export.gpx`): `<desc>` key=value with `id`/`notes`/`type`, `onx:` extensions,
+> areas as `<rte><type>Area</type>` with `onx:color` + `onx:fill_color`. **P3: yes** — a GPX
+> `<rte>` with `<type>Area</type>` and those two extensions imports as an Area with its color,
+> while onX **ignores** area color and fill in KML (`Style`, `styleUrl` and `ExtendedData` all
+> came in as onX's default red). onX also does **not** parse a key=value `<desc>` on import; it
+> becomes the Notes verbatim. Cairn now exports areas as GPX `<rte>` (outer ring only: onX
+> areas have no holes; RUNBOOK.md lists the affected areas).
 
 ---
 

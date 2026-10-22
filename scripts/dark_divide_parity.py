@@ -1,0 +1,202 @@
+"""Convert the Dark Divide 100 CalTopo exports through Cairn and report parity.
+
+Inputs (CalTopo exports of ONE map, three formats):
+    tests/fixtures/dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.{json,gpx,kml}
+
+For each input this script:
+  1. loads it through web/bridge.py exactly as the browser does (no edits),
+  2. writes Cairn's onX-ready export, unzipped, to
+     tests/fixtures/dark_divide_100/cairn_output/from_<geojson|gpx|kml>/,
+  3. re-reads that output with Cairn's onX readers (what onX would be handed),
+and then compares, item by item (matched by order within kind):
+  - source  vs Cairn's review screen  (what the user sees),
+  - review  vs re-read output          (what is exported), and
+  - the three inputs against each other (cross-format parity).
+
+The report is written to tests/fixtures/dark_divide_100/PARITY.md.
+Deterministic: run it again and the outputs and report are byte-identical.
+
+    uv run python scripts/dark_divide_parity.py
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import shutil
+import sys
+import zipfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "web"))
+import bridge  # noqa: E402
+
+FIX = ROOT / "tests" / "fixtures" / "dark_divide_100"
+SRC = FIX / "caltopo"
+OUT = FIX / "cairn_output"
+REPORT = FIX / "PARITY.md"
+STEM = "2027_Dark_Divide_100_Mile_Endurance_Run"
+INPUTS = {"geojson": f"{STEM}.json", "gpx": f"{STEM}.gpx", "kml": f"{STEM}.kml"}
+FIELDS = ("name", "desc", "icon", "color")
+# Cross-format comparisons also compare the folder: an export re-read is named
+# by Cairn's output files, so folder is not compared there.
+CROSS_FIELDS = FIELDS + ("folder",)
+
+# Why each remaining cross-format difference exists. tests/test_dark_divide_parity.py
+# pins the exact set of differences, so this text can't silently go stale.
+WHY = [
+    "**Waypoint colours (KML and GPX, 8 markers).** The aid stations use a custom CalTopo icon "
+    "(`icon-P9JLNVA6-24-0.5-0.5-ff`). CalTopo's GeoJSON gives each of those markers a "
+    "`stroke: #FF0000`, which Cairn reads as the marker colour; the KML icon href carries no "
+    "colour for a custom icon (`cfg=icon-P9JLNVA6-24-0.5-0.5-ff#1.0`) and a GPX waypoint "
+    "can't carry one at all (Garmin's schema has no waypoint DisplayColor). So from KML and "
+    "GPX the colour comes from the icon Cairn picks, and from GeoJSON it's red. The ninth "
+    "marker comes out red either way.",
+    "**GPX folders.** CalTopo's GPX has no folders: the whole map is one folder named after "
+    "the file.",
+    "**GPX colour of line 10.** It is the one line whose CalTopo colour is the lower-case "
+    "`#ff0000`, and the only `<trk>` without a `<gpxx:DisplayColor>`: CalTopo appears to name "
+    "a Garmin colour only for an exact match. With no colour it gets onX's default blue.",
+]
+
+
+def _load(files: list[tuple[str, str]]) -> dict:
+    bridge.CONFIG_PATH = ROOT / "web" / "cairn_config.yaml"
+    payload = json.dumps([{"name": n, "text": t} for n, t in files])
+    return json.loads(bridge.load_files(payload))
+
+
+def _items(doc: dict) -> dict[str, list[dict]]:
+    by_kind: dict[str, list[dict]] = {"waypoints": [], "tracks": [], "shapes": []}
+    for g in doc["groups"]:
+        for it in g["items"]:
+            by_kind[it["kind"]].append({**it, "folder": g["name"]})
+    for k in by_kind:
+        by_kind[k].sort(key=lambda i: i["name"])
+    return by_kind
+
+
+def _geometry_by_name() -> dict[str, tuple]:
+    """(point count, first, last) per item name from the loaded engine document."""
+    geo = {}
+    for fdata in bridge._STATE["doc"].folders.values():
+        for kind in ("waypoints", "tracks", "shapes"):
+            for feat in fdata.get(kind) or []:
+                g = feat.geometry or {}
+                c = g.get("coordinates")
+                if g.get("type") == "Point":
+                    pts = [c]
+                elif g.get("type") == "LineString":
+                    pts = c
+                else:
+                    pts = (c or [[]])[0]
+                pts = [(round(p[0], 6), round(p[1], 6)) for p in pts]
+                geo.setdefault(feat.title, (len(pts), pts[0] if pts else None, pts[-1] if pts else None))
+    return geo
+
+
+def convert(tag: str) -> tuple[dict, dict, dict, dict]:
+    """Load one input, write its export, re-read it. Returns (review, review_geo, reread, reread_geo)."""
+    text = (SRC / INPUTS[tag]).read_text(encoding="utf-8")
+    review = _items(_load([(INPUTS[tag], text)]))
+    review_geo = _geometry_by_name()
+
+    data = bytes(bridge.export_zip())
+    dest = OUT / f"from_{tag}"  # module global, so tests can redirect it
+    shutil.rmtree(dest, ignore_errors=True)
+    dest.mkdir(parents=True)
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        for name in sorted(z.namelist()):
+            if name.endswith("/"):
+                continue
+            target = dest / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(z.read(name))
+
+    exported = [
+        (p.name, p.read_text(encoding="utf-8"))
+        for p in sorted(dest.rglob("*"))
+        if p.suffix in (".gpx", ".kml")
+    ]
+    reread = _items(_load(exported))
+    reread_geo = _geometry_by_name()
+    return review, review_geo, reread, reread_geo
+
+
+def _diff(a: dict, b: dict, ga: dict, gb: dict, fields: tuple = FIELDS) -> list[str]:
+    """Field-by-field differences between two item sets, plus geometry."""
+    out = []
+    for kind in ("waypoints", "tracks", "shapes"):
+        la, lb = a[kind], b[kind]
+        if len(la) != len(lb):
+            out.append(f"{kind}: count {len(la)} vs {len(lb)}")
+        for x, y in zip(la, lb):
+            for f in fields:
+                if kind != "waypoints" and f == "icon":
+                    continue
+                if (x.get(f) or "") != (y.get(f) or ""):
+                    out.append(f"{kind} {x['name']!r}: {f} {x.get(f)!r} vs {y.get(f)!r}")
+            if ga.get(x["name"]) != gb.get(y["name"]):
+                out.append(f"{kind} {x['name']!r}: geometry {ga.get(x['name'])} vs {gb.get(y['name'])}")
+    return out
+
+
+def run() -> dict:
+    return {tag: convert(tag) for tag in INPUTS}
+
+
+def main() -> int:
+    results = run()
+    lines = [
+        "# Dark Divide 100: format parity report",
+        "",
+        "Generated by `scripts/dark_divide_parity.py`. Do not edit by hand.",
+        "",
+        "Source: one CalTopo map exported three ways (`caltopo/`). Each was loaded through",
+        "Cairn with no edits, exported (`cairn_output/from_<format>/`) and the export re-read.",
+        "",
+        "## Per input",
+        "",
+        "| Input | Folders | Waypoints | Lines | Areas | Multi-line notes | Default pins | Colors |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for tag, (review, *_rest) in results.items():
+        allitems = [i for k in review.values() for i in k]
+        colors = sorted({i["color"] for i in allitems})
+        multiline = sum("\n" in (i.get("desc") or "") for i in allitems)  # no backslash inside f-string (py<3.12)
+        lines.append(
+            f"| {tag} | {len({i['folder'] for i in allitems})} | {len(review['waypoints'])} | "
+            f"{len(review['tracks'])} | {len(review['shapes'])} | "
+            f"{multiline} | "
+            f"{sum(i['needs_attention'] for i in allitems)} | {', '.join(colors)} |"
+        )
+
+    lines += ["", "## Review screen vs re-read export (what Cairn hands onX)", ""]
+    for tag, (review, rgeo, reread, egeo) in results.items():
+        d = _diff(review, reread, rgeo, egeo)
+        lines.append(f"### {tag}: {'identical' if not d else f'{len(d)} difference(s)'}")
+        lines += [f"- {x}" for x in d] + [""]
+
+    lines += ["## Cross-format parity (review screens, GeoJSON as the reference)", ""]
+    ref, rgeo_ref = results["geojson"][0], results["geojson"][1]
+    for tag in ("gpx", "kml"):
+        d = _diff(ref, results[tag][0], rgeo_ref, results[tag][1], CROSS_FIELDS)
+        lines.append(f"### geojson vs {tag}: {'identical' if not d else f'{len(d)} difference(s)'}")
+        lines += [f"- {x}" for x in d] + [""]
+
+    lines += ["## Why the remaining differences exist", ""]
+    lines += [f"- {w}" for w in WHY] + [""]
+    lines += [
+        "Everything else -- names, multi-line notes, icons, line colours, folders (KML), point",
+        "counts and end points -- is identical across the three formats.",
+        "",
+    ]
+
+    REPORT.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    print(REPORT.read_text(encoding="utf-8"))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

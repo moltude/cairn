@@ -19,7 +19,7 @@ import math
 
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon
-from cairn.utils.utils import strip_html, natural_sort_key, sanitize_name_for_onx
+from cairn.utils.utils import PLAIN_NOTES_KEY, clean_notes, strip_html, natural_sort_key, sanitize_name_for_onx
 from cairn.core.config import IconMappingConfig, resolve_waypoint_color
 from cairn.core.color_mapper import (
     ColorMapper,
@@ -72,6 +72,37 @@ def _agent_ndjson_log(payload: dict) -> None:
 
 # OnX import max GPX size is 4MB. Use a slightly lower default to avoid edge cases.
 DEFAULT_MAX_GPX_BYTES = int(math.floor(3.75 * 1024 * 1024))
+
+
+def _finite_number(v) -> bool:
+    return (
+        isinstance(v, (int, float))
+        and not isinstance(v, bool)
+        and math.isfinite(float(v))
+    )
+
+
+def _trkpt_children(coord) -> List[str]:
+    """<ele> and <time> lines for one track point [lon, lat, ele?, epoch_ms?].
+
+    ele is written when present and numeric (None means "no elevation", never 0).
+    The time slot is epoch milliseconds, as in CalTopo GeoJSON and the onX GPX
+    reader; 0 is CalTopo's "no time", so only a positive value is written. GPX
+    wants ele before time.
+    """
+    out: List[str] = []
+    if len(coord) > 2 and _finite_number(coord[2]):
+        out.append(f"        <ele>{coord[2]}</ele>")
+    if len(coord) > 3 and _finite_number(coord[3]) and coord[3] > 0:
+        try:
+            ts = datetime.fromtimestamp(coord[3] / 1000, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            ts = None
+        if ts is not None:
+            out.append(
+                f"        <time>{ts.strftime('%Y-%m-%dT%H:%M:%S')}.{ts.microsecond // 1000:03d}Z</time>"
+            )
+    return out
 
 
 def _desc_text(notes_clean: str, kv_lines: List[str], debug_desc: bool) -> str:
@@ -482,7 +513,7 @@ def write_gpx_waypoints_maybe_split(
         # endregion
 
         wp_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -505,7 +536,9 @@ def write_gpx_waypoints_maybe_split(
             # Real newlines are written inside <desc>; whether onX keeps them is UNVERIFIED (see TODO.md).
             block.append(f"    <desc>{escape(desc_content)}</desc>")
         block.append("    <extensions>")
-        block.append(f"      <onx:icon>{mapped_icon}</onx:icon>")
+        # The icon can be any text an input file carried (an onX icon
+        # outside the catalogue is kept as is), so it is escaped like the name.
+        block.append(f"      <onx:icon>{escape(mapped_icon)}</onx:icon>")
         block.append(f"      <onx:color>{onx_color}</onx:color>")
         block.append("    </extensions>")
         block.append("  </wpt>")
@@ -709,7 +742,7 @@ def write_gpx_tracks_maybe_split(
         # endregion
 
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -739,8 +772,7 @@ def write_gpx_tracks_maybe_split(
             if len(coord) >= 2:
                 lat, lon = coord[1], coord[0]
                 block.append(f'      <trkpt lat="{lat}" lon="{lon}">')
-                if len(coord) > 2:
-                    block.append(f"        <ele>{coord[2]}</ele>")
+                block.extend(_trkpt_children(coord))
                 block.append("      </trkpt>")
 
         block.append("    </trkseg>")
@@ -941,7 +973,7 @@ def write_gpx_waypoints(
         # <desc> is user-facing: notes only by default; the legacy key=value
         # block (matching OnX's own export format) is available via debug_desc.
         wp_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -958,7 +990,7 @@ def write_gpx_waypoints(
 
         # Add OnX extensions (use lowercase `onx:` prefix to match OnX exports)
         lines.append("    <extensions>")
-        lines.append(f"      <onx:icon>{mapped_icon}</onx:icon>")
+        lines.append(f"      <onx:icon>{escape(mapped_icon)}</onx:icon>")
         lines.append(f"      <onx:color>{onx_color}</onx:color>")
         lines.append("    </extensions>")
         lines.append("  </wpt>")
@@ -1055,7 +1087,7 @@ def write_gpx_tracks(
         # <desc> is user-facing: notes only by default; the legacy key=value
         # block (matching OnX's own export format) is available via debug_desc.
         trk_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
-        notes_clean = strip_html(feature.description or "")
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         desc_content = _desc_text(
             notes_clean,
             [
@@ -1090,11 +1122,7 @@ def write_gpx_tracks(
             if len(coord) >= 2:
                 lat, lon = coord[1], coord[0]
                 lines.append(f'      <trkpt lat="{lat}" lon="{lon}">')
-
-                # Add elevation if present
-                if len(coord) > 2:
-                    lines.append(f"        <ele>{coord[2]}</ele>")
-
+                lines.extend(_trkpt_children(coord))
                 lines.append("      </trkpt>")
 
         lines.append("    </trkseg>")
@@ -1223,15 +1251,18 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
         track_name_change("shapes", feature.title, sanitized)
     name_elem.text = sanitized
 
-    if feature.description:
+    notes_text = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
+    if notes_text:
         desc = ET.SubElement(placemark, "description")
-        desc.text = strip_html(feature.description)
+        desc.text = notes_text
 
-    # Style. HOW onX RENDERS KML <width> AND PolyStyle fill IS UNVERIFIED --
-    # these carry CalTopo's values faithfully in standard KML 2.2; whether onX
-    # honors them (or substitutes its own area style) has not been tested
-    # against a real import. KML 2.2 has no dash pattern, so CalTopo's
-    # `pattern` cannot be expressed and is not written.
+    # Style. VERIFIED 2026-10-22 (ENG-05): onX's importer IGNORES this style --
+    # a real Web Map import of these Placemarks (inline Style, a shared styleUrl
+    # style, and the ExtendedData below) came in with onX's default area style.
+    # They still carry CalTopo's values faithfully in standard KML 2.2 for other
+    # KML consumers and for read_onx_kml; the web export writes areas with
+    # write_gpx_areas_maybe_split instead. KML 2.2 has no dash pattern, so
+    # CalTopo's `pattern` cannot be expressed and is not written.
     area_rgba = kml_area_color(feature)
     style = ET.SubElement(placemark, "Style")
     line_style = ET.SubElement(style, "LineStyle")
@@ -1252,11 +1283,33 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
     # CalTopo's separate `fill`: the UI shows one color per area, and following
     # the raw fill would leave e.g. a red fill under a user's blue outline.
     # CalTopo's fill-opacity IS carried (0.1 -> 1a, 0 -> 00 = outline only).
-    poly_style = ET.SubElement(style, "PolyStyle")
-    ET.SubElement(poly_style, "color").text = _rgba_to_kml(
-        area_rgba,
-        _opacity_alpha(getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA),
+    fill_alpha = _opacity_alpha(
+        getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA
     )
+    poly_style = ET.SubElement(style, "PolyStyle")
+    ET.SubElement(poly_style, "color").text = _rgba_to_kml(area_rgba, fill_alpha)
+
+    # The same values again as onX-style ExtendedData, the way onX's own KML export
+    # (mapbox tokml) carries every property (KG section 3.5). This is what lets
+    # read_onx_kml read Cairn's KML and onX's alike: notes, colour, line style,
+    # weight and fill all come back. Placed after <Style>, before the geometry, per
+    # the KML 2.2 Placemark element order. VERIFIED 2026-10-22: onX's importer
+    # reads neither these Data fields nor the <Style> for an area's colour/fill.
+    r, g, b = ColorMapper.parse_color(area_rgba)
+    onx_data = []
+    if notes_text:
+        onx_data.append(("notes", notes_text))
+    onx_data += [
+        ("color", area_rgba),
+        ("style", pattern_to_style(getattr(feature, "pattern", "") or "")),
+        ("weight", stroke_width_to_weight(raw_width)),
+        ("fill_color", f"rgba({r},{g},{b},{round(fill_alpha / 255, 2):g})"),
+    ]
+    extended = ET.SubElement(placemark, "ExtendedData")
+    for key, value in onx_data:
+        data = ET.SubElement(extended, "Data")
+        data.set("name", key)
+        ET.SubElement(data, "value").text = value
 
     polygon = ET.SubElement(placemark, "Polygon")
     for i, ring in enumerate(rings):
@@ -1276,6 +1329,17 @@ def _kml_document(folder_name: str, placemarks: List[ET.Element]) -> str:
     kml.set("xmlns", "http://www.opengis.net/kml/2.2")
     document = ET.SubElement(kml, "Document")
     ET.SubElement(document, "name").text = folder_name
+    # Generator marker, so cairn/io/input_check.detect can tell Cairn's KML
+    # from CalTopo's or Google Earth's (KG section 5.1). Document-level
+    # ExtendedData is valid KML 2.2 and sits outside every Placemark, so it
+    # cannot leak into an item's properties (onx_kml reads Data per Placemark,
+    # and onX's own tokml/togeojson-style handling is per feature). UNVERIFIED:
+    # whether onX's importer shows or keeps it -- nothing suggests it does.
+    # It lives here, not in the callers, so write_kml_shapes_maybe_split's
+    # empty-document size baseline already includes it.
+    marker = ET.SubElement(ET.SubElement(document, "ExtendedData"), "Data")
+    marker.set("name", "generator")
+    ET.SubElement(marker, "value").text = "Cairn"
     for pm in placemarks:
         document.append(pm)
     return prettify_xml(kml)
@@ -1361,3 +1425,137 @@ def write_kml_shapes(
         features, output_path, folder_name, split=False
     )
     return size
+
+
+# --- Areas as GPX <rte> (ENG-05) -------------------------------------------------
+#
+# VERIFIED 2026-10-22 in a real onX Web Map import: onX ignores an area's colour
+# and fill in KML (LineStyle/PolyStyle, a shared styleUrl and onX-style
+# ExtendedData all came in as onX's default red outline / blue 10% fill), but
+# a GPX <rte> with <type>Area</type> and <onx:color>/<onx:fill_color> extensions
+# imports as a real onX Area WITH its colour -- the shape onX's own GPX export
+# uses. So areas are exported this way; the KML writer above is kept for its
+# other callers. onX areas are single-ring: a polygon's holes cannot be written
+# and are reported (get_areas_without_holes) rather than dropped silently.
+
+# Titles of areas whose holes were not written, since the last clear.
+_areas_without_holes: List[str] = []
+
+
+def get_areas_without_holes() -> List[str]:
+    """Titles of areas exported with their outer ring only (holes not kept)."""
+    return list(_areas_without_holes)
+
+
+def clear_areas_without_holes() -> None:
+    """Reset the holes record (call before processing a new folder)."""
+    _areas_without_holes.clear()
+
+
+def _area_fill_rgba(feature: ParsedFeature, area_rgba: str) -> str:
+    """Fill: the area's own colour, alpha = CalTopo fill-opacity, else 0.5.
+
+    Same value the KML writer puts in its fill_color Data (the hue follows the
+    displayed, possibly user-edited, colour -- see _kml_placemark).
+    """
+    fill_alpha = _opacity_alpha(getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA)
+    r, g, b = ColorMapper.parse_color(area_rgba)
+    return f"rgba({r},{g},{b},{round(fill_alpha / 255, 2):g})"
+
+
+def write_gpx_areas_maybe_split(
+    features: List[ParsedFeature],
+    output_path: Path,
+    folder_name: str,
+    *,
+    sort: bool = True,
+    split: bool = True,
+    max_bytes: int = DEFAULT_MAX_GPX_BYTES,
+    debug_desc: bool = False,
+) -> List[tuple[Path, int, int]]:
+    """Write areas (polygons) to GPX as onX Area routes, splitting like the
+    other GPX writers. Preserves order (after the optional natural sort).
+
+    Each area is one <rte>: <name>, <desc> (the user's note only; omitted when
+    empty), <type>Area</type>, <extensions> with <onx:color> (kml_area_color,
+    the value the web UI shows) and <onx:fill_color>, then the closed OUTER
+    ring as <rtept lat lon/> -- the element order of onX's own export. Holes
+    are not representable; such areas are recorded in get_areas_without_holes.
+
+    Returns [(path, size_bytes, written_area_count)]. Polygons with no usable
+    outer ring are skipped and NOT counted, so callers can report them as
+    dropped.
+    """
+    from xml.sax.saxutils import escape
+
+    if sort:
+        features = sorted(features, key=lambda f: natural_sort_key(f.title or ""))
+
+    header_lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
+        "  <metadata>",
+        f"    <name>{escape(folder_name)}</name>",
+        "  </metadata>",
+    ]
+    footer_line = "</gpx>"
+
+    item_blocks: List[List[str]] = []
+    for feature in features:
+        rings = _polygon_rings(feature.coordinates)
+        if not rings:
+            continue
+        sanitized, was_changed = sanitize_name_for_onx(feature.title)
+        if was_changed:
+            track_name_change("shapes", feature.title, sanitized)
+        if len(rings) > 1:
+            _areas_without_holes.append(sanitized)
+
+        area_rgba = kml_area_color(feature)
+        fill_rgba = _area_fill_rgba(feature, area_rgba)
+        notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
+        area_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
+        desc_content = _desc_text(
+            notes_clean,
+            [
+                f"name={feature.title}",
+                f"notes={notes_clean}",
+                f"id={area_id}",
+                "type=Area",
+                f"color={area_rgba}",
+                f"fill_color={fill_rgba}",
+            ],
+            debug_desc,
+        )
+
+        block: List[str] = ["  <rte>", f"    <name>{escape(sanitized)}</name>"]
+        if desc_content:
+            block.append(f"    <desc>{escape(desc_content)}</desc>")
+        block.append("    <type>Area</type>")
+        block.append("    <extensions>")
+        block.append(f"      <onx:color>{area_rgba}</onx:color>")
+        block.append(f"      <onx:fill_color>{fill_rgba}</onx:fill_color>")
+        block.append("    </extensions>")
+        # Bare lat/lon, as in onX's own area export (the verified import used
+        # no <ele>); _polygon_rings already closed the ring.
+        for p in rings[0]:
+            block.append(f'    <rtept lat="{p[1]}" lon="{p[0]}"/>')
+        block.append("  </rte>")
+        item_blocks.append(block)
+
+    written_count = len(item_blocks)
+    full_payload = header_lines + [ln for blk in item_blocks for ln in blk] + [footer_line]
+    if not split or _utf8_joined_size(full_payload) <= max_bytes:
+        output_path.write_text("\n".join(full_payload), encoding="utf-8")
+        return [(output_path, output_path.stat().st_size, written_count)]
+
+    parts = _split_gpx_lines_by_bytes(
+        header_lines=header_lines,
+        item_blocks=item_blocks,
+        footer_line=footer_line,
+        max_bytes=max_bytes,
+    )
+    out: List[tuple[Path, int, int]] = []
+    for pth, sz in _write_gpx_parts(parts=parts, output_path=output_path):
+        out.append((pth, sz, pth.read_text(encoding="utf-8").count("<rte>")))
+    return out

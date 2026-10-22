@@ -238,3 +238,18 @@ class TestStripHtmlLineBreaks:
         from cairn.utils.utils import single_line
 
         assert single_line(" a\n\n b\tc ") == "a b c"
+
+
+class TestStripHtmlKeepsPlainTextAngleBrackets:
+    """Only real tags are removed; '<' and '>' used as plain text survive."""
+
+    def test_comparison_brackets_survive(self):
+        from cairn.utils.utils import strip_html
+        assert strip_html("< 2 mi from the TH; site #3 of 5 > the rest") == "< 2 mi from the TH; site #3 of 5 > the rest"
+        assert strip_html("Bring <2L water> & go") == "Bring <2L water> & go"
+        assert strip_html("a <- b -> c") == "a <- b -> c"
+
+    def test_real_tags_are_still_removed(self):
+        from cairn.utils.utils import strip_html
+        assert strip_html('<b>Camp</b> at <a href="x">lake</a><br/>next') == "Camp at lake\nnext"
+        assert strip_html("<p>One</p><div class='x'>Two</div>") == "One\nTwo"

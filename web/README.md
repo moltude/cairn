@@ -22,8 +22,9 @@ Three things that justified moving off the terminal, all working end to end:
    once, and watch the attention count fall.
 3. **The import runbook.** The missing artifact — onX creates one folder per import *batch* and
    names it `Import <timestamp>`, so the checklist tells the user which files to drag together and
-   exactly what to rename each folder to. KML-containing batches are flagged, because the phone
-   app cannot import KML.
+   exactly what to rename each folder to. Every file is GPX: areas go out as onX Area routes
+   (`<rte><type>Area</type>`) since 2026-10-22, because onX ignores area colours in KML
+   (ENG-05). The KML-batch warning is still wired up but no web export triggers it.
 
 ## What the numbers mean
 

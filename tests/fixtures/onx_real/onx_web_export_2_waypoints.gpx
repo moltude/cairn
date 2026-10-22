@@ -1,0 +1,9 @@
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="onXmaps backcountry web"><metadata/><wpt lat="46.3" lon="-114.2"><name>ZZTEST A</name><desc>name=ZZTEST A
+notes=Cairn re-import probe. Safe to delete.
+id=1bbcfa70-9920-4d83-ad03-8b3f9b54da52
+color=rgba(255, 0, 0, 1)
+icon=Summit</desc><extensions><onx:color>rgba(255, 0, 0, 1)</onx:color><onx:icon>Summit</onx:icon></extensions></wpt><wpt lat="46.31" lon="-114.21"><name>ZZTEST B</name><desc>name=ZZTEST B
+notes=Cairn re-import probe. Safe to delete.
+id=ff14e786-518c-478f-a61a-9474322b3432
+color=rgba(8, 122, 255, 1)
+icon=Camp</desc><extensions><onx:color>rgba(8, 122, 255, 1)</onx:color><onx:icon>Camp</onx:icon></extensions></wpt></gpx>

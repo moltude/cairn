@@ -176,6 +176,9 @@ INFERRED from the above:
 
 ### 1.5 Verdict
 
+**ANSWERED 2026-10-22: re-import creates duplicates (VERIFIED by test, see 1.7).** The text below
+was written before the test and is kept for its reasoning.
+
 **UNKNOWN. INFERRED lean: re-import creates new markups (duplicates).** Don't build or promise
 "update in place" until the test below has been run. If the result is duplicates, the onX → Cairn
 → onX workflow must be "export, delete the originals in onX, re-import the cleaned file". That
@@ -235,6 +238,26 @@ markup findable. Cleanup is listed explicitly because of one trap:
 text, and the saved export files.
 
 ---
+
+### 1.7 Test result (run 2026-10-22, owner's account, Web Map)
+
+Run by Claude driving the owner's Chrome, with approval for each import; the owner deleted
+the test data afterwards (account back to 266 markups, 13 folders).
+
+| Step | Result | Account total |
+|---|---|---|
+| Baseline | 13 folders | 266 |
+| Import a Cairn GPX with 2 waypoints ("ZZTEST A" Summit/red, "ZZTEST B" Camp/blue), "new folder" ticked | New folder "Import 10/22/26 9:07". The GPX `<metadata><name>` was ignored. Icons and colors kept. Cairn's `<desc>` became the onX notes | 268 |
+| Export that folder as GPX and as KML | `onx-markups-10222026.gpx` / `.kml`, now in `tests/fixtures/onx_real/`. Each markup's `id=<uuid>` is in the file | 268 |
+| Re-import the **unchanged** onX GPX (ids included), "new folder" ticked | **2 new markups** in a new folder "Import 10/22/26 9:09" | **270** |
+
+**Verdict: onX import does not match on `id=`; it always creates new markups.** Steps B/C of
+1.6 (edited re-import, id diff) were not needed to answer the question and were not run.
+Consequences: Roadmap Phase 6 (update in place) is dropped; Phase 5's runbook uses "replace"
+wording (back up, delete the originals, import).
+
+Also observed: onX's My Content **Select** mode offers only Add to Folder, Share, Export and
+Delete in bulk — no bulk icon, color or rename.
 
 ## Q2. Public sharing
 

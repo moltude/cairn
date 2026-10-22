@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "mp-1",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [[-114.30, 46.12], [-114.31, 46.12], [-114.31, 46.13], [-114.30, 46.13], [-114.30, 46.12]],
+            [[-114.303, 46.123], [-114.307, 46.123], [-114.307, 46.127], [-114.303, 46.123]]
+          ],
+          [
+            [[-114.32, 46.12], [-114.33, 46.12], [-114.33, 46.13], [-114.32, 46.12]]
+          ]
+        ]
+      },
+      "properties": {
+        "class": "Shape",
+        "title": "Two parcels",
+        "description": "north and south",
+        "stroke": "#FF0000",
+        "stroke-width": 2,
+        "fill": "#FF0000",
+        "fill-opacity": 0.1,
+        "stroke-opacity": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "p-1",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [[-114.40, 46.12], [-114.41, 46.12], [-114.41, 46.13], [-114.40, 46.12]]
+        ]
+      },
+      "properties": {
+        "class": "Shape",
+        "title": "Plain area",
+        "stroke": "#0000FF",
+        "stroke-width": 2
+      }
+    }
+  ]
+}

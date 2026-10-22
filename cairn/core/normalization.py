@@ -1,3 +1,5 @@
+# Web engine: imported by web/bridge.py and run in the browser via Pyodide.
+# Keep it free of terminal/UI imports (tests/test_web_engine_surface.py).
 """
 Shared normalization utilities.
 
@@ -15,6 +17,7 @@ from typing import Iterable, Optional, Tuple
 
 
 _WS_RE = re.compile(r"\s+")
+_ENTITY_RE = re.compile(r"&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);")
 
 
 def normalize_entities(text: str) -> str:
@@ -29,9 +32,13 @@ def normalize_entities(text: str) -> str:
 
     s = str(text)
     # Run twice to collapse double-escaped entities.
-    # html.unescape handles &apos; as well as common entities.
+    # Only semicolon-terminated references are decoded. html.unescape on the whole
+    # string would also decode HTML5's legacy semicolon-less names, so a URL in a
+    # note like "?a=1&copy=2&notes=3" would become "?a=1©=2¬es=3". By the time this
+    # runs the XML parser has already decoded the real XML entities; this pass only
+    # repairs onX's double escaping ("&amp;apos;" -> "&apos;" -> "'").
     for _ in range(2):
-        s2 = html.unescape(s)
+        s2 = _ENTITY_RE.sub(lambda m: html.unescape(m.group(0)), s)
         if s2 == s:
             break
         s = s2

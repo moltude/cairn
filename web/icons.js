@@ -129,7 +129,7 @@ const MARKER_FG = {
 };
 function markerFg(hex) {
   const h = String(hex || "").toUpperCase();
-  if (MARKER_FG[h]) return MARKER_FG[h];
+  if (Object.hasOwn(MARKER_FG, h)) return MARKER_FG[h];
   const m = /^#([0-9A-F]{6})$/.exec(h);
   if (!m) return "#FFFFFF";
   const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -145,7 +145,10 @@ const _escAttr = s => String(s ?? "").replace(/[&<>"']/g, c =>
 /** Glyph for a name; an unknown name gets its own initials rather than
     masquerading as the default pin. */
 function glyphFor(icon) {
-  if (ONX_GLYPHS[icon]) return ONX_GLYPHS[icon];
+  // hasOwn, not ONX_GLYPHS[icon]: an icon name comes from the input file, and
+  // "constructor" or "toString" would otherwise find Object.prototype's
+  // function and crash the render.
+  if (Object.hasOwn(ONX_GLYPHS, icon)) return ONX_GLYPHS[icon];
   const words = String(icon || "").trim().split(/\s+/).filter(Boolean);
   if (!words.length) return ONX_GLYPHS["Location"];
   const abbr = words.length > 1 ? words[0][0] + words[1][0] : words[0].slice(0, 2);

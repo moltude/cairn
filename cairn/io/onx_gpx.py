@@ -1,3 +1,5 @@
+# Web engine: imported by web/bridge.py and run in the browser via Pyodide.
+# Keep it free of terminal/UI imports (tests/test_web_engine_surface.py).
 """
 OnX Backcountry GPX adapter.
 
@@ -18,7 +20,7 @@ import uuid
 import xml.etree.ElementTree as ET
 
 from cairn.core.normalization import iso8601_to_epoch_ms, normalize_name
-from cairn.model import MapDocument, Style, Track, TrackPoint, Waypoint
+from cairn.model import MapDocument, Shape, Style, Track, TrackPoint, Waypoint
 
 
 # OnX-exported GPX uses lowercase domain here (and commonly declares it as `xmlns:onx=...`).
@@ -38,6 +40,7 @@ _DESC_KV_KEYS = (
     "style",
     "weight",
     "type",
+    "fill_color",  # Areas; without it a fill_color= line ran on into weight's value
 )
 
 _DESC_KV_RE = re.compile(r"^([a-zA-Z0-9_-]+)=(.*)$")
@@ -67,6 +70,14 @@ def parse_onx_desc_kv(desc_text: str) -> Tuple[Dict[str, str], str]:
         return {}, ""
 
     lines = desc_text.splitlines()
+
+    # onX's block always opens with a key line (name=...). Anything else -- Cairn's own
+    # <desc>, which is the bare note, or any other app's description -- is all notes,
+    # even if a later line happens to read "id=..." or "weight=...".
+    first = _DESC_KV_RE.match(lines[0])
+    if not first or first.group(1).strip().lower() not in _DESC_KV_KEYS:
+        return {"notes": desc_text}, desc_text
+
     kv: Dict[str, str] = {}
     current_key: Optional[str] = None
     current_value_lines: List[str] = []
@@ -120,6 +131,10 @@ def _get_onx_extension_text(elem: ET.Element, local_name: str) -> Optional[str]:
     return None
 
 
+def _text_of(elem: Optional[ET.Element]) -> str:
+    return elem.text if elem is not None and elem.text else ""
+
+
 def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     """
     Read an OnX GPX export.
@@ -158,6 +173,7 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
     doc.ensure_folder("OnX_import", "OnX Import")
     doc.ensure_folder("OnX_waypoints", "Waypoints", parent_id="OnX_import")
     doc.ensure_folder("OnX_tracks", "Tracks", parent_id="OnX_import")
+    doc.ensure_folder("OnX_shapes", "Areas", parent_id="OnX_import")
 
     # Waypoints
     for idx, wpt in enumerate(root.findall("gpx:wpt", _NS)):
@@ -234,10 +250,10 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
                 }
             )
 
-    # Tracks
+    # Tracks, Lines and Areas
     def read_track_like(
         track_elem: ET.Element, *, gpx_type: str, idx: int
-    ) -> Optional[Track]:
+    ) -> Optional[Track | Shape]:
         name_elem = track_elem.find("gpx:name", _NS)
         name_raw = name_elem.text if name_elem is not None and name_elem.text else ""
         name = normalize_name(name_raw)
@@ -324,6 +340,45 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
         )
         style.extra["desc_kv"] = kv
         style.extra["gpx_type"] = gpx_type
+        fill_color = _get_onx_extension_text(ext, "fill_color") or kv.get("fill_color")
+        if fill_color:
+            style.extra["fill_color"] = fill_color
+
+        # onX writes its Lines and Areas as <rte> with a literal <type> and a type=
+        # line in the <desc> block (KG section 3.4; FIDELITY W8). The <type> element
+        # wins; the desc line counts only when the desc is onX's key/value block
+        # (it has an id=), so a user's note reading "type=Area" can't reshape a track.
+        onx_type = _text_of(track_elem.find("gpx:type", _NS))
+        if not onx_type and kv.get("id"):
+            onx_type = kv.get("type", "")
+        onx_type = onx_type.strip().lower()
+
+        if onx_type == "area":
+            ring = [(p[0], p[1]) for p in points]
+            if ring and ring[0] != ring[-1]:
+                ring.append(ring[0])
+            if len(ring) >= 4:  # three distinct corners, closed
+                shp = Shape(
+                    id=onx_id or _stable_uuid_fallback(),
+                    folder_id="OnX_shapes",
+                    name=name,
+                    rings=[ring],
+                    notes=normalize_name(notes) if notes else "",
+                    style=style,
+                    extra={"name_raw": name_raw, "desc_raw": desc_raw, "onx_kind": "area"},
+                )
+                if trace is not None:
+                    trace.emit(
+                        {
+                            "event": "input.area",
+                            "idx": idx,
+                            "name_raw": name_raw,
+                            "ring_len": len(ring),
+                            "OnX": {"id": onx_id, "color": onx_color},
+                        }
+                    )
+                return shp
+            # Too few points for a polygon: keep the linework as a Track below.
 
         trk = Track(
             id=onx_id or _stable_uuid_fallback(),
@@ -334,6 +389,8 @@ def read_onx_gpx(path: str | Path, *, trace: Any = None) -> MapDocument:
             style=style,
             extra={"name_raw": name_raw, "desc_raw": desc_raw},
         )
+        if onx_type == "line":
+            trk.extra["onx_kind"] = "line"
 
         if trace is not None:
             trace.emit(

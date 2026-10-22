@@ -94,12 +94,12 @@ are KG §8's. The steps are RS §1.6's ten-minute test, extended to capture fixt
 
 | # | Question | What to do | What to hand back | Unblocks |
 |---|---|---|---|---|
-| **P1** | **Does re-import update a markup with a matching `id=`, or duplicate it?** | RS §1.6 Tests A, B and C:<br>• Export 2 waypoints.<br>• Re-import the file unchanged and note the count change: +0 or +2.<br>• If +0, re-import with one name and one colour edited.<br>• Export again and diff the ids. Repeat once with KML. | The counts at each step, the id diff, and whether Notes shows `key=value` text | Phase 5 (wording) and Phase 6 (whether it exists at all) |
-| **P2** | Does a real Web Map export match the decoded format: `<desc>` key/value lines with `id`/`notes`, `onx:` extensions, Areas as `<rte><type>Area`? | Put **1 waypoint, 1 track, 1 Line and 1 Area** in `ZZ Cairn Test`. If you can, give the Area a hole and the waypoint a two-line note with `&` and `#` in its name. Export the folder as **GPX** and again as **KML**. | Both files, unedited, to commit as `tests/fixtures/onx_real/` (FM W6) | Phase 4. Replaces every synthetic onX fixture |
-| **P3** | Does onX import an `<rte>` with `type=Area` as an Area? (FM probe B2) | Import the P2 GPX by itself into a new folder | Whether you get a filled Area or a stray Line/Track | Whether a GPX-only onX export keeps its areas (Phase 1 reader fix stays either way) |
+| **P1 ✅ answered 2026-10-22: duplicates** | **Does re-import update a markup with a matching `id=`, or duplicate it?** (Re-importing an unchanged onX GPX export added 2 new markups; see the research doc §1.7.) | RS §1.6 Tests A, B and C:<br>• Export 2 waypoints.<br>• Re-import the file unchanged and note the count change: +0 or +2.<br>• If +0, re-import with one name and one colour edited.<br>• Export again and diff the ids. Repeat once with KML. | The counts at each step, the id diff, and whether Notes shows `key=value` text | Phase 5 (wording) and Phase 6 (whether it exists at all) |
+| **P2 ✅ answered 2026-10-22: yes, for areas** | Does a real Web Map export match the decoded format: `<desc>` key/value lines with `id`/`notes`, `onx:` extensions, Areas as `<rte><type>Area`? | Put **1 waypoint, 1 track, 1 Line and 1 Area** in `ZZ Cairn Test`. If you can, give the Area a hole and the waypoint a two-line note with `&` and `#` in its name. Export the folder as **GPX** and again as **KML**. | Both files, unedited, to commit as `tests/fixtures/onx_real/` (FM W6) | Phase 4. Replaces every synthetic onX fixture |
+| **P3 ✅ answered 2026-10-22: yes, with its colour** | Does onX import an `<rte>` with `type=Area` as an Area? (FM probe B2) (A Cairn-written `<rte><type>Area</type>` with `onx:color`/`onx:fill_color` imported as a coloured Area, while KML area colours were ignored; Cairn now exports areas this way, DECISIONS.md ENG-05. The GPX export is `tests/fixtures/caltopo-random/onx_roundtrip/`.) | Import the P2 GPX by itself into a new folder | Whether you get a filled Area or a stray Line/Track | Whether a GPX-only onX export keeps its areas (Phase 1 reader fix stays either way) |
 | **P4** | Does the **iOS app's** GPX export carry the extensions and `<desc>` lines, or only name and location, as the help centre claims? | Export the same 4 markups from the phone app | The file | Whether phone users can round trip at all. If not, the feature is Web Map only |
 | **P5** | Does onX accept `& # ! @` in names? | Import one waypoint named `ZZTEST A & B #1` (a hand-written GPX is fine) | The name as onX shows it | Whether `sanitize_name_for_onx` keeps stripping these, which is silent data loss on every round trip |
-| **P6** | What is the real structure of a CalTopo KML: Folders? Styles? HTML descriptions? | Export one small CalTopo map as KML | The file, for `tests/fixtures/caltopo_real/` | Phase 7 |
+| **P6** | What is the real structure of a CalTopo KML: Folders? Styles? HTML descriptions? | Export one small CalTopo map as KML | The file, for `tests/fixtures/caltopo_real/` | Phase 7. **Answered 2026-10-22** by the Dark Divide export (`tests/fixtures/dark_divide_100/`): folders yes, inline styles yes, plain-text descriptions |
 | **P7** | Does onX read track `<time>` and waypoint elevation on import? | Import a 3-point track with times | Whether times or elevation appear | The priority of the time-writer fix in Phase 1 |
 | **S1** | What does a logged-out visitor see on an onX share link? | Open a share link in a private window | A screenshot | The walkthrough page, not this roadmap. Listed because it fits the same sitting |
 
@@ -273,7 +273,8 @@ The sizes are KG §7's estimates, regrouped.
   - Each file becomes one folder in the sidebar, named after the file.
   - onX-sourced items carry a "from your onX file" explanation.
   - A CalTopo GPX/KML shows the notice "CalTopo's GeoJSON keeps icons, colours and folders.
-    Export that if you can." (KG §3.2).
+    Export that if you can." (KG §3.2). *(Phase 7: now GPX-only, "CalTopo's GPX has no
+    folders, icons or waypoint colors. Its GeoJSON or KML export keeps them.")*
   - The map title strips `.gpx` and `.kml` as well.
 - **Web work** (`web/index.html`, `web/app.js`, `web/styles.css`):
   - `accept=` and `multiple` on the input;
@@ -331,7 +332,7 @@ The sizes are KG §7's estimates, regrouped.
 
 ### Phase 5: Round-trip runbook ("replace" mode)
 
-*The text can be drafted now. Ship it after P1.*
+*P1 is answered (duplicates), so the wording is "replace": back up, delete the originals, import. Ready to build.*
 
 - **Goal:** turn an exported onX account back into onX without duplicates, safely.
 - **User-visible outcome:** when the input came from onX, the zip's RUNBOOK.md and the in-app
@@ -371,6 +372,8 @@ The sizes are KG §7's estimates, regrouped.
 
 ### Phase 6: Update in place (id write-back)
 
+*Dropped 2026-10-22: P1 showed onX duplicates on re-import, even with matching ids.*
+
 *Conditional. Exists only if P1 shows onX upserts by id.*
 
 - **Goal:** a round trip edits the existing markups, so no delete step is needed and photos and
@@ -390,23 +393,45 @@ The sizes are KG §7's estimates, regrouped.
   harmless at best and confusing at worst (KG §5.3).
 - **Depends on:** P1 and Phase 4.
 
-### Phase 7: CalTopo KML reader
+### Phase 7: CalTopo KML reader — **DONE 2026-10-22**
 
-*Blocked on P6. Lowest priority.*
+*Unblocked by P6: the owner's Dark Divide 100 export (GeoJSON + KML + GPX of one map,
+`tests/fixtures/dark_divide_100/caltopo/`), plus nine public CalTopo KMLs and 60 public
+CalTopo GPX files read for the dialect (`tests/fixtures/caltopo_synthetic/README.md`).*
 
 - **Goal:** accept CalTopo KML for users who don't have the GeoJSON.
-- **Work:** a `caltopo_kml.py`, or a generic-KML mode in `onx_kml.py`, per KG §3.3:
-  - walk `<Folder>` into folders;
-  - read `<description>`, stripping the HTML;
-  - resolve `styleUrl` → `Style`/`StyleMap` colours (KML colour is `aabbggrr`);
-  - read MultiGeometry and inner rings.
-- **Exit criteria:** the P6 file loads with its folders and colours, and the CalTopo GeoJSON of
-  the same map gives the same items.
-- **Effort:** M.
-- **Depends on:** P6 and Phase 2.
-- **Open question:** whether CalTopo KML keeps folders and styles at all. The research found
-  conflicting statements (KG §3.3). If it keeps neither, ship it as "accepted, but export
-  GeoJSON".
+- **What shipped:**
+  - `input_check.detect()` classifies a KML whose Document is `CalTopo Export` /
+    `Export from CalTopo` as `(kml, caltopo)`.
+  - `cairn/io/caltopo_kml.py` builds the SAME ParsedData `parse_geojson` builds:
+    - one folder per `<Folder>`; a nested folder is flattened to its path;
+    - marker-symbol and marker-color from the icon href's `cfg`;
+    - `AABBGGRR` LineStyle/PolyStyle colors, read with the hex case kept;
+    - the MultiGeometry label point dropped, MultiPolygon split like GeoJSON's, holes kept;
+    - descriptions verbatim;
+    - an altitude of 0.0 read as "none".
+  - The bridge routes CalTopo KML down the CalTopo path, so the icon and color rules are
+    the GeoJSON's.
+  - Also in this phase:
+    - the CalTopo GPX reader reads Garmin `gpxx:DisplayColor` (16 names, RGB from GPSBabel)
+      and `<sym>`;
+    - `pattern_to_style` maps CalTopo's dashed pattern `M0 -1 L0 1,,8,F` to onX `dash`;
+    - the web notice is now GPX-only.
+- **Exit criteria, met:**
+  - The P6 file loads with its folders and colors.
+  - Against the GeoJSON, the Dark Divide KML gives identical review items and identical
+    exported files, except 8 custom-icon marker colors. GeoJSON's red there is a `stroke` on
+    the marker that the KML doesn't carry.
+  - The GPX differs only in folders, those marker colors and one line color.
+  - Every remaining difference is pinned with its reason in `PARITY.md`,
+    `tests/test_dark_divide_parity.py` and `tests/test_caltopo_format_parity.py`. The last also
+    covers a synthetic map: built-in symbols, Fuchsia, widths, a dash, areas with a hole and
+    two parts, a nested folder, special characters.
+- **Answer to the open question:** CalTopo KML keeps folders and styles (colors, widths,
+  icons, area fill). It doesn't keep line patterns.
+- **Still open** (TODO.md, "CalTopo KML/GPX input"): CalTopo's dotted and arrow pattern
+  values, a CalTopo GPX with an area, and multi-part areas and holes as CalTopo writes them in
+  KML. All need one styled export from the owner.
 
 ---
 
@@ -421,7 +446,7 @@ The sizes are KG §7's estimates, regrouped.
 | 4 Real-file validation | **P2** (plus P3, P5, P7) | S | when files arrive |
 | 5 Replace-mode runbook | **P1** for wording | S | draft now; ship after P1 |
 | 6 Update in place | **P1 = upsert** | S or dropped | after P1 and 4 |
-| 7 CalTopo KML | **P6** | M | when the file arrives |
+| 7 CalTopo KML | **P6** | M | **done 2026-10-22** |
 
 **Total:**
 
