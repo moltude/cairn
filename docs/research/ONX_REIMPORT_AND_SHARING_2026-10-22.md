@@ -340,7 +340,7 @@ window.
 | The source map in CalTopo | **Yes, live** | A CalTopo map shared as URL, plus a screenshot |
 | The CalTopo GeoJSON export | **Yes** | Ship a sample `.json`. `tests/fixtures/bitterroots/Bitterroots__Complete_.json` is real CalTopo data, but check it holds nothing private before publishing |
 | Cairn's preview, edits and runbook | **Yes, live** | The web app itself. Screenshots already exist: `docs/screenshots/web-01-drop.png` … `web-07-runbook.png` |
-| "Without Cairn": CalTopo GPX/KML imported straight into onX | **Screenshots only** (owner's account) | Already captured in Dec 2025: `docs/screenshots/export-from-caltopo-into-onx-poor.png`, `bitterroots-subset-onx-raw.png` |
+| "Without Cairn": CalTopo GPX/KML imported straight into onX | **Screenshots only** (owner's account) | Already captured in Dec 2025: `export-from-caltopo-into-onx-poor.png` (local `archive/docs/screenshots/`, too large for the repo), `bitterroots-subset-onx-raw.png` |
 | "With Cairn": styled markups and folders in onX | **Screenshots only** (owner's account) | Already captured: `docs/screenshots/bitterroot-subset-final-onx.png`, `hd-onx.png`. Compare with `bitterroots-subset-caltopo.png`, `hd-caltopo.png` |
 | A live onX map readers can click into | **No** | Not possible: onX sharing needs an account and copies the markups into it |
 | Folder renaming and runbook steps inside onX | **Screenshots only** | New captures needed. The Dec 2025 shots predate the runbook and folder flow |

@@ -1,8 +1,7 @@
 # Round r1 — 2026-10-22, real onX account
 
 Harness: `scripts/onx_roundtrip.py` (see `docs/ONX_TESTING.md`). Results: `SUMMARY.md`;
-per set: `<stage>/<set>/verify_report.md`. `onx_export/` holds onX's own GPX + KML export of
-each test folder — the only non-regenerable files here.
+per set: `<stage>/<set>/verify_report.md`.
 
 ## onX folders created (owner deletes; markups first, then the folder)
 
@@ -37,3 +36,7 @@ each test folder — the only non-regenerable files here.
 - Harness hazard found and fixed in the operator script: an export that silently fails can let a
   stale download from `~/Downloads` be verified instead (an i2 KML from 13:58 produced a false
   "extra Route" FAIL); `scripts/onx_fetch_export.sh` now takes only downloads under 3 minutes old.
+
+## Where the data is
+
+Only the findings are tracked (this README, `SUMMARY.md`, each set's `verify_report.md`). The upload files, onX's own GPX/KML exports and the per-set JSON are gitignored and kept locally; they are also in git history at `789e85c` (PR #22).

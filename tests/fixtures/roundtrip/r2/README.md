@@ -3,7 +3,7 @@
 Re-run of round r1 (see `../r1/README.md`) after #23: onX's note limit is counted in UTF-8
 bytes, and names pass through unchanged (ENG-06). The `edge` dataset gained UTF-8 note probes
 and a non-ASCII name (28 markups). Results: `SUMMARY.md`; per set:
-`<stage>/<set>/verify_report.md`; onX's own exports under `*/onx_export/`.
+`<stage>/<set>/verify_report.md`.
 
 **0 FAIL in all 14 stage/set runs.** Every remaining KNOWN_ONX_LIMIT is line thinning or a
 note longer than 512 bytes, cut.
@@ -34,3 +34,7 @@ note longer than 512 bytes, cut.
 | `ZZTEST · r2 · aborted import (empty)` | 0 — the browser extension disconnected mid-import; All Content confirmed no markups were created |
 
 218 markups in all (109 per stage). Search All Content for `[r2` to find leftovers.
+
+## Where the data is
+
+Only the findings are tracked (this README, `SUMMARY.md`, each set's `verify_report.md`). The upload files, onX's own GPX/KML exports and the per-set JSON are gitignored and kept locally; they are also in git history at `4582dfa` (PR #24).

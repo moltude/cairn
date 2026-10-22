@@ -57,7 +57,7 @@ Context: the user finds the current web UI generic and "Claude-generated looking
 dashboard with gray cards, pill badges, an amber accent and emoji icons. The overall flow (drop
 file → review → fix → export) is acceptable; the design is not. Process agreed: Q&A first, then
 mockups/artifacts, then CSS — no ad hoc restyling. Baseline screenshots of the pre-redesign UI:
-`docs/design/baseline-2026-10-21/`.
+`docs/design/baseline-2026-10-21/` (since 2026-10-22 kept locally under `archive/`, not in the repo).
 
 ### UI-01 — What should Cairn feel like?
 Status: decided

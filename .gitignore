@@ -72,3 +72,15 @@ artifacts/tui/
 # NOTE: do NOT ignore tests/fixtures/*.gpx — 15 of them are hard test dependencies.
 tests/output/
 coverage.xml
+
+# --- Local-only test data (2026-10-22 housekeeping) -------------------------------------
+# Kept on disk, not published. archive/ holds files moved out of the tracked tree
+# (oversized screenshots, design build captures, the old demo/ maps, dead fixtures).
+archive/
+# onX round-trip runs (scripts/onx_roundtrip.py): the upload files, onX's own exports and
+# per-set JSON are regenerable or account-specific; the run's findings stay tracked in
+# README.md, SUMMARY.md and each set's verify_report.md.
+tests/fixtures/roundtrip/**/*.gpx
+tests/fixtures/roundtrip/**/*.kml
+tests/fixtures/roundtrip/**/*.json
+tests/fixtures/roundtrip/**/RUNBOOK.md
