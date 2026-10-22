@@ -32,7 +32,7 @@ from cairn.core.writers import (
 
 # onX's per-ACCOUNT markup ceiling (FIDELITY_MODEL_2026-08-29.md). Splitting a
 # map into more files or imports does not get around it.
-ONX_ACCOUNT_MARKUP_LIMIT = 1500
+ONX_ACCOUNT_MARKUP_LIMIT = 3000  # onX help 360052239052, updated 2026-09-16 (was 1,500)
 
 # onX's waypoint palette (10). Track/line adds Fuchsia -> 11. See README.md's color reference.
 ONX_COLORS = [
@@ -434,7 +434,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "",
         ]
     if s["over_limit"]:
-        # 1,500 is an ACCOUNT ceiling: splitting into more files or imports
+        # The 3,000 limit is an ACCOUNT ceiling: splitting into more files or imports
         # does not help, so the only advice that works is to send fewer.
         L += [
             f"> **Warning:** onX accounts hold at most {s['limit']:,} markups; this map has",

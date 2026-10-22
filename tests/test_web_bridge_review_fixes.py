@@ -74,7 +74,7 @@ def test_source_color_still_quantized_and_unknown_icon_falls_back_to_blue():
     assert exported == {"Odd": "rgba(255,0,0,1)", "Nothing here": BLUE}
 
 
-# ---- (g) 1,500 is an account ceiling ---------------------------------------
+# ---- (g) 3,000 is an account ceiling ---------------------------------------
 
 def _manifest(count, expected=None):
     return [{"n": 1, "folder": "Big", "count": count,
@@ -84,18 +84,18 @@ def _manifest(count, expected=None):
 
 
 def test_over_limit_warning_says_remove_not_split():
-    rb = bridge.build_runbook(_manifest(1600))
-    assert "onX accounts hold at most 1,500 markups; this map has\n> 1,600." in rb
+    rb = bridge.build_runbook(_manifest(3100))
+    assert "onX accounts hold at most 3,000 markups; this map has\n> 3,100." in rb
     assert "Remove or exclude some before importing." in rb
     assert "split" not in rb.lower()
 
 
 def test_over_limit_uses_max_of_written_and_expected():
-    # 1,400 written but 1,600 shown: still over the account ceiling.
-    s = bridge.runbook_summary(_manifest(1400, expected=1600))
-    assert (s["markups"], s["over_limit"], s["dropped"]) == (1600, True, 200)
-    assert "this map has\n> 1,600." in bridge.build_runbook(_manifest(1400, expected=1600))
-    assert not bridge.runbook_summary(_manifest(1500))["over_limit"]
+    # 2,900 written but 3,100 shown: still over the account ceiling.
+    s = bridge.runbook_summary(_manifest(2900, expected=3100))
+    assert (s["markups"], s["over_limit"], s["dropped"]) == (3100, True, 200)
+    assert "this map has\n> 3,100." in bridge.build_runbook(_manifest(2900, expected=3100))
+    assert not bridge.runbook_summary(_manifest(3000))["over_limit"]
 
 
 def test_on_screen_runbook_reads_the_shared_summary():

@@ -112,7 +112,7 @@ In onX the file format decides the object type, per project docs (Aug 2026):
 | KML LineString | Line |
 | KML Polygon | Area |
 
-Cairn writes every CalTopo line, including a CalTopo Shape drawn as an open line, as a GPX `<trk>`. That's the only path where Cairn writes onX color, style and weight. So all your lines arrive as **Tracks**, and Cairn never creates onX "Lines". Only closed polygons go to KML and become Areas. Polygon holes (inner rings) are dropped, and an area's CalTopo line width and pattern aren't carried over.
+Cairn writes every CalTopo line, including a CalTopo Shape drawn as an open line, as a GPX `<trk>`. That's the only path where Cairn writes onX color, style and weight. So all your lines arrive as **Tracks**, and Cairn never creates onX "Lines". Only closed polygons go to KML and become Areas. Holes in a polygon are kept, and an area's CalTopo line width and line/fill opacity are carried over; its dash pattern isn't (KML has no dash style). How onX renders KML width and fill hasn't been verified. Multi-part areas (MultiPolygon) aren't supported yet.
 
 ## Limits and trade-offs
 
@@ -120,10 +120,10 @@ Cairn writes every CalTopo line, including a CalTopo Shape drawn as an open line
 
 - **Recreate your folders automatically.** You rename each one in onX after import, as described above. Nesting isn't lost: per project docs, CalTopo and onX folders are both flat.
 - **Keep exact colors.** Waypoint and track colors snap to onX's palette, and line widths collapse to two weights.
-- **Keep every character in names.** Waypoint and track names lose `! @ # $ % ^ * &`, so `#01 Porcupine` becomes `01 Porcupine`, and the app doesn't tell you. Area names are left alone.
+- **Keep every character in names.** Waypoint, track and area names lose `! @ # $ % ^ * &`, so `#01 Porcupine` becomes `01 Porcupine`. The runbook lists every renamed item under "Renamed for onX". Nothing in the project's onX sources says onX rejects those characters; the rule is kept as a precaution.
 - **Control order in onX.** Within each file, items are sorted naturally ("Camp 2" before "Camp 10"). How onX orders them after import hasn't been checked against any onX source.
-- **Check onX's per-import cap.** onX allows up to 3,000 markups per import (per project docs, Aug 2026), and Cairn doesn't check that.
-- **Keep you under the account limit.** onX says your account is "currently limited to 1,500 Markups" (per project docs, Aug 2026). Cairn warns when *this map* is over 1,500, but it can't see what's already in your account. Splitting into more imports doesn't get around an account-wide cap. What onX actually does when you go over isn't in any cited onX source. The runbook's "The import will fail" and the design doc's "kills the import" are the project's own assertions.
+- **Check onX's per-import cap separately.** onX allows up to 3,000 markups per import file; since that equals the account limit, Cairn's account warning covers it.
+- **Keep you under the account limit.** onX says "Your onX account is limited to 3,000 Markups" (help article updated 2026-09-16; it was 1,500 in August). Cairn warns when *this map* is over 3,000, but it can't see what's already in your account. Splitting into more imports doesn't get around an account-wide cap, so the warning tells you to remove or exclude items. What onX actually does when you go over isn't in any cited onX source.
 - **Support phone-only importing.** The runbook is written for the Web Map. KML import works only on the Web Map (per project docs, Aug 2026), and so does the new-folder checkbox. The phone app can import GPX, then file it with "Add to Folder".
 - **Import without a paid plan.** Importing requires onX Premium or Elite (per project docs, Aug 2026).
 - **Read anything other than CalTopo GeoJSON.** See the round-trip question below.
@@ -154,6 +154,6 @@ Not today. Here's what's known and what isn't.
 - **Folders aren't recovered.** onX export files carry no folder information (per project docs, Aug 2026). Cairn's readers put everything into fixed "Waypoints", "Tracks" and "Areas" folders, so you'd be renaming folders by hand again. The project docs note that onX can export one folder at a time, which could carry folder names through filenames, but Cairn doesn't support that.
 - **Reading XML would reopen a security decision.** The project chose stock XML parsing because XML isn't reachable from the browser. Making it reachable is the stated trigger for revisiting that.
 
-**Re-importing: unknown.** Nobody knows whether re-importing updates your existing markups or creates duplicates. The project owner is "skeptical" that in-place updates are possible. Per project docs (Aug 2026), onX's own help suggests exporting and re-importing to manage the 1,500 limit, but that doesn't settle whether a re-import matches existing markups. Cairn's exports don't include onX's IDs, so there would be nothing to match on, if onX matches by ID at all. If re-import does duplicate, you'd need to delete the originals first, or the copies count against the 1,500-markup limit.
+**Re-importing: unknown.** Nobody knows whether re-importing updates your existing markups or creates duplicates. The project owner is "skeptical" that in-place updates are possible. Per project docs (Aug 2026), onX's own help suggests exporting and re-importing to manage the 3,000 limit, but that doesn't settle whether a re-import matches existing markups. Cairn's exports don't include onX's IDs, so there would be nothing to match on, if onX matches by ID at all. If re-import does duplicate, you'd need to delete the originals first, or the copies count against the 3,000-markup limit.
 
 So this round trip is a real possible use case that hasn't been built.
