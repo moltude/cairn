@@ -66,6 +66,12 @@ FUCHSIA = ("Fuchsia", "rgba(255,0,255,1)", "#FF00FF")
 LINE_COLORS = ONX_COLORS + [FUCHSIA]
 _RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in LINE_COLORS}
 
+# onX line styles and weights an edit may set on a track (onx:style / onx:weight,
+# the values onX's own GPX export writes). Weight -> the CalTopo stroke-width
+# the track writer's stroke_width_to_weight maps back to that weight.
+LINE_STYLES = ("solid", "dash", "dot")
+LINE_WEIGHTS = {"4.0": 4, "6.0": 6}
+
 # "edited": uids with any UI edit. "color_edited": uids whose edit set a colour.
 # Both are bookkeeping only now: export_zip pins EVERY item to the colour the UI
 # shows, so the colour no longer depends on whether it was edited.
@@ -516,8 +522,21 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
 
 
 def apply_edits(edits_json: str) -> str:
-    """Apply {uid: {icon,color,name}} from the UI back onto the parsed model."""
+    """Apply {uid: {icon,color,name,desc,included,confirmed,style,weight}} from the UI.
+
+    style ("solid" | "dash" | "dot") and weight ("4.0" | "6.0") apply to tracks
+    and are ignored for waypoints and areas; any other value raises ValueError.
+    """
     edits = json.loads(edits_json)
+    # Validate before touching anything, so a bad edit applies nothing.
+    for uid, e in edits.items():
+        e = e or {}
+        if e.get("style") is not None and e["style"] not in LINE_STYLES:
+            raise ValueError(f"Unknown line style {e['style']!r} for {uid}: "
+                             f"use one of {', '.join(LINE_STYLES)}.")
+        if e.get("weight") is not None and str(e["weight"]) not in LINE_WEIGHTS:
+            raise ValueError(f"Unknown line weight {e['weight']!r} for {uid}: "
+                             f"use one of {', '.join(LINE_WEIGHTS)}.")
     _STATE.setdefault("edited", set()).update(edits.keys())
     _STATE.setdefault("color_edited", set()).update(
         uid for uid, e in edits.items() if e and e.get("color") is not None
@@ -531,6 +550,15 @@ def apply_edits(edits_json: str) -> str:
             for k in ("icon", "color", "name", "desc", "included", "confirmed"):
                 if k in e and e[k] is not None:
                     item[k] = e[k]
+            if item["kind"] == "tracks":
+                # Line style / weight: tracks only (onX has no such thing for a
+                # waypoint, and Cairn's area export writes neither -- ENG-05).
+                # Stored on the item only when edited, so an unedited map's
+                # load JSON and export are byte-for-byte what they were.
+                if e.get("style") is not None:
+                    item["style"] = e["style"]
+                if e.get("weight") is not None:
+                    item["weight"] = str(e["weight"])
             if "icon" in e and "unknown_icon" in item:
                 item["unknown_icon"] = item["icon"] not in get_all_onx_icons()
             if "icon" in e:
@@ -586,6 +614,14 @@ def export_zip() -> bytes:
                     # Track GPX and area KML both read feature.stroke first
                     # (track palette, so Fuchsia round-trips).
                     feat.stroke = _hex_for(item["color"])
+                if item["kind"] == "tracks":
+                    # The track writer reads feat.pattern / feat.stroke_width
+                    # (pattern_to_style / stroke_width_to_weight), whichever
+                    # reader built the feature (CalTopo or onX).
+                    if item.get("style"):
+                        feat.pattern = item["style"]
+                    if item.get("weight"):
+                        feat.stroke_width = LINE_WEIGHTS[item["weight"]]
 
     out = Path("/tmp/out")
     buf = io.BytesIO()

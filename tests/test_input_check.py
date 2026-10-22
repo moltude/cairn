@@ -76,6 +76,8 @@ EXPECTED = {
     "edge_cases/single_waypoint.gpx": (GPX, CAIRN),
     "edge_cases/unicode.gpx": (GPX, CAIRN),
     "edge_cases/xml_chars.gpx": (GPX, CAIRN),
+    "edge_cases_onx/README.md": (UNKNOWN, NOT_A_MAP),
+    "edge_cases_onx/edge.json": (GEOJSON, CALTOPO),   # scripts/generate_edge_dataset.py
     "onx_dialect/README.md": (UNKNOWN, NOT_A_MAP),
     "caltopo-random/README.md": (UNKNOWN, NOT_A_MAP),
     "caltopo-random/PARITY.md": (UNKNOWN, NOT_A_MAP),
@@ -160,7 +162,25 @@ def _fixture_files() -> set[str]:
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "tests/fixtures"],
         cwd=ROOT, capture_output=True, text=True, check=True,
     ).stdout
-    return {Path(p).relative_to("tests/fixtures").as_posix() for p in out.split()}
+    return {Path(p).relative_to("tests/fixtures").as_posix() for p in out.split()
+            if not p.startswith(ROUNDTRIP_PREFIX)}
+
+
+# Round-trip harness runs (scripts/onx_roundtrip.py): generated per run id, so they are
+# checked by rule below instead of being listed one by one.
+ROUNDTRIP_PREFIX = "tests/fixtures/roundtrip/"
+
+
+def test_roundtrip_run_files_classify_by_rule():
+    out = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", ROUNDTRIP_PREFIX],
+        cwd=ROOT, capture_output=True, text=True, check=True,
+    ).stdout
+    for rel in out.split():
+        path = ROOT / rel
+        kind, _dialect = detect(path.name, path.read_text(encoding="utf-8"))
+        want = {".gpx": GPX, ".kml": KML, ".json": GEOJSON}.get(path.suffix, UNKNOWN)
+        assert kind == want, rel
 
 
 def _read(rel: str) -> str:
