@@ -151,7 +151,6 @@ EXPECTED = {
     "test_sort_wp_az_sequential_in_file.gpx": (GPX, CAIRN),
     "test_sort_wp_time_random.gpx": (GPX, CAIRN),
     "test_sort_wp_time_sequential.gpx": (GPX, CAIRN),
-    "tui/two_waypoints.json": (GEOJSON, CALTOPO),
 }
 
 
@@ -291,7 +290,7 @@ def test_non_map_inputs():
 def test_content_wins_over_extension(caplog):
     # A GPX saved as .json, a GeoJSON saved as .kml, a KML saved as .txt.
     assert detect("map.json", ONX_WEB_GPX) == (GPX, ONX)
-    assert detect("map.kml", _read("tui/two_waypoints.json")) == (GEOJSON, CALTOPO)
+    assert detect("map.kml", _read("caltopo_synthetic/caltopo_synthetic.json")) == (GEOJSON, CALTOPO)
     with caplog.at_level("WARNING", logger=IC.__name__):
         assert detect("map.txt", ONX_KML) == (KML, ONX)
     assert "map.txt" in caplog.text and "KML" in caplog.text

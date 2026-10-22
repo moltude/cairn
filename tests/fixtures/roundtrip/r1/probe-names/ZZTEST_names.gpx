@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn probe">
-<wpt lat="46.380" lon="-121.700"><name>ZZTEST r1 hash #2 &amp; amp</name><desc>Name keeps # and &amp;?</desc><extensions><onx:icon>Summit</onx:icon><onx:color>rgba(255,0,0,1)</onx:color></extensions></wpt>
-<wpt lat="46.381" lon="-121.700"><name>ZZTEST r1 bang! at@ dollar$ pct% caret^ star*</name><desc>Name keeps ! @ $ % ^ *?</desc><extensions><onx:icon>Summit</onx:icon><onx:color>rgba(255,0,0,1)</onx:color></extensions></wpt>
-<wpt lat="46.382" lon="-121.700"><name>ZZTEST r1 quote's "dq" (paren) &lt;lt&gt;</name><desc>Name keeps quotes, parens, &lt; &gt;?</desc><extensions><onx:icon>Summit</onx:icon><onx:color>rgba(255,0,0,1)</onx:color></extensions></wpt>
-</gpx>

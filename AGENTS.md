@@ -125,6 +125,7 @@ readers via document_adapter.
   unrelated 2019 project. There is no console script any more (web-only).
   `release.yml`'s tag-guard asserts the git tag matches `pyproject`'s version; PyPI filenames are
   immutable, so a mismatched publish is permanent.
+- **Local-only data stays out of git.** Round-trip run payloads (`tests/fixtures/roundtrip/**` GPX/KML/JSON) and anything under `archive/` are gitignored; only findings (README, SUMMARY, verify_report.md) are tracked. Screenshots and captures belong in `archive/` unless a tracked doc embeds them. A test must never read an ignored path -- the `fresh-clone` CI job would fail.
 - **Nothing under `cairn/` may write to its own package directory.** `icon_catalog.yaml` used to
   be appended to on every run — dirtying the working tree, leaking test fixture names into shipped
   data, and targeting a path that is read-only in a real install. Recording is now opt-in via
