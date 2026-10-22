@@ -326,3 +326,14 @@ def test_xml_at_the_cap_is_allowed():
 def test_large_json_is_not_capped():
     # The pre-existing GeoJSON path is unchanged: no size cap (see the module comment).
     guard_input('{"features": []' + " " * (IC.MAX_XML_INPUT_BYTES + 1) + "}")
+
+
+def test_onx_like_needs_an_onx_namespace_not_just_the_text_onxmaps_com():
+    """The ONX_LIKE sniff matches an xmlns whose whole value is an onxmaps.com
+    origin, not any attribute that merely contains the text."""
+    from cairn.io.input_check import detect
+
+    ns = '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1"></gpx>'
+    fake = '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:x="https://evil.example/?u=onxmaps.com" version="1.1"></gpx>'
+    assert detect("a.gpx", ns)[1] == ONX_LIKE
+    assert detect("b.gpx", fake)[1] == GENERIC

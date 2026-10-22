@@ -197,7 +197,7 @@ def _detect_xml(body: str) -> tuple[str, str]:
             return (GPX, CALTOPO)
         if creator.startswith("Cairn"):
             return (GPX, CAIRN)
-        if "onxmaps.com" in attrs.lower():
+        if _ONX_NS_RE.search(attrs):
             return (GPX, ONX_LIKE)
         return (GPX, GENERIC)
     # KML. The Cairn marker is checked BEFORE onX's per-placemark id: once
@@ -207,6 +207,16 @@ def _detect_xml(body: str) -> tuple[str, str]:
     if _ONX_ID_RE.search(body):
         return (KML, ONX)
     return (KML, GENERIC)
+
+
+# An xmlns declaration whose value is exactly an onxmaps.com origin (onX's own
+# namespace is the four-w "https://wwww.onxmaps.com/"). Matching the whole
+# attribute value, not a substring, is what CodeQL's
+# py/incomplete-url-substring-sanitization asks for; this only picks a dialect,
+# it never grants trust.
+_ONX_NS_RE = re.compile(
+    r"""xmlns(?::[\w.-]+)?\s*=\s*["']https?://(?:[\w-]+\.)*onxmaps\.com/?["']""", re.I
+)
 
 
 def extension_mismatch(filename: str, kind: str) -> str | None:
