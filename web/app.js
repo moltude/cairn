@@ -884,7 +884,7 @@ function renderRunbook() {
       ? ` <b>${kml}</b> of these batches contain a KML file, which the phone app can't import — use the Web Map on a computer.`
       : ""}</div>` +
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
-    (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} characters. onX cut a longer imported note to ${S.note_limit} and dropped a much longer one; RUNBOOK.md lists ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
+    (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; RUNBOOK.md lists ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   MANIFEST.forEach(e => {
     const d = document.createElement("div");

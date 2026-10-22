@@ -24,11 +24,11 @@ These names had `! @ # $ % ^ * &` removed. Search onX for the new name.
 - `10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS` → `10 - Sunrise Peak 2 AS to Juniper Ridge 2 AS`  (2027 Dark Divide 100 Mile Endurance Run)
 - `11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)` → `11 - Juniper Ridge 2 AS to Cispus Learning Center (FINISH)`  (2027 Dark Divide 100 Mile Endurance Run)
 
-### Notes longer than onX keeps on import (512 characters)
+### Notes longer than onX keeps on import (512 bytes)
 
-onX cut a longer imported note to 512 characters, and dropped a much longer one entirely. Shorten these, or paste the rest into onX after import.
+onX keeps the first 512 bytes of an imported note -- about 512 characters of plain English; accented letters, dashes and emoji take 2-4 bytes each. Shorten these, or paste the rest into onX after import. (One earlier 3,000+ character note from an onX export was dropped outright, for a reason we have not found.)
 
-- `02 - Juniper Ridge AS (Used Twice)`: 617 characters  (2027 Dark Divide 100 Mile Endurance Run)
+- `02 - Juniper Ridge AS (Used Twice)`: 617 bytes  (2027 Dark Divide 100 Mile Endurance Run)
 
 ---
 

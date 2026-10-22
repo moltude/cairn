@@ -87,6 +87,21 @@ def test_runbook_lists_notes_longer_than_onx_imports():
     bridge.load_files(json.dumps([{"name": "dd.json", "text": src}]))
     z = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
     rb = z.read("RUNBOOK.md").decode()
-    assert "### Notes longer than onX keeps on import (512 characters)" in rb
-    assert "`02 - Juniper Ridge AS (Used Twice)`: 617 characters" in rb
+    assert "### Notes longer than onX keeps on import (512 bytes)" in rb
+    assert "`02 - Juniper Ridge AS (Used Twice)`: 617 bytes" in rb
+    assert json.loads(bridge.runbook_summary_json())["long_notes"] == 1
+
+
+def test_multibyte_note_over_512_bytes_is_flagged():
+    """onX's limit is 512 UTF-8 bytes: 512 characters ending in an em dash is 514."""
+    src = (ROOT / "tests/fixtures/caltopo-random/onx-test-random.json").read_text(encoding="utf-8")
+    doc = json.loads(bridge.load_files(json.dumps([{"name": "r.json", "text": src}])))
+    item = next(i for g in doc["groups"] for i in g["items"] if i["name"] == "Hiker")
+    ok, over = "x" * 512, "x" * 511 + "—"
+    assert len(over) == 512 and len(over.encode()) == 514
+    bridge.apply_edits(json.dumps({item["uid"]: {"desc": ok}}))
+    bridge.export_zip()
+    assert json.loads(bridge.runbook_summary_json())["long_notes"] == 0
+    bridge.apply_edits(json.dumps({item["uid"]: {"desc": over}}))
+    bridge.export_zip()
     assert json.loads(bridge.runbook_summary_json())["long_notes"] == 1
