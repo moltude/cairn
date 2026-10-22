@@ -1,0 +1,234 @@
+{
+ "run": "r2",
+ "stage": "i2",
+ "set": "random-gpx",
+ "onx_folder": "ZZTEST · r2 · i2 · random-gpx",
+ "source": [
+  "onx_export.gpx",
+  "onx_export.kml"
+ ],
+ "plan": "edit",
+ "edits": [
+  {
+   "kind": "track",
+   "from": "[r2i1] Chaos line",
+   "to": "[r2i2] Chaos line",
+   "note_truncated_to_fit": false,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(0,0,0,1)",
+    "rgba(255,51,0,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] Fire zone",
+   "to": "[r2i2] Fire zone",
+   "note_truncated_to_fit": false,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(0,255,255,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] section 1",
+   "to": "[r2i2] section 1",
+   "note_truncated_to_fit": false,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(0,255,255,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] straight line",
+   "to": "[r2i2] straight line",
+   "note_truncated_to_fit": false,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(132,212,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] Hiker",
+   "to": "[r2i2] Hiker",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Location",
+    "Summit"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(255,51,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] blerg",
+   "to": "[r2i2] blerg",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Location",
+    "Water Source"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(0,255,255,1)"
+   ]
+  }
+ ],
+ "upload_files": [
+  "01_onx_export_Tracks.gpx",
+  "01_onx_export_Waypoints.gpx"
+ ],
+ "known_dropped_holes": [],
+ "items": [
+  {
+   "name": "[r2i2] Chaos line",
+   "kind": "track",
+   "notes": "— edited r2i2",
+   "icon": "",
+   "color": "rgba(255,51,0,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 218,
+   "first": [
+    -121.621872,
+    46.396286
+   ],
+   "last": [
+    -121.600355,
+    46.402089
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] Fire zone",
+   "kind": "track",
+   "notes": "blue, center opacity\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(0,255,255,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 6,
+   "first": [
+    -121.653138,
+    46.399755
+   ],
+   "last": [
+    -121.653138,
+    46.399755
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] section 1",
+   "kind": "track",
+   "notes": "sdflkj\n\nssd\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(0,255,255,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 26,
+   "first": [
+    -121.662285,
+    46.398464
+   ],
+   "last": [
+    -121.650777,
+    46.403957
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] straight line",
+   "kind": "track",
+   "notes": "straight line\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(132,212,0,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 2,
+   "first": [
+    -121.667128,
+    46.409165
+   ],
+   "last": [
+    -121.627474,
+    46.412302
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] Hiker",
+   "kind": "waypoint",
+   "notes": "— edited r2i2",
+   "icon": "Summit",
+   "color": "rgba(255,51,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.625672,
+    46.39129
+   ],
+   "last": [
+    -121.625672,
+    46.39129
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] blerg",
+   "kind": "waypoint",
+   "notes": "berg\n\nbelrgb berg\n— edited r2i2",
+   "icon": "Water Source",
+   "color": "rgba(0,255,255,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.646014,
+    46.39863
+   ],
+   "last": [
+    -121.646014,
+    46.39863
+   ],
+   "holes": 0
+  }
+ ]
+}

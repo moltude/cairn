@@ -1,0 +1,965 @@
+{
+ "run": "r2",
+ "stage": "i2",
+ "set": "edge-geojson",
+ "onx_folder": "ZZTEST · r2 · i2 · edge-geojson",
+ "source": [
+  "onx_export.gpx",
+  "onx_export.kml"
+ ],
+ "plan": "edit",
+ "edits": [
+  {
+   "kind": "area",
+   "from": "[r2i1] ZZTEST filled area",
+   "to": "[r2i2] ZZTEST filled area",
+   "note_truncated_to_fit": false,
+   "color": [
+    "rgba(255,0,255,1)",
+    "rgba(255,51,0,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] ZZTEST dashed line",
+   "to": "[r2i2] ZZTEST dashed line",
+   "note_truncated_to_fit": false,
+   "style": [
+    "dash",
+    "solid"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(255,51,0,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] ZZTEST line note 3000",
+   "to": "[r2i2] ZZTEST line note 3000",
+   "note_truncated_to_fit": true,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(0,255,255,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] ZZTEST line note 511",
+   "to": "[r2i2] ZZTEST line note 511",
+   "note_truncated_to_fit": true,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(0,255,255,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] ZZTEST line note 512",
+   "to": "[r2i2] ZZTEST line note 512",
+   "note_truncated_to_fit": true,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(132,212,0,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] ZZTEST line note 513",
+   "to": "[r2i2] ZZTEST line note 513",
+   "note_truncated_to_fit": true,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "4.0",
+    "6.0"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(0,0,0,1)"
+   ]
+  },
+  {
+   "kind": "track",
+   "from": "[r2i1] ZZTEST wide line",
+   "to": "[r2i2] ZZTEST wide line",
+   "note_truncated_to_fit": false,
+   "style": [
+    "solid",
+    "dash"
+   ],
+   "weight": [
+    "6.0",
+    "4.0"
+   ],
+   "color": [
+    "rgba(0,0,0,1)",
+    "rgba(255,255,255,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST Camp (lower)",
+   "to": "[r2i2] ZZTEST Camp (lower)",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Camp",
+    "Summit"
+   ],
+   "color": [
+    "rgba(132,212,0,1)",
+    "rgba(255,51,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST Névé Café — Lac des Îles 🏔",
+   "to": "[r2i2] ZZTEST Névé Café — Lac des Îles 🏔",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Location",
+    "Water Source"
+   ],
+   "color": [
+    "rgba(132,212,0,1)",
+    "rgba(8,122,255,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST O'Neil's Spring",
+   "to": "[r2i2] ZZTEST O'Neil's Spring",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Water Source",
+    "Camp"
+   ],
+   "color": [
+    "rgba(132,212,0,1)",
+    "rgba(0,255,255,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST Peak #3",
+   "to": "[r2i2] ZZTEST Peak #3",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Summit",
+    "Trailhead"
+   ],
+   "color": [
+    "rgba(132,212,0,1)",
+    "rgba(0,0,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST Rock & Roll",
+   "to": "[r2i2] ZZTEST Rock & Roll",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Location",
+    "Parking"
+   ],
+   "color": [
+    "rgba(132,212,0,1)",
+    "rgba(0,0,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST Wow!",
+   "to": "[r2i2] ZZTEST Wow!",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Location",
+    "Hazard"
+   ],
+   "color": [
+    "rgba(132,212,0,1)",
+    "rgba(255,255,255,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST blank lines",
+   "to": "[r2i2] ZZTEST blank lines",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Camp",
+    "Photo"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(128,0,128,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST literal tags",
+   "to": "[r2i2] ZZTEST literal tags",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Water Source",
+    "Shelter"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(255,255,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST note 1000",
+   "to": "[r2i2] ZZTEST note 1000",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "View"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(139,69,19,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST note 3000",
+   "to": "[r2i2] ZZTEST note 3000",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Lookout"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(139,69,19,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST note 500",
+   "to": "[r2i2] ZZTEST note 500",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Water Source"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(255,51,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST note 511",
+   "to": "[r2i2] ZZTEST note 511",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Water Source"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(8,122,255,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST note 512",
+   "to": "[r2i2] ZZTEST note 512",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Camp"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(0,255,255,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST note 513",
+   "to": "[r2i2] ZZTEST note 513",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Trailhead"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(132,212,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST note 600",
+   "to": "[r2i2] ZZTEST note 600",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Parking"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(0,0,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST trailing space",
+   "to": "[r2i2] ZZTEST trailing space",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "Location",
+    "Hazard"
+   ],
+   "color": [
+    "rgba(132,212,0,1)",
+    "rgba(255,255,255,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST url",
+   "to": "[r2i2] ZZTEST url",
+   "note_truncated_to_fit": false,
+   "icon": [
+    "View",
+    "Photo"
+   ],
+   "color": [
+    "rgba(255,0,0,1)",
+    "rgba(128,0,128,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST utf8 note 511B",
+   "to": "[r2i2] ZZTEST utf8 note 511B",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Shelter"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(255,255,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST utf8 note 512B",
+   "to": "[r2i2] ZZTEST utf8 note 512B",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "View"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(255,0,0,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST utf8 note 513B",
+   "to": "[r2i2] ZZTEST utf8 note 513B",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Lookout"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(139,69,19,1)"
+   ]
+  },
+  {
+   "kind": "waypoint",
+   "from": "[r2i1] ZZTEST utf8 note mid-char",
+   "to": "[r2i2] ZZTEST utf8 note mid-char",
+   "note_truncated_to_fit": true,
+   "icon": [
+    "Summit",
+    "Water Source"
+   ],
+   "color": [
+    "rgba(8,122,255,1)",
+    "rgba(255,51,0,1)"
+   ]
+  }
+ ],
+ "upload_files": [
+  "01_onx_export_Areas.gpx",
+  "01_onx_export_Tracks.gpx",
+  "01_onx_export_Waypoints.gpx"
+ ],
+ "known_dropped_holes": [],
+ "items": [
+  {
+   "name": "[r2i2] ZZTEST filled area",
+   "kind": "area",
+   "notes": "Fill #FF00FF at opacity 0.3.\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(255,51,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 4,
+   "first": [
+    -121.8,
+    46.3
+   ],
+   "last": [
+    -121.8,
+    46.32
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST dashed line",
+   "kind": "track",
+   "notes": "CalTopo dash pattern.\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(255,51,0,1)",
+   "style": "solid",
+   "weight": "6.0",
+   "points": 8,
+   "first": [
+    -121.95,
+    46.27
+   ],
+   "last": [
+    -121.928,
+    46.2714
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST line note 3000",
+   "kind": "track",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(0,255,255,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 8,
+   "first": [
+    -121.95,
+    46.266
+   ],
+   "last": [
+    -121.928,
+    46.2674
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST line note 511",
+   "kind": "track",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(0,255,255,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 8,
+   "first": [
+    -121.95,
+    46.254
+   ],
+   "last": [
+    -121.928,
+    46.2554
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST line note 512",
+   "kind": "track",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(132,212,0,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 8,
+   "first": [
+    -121.95,
+    46.258
+   ],
+   "last": [
+    -121.928,
+    46.2594
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST line note 513",
+   "kind": "track",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(0,0,0,1)",
+   "style": "dash",
+   "weight": "6.0",
+   "points": 8,
+   "first": [
+    -121.95,
+    46.262
+   ],
+   "last": [
+    -121.928,
+    46.2634
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST wide line",
+   "kind": "track",
+   "notes": "CalTopo stroke-width 6.\n— edited r2i2",
+   "icon": "",
+   "color": "rgba(255,255,255,1)",
+   "style": "dash",
+   "weight": "4.0",
+   "points": 8,
+   "first": [
+    -121.95,
+    46.274
+   ],
+   "last": [
+    -121.928,
+    46.2754
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST Camp (lower)",
+   "kind": "waypoint",
+   "notes": "Name probe: ZZTEST Camp (lower)\n— edited r2i2",
+   "icon": "Summit",
+   "color": "rgba(255,51,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.88,
+    46.22
+   ],
+   "last": [
+    -121.88,
+    46.22
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST Névé Café — Lac des Îles 🏔",
+   "kind": "waypoint",
+   "notes": "Name probe: accents, em dash, emoji.\n— edited r2i2",
+   "icon": "Water Source",
+   "color": "rgba(8,122,255,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.87,
+    46.23
+   ],
+   "last": [
+    -121.87,
+    46.23
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST O'Neil's Spring",
+   "kind": "waypoint",
+   "notes": "Name probe: ZZTEST O'Neil's Spring\n— edited r2i2",
+   "icon": "Camp",
+   "color": "rgba(0,255,255,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.87,
+    46.22
+   ],
+   "last": [
+    -121.87,
+    46.22
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST Peak #3",
+   "kind": "waypoint",
+   "notes": "Name probe: ZZTEST Peak #3\n— edited r2i2",
+   "icon": "Trailhead",
+   "color": "rgba(0,0,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.85,
+    46.21
+   ],
+   "last": [
+    -121.85,
+    46.21
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST Rock & Roll",
+   "kind": "waypoint",
+   "notes": "Name probe: ZZTEST Rock & Roll\n— edited r2i2",
+   "icon": "Parking",
+   "color": "rgba(0,0,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.9,
+    46.22
+   ],
+   "last": [
+    -121.9,
+    46.22
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST Wow!",
+   "kind": "waypoint",
+   "notes": "Name probe: ZZTEST Wow!\n— edited r2i2",
+   "icon": "Hazard",
+   "color": "rgba(255,255,255,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.89,
+    46.22
+   ],
+   "last": [
+    -121.89,
+    46.22
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST blank lines",
+   "kind": "waypoint",
+   "notes": "First paragraph.\n\nSecond, after one blank line.\n\nThird, after two blank lines.\n— edited r2i2",
+   "icon": "Photo",
+   "color": "rgba(128,0,128,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.88,
+    46.21
+   ],
+   "last": [
+    -121.88,
+    46.21
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST literal tags",
+   "kind": "waypoint",
+   "notes": "Plain text, not markup: and must survive.\nAlso 5 < 6 and 7 > 4.\n— edited r2i2",
+   "icon": "Shelter",
+   "color": "rgba(255,255,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.86,
+    46.21
+   ],
+   "last": [
+    -121.86,
+    46.21
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST note 1000",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "View",
+   "color": "rgba(139,69,19,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.9,
+    46.21
+   ],
+   "last": [
+    -121.9,
+    46.21
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST note 3000",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "Lookout",
+   "color": "rgba(139,69,19,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.89,
+    46.21
+   ],
+   "last": [
+    -121.89,
+    46.21
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST note 500",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "Water Source",
+   "color": "rgba(255,51,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.89,
+    46.2
+   ],
+   "last": [
+    -121.89,
+    46.2
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST note 511",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "Water Source",
+   "color": "rgba(8,122,255,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.88,
+    46.2
+   ],
+   "last": [
+    -121.88,
+    46.2
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST note 512",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "Camp",
+   "color": "rgba(0,255,255,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.87,
+    46.2
+   ],
+   "last": [
+    -121.87,
+    46.2
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST note 513",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "Trailhead",
+   "color": "rgba(132,212,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.86,
+    46.2
+   ],
+   "last": [
+    -121.86,
+    46.2
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST note 600",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "Parking",
+   "color": "rgba(0,0,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.85,
+    46.2
+   ],
+   "last": [
+    -121.85,
+    46.2
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST trailing space",
+   "kind": "waypoint",
+   "notes": "Name probe: ZZTEST trailing space\n— edited r2i2",
+   "icon": "Hazard",
+   "color": "rgba(255,255,255,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.86,
+    46.22
+   ],
+   "last": [
+    -121.86,
+    46.22
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST url",
+   "kind": "waypoint",
+   "notes": "Trail report: https://example.com/trails?id=42&view=map#section-3 (see the map).\n— edited r2i2",
+   "icon": "Photo",
+   "color": "rgba(128,0,128,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.87,
+    46.21
+   ],
+   "last": [
+    -121.87,
+    46.21
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST utf8 note 511B",
+   "kind": "waypoint",
+   "notes": "Line 01: névé — café at the col, 2 km.\nLine 02: névé — café at the col, 2 km.\nLine 03: névé — café at the col, 2 km.\nLine 04: névé — café at the col, 2 km.\nLine 05: névé — café at the col, 2 km.\nLine 06: névé — café at the col, 2 km.\nLine 07: névé — café at the col, 2 km.\nLine 08: névé — café at the col, 2 km.\nLine 09: névé — café at the col, 2 km.\nLine 10: névé — café at the col, 2 km.\nLine 11: névé — café at the col, 2 km.\nLine 12: né\n— edited r2i2",
+   "icon": "Shelter",
+   "color": "rgba(255,255,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.85,
+    46.22
+   ],
+   "last": [
+    -121.85,
+    46.22
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST utf8 note 512B",
+   "kind": "waypoint",
+   "notes": "Line 01: névé — café at the col, 2 km.\nLine 02: névé — café at the col, 2 km.\nLine 03: névé — café at the col, 2 km.\nLine 04: névé — café at the col, 2 km.\nLine 05: névé — café at the col, 2 km.\nLine 06: névé — café at the col, 2 km.\nLine 07: névé — café at the col, 2 km.\nLine 08: névé — café at the col, 2 km.\nLine 09: névé — café at the col, 2 km.\nLine 10: névé — café at the col, 2 km.\nLine 11: névé — café at the col, 2 km.\nLine 12: né\n— edited r2i2",
+   "icon": "View",
+   "color": "rgba(255,0,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.9,
+    46.23
+   ],
+   "last": [
+    -121.9,
+    46.23
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST utf8 note 513B",
+   "kind": "waypoint",
+   "notes": "Line 01: névé — café at the col, 2 km.\nLine 02: névé — café at the col, 2 km.\nLine 03: névé — café at the col, 2 km.\nLine 04: névé — café at the col, 2 km.\nLine 05: névé — café at the col, 2 km.\nLine 06: névé — café at the col, 2 km.\nLine 07: névé — café at the col, 2 km.\nLine 08: névé — café at the col, 2 km.\nLine 09: névé — café at the col, 2 km.\nLine 10: névé — café at the col, 2 km.\nLine 11: névé — café at the col, 2 km.\nLine 12: né\n— edited r2i2",
+   "icon": "Lookout",
+   "color": "rgba(139,69,19,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.89,
+    46.23
+   ],
+   "last": [
+    -121.89,
+    46.23
+   ],
+   "holes": 0
+  },
+  {
+   "name": "[r2i2] ZZTEST utf8 note mid-char",
+   "kind": "waypoint",
+   "notes": "Line 01: ridge above the north fork, snow.\nLine 02: above the north fork, snow until.\nLine 03: the north fork, snow until July,.\nLine 04: north fork, snow until July, water.\nLine 05: fork, snow until July, water at.\nLine 06: snow until July, water at the.\nLine 07: until July, water at the outlet,.\nLine 08: July, water at the outlet, bear.\nLine 09: water at the outlet, bear hang.\nLine 10: at the outlet, bear hang near.\nLine 11: the outlet, bear hang near the.\nLine 12: outlet, bear hang near t\n— edited r2i2",
+   "icon": "Water Source",
+   "color": "rgba(255,51,0,1)",
+   "style": null,
+   "weight": null,
+   "points": 1,
+   "first": [
+    -121.88,
+    46.23
+   ],
+   "last": [
+    -121.88,
+    46.23
+   ],
+   "holes": 0
+  }
+ ]
+}

@@ -26,6 +26,9 @@ TS = 1792627200000
 # Note lengths straddling the 512 bytes onX keeps on import (2026-10-22).
 NOTE_LENGTHS = (500, 511, 512, 513, 600, 1000, 3000)
 TRACK_NOTE_LENGTHS = (511, 512, 513, 3000)
+# That limit is 512 UTF-8 *bytes* (round r1: an em dash cost 3), so multibyte notes are
+# probed by byte length. "mid-char" puts byte 512 inside a 2-byte "é".
+UTF8_NOTE_BYTES = (511, 512, 513)
 
 WORDS = ("granite ridge above the north fork, snow until July, water at the outlet, "
          "bear hang near the larches, trail fades past the second cairn").split()
@@ -47,6 +50,27 @@ def numbered_note(length: int) -> str:
     if text[-1].isspace():
         text = text[:-1] + "."
     assert len(text) == length, (len(text), length)
+    return text
+
+
+def utf8_note(nbytes: int) -> str:
+    """Readable multibyte text ("é" is 2 bytes, "—" 3) of exactly `nbytes` UTF-8 bytes."""
+    lines, n = [], 1
+    while len("\n".join(lines).encode()) < nbytes:
+        lines.append(f"Line {n:02d}: névé — café at the col, 2 km.")
+        n += 1
+    text = "\n".join(lines)
+    while len(text.encode()) > nbytes - 1:          # cut on a character boundary
+        text = text[:-1]
+    text = text.rstrip() + "." * (nbytes - len(text.rstrip().encode()))
+    assert len(text.encode()) == nbytes, (len(text.encode()), nbytes)
+    return text
+
+
+def mid_char_note() -> str:
+    """511 ASCII bytes then "é": onX's 512-byte cut lands inside the "é"."""
+    text = numbered_note(511) + "é."
+    assert len(text.encode()[:512].decode("utf-8", "replace")) == 512
     return text
 
 
@@ -115,6 +139,14 @@ def build() -> dict:
     for name in names:
         n += 1
         feats.append(marker(n, name, f"Name probe: {name.strip()}", "point", "#00FF00"))
+    for nbytes in UTF8_NOTE_BYTES:
+        n += 1
+        feats.append(marker(n, f"ZZTEST utf8 note {nbytes}B", utf8_note(nbytes), "summit", "#0000FF"))
+    n += 1
+    feats.append(marker(n, "ZZTEST utf8 note mid-char", mid_char_note(), "summit", "#0000FF"))
+    n += 1
+    feats.append(marker(n, "ZZTEST Névé Café — Lac des Îles 🏔", "Name probe: accents, em dash, emoji.",
+                        "point", "#00FF00"))
 
     t = 0
     for length in TRACK_NOTE_LENGTHS:

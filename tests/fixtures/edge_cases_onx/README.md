@@ -11,10 +11,13 @@ are findable.
 |---|---|
 | `ZZTEST note 500/511/512/513/600/1000/3000` (waypoints) | onX's import note limit: a 617-char note was cut to 512 and a 3,000+ note dropped (2026-10-22). Numbered readable lines, exact lengths |
 | `ZZTEST line note 511/512/513/3000` (lines) | the same limit on lines |
+| `ZZTEST utf8 note 511B/512B/513B` | the limit counts UTF-8 bytes (round r1): accented/em-dash text of exactly 511/512/513 bytes (~450 characters) |
+| `ZZTEST utf8 note mid-char` | 511 ASCII bytes then `é`: does onX's 512-byte cut split the character? |
 | `ZZTEST blank lines` | one and two blank lines between paragraphs |
 | `ZZTEST url` | a URL with `?`, `&` and `#` |
 | `ZZTEST literal tags` | literal `<desc>` and `<Lake>`, `<` and `>` in a note |
 | `ZZTEST Peak #3`, `Rock & Roll`, `Wow!`, `Camp (lower)`, `O'Neil's Spring`, `trailing space ` | name characters Cairn sanitizes (`# & !`) or keeps (`( ) '`), and a trailing space |
+| `ZZTEST Névé Café — Lac des Îles 🏔` | accented letters, em dash and an emoji in a name |
 | `ZZTEST dashed line` | CalTopo dash pattern `M0 -1 L0 1,,8,F` -> onX `dash` |
 | `ZZTEST wide line` | CalTopo `stroke-width` 6 -> onX weight `6.0` |
 | `ZZTEST filled area` | a polygon with fill `#FF00FF` at opacity 0.3 |

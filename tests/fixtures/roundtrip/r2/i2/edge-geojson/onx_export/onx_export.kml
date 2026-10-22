@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>[r2i2] ZZTEST line note 512</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST line note 512</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>0739b6d9-ba31-4319-ba2f-8f9f2c7ac084</value></Data><Data name="color"><value>rgba(132,212,0,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.258,0 -121.946,46.2594,0 -121.944,46.258,0 -121.94,46.2594,0 -121.938,46.258,0 -121.934,46.2594,0 -121.932,46.258,0 -121.928,46.2594,0</coordinates></LineString></Placemark><Placemark><name>[r2i2] ZZTEST note 1000</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST note 1000</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>1b3cef28-4b1b-4903-bf38-10590055c65d</value></Data><Data name="color"><value>rgba(139, 69, 19, 1)</value></Data><Data name="icon"><value>View</value></Data></ExtendedData><Point><coordinates>-121.9,46.21,1142.349975586</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST note 500</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST note 500</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>33fff2cf-c276-4ef1-b5eb-cc3886067fbb</value></Data><Data name="color"><value>rgba(255, 51, 0, 1)</value></Data><Data name="icon"><value>Water Source</value></Data></ExtendedData><Point><coordinates>-121.89,46.2,1020.849975586</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST Rock &amp; Roll</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST Rock &amp; Roll</value></Data><Data name="notes"><value>Name probe: ZZTEST Rock &amp; Roll
+— edited r2i2</value></Data><Data name="id"><value>37aa4d70-b5e5-45f2-8e70-d6b25820d56e</value></Data><Data name="color"><value>rgba(0, 0, 0, 1)</value></Data><Data name="icon"><value>Parking</value></Data></ExtendedData><Point><coordinates>-121.9,46.22,1207.699951172</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST utf8 note 512B</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST utf8 note 512B</value></Data><Data name="notes"><value>Line 01: névé — café at the col, 2 km.
+Line 02: névé — café at the col, 2 km.
+Line 03: névé — café at the col, 2 km.
+Line 04: névé — café at the col, 2 km.
+Line 05: névé — café at the col, 2 km.
+Line 06: névé — café at the col, 2 km.
+Line 07: névé — café at the col, 2 km.
+Line 08: névé — café at the col, 2 km.
+Line 09: névé — café at the col, 2 km.
+Line 10: névé — café at the col, 2 km.
+Line 11: névé — café at the col, 2 km.
+Line 12: né
+— edited r2i2</value></Data><Data name="id"><value>391b28d3-bfdf-4f0b-b558-7eee6afdc937</value></Data><Data name="color"><value>rgba(255, 0, 0, 1)</value></Data><Data name="icon"><value>View</value></Data></ExtendedData><Point><coordinates>-121.9,46.23,1264.150024414</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST dashed line</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST dashed line</value></Data><Data name="notes"><value>CalTopo dash pattern.
+— edited r2i2</value></Data><Data name="id"><value>4650e5c2-30b9-45e1-878b-b4faf92f6ac8</value></Data><Data name="color"><value>rgba(255,51,0,1)</value></Data><Data name="style"><value>solid</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.27,0 -121.946,46.2714,0 -121.944,46.27,0 -121.94,46.2714,0 -121.938,46.27,0 -121.934,46.2714,0 -121.932,46.27,0 -121.928,46.2714,0</coordinates></LineString></Placemark><Placemark><name>[r2i2] ZZTEST utf8 note 513B</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST utf8 note 513B</value></Data><Data name="notes"><value>Line 01: névé — café at the col, 2 km.
+Line 02: névé — café at the col, 2 km.
+Line 03: névé — café at the col, 2 km.
+Line 04: névé — café at the col, 2 km.
+Line 05: névé — café at the col, 2 km.
+Line 06: névé — café at the col, 2 km.
+Line 07: névé — café at the col, 2 km.
+Line 08: névé — café at the col, 2 km.
+Line 09: névé — café at the col, 2 km.
+Line 10: névé — café at the col, 2 km.
+Line 11: névé — café at the col, 2 km.
+Line 12: né
+— edited r2i2</value></Data><Data name="id"><value>4662ab4b-58ee-41c0-94cb-744f82c65972</value></Data><Data name="color"><value>rgba(139, 69, 19, 1)</value></Data><Data name="icon"><value>Lookout</value></Data></ExtendedData><Point><coordinates>-121.89,46.23,1299</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST Camp (lower)</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST Camp (lower)</value></Data><Data name="notes"><value>Name probe: ZZTEST Camp (lower)
+— edited r2i2</value></Data><Data name="id"><value>4db37a9a-5834-4e4f-9e74-59b8dbc2b590</value></Data><Data name="color"><value>rgba(255, 51, 0, 1)</value></Data><Data name="icon"><value>Summit</value></Data></ExtendedData><Point><coordinates>-121.88,46.22,1154.150024414</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST line note 513</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST line note 513</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>54dc2bf4-9ce8-4b53-a99d-160131654bfb</value></Data><Data name="color"><value>rgba(0,0,0,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.262,0 -121.946,46.2634,0 -121.944,46.262,0 -121.94,46.2634,0 -121.938,46.262,0 -121.934,46.2634,0 -121.932,46.262,0 -121.928,46.2634,0</coordinates></LineString></Placemark><Placemark><name>[r2i2] ZZTEST note 513</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST note 513</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>6af6993e-63da-48ae-b1b0-081dfaf853c2</value></Data><Data name="color"><value>rgba(132, 212, 0, 1)</value></Data><Data name="icon"><value>Trailhead</value></Data></ExtendedData><Point><coordinates>-121.86,46.2,894.799987793</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST literal tags</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST literal tags</value></Data><Data name="notes"><value>Plain text, not markup: and must survive.
+Also 5 &lt; 6 and 7 &gt; 4.
+— edited r2i2</value></Data><Data name="id"><value>6dacdbea-d631-4ed4-81dd-cacb4e97d556</value></Data><Data name="color"><value>rgba(255, 255, 0, 1)</value></Data><Data name="icon"><value>Shelter</value></Data></ExtendedData><Point><coordinates>-121.86,46.21,1172.050048828</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST blank lines</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST blank lines</value></Data><Data name="notes"><value>First paragraph.
+
+Second, after one blank line.
+
+Third, after two blank lines.
+— edited r2i2</value></Data><Data name="id"><value>74037af9-fdb2-472f-8eea-eedaf4734f67</value></Data><Data name="color"><value>rgba(128, 0, 128, 1)</value></Data><Data name="icon"><value>Photo</value></Data></ExtendedData><Point><coordinates>-121.88,46.21,1111.300048828</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST wide line</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST wide line</value></Data><Data name="notes"><value>CalTopo stroke-width 6.
+— edited r2i2</value></Data><Data name="id"><value>78572b5c-6bbb-470e-b5e3-cedff074912d</value></Data><Data name="color"><value>rgba(255,255,255,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>4.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.274,0 -121.946,46.2754,0 -121.944,46.274,0 -121.94,46.2754,0 -121.938,46.274,0 -121.934,46.2754,0 -121.932,46.274,0 -121.928,46.2754,0</coordinates></LineString></Placemark><Placemark><name>[r2i2] ZZTEST Peak #3</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST Peak #3</value></Data><Data name="notes"><value>Name probe: ZZTEST Peak #3
+— edited r2i2</value></Data><Data name="id"><value>78d66186-d604-4408-b4fa-c2ec4db471d8</value></Data><Data name="color"><value>rgba(0, 0, 0, 1)</value></Data><Data name="icon"><value>Trailhead</value></Data></ExtendedData><Point><coordinates>-121.85,46.21,1077.650024414</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST utf8 note mid-char</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST utf8 note mid-char</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>7a6e0323-281f-4311-8380-ede61e2951b8</value></Data><Data name="color"><value>rgba(255, 51, 0, 1)</value></Data><Data name="icon"><value>Water Source</value></Data></ExtendedData><Point><coordinates>-121.88,46.23,1378.400024414</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST note 511</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST note 511</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>7b105e27-0a11-4296-a1a7-c3606c034761</value></Data><Data name="color"><value>rgba(8, 122, 255, 1)</value></Data><Data name="icon"><value>Water Source</value></Data></ExtendedData><Point><coordinates>-121.88,46.2,866.549987793</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST note 512</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST note 512</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>88a05e11-f2cb-4503-8d59-0f3bf7dd97e3</value></Data><Data name="color"><value>rgba(0, 255, 255, 1)</value></Data><Data name="icon"><value>Camp</value></Data></ExtendedData><Point><coordinates>-121.87,46.2,1010.049987793</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST url</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST url</value></Data><Data name="notes"><value>Trail report: https://example.com/trails?id=42&amp;view=map#section-3 (see the map).
+— edited r2i2</value></Data><Data name="id"><value>a150a3eb-21c7-43a6-8255-e69c4e977038</value></Data><Data name="color"><value>rgba(128, 0, 128, 1)</value></Data><Data name="icon"><value>Photo</value></Data></ExtendedData><Point><coordinates>-121.87,46.21,1161.050048828</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST utf8 note 511B</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST utf8 note 511B</value></Data><Data name="notes"><value>Line 01: névé — café at the col, 2 km.
+Line 02: névé — café at the col, 2 km.
+Line 03: névé — café at the col, 2 km.
+Line 04: névé — café at the col, 2 km.
+Line 05: névé — café at the col, 2 km.
+Line 06: névé — café at the col, 2 km.
+Line 07: névé — café at the col, 2 km.
+Line 08: névé — café at the col, 2 km.
+Line 09: névé — café at the col, 2 km.
+Line 10: névé — café at the col, 2 km.
+Line 11: névé — café at the col, 2 km.
+Line 12: né
+— edited r2i2</value></Data><Data name="id"><value>aa19c328-65da-4abf-8591-c934e062c3f0</value></Data><Data name="color"><value>rgba(255, 255, 0, 1)</value></Data><Data name="icon"><value>Shelter</value></Data></ExtendedData><Point><coordinates>-121.85,46.22,1098.5</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST filled area</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST filled area</value></Data><Data name="notes"><value>Fill #FF00FF at opacity 0.3.
+— edited r2i2</value></Data><Data name="id"><value>ad61c025-fb6b-4cbc-8783-16e3b5432ecd</value></Data><Data name="type"><value>Area</value></Data><Data name="color"><value>rgba(255,51,0,1)</value></Data><Data name="weight"><value>4.0</value></Data><Data name="fill_color"><value>rgba(74,144,226,0.1)</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>-121.8,46.3,0 -121.78,46.3,0 -121.78,46.32,0 -121.8,46.32,0 -121.8,46.3,0</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark><Placemark><name>[r2i2] ZZTEST Wow!</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST Wow!</value></Data><Data name="notes"><value>Name probe: ZZTEST Wow!
+— edited r2i2</value></Data><Data name="id"><value>af5cdfee-da4a-40ed-a4a8-31852f596574</value></Data><Data name="color"><value>rgba(255, 255, 255, 1)</value></Data><Data name="icon"><value>Hazard</value></Data></ExtendedData><Point><coordinates>-121.89,46.22,1236.099975586</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST note 3000</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST note 3000</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>b809b480-bb34-4329-b6f5-1941eaf3cf8b</value></Data><Data name="color"><value>rgba(139, 69, 19, 1)</value></Data><Data name="icon"><value>Lookout</value></Data></ExtendedData><Point><coordinates>-121.89,46.21,995.5</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST line note 511</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST line note 511</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>c11967cd-39d0-4fa7-82c6-c55059339d53</value></Data><Data name="color"><value>rgba(0,255,255,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.254,0 -121.946,46.2554,0 -121.944,46.254,0 -121.94,46.2554,0 -121.938,46.254,0 -121.934,46.2554,0 -121.932,46.254,0 -121.928,46.2554,0</coordinates></LineString></Placemark><Placemark><name>[r2i2] ZZTEST Névé Café — Lac des Îles 🏔</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST Névé Café — Lac des Îles 🏔</value></Data><Data name="notes"><value>Name probe: accents, em dash, emoji.
+— edited r2i2</value></Data><Data name="id"><value>d0feb3eb-0b7a-4f57-b693-8aea79b612a9</value></Data><Data name="color"><value>rgba(8, 122, 255, 1)</value></Data><Data name="icon"><value>Water Source</value></Data></ExtendedData><Point><coordinates>-121.87,46.23,1294.349975586</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST line note 3000</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST line note 3000</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>d5d22db0-b052-4d7a-87ae-7c741c08ed8f</value></Data><Data name="color"><value>rgba(0,255,255,1)</value></Data><Data name="style"><value>dash</value></Data><Data name="weight"><value>6.0</value></Data></ExtendedData><LineString><coordinates>-121.95,46.266,0 -121.946,46.2674,0 -121.944,46.266,0 -121.94,46.2674,0 -121.938,46.266,0 -121.934,46.2674,0 -121.932,46.266,0 -121.928,46.2674,0</coordinates></LineString></Placemark><Placemark><name>[r2i2] ZZTEST note 600</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST note 600</value></Data><Data name="notes"><value>Line 01: ridge above the north fork, snow.
+Line 02: above the north fork, snow until.
+Line 03: the north fork, snow until July,.
+Line 04: north fork, snow until July, water.
+Line 05: fork, snow until July, water at.
+Line 06: snow until July, water at the.
+Line 07: until July, water at the outlet,.
+Line 08: July, water at the outlet, bear.
+Line 09: water at the outlet, bear hang.
+Line 10: at the outlet, bear hang near.
+Line 11: the outlet, bear hang near the.
+Line 12: outlet, bear hang near t
+— edited r2i2</value></Data><Data name="id"><value>e04cf7ad-d8d1-4759-965d-bab595d3068c</value></Data><Data name="color"><value>rgba(0, 0, 0, 1)</value></Data><Data name="icon"><value>Parking</value></Data></ExtendedData><Point><coordinates>-121.85,46.2,829.299987793</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST trailing space</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST trailing space</value></Data><Data name="notes"><value>Name probe: ZZTEST trailing space
+— edited r2i2</value></Data><Data name="id"><value>e7543cf3-3c9a-470f-9903-afce53be74fc</value></Data><Data name="color"><value>rgba(255, 255, 255, 1)</value></Data><Data name="icon"><value>Hazard</value></Data></ExtendedData><Point><coordinates>-121.86,46.22,1349.150024414</coordinates></Point></Placemark><Placemark><name>[r2i2] ZZTEST O&apos;Neil&apos;s Spring</name><ExtendedData><Data name="name"><value>[r2i2] ZZTEST O&apos;Neil&apos;s Spring</value></Data><Data name="notes"><value>Name probe: ZZTEST O&apos;Neil&apos;s Spring
+— edited r2i2</value></Data><Data name="id"><value>fcb6ae82-0600-4568-b07d-e0bf029fee37</value></Data><Data name="color"><value>rgba(0, 255, 255, 1)</value></Data><Data name="icon"><value>Camp</value></Data></ExtendedData><Point><coordinates>-121.87,46.22,1260.949951172</coordinates></Point></Placemark></Document></kml>
