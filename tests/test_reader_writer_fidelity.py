@@ -309,6 +309,8 @@ def test_multipolygon_becomes_one_area_per_part():
     assert len({s.id for s in shapes}) == 3
     assert [len(s.coordinates) for s in shapes] == [2, 1, 1]  # the first part keeps its hole
     assert shapes[0].properties["stroke"] == shapes[1].properties["stroke"] == "#FF0000"
+    # each part owns its properties: a per-feature edit to one must not reach the other
+    assert shapes[0].properties is not shapes[1].properties
 
 
 def test_multipolygon_parts_are_written_as_areas(tmp_path):

@@ -163,6 +163,7 @@ def _split_multipolygon(feature_dict: Dict[str, Any]) -> List[ParsedFeature]:
         if not isinstance(polygon, list) or not polygon:
             continue
         part = dict(feature_dict)
+        part["properties"] = dict(feature_dict.get("properties") or {})
         part["geometry"] = {"type": "Polygon", "coordinates": polygon}
         if out:
             part["id"] = f"{base_id}:part{len(out) + 1}"
