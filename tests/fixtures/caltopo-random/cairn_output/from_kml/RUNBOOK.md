@@ -4,12 +4,12 @@
 
 Before you start:
 - onX **Premium or Elite** is required to import.
-- Use the **Web Map** at webmap.onxmaps.com on a computer. 1 of these batches contain KML, which the phone app cannot import.
+- Use the **Web Map** at webmap.onxmaps.com on a computer.
 - Each numbered step is ONE import. Drag in **all** the files for that step together.
 
 ### 1. onx test random  (6 markups)
 
-- [ ] My Content → **Import** → select **onx_test_random_Waypoints.gpx, onx_test_random_Tracks.gpx, onx_test_random_Areas.kml**
+- [ ] My Content → **Import** → select **onx_test_random_Waypoints.gpx, onx_test_random_Tracks.gpx, onx_test_random_Areas.gpx**
 - [ ] Tick **“Import map data to a new folder”**
 - [ ] Click **Import**
 - [ ] The new folder appears at the top named `Import <today>`. **Rename it to:** `onx test random`

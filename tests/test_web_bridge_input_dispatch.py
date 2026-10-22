@@ -91,7 +91,10 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     lines) now exports as onx:style dash instead of solid (roadmap Phase 7); and
     4 titles with a trailing space ("Stimson ", ...) are now stripped on load, so
     GeoJSON names match KML/GPX (caltopo-random fixture); the export already
-    stripped them. Both are put back before hashing, so nothing else may move."""
+    stripped them. Both are put back before hashing, so nothing else may move.
+    Re-pinned for ENG-05: the 6 *_Areas.kml members are now *_Areas.gpx (onX Area
+    routes) and RUNBOOK.md lists those names and no KML warning; see the
+    baseline's notes."""
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     raw = bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
     loaded = json.loads(raw)
@@ -108,6 +111,7 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
+    assert not [n for n in zf.namelist() if n.endswith(".kml")]
     dash, solid = b"<onx:style>dash</onx:style>", b"<onx:style>solid</onx:style>"
     assert sum(zf.read(n).count(dash) for n in zf.namelist()) == 6
     for name, digest in baseline["members"].items():
@@ -332,11 +336,28 @@ def _reread(zip_bytes: bytes, tmp_path: Path) -> MapDocument:
     return back
 
 
+# The web export writes areas as GPX onX Area routes (ENG-05), not KML, so on top
+# of Phase 1's allowed losses (which the KML writer still meets) it loses:
+WEB_ALLOWED_LOSSES = ALLOWED_LOSSES | {
+    # An onX area is single-ring: "Hunt unit"'s hole is not written (its ring
+    # count and point total drop; RUNBOOK.md lists it under "Holes not kept").
+    ("Hunt unit", 0, "rings"),
+    ("Hunt unit", 0, "pts"),
+    # onX's own area <rte> carries only <onx:color> and <onx:fill_color>, and
+    # that is the verified import; area line style/weight are not written.
+    *{(name, i, f) for name, n in (("Hunt unit", 1), ("Two-part area", 2))
+      for i in range(n) for f in ("style", "weight")},
+}
+# FIDELITY_FIGURE (52, 62) less the 8 extra losses above.
+WEB_FIDELITY_FIGURE = (44, 62)
+
+
 def test_export_of_an_onx_pair_rereads_to_phase_1_fidelity(tmp_path):
     _load(_file(ONX_GPX), _file(ONX_KML))
     after = _snap(_reread(bridge.export_zip(), tmp_path))
-    assert _diff(_snap(_read_source()), after) == ALLOWED_LOSSES
-    assert fidelity_figure(after) == FIDELITY_FIGURE
+    assert _diff(_snap(_read_source()), after) == WEB_ALLOWED_LOSSES
+    assert fidelity_figure(after) == WEB_FIDELITY_FIGURE
+    assert FIDELITY_FIGURE[0] - WEB_FIDELITY_FIGURE[0] == len(WEB_ALLOWED_LOSSES - ALLOWED_LOSSES)
 
 
 # --- several files at once ------------------------------------------------------------

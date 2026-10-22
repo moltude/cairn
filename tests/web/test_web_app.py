@@ -337,13 +337,15 @@ def test_export_manifest_batch_and_markup_counts_match_totals(loaded: Page):
     assert sum(entry["count"] for entry in manifest) == totals["items"]
 
 
-def test_export_produces_a_readable_zip_with_gpx_and_kml(loaded: Page):
+def test_export_produces_a_readable_zip_of_gpx_with_areas_as_gpx(loaded: Page):
     zip_bytes = export_zip_bytes(loaded)
     zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
 
     names = zf.namelist()
     assert any(n.endswith(".gpx") for n in names)
-    assert any(n.endswith(".kml") for n in names)
+    # Areas are onX Area routes in GPX (ENG-05): onX ignores KML area colours.
+    assert any(n.endswith("_Areas.gpx") for n in names)
+    assert not [n for n in names if n.endswith(".kml")]
     assert "RUNBOOK.md" in names
     # Every member must actually be readable/valid (CRC checks out).
     assert zf.testzip() is None
@@ -354,7 +356,7 @@ def test_export_produces_a_readable_zip_with_gpx_and_kml(loaded: Page):
 # ---------------------------------------------------------------------------
 
 
-def test_runbook_names_each_folder_and_flags_kml_batches(loaded: Page):
+def test_runbook_names_each_folder_and_has_no_kml_warning(loaded: Page):
     zip_bytes = export_zip_bytes(loaded)
     manifest = loaded.evaluate("MANIFEST")
     zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
@@ -364,12 +366,11 @@ def test_runbook_names_each_folder_and_flags_kml_batches(loaded: Page):
         heading = f"### {entry['n']}. {entry['folder']}"
         assert heading in runbook, f"missing runbook heading: {heading!r}"
 
-    kml_batches = sum(1 for e in manifest if any(f["kml"] for f in e["files"]))
-    if kml_batches:
-        assert "KML" in runbook
-        assert f"{kml_batches} of these batches contain KML" in runbook
-    else:
-        assert "of these batches contain KML" not in runbook
+    # Areas no longer go out as KML (ENG-05), so nothing triggers the
+    # Web-Map-only KML warning, in RUNBOOK.md or on screen.
+    assert not any(f["kml"] for e in manifest for f in e["files"])
+    assert "KML" not in runbook
+    assert "KML" not in loaded.locator("#runbook").inner_text()
 
 
 # ---------------------------------------------------------------------------
@@ -607,8 +608,8 @@ def test_excluded_items_are_left_out_of_the_export(fresh_page):
     _set_type(fresh_page, "")
     fresh_page.wait_for_timeout(300)
     zf = _export_zip(fresh_page)
-    kml = [n for n in zf.namelist() if n.endswith(".kml")]
-    assert kml == [], f"excluded areas still exported: {kml}"
+    areas = [n for n in zf.namelist() if n.endswith((".kml", "_Areas.gpx"))]
+    assert areas == [], f"excluded areas still exported: {areas}"
 
 
 def test_description_edit_reaches_the_exported_gpx(fresh_page):
@@ -1300,7 +1301,7 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
         page.click("#download")
     zf = zipfile.ZipFile(dl.value.path())
     assert sorted(zf.namelist()) == [
-        "01_onx_dialect/onx_dialect_Areas.kml",
+        "01_onx_dialect/onx_dialect_Areas.gpx",
         "01_onx_dialect/onx_dialect_Tracks.gpx",
         "01_onx_dialect/onx_dialect_Waypoints.gpx",
         "RUNBOOK.md",
@@ -1309,8 +1310,12 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     # The writer sorts by name (Camp & water, Main Wall, Slide obs).
     assert re.findall(r"<onx:icon>([^<]*)</onx:icon>", wpts) == ["Campsite", "Climbing", "Hazard"]
     assert zf.read("01_onx_dialect/onx_dialect_Tracks.gpx").decode().count("<trk>") == 2
-    assert zf.read("01_onx_dialect/onx_dialect_Areas.kml").decode().count("<Placemark") == 3
-    assert "Rename it to:** `onx dialect`" in zf.read("RUNBOOK.md").decode()
+    areas = zf.read("01_onx_dialect/onx_dialect_Areas.gpx").decode()
+    assert areas.count("<rte>") == 3 and areas.count("<type>Area</type>") == 3
+    runbook = zf.read("RUNBOOK.md").decode()
+    assert "Rename it to:** `onx dialect`" in runbook
+    # The KML's holed polygon can't be an onX area with its hole: reported.
+    assert "### Holes not kept in onX" in runbook and "- `Hunt unit`  (onx dialect)" in runbook
 
 
 def test_caltopo_gpx_shows_the_geojson_notice(csp_page: Page):

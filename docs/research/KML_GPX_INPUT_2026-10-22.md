@@ -449,6 +449,16 @@ Steps 1–5 are about 4–5 days and fully offline. Shipping "onX GPX/KML in" cr
 | P7 | Does onX read `<time>` on import, and elevation on waypoints? | Import a 3-point track with times | Whether fixing the time writer matters for onX |
 | P8 | The simplify tolerance `x.Kr` (module `vOPT`) | Grep the entry bundles (not fetched; only lazy chunks were) | How much geometry onX's own export destroys on long tracks |
 
+> **Answered later on 2026-10-22, in a real Web Map import (design decision ENG-05).**
+> **P2:** a real Web Map GPX export matches §3.4 (`tests/fixtures/caltopo-random/onx_roundtrip/
+> from_geojson/onx_export.gpx`): `<desc>` key=value with `id`/`notes`/`type`, `onx:` extensions,
+> areas as `<rte><type>Area</type>` with `onx:color` + `onx:fill_color`. **P3: yes** — a GPX
+> `<rte>` with `<type>Area</type>` and those two extensions imports as an Area with its color,
+> while onX **ignores** area color and fill in KML (`Style`, `styleUrl` and `ExtendedData` all
+> came in as onX's default red). onX also does **not** parse a key=value `<desc>` on import; it
+> becomes the Notes verbatim. Cairn now exports areas as GPX `<rte>` (outer ring only: onX
+> areas have no holes; RUNBOOK.md lists the affected areas).
+
 ---
 
 ## Sources

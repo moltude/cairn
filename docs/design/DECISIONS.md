@@ -498,3 +498,47 @@ Status: decided.
   test: one GPX `<trk>` with one `<trkseg>` per part — a single entity in the GPX format; whether
   onX keeps it as one Track with gaps, joins the gaps, or splits it is unknown. Include one in the
   onX import test before deciding.
+
+### ENG-05 — Areas are exported as GPX onX Area routes, not KML (2026-10-22)
+Status: decided; the holes trade-off is **provisional**.
+
+Evidence, from a real onX Web Map import on the owner's account (2026-10-22):
+
+- **onX ignores area color and fill in KML.** Cairn's `Areas.kml` (KML `Style` with `LineStyle`
+  / `PolyStyle`, plus onX-style `ExtendedData` `color` / `fill_color`) imported with onX's
+  defaults: outline `rgba(255,51,0,1)`, fill `rgba(74,144,226,0.1)`. Probes with the
+  `ExtendedData` colors written with spaces, an inline KML `Style` only, and a shared `styleUrl`
+  style all came in as the default red.
+- **A GPX `<rte>` with `<type>Area</type>`** and `<extensions><onx:color>rgba(255,255,0,1)
+  </onx:color><onx:fill_color>rgba(255,255,0,0.3)</onx:fill_color></extensions>` imported as a
+  real onX Area (acreage shown) **with its yellow color**.
+- **onX does not parse a key=value `<desc>` on import**: a desc of `name=…\nnotes=…\ntype=Area\n
+  color=…` became the Notes verbatim. So `<desc>` carries only the user's note text, as the
+  waypoint and track writers already did.
+- onX's own GPX export of an area
+  (`tests/fixtures/caltopo-random/onx_roundtrip/from_geojson/onx_export.gpx`) is
+  `<rte><name/><desc>key=value…</desc><type>Area</type><extensions><onx:color/><onx:fill_color/>
+  </extensions><rtept/>…</rte>`. Tracks (color, dash style, weight 6.0, multi-line notes) and
+  waypoints round-tripped from Cairn's GPX in the same import.
+
+Decision:
+
+- `cairn/core/writers.py:write_gpx_areas_maybe_split` writes each area as that `<rte>`: `<name>`
+  (sanitized like every other name), `<desc>` = note only (omitted when empty), `<type>Area</type>`,
+  `<onx:color>` = `kml_area_color` (the 11-color line palette value the UI shows) and
+  `<onx:fill_color>` = the same RGB at CalTopo's `fill-opacity`, else 0.5 (the old KML fill
+  semantics), then the closed outer ring as bare `<rtept lat lon/>`. Size-split at 3.75 MiB like
+  the other GPX writers. File: `<Folder>_Areas.gpx`.
+- The web export (`web/bridge.py:export_zip`) uses it; no web export writes KML any more, so the
+  runbook's "contains KML, Web Map only" warning is no longer triggered. The KML area writer is
+  kept for its other callers and tests.
+- Area line style and weight are not written: onX's own area export carries only color and fill,
+  and that is what was verified.
+- **Holes — provisional, subject to revision.** An onX area is single-ring, so a polygon with
+  holes is written as its outer ring only (the hole is filled in) and listed in RUNBOOK.md under
+  "Holes not kept in onX". Not tested: whether onX can keep a hole through any import path (e.g.
+  KML `innerBoundaryIs` — which would bring back the default-color problem), or whether writing
+  each hole as a separate area would serve users better.
+- Bitterroots' export changed only in its 6 area files (`*_Areas.kml` → `*_Areas.gpx`, 17 areas;
+  names, notes, colors, fills and outer rings identical to what the KML carried; no holes) and
+  RUNBOOK.md (those file names, and no KML sentence).
