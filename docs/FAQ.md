@@ -158,7 +158,6 @@ A side effect: every file Cairn writes is now GPX, so the runbook no longer warn
 
 - **Recreate your folders automatically.** You rename each one in onX after import, as described above. Nesting isn't lost: per project docs, CalTopo and onX folders are both flat.
 - **Keep exact colors.** Waypoint and track colors snap to onX's palette, and line widths collapse to two weights.
-- **Keep every character in names.** Waypoint, track and area names lose `! @ # $ % ^ * &`, so `#01 Porcupine` becomes `01 Porcupine`. The runbook lists every renamed item under "Renamed for onX". Nothing in the project's onX sources says onX rejects those characters; the rule is kept as a precaution.
 - **Control order in onX.** Within each file, items are sorted naturally ("Camp 2" before "Camp 10"). How onX orders them after import hasn't been checked against any onX source.
 - **Check onX's per-import cap separately.** onX allows up to 3,000 markups per import file; since that equals the account limit, Cairn's account warning covers it.
 - **Keep you under the account limit.** onX says "Your onX account is limited to 3,000 Markups" (help article updated 2026-09-16; it was 1,500 in August). Cairn warns when *this map* is over 3,000, but it can't see what's already in your account. Splitting into more imports doesn't get around an account-wide cap, so the warning tells you to remove or exclude items. What onX actually does when you go over isn't in any cited onX source.

@@ -1485,8 +1485,8 @@ def test_caltopo_gpx_icons_and_colors_set_in_cairn_reach_the_exported_gpx(csp_pa
     (wpt_file,) = [n for n in zf.namelist() if n.endswith("_Waypoints.gpx")]
     got = _wpts(zf.read(wpt_file).decode())
     assert got["Cornice"] == ("Hazard", "rgba(255,51,0,1)")
-    # onX-unsafe characters are removed from names on export (P5, RUNBOOK lists them).
-    assert got["Camp 3 <Lake> spring"] == ("Camp Backcountry", "rgba(255,255,0,1)")
+    # Names reach onX unchanged, # & < > included (ENG-06; onX verified, round r1).
+    assert got["Camp #3 & <Lake> spring"] == ("Camp Backcountry", "rgba(255,255,0,1)")
     assert got["Plain red point"] == ("Camp Backcountry", "rgba(255,255,0,1)")
     # The rest keep what Cairn chose at load, still written as onX styling.
     assert got["Point with no colour"][0] == "Location"

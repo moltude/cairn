@@ -143,6 +143,26 @@ def test_note_cut_to_512_is_a_known_onx_limit():
     assert rt.status_of(rt.classify(_rec(notes=note), _rec(notes=note[:512]))) == rt.KNOWN
 
 
+def test_multibyte_note_cut_by_bytes_is_a_known_onx_limit():
+    # 512 characters but 514 bytes (the final em dash is 3 bytes). onX kept 510 chars.
+    note = "x" * 511 + "\u2014"
+    assert len(note) == 512 and len(note.encode()) == 514
+    assert _status(_rec(notes=note), _rec(notes="x" * 511), "notes") == rt.KNOWN
+    # A cut that is not a byte-prefix-within-limit is still a failure.
+    assert _status(_rec(notes=note), _rec(notes="x" * 300 + "y"), "notes") == rt.FAIL
+
+
+def test_stage2_note_fitting_is_in_utf8_bytes():
+    """300 em dashes: 300 chars but 900 bytes. note+suffix must encode to <= 512 bytes."""
+    item = _rec(name="[r1i1] A", notes="\u2014" * 300, uid="u1", color="rgba(255,0,0,1)")
+    edits, rows = rt.edit_plan([item], "r1")
+    desc = edits["u1"]["desc"]
+    assert len(desc.encode("utf-8")) <= 512
+    assert desc.endswith("\n\u2014 edited r1i2") and rows[0]["note_truncated_to_fit"]
+    # Cut on a character boundary: no replacement characters, whole dashes only.
+    assert "\ufffd" not in desc and set(desc.split("\n")[0]) == {"\u2014"}
+
+
 def test_note_changes_within_the_limit_fail():
     note = "x" * 512
     assert _status(_rec(notes=note), _rec(notes=note[:511]), "notes") == rt.FAIL
@@ -231,7 +251,7 @@ def test_offline_round_trip_passes_everything(tmp_path):
         for i in exp2["items"]:
             assert i["name"].startswith("[r9i2] ")
             old = before[i["name"][len("[r9i2] "):]]
-            assert i["notes"].endswith("— edited r9i2") and len(i["notes"]) <= 512
+            assert i["notes"].endswith("— edited r9i2") and len(i["notes"].encode("utf-8")) <= 512
             assert i["color"] != old["color"]
             if i["kind"] == "waypoint":
                 assert i["icon"] != old["icon"]

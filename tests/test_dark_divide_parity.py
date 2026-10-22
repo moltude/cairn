@@ -135,12 +135,9 @@ def test_kml_export_is_the_geojson_export_but_the_marker_colours(results):
     assert len(diff) == 8 and all("<onx:color>" in x and "<onx:color>" in y for x, y in diff)
 
 
-def test_export_reread_differs_only_by_hash_stripped_from_names(results):
-    """What Cairn hands onX matches the review screen except that '#' is removed
-    from names (sanitize_name_for_onx; owner probe P5 decides if that stays)."""
+def test_export_reread_matches_review_including_special_character_names(results):
+    """What Cairn hands onX is identical to the review screen: names such as
+    '02 - Juniper Ridge AS #1 ...' keep their '#' (DECISIONS.md ENG-06)."""
     _, _, res = results
     for tag, (review, rgeo, reread, egeo) in res.items():
-        diffs = parity._diff(review, reread, rgeo, egeo)
-        assert diffs, tag
-        for d in diffs:
-            assert ": name " in d and "#" in d.split(" vs ")[0], (tag, d)
+        assert parity._diff(review, reread, rgeo, egeo) == [], tag

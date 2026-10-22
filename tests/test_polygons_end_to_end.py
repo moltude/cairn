@@ -213,25 +213,23 @@ def test_large_area_files_split_into_numbered_parts(tmp_path):
     assert names == [f"Zone {i:02d}" for i in range(30)]
 
 
-# ---- (h) area names follow the same sanitizing rule ------------------------
+# ---- (h) area names pass through unchanged (ENG-06) ------------------------
 
-def test_area_names_are_sanitized_and_tracked(tmp_path):
+def test_area_names_pass_through_unchanged(tmp_path):
     W.clear_name_changes()
     kml = _kml([_shape("Zone #1 & 2!")], tmp_path)
-    assert _xml(kml).find(".//Placemark/name").text == "Zone 1 2"
-    assert W.get_name_changes()["shapes"] == [("Zone #1 & 2!", "Zone 1 2")]
+    assert _xml(kml).find(".//Placemark/name").text == "Zone #1 & 2!"
+    assert W.get_name_changes()["shapes"] == []
 
 
-def test_runbook_lists_renamed_items():
+def test_runbook_has_no_renamed_section_for_special_characters():
     _load(_doc(
         _poly_feature("a", "Zone #1", [SQUARE]),
         {"type": "Feature", "id": "w", "geometry": {"type": "Point", "coordinates": [-114.0, 45.0]},
          "properties": {"class": "Marker", "title": "#01 Porcupine", "folderId": "f1"}},
     ))
     runbook = _export().read("RUNBOOK.md").decode()
-    assert "### Renamed for onX" in runbook
-    assert "- `#01 Porcupine` → `01 Porcupine`  (Zones)" in runbook
-    assert "- `Zone #1` → `Zone 1`  (Zones)" in runbook
+    assert "Renamed for onX" not in runbook
 
 
 def test_runbook_has_no_renamed_section_when_nothing_changed():

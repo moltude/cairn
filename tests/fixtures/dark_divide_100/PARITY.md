@@ -15,26 +15,11 @@ Cairn with no edits, exported (`cairn_output/from_<format>/`) and the export re-
 
 ## Review screen vs re-read export (what Cairn hands onX)
 
-### geojson: 5 difference(s)
-- tracks '02 - Juniper Ridge AS #1 to Sunrise Peak AS': name '02 - Juniper Ridge AS #1 to Sunrise Peak AS' vs '02 - Juniper Ridge AS 1 to Sunrise Peak AS'
-- tracks '03 - Sunrise Peak AS #1 to Dark Creek AS': name '03 - Sunrise Peak AS #1 to Dark Creek AS' vs '03 - Sunrise Peak AS 1 to Dark Creek AS'
-- tracks '09 - Summit Prairie AS to Sunrise Peak #2 AS': name '09 - Summit Prairie AS to Sunrise Peak #2 AS' vs '09 - Summit Prairie AS to Sunrise Peak 2 AS'
-- tracks '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS': name '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS' vs '10 - Sunrise Peak 2 AS to Juniper Ridge 2 AS'
-- tracks '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)': name '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)' vs '11 - Juniper Ridge 2 AS to Cispus Learning Center (FINISH)'
+### geojson: identical
 
-### gpx: 5 difference(s)
-- tracks '02 - Juniper Ridge AS #1 to Sunrise Peak AS': name '02 - Juniper Ridge AS #1 to Sunrise Peak AS' vs '02 - Juniper Ridge AS 1 to Sunrise Peak AS'
-- tracks '03 - Sunrise Peak AS #1 to Dark Creek AS': name '03 - Sunrise Peak AS #1 to Dark Creek AS' vs '03 - Sunrise Peak AS 1 to Dark Creek AS'
-- tracks '09 - Summit Prairie AS to Sunrise Peak #2 AS': name '09 - Summit Prairie AS to Sunrise Peak #2 AS' vs '09 - Summit Prairie AS to Sunrise Peak 2 AS'
-- tracks '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS': name '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS' vs '10 - Sunrise Peak 2 AS to Juniper Ridge 2 AS'
-- tracks '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)': name '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)' vs '11 - Juniper Ridge 2 AS to Cispus Learning Center (FINISH)'
+### gpx: identical
 
-### kml: 5 difference(s)
-- tracks '02 - Juniper Ridge AS #1 to Sunrise Peak AS': name '02 - Juniper Ridge AS #1 to Sunrise Peak AS' vs '02 - Juniper Ridge AS 1 to Sunrise Peak AS'
-- tracks '03 - Sunrise Peak AS #1 to Dark Creek AS': name '03 - Sunrise Peak AS #1 to Dark Creek AS' vs '03 - Sunrise Peak AS 1 to Dark Creek AS'
-- tracks '09 - Summit Prairie AS to Sunrise Peak #2 AS': name '09 - Summit Prairie AS to Sunrise Peak #2 AS' vs '09 - Summit Prairie AS to Sunrise Peak 2 AS'
-- tracks '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS': name '10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS' vs '10 - Sunrise Peak 2 AS to Juniper Ridge 2 AS'
-- tracks '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)': name '11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)' vs '11 - Juniper Ridge 2 AS to Cispus Learning Center (FINISH)'
+### kml: identical
 
 ## Cross-format parity (review screens, GeoJSON as the reference)
 

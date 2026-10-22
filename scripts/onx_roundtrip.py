@@ -60,7 +60,7 @@ DATASETS = {
 }
 FORMATS = {"geojson": ".json", "gpx": ".gpx", "kml": ".kml"}
 
-NOTE_LIMIT = bridge.ONX_IMPORT_NOTE_LIMIT  # 512
+NOTE_LIMIT = bridge.ONX_IMPORT_NOTE_LIMIT  # 512 UTF-8 bytes
 COORD_TOL = 1e-5
 
 PASS, KNOWN, FAIL = "PASS", "KNOWN_ONX_LIMIT", "FAIL"
@@ -276,9 +276,11 @@ def edit_plan(items: list[dict], run: str) -> tuple[dict, list[dict]]:
             base = r["name"][len(old):]
             note = r["notes"]
             suffix = ("\n" + suffix_body) if note else suffix_body
-            truncated = len(note) + len(suffix) > NOTE_LIMIT
+            budget = NOTE_LIMIT - len(suffix.encode("utf-8"))
+            truncated = len(note.encode("utf-8")) > budget
             if truncated:
-                note = note[: NOTE_LIMIT - len(suffix)]
+                # onX's limit is 512 UTF-8 bytes; cut on a character boundary.
+                note = note.encode("utf-8")[:budget].decode("utf-8", "ignore")
             e = {"name": new + base, "desc": note + suffix}
             row = {"kind": kind, "from": r["name"], "to": new + base,
                    "note_truncated_to_fit": truncated}
@@ -320,6 +322,10 @@ def _norm_note(s: str) -> str:
     return (s or "").replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
+def _nbytes(s: str) -> int:
+    return len(s.encode("utf-8"))
+
+
 def classify(exp: dict, act: dict, known_holes: tuple = ()) -> list[tuple[str, str, str]]:
     """[(field, status, detail)] for one matched expected/actual pair. Pure."""
     out = []
@@ -331,10 +337,10 @@ def classify(exp: dict, act: dict, known_holes: tuple = ()) -> list[tuple[str, s
     en, an = _norm_note(exp["notes"]), _norm_note(act["notes"])
     if en == an:
         out.append(("notes", PASS, ""))
-    elif len(en) > NOTE_LIMIT and an == "":
-        out.append(("notes", KNOWN, f"{len(en)}-char note dropped by onX import"))
-    elif len(en) > NOTE_LIMIT and len(an) <= NOTE_LIMIT and en.startswith(an):
-        out.append(("notes", KNOWN, f"{len(en)}-char note cut to {len(an)} by onX import"))
+    elif _nbytes(en) > NOTE_LIMIT and an == "":
+        out.append(("notes", KNOWN, f"{_nbytes(en)}-byte note dropped by onX import"))
+    elif _nbytes(en) > NOTE_LIMIT and _nbytes(an) <= NOTE_LIMIT and en.startswith(an):
+        out.append(("notes", KNOWN, f"{_nbytes(en)}-byte note cut to {_nbytes(an)} by onX import"))
     else:
         out.append(("notes", FAIL, f"expected {len(en)} chars {en[:60]!r}…, "
                                    f"got {len(an)} chars {an[:60]!r}…"))

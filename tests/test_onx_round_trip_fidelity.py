@@ -56,7 +56,7 @@ _T0 = 1782918000000  # 2026-07-01T15:00:00Z in epoch ms
 SOURCE = {
     "Main Wall": [dict(kind="Waypoint", notes="Approach from the north.\nSecond line of notes.",
                        icon="Climbing", color="rgba(255,51,0,1)", id=_ID + "1")],
-    "Camp water": [dict(kind="Waypoint", notes="a=b inside notes", icon="Campsite",
+    "Camp & water": [dict(kind="Waypoint", notes="a=b inside notes", icon="Campsite",
                         color="rgba(8,122,255,1)", id=_ID + "2")],
     "Slide obs": [dict(kind="Waypoint", notes=SLIDE_NOTES, icon="Hazard",
                        color="rgba(255,0,0,1)", id=_ID + "7")],
@@ -92,12 +92,12 @@ ALLOWED_LOSSES = {
     # <rte><type>Line</type> yet (not a Phase 1 item), so it comes back as a <trk>.
     ("Ridge line", 0, "line"),
 }
-# Names: "Camp & water" comes back as "Camp water" because sanitize_name_for_onx strips
-# & and # (blocked on probe P5). Items are matched by sanitized name, as in KG section 6.
+# Names: "Camp & water" comes back unchanged. sanitize_name_for_onx used to strip & and #;
+# names now pass through (onX verified 2026-10-22, DECISIONS.md ENG-06).
 
 
 def _norm_name(name: str) -> str:
-    return sanitize_name_for_onx(name)[0]
+    return sanitize_name_for_onx(name)[0]  # identity since ENG-06; kept so the pass-through is exercised
 
 
 def _snap(doc: MapDocument) -> dict:

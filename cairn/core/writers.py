@@ -126,12 +126,10 @@ def _desc_text(notes_clean: str, kv_lines: List[str], debug_desc: bool) -> str:
 # Global change tracker for name sanitization
 # Format: {feature_type: [(original_name, sanitized_name), ...]}
 #
-# The rule itself (utils.sanitize_name_for_onx: drop ! @ # $ % ^ * &) is
-# inherited. Its docstring says those characters "cause OnX sorting issues";
-# nothing in docs/ or onX's published help confirms onX rejects or mis-sorts
-# them. It is kept, applied the same way to waypoints, tracks AND areas, and
-# every change is reported (web RUNBOOK.md "Renamed for onX") rather than
-# made silently.
+# Names now pass through unchanged (utils.sanitize_name_for_onx is an identity;
+# onX verified 2026-10-22, DECISIONS.md ENG-06), so these stay empty and the
+# RUNBOOK "Renamed for onX" section no longer appears. The tracker is kept as the
+# one place a future, genuinely needed rename would be reported.
 _name_changes: dict[str, list[tuple[str, str]]] = {
     "waypoints": [],
     "tracks": [],

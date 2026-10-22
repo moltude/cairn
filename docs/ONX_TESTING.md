@@ -35,7 +35,7 @@ mess. Written after the 2026-10-22 round (97 test markups, cleaned up by hand).
 | Area color / fill | **Only** via GPX `<rte>` + `<type>Area</type>` + `onx:color` / `onx:fill_color`; KML area styles are ignored |
 | Area holes | Not representable in onX |
 | Multi-line notes | Kept |
-| Note length on import | A 617-char note was cut to 512; a 3,000+ char note was dropped entirely. Notes typed in onX can be longer; onX folder notes are capped at 512 |
+| Note length on import | onX keeps the first 512 UTF-8 **bytes** of an imported note (a 512-char note ending in a 3-byte em dash came back 510 chars; ASCII notes of 513-3000 chars were cut to 512, waypoints and lines alike). One earlier 3,000+ char note from an onX export was dropped for an unknown reason. Notes typed in onX can be longer; onX folder notes are capped at 512 |
 | `<desc>` key=value blocks | Not parsed on import: shown verbatim as the note |
 | Track with 2 `<trkseg>` | Joined into one line with a false connecting segment |
 | Long lines | onX thins points by 15–25% |
@@ -74,7 +74,7 @@ uv run python scripts/onx_roundtrip.py summary --run r1
    points against `expected.json`. Writes `verify_report.json` and `verify_report.md` in the
    set's folder; exits 1 on any FAIL. Classes:
    - **PASS** — identical.
-   - **KNOWN_ONX_LIMIT** — a note over 512 characters cut to a prefix or dropped; a line or
+   - **KNOWN_ONX_LIMIT** — a note over 512 UTF-8 bytes cut to a prefix or dropped; a line or
      area with fewer points but the same end points (within 1e-5: onX thinning); an area whose
      source had holes (listed in `expected.json` `known_dropped_holes`).
    - **FAIL** — anything else, including an item missing from, or extra in, the export.
@@ -83,7 +83,7 @@ uv run python scripts/onx_roundtrip.py summary --run r1
    import to `ZZTEST · r1 · i2 · <set>`. The plan (indices by sorted untagged name, per kind):
    - every item: `[r1i1] X` → `[r1i2] X` (refused if any item lacks the `[r1i1]` tag); note +=
      `\n— edited r1i2` (no newline when the note is empty), truncating the original so the
-     result is ≤ 512 characters (`edits[].note_truncated_to_fit` in `expected.json`);
+     result is ≤ 512 UTF-8 bytes (`edits[].note_truncated_to_fit` in `expected.json`);
    - waypoints: icon cycles `Summit, Water Source, Camp, Trailhead, Parking, Hazard, Photo,
      Shelter, View, Lookout`, colour cycles onX's 10 waypoint colours (skipping the current
      value);

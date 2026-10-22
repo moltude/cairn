@@ -23,7 +23,7 @@ FOLDER_NAME = "Edge Cases"
 # Fixed timestamp (2026-10-22T00:00:00Z) so the file never changes between runs.
 TS = 1792627200000
 
-# Note lengths straddling the 512 characters onX kept on import (2026-10-22).
+# Note lengths straddling the 512 bytes onX keeps on import (2026-10-22).
 NOTE_LENGTHS = (500, 511, 512, 513, 600, 1000, 3000)
 TRACK_NOTE_LENGTHS = (511, 512, 513, 3000)
 

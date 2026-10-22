@@ -43,8 +43,11 @@ from cairn.core.writers import (
 # onX's per-ACCOUNT markup ceiling (FIDELITY_MODEL_2026-08-29.md). Splitting a
 # map into more files or imports does not get around it.
 ONX_ACCOUNT_MARKUP_LIMIT = 3000  # onX help 360052239052, updated 2026-09-16 (was 1,500)
-# Longest note onX kept on import in testing (2026-10-22): a 617-character
-# waypoint note arrived cut to 512; a 3,000+ character line note was dropped.
+# Longest note onX keeps on import, in UTF-8 BYTES (verified 2026-10-22, r1):
+# onX keeps the first 512 bytes. A 513/600/1000/3000-character ASCII note (waypoint
+# and line) arrived cut to 512; a 512-character note whose last character was a
+# 3-byte em dash (514 bytes) arrived as 510 characters. One earlier 3,000+ character
+# note from an onX export was dropped outright, for a reason not yet known.
 # Notes typed in onX itself can be much longer.
 ONX_IMPORT_NOTE_LIMIT = 512
 
@@ -694,12 +697,13 @@ def export_zip() -> bytes:
             ]
             # onX areas are single-ring: these were written outer ring only.
             entry["holes"] = get_areas_without_holes()
-            # onX cut a 617-character note to 512 on import and dropped a
-            # 3,000+ character one entirely (owner's tests, 2026-10-22).
+            # onX keeps the first 512 UTF-8 bytes of an imported note (2026-10-22),
+            # so the test is on bytes: an accented letter, dash or emoji is 2-4.
             entry["long_notes"] = [
-                [i["name"], len(i.get("desc") or "")]
+                [i["name"], len((i.get("desc") or "").encode("utf-8"))]
                 for i in g["items"]
-                if i.get("included", True) and len(i.get("desc") or "") > ONX_IMPORT_NOTE_LIMIT
+                if i.get("included", True)
+                and len((i.get("desc") or "").encode("utf-8")) > ONX_IMPORT_NOTE_LIMIT
             ]
             if entry["files"]:
                 manifest.append(entry)
@@ -817,13 +821,16 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
     long_notes = [(e["folder"], n, c) for e in manifest for n, c in e.get("long_notes", ())]
     if long_notes:
         L += [
-            f"### Notes longer than onX keeps on import ({ONX_IMPORT_NOTE_LIMIT} characters)",
+            f"### Notes longer than onX keeps on import ({ONX_IMPORT_NOTE_LIMIT} bytes)",
             "",
-            f"onX cut a longer imported note to {ONX_IMPORT_NOTE_LIMIT} characters, and dropped a "
-            "much longer one entirely. Shorten these, or paste the rest into onX after import.",
+            f"onX keeps the first {ONX_IMPORT_NOTE_LIMIT} bytes of an imported note -- about "
+            f"{ONX_IMPORT_NOTE_LIMIT} characters of plain English; accented letters, dashes and "
+            "emoji take 2-4 bytes each. Shorten these, or paste the rest into onX after import. "
+            "(One earlier 3,000+ character note from an onX export was dropped outright, "
+            "for a reason we have not found.)",
             "",
         ]
-        L += [f"- `{n}`: {c} characters  ({folder})" for folder, n, c in long_notes]
+        L += [f"- `{n}`: {c} bytes  ({folder})" for folder, n, c in long_notes]
         L += [""]
     L += [
         "---",
