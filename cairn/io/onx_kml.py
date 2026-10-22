@@ -18,6 +18,7 @@ import uuid
 import xml.etree.ElementTree as ET
 
 from cairn.core.normalization import normalize_name
+from cairn.utils.utils import strip_html
 from cairn.model import MapDocument, Shape, Style, Track, TrackPoint, Waypoint
 
 
@@ -75,6 +76,19 @@ def _parse_kml_coords_list(text: str) -> List[Tuple[float, float, Optional[float
     return pts
 
 
+_GEOM_TAGS = {f"{{{_KML_NS}}}{k}" for k in ("Point", "LineString", "Polygon")}
+
+
+def _ring(coords_elem: Optional[ET.Element]) -> List[Tuple[float, float]]:
+    """A LinearRing's (lon, lat) list, closed; [] if it has under 3 corners."""
+    pts = [(lon, lat) for (lon, lat, _alt) in _parse_kml_coords_list(_text(coords_elem))]
+    if len(pts) < 3:
+        return []
+    if pts[0] != pts[-1]:
+        pts.append(pts[0])
+    return pts
+
+
 def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
     """
     Read an OnX KML export.
@@ -115,114 +129,88 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
     placemarks = root.findall(".//kml:Placemark", _NS)
     for idx, pm in enumerate(placemarks):
         name_raw = _text(pm.find("kml:name", _NS))
-        name = normalize_name(name_raw)
 
         kv = _parse_extended_data(pm)
+        name = normalize_name(name_raw) or normalize_name(kv.get("name", ""))
         onx_id = kv.get("id") or kv.get("onx:id")  # keys are lowercased in _parse_extended_data
         onx_icon = kv.get("icon")
         onx_color = kv.get("color")
-        notes = kv.get("notes", "")
+        # onX (tokml) and Cairn both put notes in ExtendedData. Other KML -- Google
+        # Earth, CalTopo, hand-made -- uses <description>, often HTML.
+        if "notes" in kv:
+            notes = normalize_name(kv["notes"])
+        else:
+            notes = strip_html(_text(pm.find("kml:description", _NS)))
 
-        style = Style(OnX_id=onx_id, OnX_icon=onx_icon, OnX_color_rgba=onx_color)
-        style.extra["extended_data"] = dict(kv)
-
-        # Geometry dispatch
-        if pm.find(".//kml:Point", _NS) is not None:
-            coord_text = _text(pm.find(".//kml:Point/kml:coordinates", _NS))
-            pts = _parse_kml_coords_list(coord_text)
-            if not pts:
-                continue
-            lon, lat, _alt = pts[0]
-            wp = Waypoint(
-                id=onx_id or _uuid_fallback(),
-                folder_id="OnX_waypoints",
-                name=name or normalize_name(kv.get("name", "")),
-                lon=lon,
-                lat=lat,
-                notes=normalize_name(notes),
-                style=style,
-                extra={"name_raw": name_raw},
+        # Every geometry in the Placemark, in document order: a MultiGeometry yields
+        # one item per part. Parts share the name, notes, style and onX id; part 2+
+        # get their own item id and record their index in extra["kml_part"].
+        geoms = [g for g in pm.iter() if g.tag in _GEOM_TAGS]
+        part = 0
+        for geom in geoms:
+            style = Style(
+                OnX_id=onx_id,
+                OnX_icon=onx_icon,
+                OnX_color_rgba=onx_color,
+                OnX_style=kv.get("style") or None,
+                OnX_weight=kv.get("weight") or None,
             )
-            doc.add_item(wp)
+            style.extra["extended_data"] = dict(kv)
+            if kv.get("fill_color"):
+                style.extra["fill_color"] = kv["fill_color"]
+            base_id = onx_id or _uuid_fallback()
+            item_id = base_id if part == 0 else f"{base_id}:part{part + 1}"
+            extra: Dict[str, Any] = {"name_raw": name_raw}
+            if len(geoms) > 1:
+                extra["kml_part"] = part
+
+            kind = geom.tag.rsplit("}", 1)[-1]
+            item: Any = None
+            if kind == "Point":
+                pts = _parse_kml_coords_list(_text(geom.find("kml:coordinates", _NS)))
+                if pts:
+                    lon, lat, _alt = pts[0]
+                    item = Waypoint(
+                        id=item_id, folder_id="OnX_waypoints", name=name, lon=lon,
+                        lat=lat, notes=notes, style=style, extra=extra,
+                    )
+            elif kind == "LineString":
+                pts = _parse_kml_coords_list(_text(geom.find("kml:coordinates", _NS)))
+                if pts:
+                    extra["kml_geom"] = "LineString"
+                    item = Track(
+                        id=item_id, folder_id="OnX_tracks", name=name,
+                        points=[(lon, lat, alt, None) for (lon, lat, alt) in pts],
+                        notes=notes, style=style, extra=extra,
+                    )
+            else:  # Polygon: outer ring, then every inner ring (holes)
+                outer = _ring(geom.find("kml:outerBoundaryIs/kml:LinearRing/kml:coordinates", _NS))
+                if outer:
+                    rings = [outer]
+                    for inner in geom.findall("kml:innerBoundaryIs/kml:LinearRing/kml:coordinates", _NS):
+                        hole = _ring(inner)
+                        if hole:
+                            rings.append(hole)
+                    extra["kml_geom"] = "Polygon"
+                    item = Shape(
+                        id=item_id, folder_id="OnX_shapes", name=name, rings=rings,
+                        notes=notes, style=style, extra=extra,
+                    )
+            if item is None:
+                continue
+            doc.add_item(item)
+            part += 1
             if trace is not None:
                 trace.emit(
                     {
                         "event": "input.kml.placemark",
                         "idx": idx,
-                        "geom": "Point",
+                        "geom": kind,
+                        "part": part,
                         "name_raw": name_raw,
-                        "name_norm": wp.name,
+                        "name_norm": name,
                         "OnX": {"id": onx_id, "icon": onx_icon, "color": onx_color},
                     }
                 )
-            continue
-
-        if pm.find(".//kml:LineString", _NS) is not None:
-            coord_text = _text(pm.find(".//kml:LineString/kml:coordinates", _NS))
-            pts = _parse_kml_coords_list(coord_text)
-            if not pts:
-                continue
-            points: List[TrackPoint] = [
-                (lon, lat, alt, None) for (lon, lat, alt) in pts
-            ]
-            trk = Track(
-                id=onx_id or _uuid_fallback(),
-                folder_id="OnX_tracks",
-                name=name or normalize_name(kv.get("name", "")),
-                points=points,
-                notes=normalize_name(notes),
-                style=style,
-                extra={"name_raw": name_raw, "kml_geom": "LineString"},
-            )
-            doc.add_item(trk)
-            if trace is not None:
-                trace.emit(
-                    {
-                        "event": "input.kml.placemark",
-                        "idx": idx,
-                        "geom": "LineString",
-                        "name_raw": name_raw,
-                        "name_norm": trk.name,
-                        "point_count": len(points),
-                        "OnX": {"id": onx_id, "color": onx_color},
-                    }
-                )
-            continue
-
-        if pm.find(".//kml:Polygon", _NS) is not None:
-            # Prefer outer boundary ring.
-            outer = _text(
-                pm.find(
-                    ".//kml:Polygon/kml:outerBoundaryIs/kml:LinearRing/kml:coordinates",
-                    _NS,
-                )
-            )
-            ring_pts = _parse_kml_coords_list(outer)
-            if not ring_pts:
-                continue
-            ring = [(lon, lat) for (lon, lat, _alt) in ring_pts]
-            shp = Shape(
-                id=onx_id or _uuid_fallback(),
-                folder_id="OnX_shapes",
-                name=name or normalize_name(kv.get("name", "")),
-                rings=[ring],
-                notes=normalize_name(notes),
-                style=style,
-                extra={"name_raw": name_raw, "kml_geom": "Polygon"},
-            )
-            doc.add_item(shp)
-            if trace is not None:
-                trace.emit(
-                    {
-                        "event": "input.kml.placemark",
-                        "idx": idx,
-                        "geom": "Polygon",
-                        "name_raw": name_raw,
-                        "name_norm": shp.name,
-                        "ring_len": len(ring),
-                        "OnX": {"id": onx_id, "color": onx_color},
-                    }
-                )
-            continue
 
     return doc

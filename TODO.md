@@ -29,9 +29,11 @@
     Web Map import of an area with `fill-opacity` 0.1 and 0 to see whether onX honours them.
   * **The KML size cap is assumed.** onX documents 4 MB for GPX; areas now split at the same
     3.75 MiB without a source saying KML shares that limit.
-  * **`MultiPolygon` and other non-LineString/Polygon `Shape`s are silently ignored at parse
-    time** (`core/parser.py:add_feature_to_folder`), so they never reach the dropped count.
-    No CalTopo export seen so far contains one (Bitterroots: 17 single-ring Polygons).
+  * **Non-LineString/Polygon `Shape`s other than `MultiPolygon` are still silently ignored at
+    parse time** (`core/parser.py:add_feature_to_folder`), so they never reach the dropped
+    count. `MultiPolygon` is now split into one area per part (2026-10-22, roadmap Phase 1);
+    `MultiLineString` and `GeometryCollection` are not handled. No CalTopo export seen so far
+    contains any of these (Bitterroots: 17 single-ring Polygons).
   * **CalTopo `pattern` on areas is not carried** — KML 2.2 has no dash style.
   * **The `! @ # $ % ^ * &` name rule has no cited onX reason** (utils.py says "sorting
     issues"). Verify against a real import, then keep or drop it.

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="onXmaps backcountry web">
+<metadata/>
+<wpt lat="46.1054" lon="-114.2646"><name>Main Wall</name><desc>name=Main Wall
+notes=Approach from the north.
+Second line of notes.
+id=0b6d8e0a-1111-4c4c-9a9a-000000000001
+color=rgba(255,51,0,1)
+icon=Climbing</desc><extensions><onx:color>rgba(255,51,0,1)</onx:color><onx:icon>Climbing</onx:icon></extensions></wpt>
+<wpt lat="46.1002" lon="-114.2594"><name>Camp &amp; water</name><desc>name=Camp &amp; water
+notes=a=b inside notes
+id=0b6d8e0a-1111-4c4c-9a9a-000000000002
+color=rgba(8,122,255,1)
+icon=Campsite</desc><extensions><onx:color>rgba(8,122,255,1)</onx:color><onx:icon>Campsite</onx:icon></extensions></wpt>
+<wpt lat="46.1100" lon="-114.2700"><name>Slide obs</name><desc>name=Slide obs
+notes=Avalanche D2 · N · 8200 ft · trigger AS (skier, unintentional)
+Problem: Wind Slab · Zone: Bitterroot &amp; Rattlesnake #2
+Full report: https://missoulaavalanche.org/observations/#/avalanche/123?a=1&amp;copy=2&amp;notes=3&amp;para=4
+Source: West Central Montana Avalanche Center. Not a forecast — check today's advisory.
+id=0b6d8e0a-1111-4c4c-9a9a-000000000007
+color=rgba(255,0,0,1)
+icon=Hazard</desc><extensions><onx:color>rgba(255,0,0,1)</onx:color><onx:icon>Hazard</onx:icon></extensions></wpt>
+<trk><name>Recorded hike</name><desc>name=Recorded hike
+notes=
+id=0b6d8e0a-1111-4c4c-9a9a-000000000003
+color=rgba(255,0,255,1)
+style=dash
+weight=2.0</desc><extensions><onx:color>rgba(255,0,255,1)</onx:color><onx:style>dash</onx:style><onx:weight>2.0</onx:weight></extensions><trkseg>
+<trkpt lat="46.100" lon="-114.260"><ele>1500.5</ele><time>2026-07-01T15:00:00.000Z</time></trkpt>
+<trkpt lat="46.101" lon="-114.261"><ele>1510.0</ele><time>2026-07-01T15:05:00.000Z</time></trkpt>
+<trkpt lat="46.102" lon="-114.262"><ele>1522.0</ele><time>2026-07-01T15:10:00.000Z</time></trkpt>
+</trkseg></trk>
+<rte><name>Ridge line</name><desc>name=Ridge line
+notes=drawn line
+id=0b6d8e0a-1111-4c4c-9a9a-000000000004
+type=Line
+color=rgba(0,0,0,1)
+style=solid
+weight=6.0</desc><type>Line</type><extensions><onx:color>rgba(0,0,0,1)</onx:color><onx:style>solid</onx:style><onx:weight>6.0</onx:weight></extensions>
+<rtept lat="46.110" lon="-114.270"/><rtept lat="46.112" lon="-114.272"/><rtept lat="46.115" lon="-114.275"/></rte>
+<rte><name>Hunt unit</name><desc>name=Hunt unit
+notes=
+id=0b6d8e0a-1111-4c4c-9a9a-000000000005
+type=Area
+color=rgba(255,255,0,1)
+style=solid
+weight=4.0
+fill_color=rgba(255,255,0,0.3)</desc><type>Area</type><extensions><onx:color>rgba(255,255,0,1)</onx:color><onx:style>solid</onx:style><onx:weight>4.0</onx:weight><onx:fill_color>rgba(255,255,0,0.3)</onx:fill_color></extensions>
+<rtept lat="46.12" lon="-114.28"/><rtept lat="46.12" lon="-114.29"/><rtept lat="46.13" lon="-114.29"/><rtept lat="46.13" lon="-114.28"/><rtept lat="46.12" lon="-114.28"/></rte>
+</gpx>

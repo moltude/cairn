@@ -65,6 +65,7 @@ EXPECTED = {
     "edge_cases/many_waypoints_1000.gpx": (GPX, CAIRN),
     "edge_cases/many_waypoints_10000.gpx": (GPX, CAIRN),
     "edge_cases/mixed_features.json": (GEOJSON, CALTOPO),
+    "edge_cases/multipolygon.json": (GEOJSON, CALTOPO),
     "edge_cases/poles.gpx": (GPX, CAIRN),
     "edge_cases/prime_meridian.gpx": (GPX, CAIRN),
     "edge_cases/quotes.gpx": (GPX, CAIRN),
@@ -73,6 +74,9 @@ EXPECTED = {
     "edge_cases/single_waypoint.gpx": (GPX, CAIRN),
     "edge_cases/unicode.gpx": (GPX, CAIRN),
     "edge_cases/xml_chars.gpx": (GPX, CAIRN),
+    "onx_dialect/README.md": (UNKNOWN, NOT_A_MAP),
+    "onx_dialect/onx_dialect.gpx": (GPX, ONX),            # synthetic, modelled on onX's export code
+    "onx_dialect/onx_dialect.kml": (KML, ONX),
     "onx_export_with_tracks.gpx": (GPX, ONX_LIKE),       # synthetic, creator="OnX Backcountry"
     "onx_export_with_tracks.kml": (KML, GENERIC),        # synthetic, has <Folder>, no Data id
     "onx_waypoint_color_test.gpx": (GPX, CAIRN),

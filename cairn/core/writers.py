@@ -74,6 +74,37 @@ def _agent_ndjson_log(payload: dict) -> None:
 DEFAULT_MAX_GPX_BYTES = int(math.floor(3.75 * 1024 * 1024))
 
 
+def _finite_number(v) -> bool:
+    return (
+        isinstance(v, (int, float))
+        and not isinstance(v, bool)
+        and math.isfinite(float(v))
+    )
+
+
+def _trkpt_children(coord) -> List[str]:
+    """<ele> and <time> lines for one track point [lon, lat, ele?, epoch_ms?].
+
+    ele is written when present and numeric (None means "no elevation", never 0).
+    The time slot is epoch milliseconds, as in CalTopo GeoJSON and the onX GPX
+    reader; 0 is CalTopo's "no time", so only a positive value is written. GPX
+    wants ele before time.
+    """
+    out: List[str] = []
+    if len(coord) > 2 and _finite_number(coord[2]):
+        out.append(f"        <ele>{coord[2]}</ele>")
+    if len(coord) > 3 and _finite_number(coord[3]) and coord[3] > 0:
+        try:
+            ts = datetime.fromtimestamp(coord[3] / 1000, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            ts = None
+        if ts is not None:
+            out.append(
+                f"        <time>{ts.strftime('%Y-%m-%dT%H:%M:%S')}.{ts.microsecond // 1000:03d}Z</time>"
+            )
+    return out
+
+
 def _desc_text(notes_clean: str, kv_lines: List[str], debug_desc: bool) -> str:
     """
     Content for a GPX <desc> element.
@@ -739,8 +770,7 @@ def write_gpx_tracks_maybe_split(
             if len(coord) >= 2:
                 lat, lon = coord[1], coord[0]
                 block.append(f'      <trkpt lat="{lat}" lon="{lon}">')
-                if len(coord) > 2:
-                    block.append(f"        <ele>{coord[2]}</ele>")
+                block.extend(_trkpt_children(coord))
                 block.append("      </trkpt>")
 
         block.append("    </trkseg>")
@@ -1090,11 +1120,7 @@ def write_gpx_tracks(
             if len(coord) >= 2:
                 lat, lon = coord[1], coord[0]
                 lines.append(f'      <trkpt lat="{lat}" lon="{lon}">')
-
-                # Add elevation if present
-                if len(coord) > 2:
-                    lines.append(f"        <ele>{coord[2]}</ele>")
-
+                lines.extend(_trkpt_children(coord))
                 lines.append("      </trkpt>")
 
         lines.append("    </trkseg>")
@@ -1223,9 +1249,10 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
         track_name_change("shapes", feature.title, sanitized)
     name_elem.text = sanitized
 
-    if feature.description:
+    notes_text = strip_html(feature.description or "")
+    if notes_text:
         desc = ET.SubElement(placemark, "description")
-        desc.text = strip_html(feature.description)
+        desc.text = notes_text
 
     # Style. HOW onX RENDERS KML <width> AND PolyStyle fill IS UNVERIFIED --
     # these carry CalTopo's values faithfully in standard KML 2.2; whether onX
@@ -1252,11 +1279,33 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
     # CalTopo's separate `fill`: the UI shows one color per area, and following
     # the raw fill would leave e.g. a red fill under a user's blue outline.
     # CalTopo's fill-opacity IS carried (0.1 -> 1a, 0 -> 00 = outline only).
-    poly_style = ET.SubElement(style, "PolyStyle")
-    ET.SubElement(poly_style, "color").text = _rgba_to_kml(
-        area_rgba,
-        _opacity_alpha(getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA),
+    fill_alpha = _opacity_alpha(
+        getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA
     )
+    poly_style = ET.SubElement(style, "PolyStyle")
+    ET.SubElement(poly_style, "color").text = _rgba_to_kml(area_rgba, fill_alpha)
+
+    # The same values again as onX-style ExtendedData, the way onX's own KML export
+    # (mapbox tokml) carries every property (KG section 3.5). This is what lets
+    # read_onx_kml read Cairn's KML and onX's alike: notes, colour, line style,
+    # weight and fill all come back. Placed after <Style>, before the geometry, per
+    # the KML 2.2 Placemark element order. UNVERIFIED: whether onX's importer reads
+    # these Data fields or only the <Style>.
+    r, g, b = ColorMapper.parse_color(area_rgba)
+    onx_data = []
+    if notes_text:
+        onx_data.append(("notes", notes_text))
+    onx_data += [
+        ("color", area_rgba),
+        ("style", pattern_to_style(getattr(feature, "pattern", "") or "")),
+        ("weight", stroke_width_to_weight(raw_width)),
+        ("fill_color", f"rgba({r},{g},{b},{round(fill_alpha / 255, 2):g})"),
+    ]
+    extended = ET.SubElement(placemark, "ExtendedData")
+    for key, value in onx_data:
+        data = ET.SubElement(extended, "Data")
+        data.set("name", key)
+        ET.SubElement(data, "value").text = value
 
     polygon = ET.SubElement(placemark, "Polygon")
     for i, ring in enumerate(rings):

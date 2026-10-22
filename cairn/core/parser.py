@@ -144,6 +144,32 @@ class ParsedData:
         return [(fid, data["name"]) for fid, data in self.folders.items()]
 
 
+def _split_multipolygon(feature_dict: Dict[str, Any]) -> List[ParsedFeature]:
+    """One Polygon ParsedFeature per part of a MultiPolygon feature.
+
+    Nothing downstream handles MultiPolygon (is_shape() wants a Polygon, and onX
+    areas are single polygons), so it used to be dropped without a count. Each part
+    keeps the feature's properties and title (so it stays in the same folder with
+    the same name, colour and notes); the first part keeps the id, later parts get
+    "<id>:part<n>". A part with no rings is skipped; a non-list coordinates value
+    yields nothing.
+    """
+    coords = (feature_dict.get("geometry") or {}).get("coordinates")
+    if not isinstance(coords, list):
+        return []
+    base_id = feature_dict.get("id", "")
+    out: List[ParsedFeature] = []
+    for polygon in coords:
+        if not isinstance(polygon, list) or not polygon:
+            continue
+        part = dict(feature_dict)
+        part["geometry"] = {"type": "Polygon", "coordinates": polygon}
+        if out:
+            part["id"] = f"{base_id}:part{len(out) + 1}"
+        out.append(ParsedFeature(part))
+    return out
+
+
 def parse_geojson(filepath: Path) -> ParsedData:
     """
     Parse a CalTopo GeoJSON export file.
@@ -224,6 +250,8 @@ def parse_geojson(filepath: Path) -> ParsedData:
         if feature.is_folder():
             folder_features.append(feature)
             parsed_data.add_folder(feature.id, feature.title)
+        elif feature.geometry_type == "MultiPolygon":
+            non_folder_features.extend(_split_multipolygon(feature_dict))
         else:
             non_folder_features.append(feature)
 

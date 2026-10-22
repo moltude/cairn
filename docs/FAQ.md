@@ -112,7 +112,7 @@ In onX the file format decides the object type, per project docs (Aug 2026):
 | KML LineString | Line |
 | KML Polygon | Area |
 
-Cairn writes every CalTopo line, including a CalTopo Shape drawn as an open line, as a GPX `<trk>`. That's the only path where Cairn writes onX color, style and weight. So all your lines arrive as **Tracks**, and Cairn never creates onX "Lines". Only closed polygons go to KML and become Areas. Holes in a polygon are kept, and an area's CalTopo line width and line/fill opacity are carried over; its dash pattern isn't (KML has no dash style). How onX renders KML width and fill hasn't been verified. Multi-part areas (MultiPolygon) aren't supported yet.
+Cairn writes every CalTopo line, including a CalTopo Shape drawn as an open line, as a GPX `<trk>`. That's the only path where Cairn writes onX color, style and weight. So all your lines arrive as **Tracks**, and Cairn never creates onX "Lines". Only closed polygons go to KML and become Areas. Holes in a polygon are kept, and an area's CalTopo line width and line/fill opacity are carried over; its dash pattern isn't (KML has no dash style). How onX renders KML width and fill hasn't been verified. A multi-part area (MultiPolygon) becomes one onX Area per part, each with the same name, color and notes.
 
 ## Limits and trade-offs
 

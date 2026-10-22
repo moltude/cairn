@@ -43,6 +43,7 @@ This directory contains comprehensive test fixtures for validating Cairn's edge 
 ### GeoJSON Edge Cases
 - `single_marker.json` - Minimal GeoJSON with 1 marker
 - `mixed_features.json` - All feature types (Point, LineString, Polygon)
+- `multipolygon.json` - A CalTopo-style Shape with MultiPolygon geometry (one part with a hole) and a plain Polygon; hand-written 2026-10-22, no real CalTopo MultiPolygon sample exists
 
 ### Malformed Files (Expected Failures)
 - `malformed.gpx` - Invalid XML (unclosed tags)

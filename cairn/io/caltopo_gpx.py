@@ -38,6 +38,22 @@ def _text(elem: Optional[ET.Element]) -> str:
     return elem.text.strip()
 
 
+def _ele(pt: ET.Element) -> List[float]:
+    """[ele] when the point has a usable <ele>, else [].
+
+    A missing elevation stays missing: it used to become 0, which the GPX writer
+    then emitted as <ele>0</ele>, inventing sea level. A malformed <ele> is
+    treated as missing rather than dropping the point.
+    """
+    text = _text(pt.find("gpx:ele", _NS))
+    if not text:
+        return []
+    try:
+        return [float(text)]
+    except ValueError:
+        return []
+
+
 def _parse_waypoint(wpt: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
     """
     Parse a <wpt> element into a GeoJSON-like feature dict.
@@ -96,9 +112,7 @@ def _parse_track(trk: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
                 if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
                     continue
 
-                ele_elem = pt.find("gpx:ele", _NS)
-                ele = float(_text(ele_elem)) if ele_elem is not None and _text(ele_elem) else 0
-                coords.append([lon, lat, ele, 0])  # [lon, lat, ele, time_ms]
+                coords.append([lon, lat] + _ele(pt))
             except (ValueError, TypeError):
                 continue
 
@@ -141,9 +155,7 @@ def _parse_route(rte: ET.Element, idx: int) -> Optional[Dict[str, Any]]:
             if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
                 continue
 
-            ele_elem = pt.find("gpx:ele", _NS)
-            ele = float(_text(ele_elem)) if ele_elem is not None and _text(ele_elem) else 0
-            coords.append([lon, lat, ele, 0])
+            coords.append([lon, lat] + _ele(pt))
         except (ValueError, TypeError):
             continue
 
