@@ -35,13 +35,15 @@ mess. Written after the 2026-10-22 round (97 test markups, cleaned up by hand).
 | Area color / fill | **Only** via GPX `<rte>` + `<type>Area</type>` + `onx:color` / `onx:fill_color`; KML area styles are ignored |
 | Area holes | Not representable in onX |
 | Multi-line notes | Kept |
-| Note length on import | onX keeps the first 512 UTF-8 **bytes** of an imported note (a 512-char note ending in a 3-byte em dash came back 510 chars; ASCII notes of 513-3000 chars were cut to 512, waypoints and lines alike). One earlier 3,000+ char note from an onX export was dropped for an unknown reason. Notes typed in onX can be longer; onX folder notes are capped at 512 |
+| Name characters | Kept: `# & ! @ $ % ^ * ' " ( ) < >`, accents, em dash, emoji (r1 probe, r2 edge set) |
+| Line thinning on re-import | None to speak of: a line onX already thinned loses at most 1 point when re-imported (r2) |
+| Note length on import | onX keeps the first 512 UTF-8 **bytes** of an imported note, cut on a character boundary (r2: accented notes of 511/512 bytes arrive whole, 513 is cut to 512; a cut landing inside an `é` drops the partial character; r1: ASCII notes of 513-3000 chars were cut to 512, waypoints and lines alike). One earlier 3,000+ char note from an onX export was dropped for an unknown reason. Notes typed in onX can be longer; onX folder notes are capped at 512 |
 | `<desc>` key=value blocks | Not parsed on import: shown verbatim as the note |
 | Track with 2 `<trkseg>` | Joined into one line with a false connecting segment |
 | Long lines | onX thins points by 15–25% |
 | Folder naming | Always `Import <timestamp>`; rename afterwards |
 
-Evidence: `tests/fixtures/onx_real/`, `tests/fixtures/dark_divide_100/onx_roundtrip/`,
+Evidence: `tests/fixtures/roundtrip/r1/` and `r2/` (READMEs), `tests/fixtures/onx_real/`, `tests/fixtures/dark_divide_100/onx_roundtrip/`,
 `tests/fixtures/caltopo-random/onx_roundtrip/`, `docs/research/ONX_REIMPORT_AND_SHARING_2026-10-22.md`.
 
 ## Round-trip harness
@@ -92,8 +94,13 @@ uv run python scripts/onx_roundtrip.py summary --run r1
    - areas: colour cycles the 11 line colours.
 4. **summary** writes `r1/SUMMARY.md`: items, PASS, KNOWN_ONX_LIMIT and FAIL per stage and set.
 
+Between commands, after exporting a test folder from onX as GPX and then KML,
+`scripts/onx_fetch_export.sh <run> <stage> <set>` moves the two fresh downloads into the set's
+`onx_export/` and runs verify. It refuses downloads older than 3 minutes (a stale download once
+produced a false FAIL) and parks other fresh onX downloads in `tests/output/stale_downloads/`.
+
 `expected.json` is Cairn's own upload files re-read by Cairn, so the writer's own changes
-(name sanitizing, HTML-cleaned CalTopo notes, colour quantizing) are already in it and verify
+(HTML-cleaned CalTopo notes, colour quantizing) are already in it and verify
 measures only what onX changed. `tests/test_onx_roundtrip_harness.py` runs the whole chain
 offline with Cairn's output standing in for onX's export: every item must PASS at both stages.
 Line style / weight edits (`apply_edits` `style`: solid|dash|dot, `weight`: 4.0|6.0, tracks
