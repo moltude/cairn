@@ -470,3 +470,14 @@ CSP path to the Pyodide version the app loads.
 
 Not done (still open): self-hosting Pyodide and the pinned packages so every engine file is
 served from our own origin with integrity — about 10–15 MB more per deploy.
+
+### UI-24 — Landing tagline and product scope
+Status: decided 2026-10-22.
+
+- Tagline: **"CalTopo to onX, with icons and colors that still mean something."** Chosen over
+  "Move your CalTopo map to onX and keep it filterable." (jumps to the solution without naming
+  the problem), "Fix your map before it lands in onX." and "Your CalTopo map, still organized
+  in onX." Shown in italics under the kicker and used as the page's meta description.
+- The kicker stays **"CalTopo → onX Backcountry"**, and step 3 says "onX Backcountry": onX also
+  ships Hunt, Fish, Offroad and other products that Cairn has not been tested against, so Cairn
+  states it supports **onX Backcountry only** for now.
