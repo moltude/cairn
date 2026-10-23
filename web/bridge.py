@@ -620,6 +620,177 @@ def apply_edits(edits_json: str) -> str:
     return json.dumps({"applied": n})
 
 
+# --- folders: rename, move, merge (ENG-07) ------------------------------------
+#
+# Engine primitives for the folders UI. Each takes and returns plain values /
+# JSON strings as apply_edits does. They change ONLY folder names, folder
+# membership and order: an item's dict (with every edit, its exclusion and its
+# pinned style) and its feature travel with it unchanged.
+#
+# Rules: an item is in exactly one folder; a folder left with no items is
+# removed; folder names are trimmed and must be non-empty; two folders may not
+# share a name compared trimmed and case-insensitively (a clash is REPORTED,
+# never merged silently); new folders go at the end; moving an item to the
+# folder it is in does nothing; an unknown uid or key raises ValueError and
+# changes nothing. Folder order is never re-sorted after load, so export's NN_
+# numbers are the folders' current positions.
+
+_KIND_ORDER = {"waypoints": 0, "tracks": 1, "shapes": 2}
+
+
+def _folder(key: str) -> dict:
+    for g in _STATE["groups"]:
+        if g["key"] == key:
+            return g
+    raise ValueError(f"There is no folder {key!r} in this map.")
+
+
+def _folder_name_of(name) -> str:
+    """A folder name as stored: trimmed, and never empty."""
+    name = name.strip() if isinstance(name, str) else ""
+    if not name:
+        raise ValueError("A folder needs a name.")
+    return name
+
+
+def _name_taken(name: str, except_key: str | None = None) -> dict | None:
+    """The OTHER folder already called `name` (trimmed, any case), if any."""
+    want = name.strip().casefold()
+    return next((g for g in _STATE["groups"]
+                 if g["key"] != except_key and g["name"].strip().casefold() == want), None)
+
+
+def _duplicate(name: str, dup: dict) -> dict:
+    return {"ok": False, "name": name,
+            "duplicate": {"key": dup["key"], "name": dup["name"], "count": len(dup["items"])}}
+
+
+def _layout() -> list:
+    """Every folder in order, with its items' uids in order: what the UI needs
+    to rearrange its own copies of the items after a move."""
+    return [{"key": g["key"], "name": g["name"], "safe": g["safe"],
+             "uids": [i["uid"] for i in g["items"]]} for g in _STATE["groups"]]
+
+
+def _sync_doc(keys) -> None:
+    """Keep doc.folders in step with the groups for the folders in `keys`
+    (export reads the groups; this is for code that inspects the document)."""
+    doc, features = _STATE["doc"], _STATE["features"]
+    live = {g["key"]: g for g in _STATE["groups"]}
+    for key in keys:
+        if key not in live:
+            doc.folders.pop(key, None)
+            continue
+        g = live[key]
+        fdata = doc.folders.setdefault(key, {})
+        fdata["name"] = g["name"]
+        for kind in _KIND_ORDER:
+            fdata[kind] = [features[i["uid"]] for i in g["items"] if i["kind"] == kind]
+
+
+def _new_folder_key() -> str:
+    taken = {g["key"] for g in _STATE["groups"]} | set(_STATE["doc"].folders)
+    while True:
+        key = f"new:{_STATE['next_folder']}"
+        _STATE["next_folder"] += 1
+        if key not in taken:
+            return key
+
+
+def _move(items: list, target: dict) -> list:
+    """Move item dicts (already validated, none in target) to the end of their
+    kind's run in target; remove emptied folders. Returns the removed keys."""
+    moving = {id(i) for i in items}
+    sources = []
+    for g in _STATE["groups"]:
+        if g is not target and any(id(i) in moving for i in g["items"]):
+            g["items"] = [i for i in g["items"] if id(i) not in moving]
+            sources.append(g)
+    # Stable sort: target's own items keep their order, and each moved item
+    # lands after the target's items of its kind, in the order given.
+    target["items"] = sorted(target["items"] + items, key=lambda i: _KIND_ORDER[i["kind"]])
+    removed = [g["key"] for g in sources if not g["items"]]
+    _STATE["groups"] = [g for g in _STATE["groups"] if g["items"]]
+    _sync_doc([g["key"] for g in sources] + [target["key"]])
+    return removed
+
+
+def rename_folder(key: str, name: str) -> str:
+    """Rename one folder. Returns JSON:
+
+    {"ok": true, "key", "name", "safe"} on success (renaming a folder to its own
+    name in another case or spacing is allowed); or, when another folder already
+    has that name, {"ok": false, "name", "duplicate": {"key", "name", "count"}}
+    and nothing is changed -- the UI offers merge_folders(key, duplicate.key).
+    An unknown key or an empty name raises ValueError.
+    """
+    g = _folder(key)
+    name = _folder_name_of(name)
+    dup = _name_taken(name, except_key=key)
+    if dup:
+        return json.dumps(_duplicate(name, dup))
+    g["name"], g["safe"] = name, _safe(name)
+    _sync_doc([key])
+    return json.dumps({"ok": True, "key": key, "name": name, "safe": g["safe"]})
+
+
+def move_items(uids_json: str, target_key: str | None = None, new_name: str | None = None) -> str:
+    """Move items to an existing folder (target_key) or to a new one (new_name,
+    created at the end). Give exactly one of the two. Returns JSON:
+
+    {"ok": true, "key": <the target folder's key>, "created": bool, "moved": n,
+     "removed": [keys of folders this emptied], "folders": layout}
+    or, when new_name is already a folder's name, the same "duplicate" report
+    rename_folder gives, with nothing changed.
+
+    uids_json is a JSON list of uids. Items move in the map's current order
+    (not the list's), each to the end of its kind in the target; ones already in
+    the target stay where they are. Unknown uids, an unknown key, an empty list
+    or an empty name raise ValueError and change nothing.
+    """
+    uids = json.loads(uids_json)
+    if not isinstance(uids, list) or not uids or not all(isinstance(u, str) for u in uids):
+        raise ValueError("No items were given to move.")
+    if (target_key is None or target_key == "") == (new_name is None):
+        raise ValueError("Move items to one folder: give a folder or a new folder name.")
+    unknown = sorted(set(uids) - set(_STATE["features"]))
+    if unknown:
+        raise ValueError(f"Unknown item(s): {', '.join(unknown)}.")
+    want = set(uids)
+    if new_name is not None:
+        name = _folder_name_of(new_name)
+        dup = _name_taken(name)
+        if dup:
+            return json.dumps(_duplicate(name, dup))
+        target, created = {"key": _new_folder_key(), "name": name, "safe": _safe(name),
+                           "items": []}, True
+    else:
+        target, created = _folder(target_key), False
+    items = [i for g in _STATE["groups"] if g is not target
+             for i in g["items"] if i["uid"] in want]
+    removed = []
+    if created:
+        _STATE["groups"].append(target)
+    if items:
+        removed = _move(items, target)
+    return json.dumps({"ok": True, "key": target["key"], "created": created,
+                       "moved": len(items), "removed": removed, "folders": _layout()})
+
+
+def merge_folders(source_key: str, target_key: str) -> str:
+    """Move every item of source into target and remove source. target keeps
+    its name and place. Returns move_items' success JSON (source_key == target_key
+    moves nothing). Unknown keys raise ValueError."""
+    source, target = _folder(source_key), _folder(target_key)
+    if source is target:
+        return json.dumps({"ok": True, "key": target_key, "created": False, "moved": 0,
+                           "removed": [], "folders": _layout()})
+    items = list(source["items"])
+    removed = _move(items, target)
+    return json.dumps({"ok": True, "key": target_key, "created": False, "moved": len(items),
+                       "removed": removed, "folders": _layout()})
+
+
 def export_zip() -> bytes:
     """Run the real engine writers; return a .zip of the onX-ready files."""
     cfg = _STATE["config"]
