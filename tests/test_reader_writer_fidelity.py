@@ -227,7 +227,7 @@ def test_cairn_kml_writes_onx_extended_data(tmp_path):
     data = {d.get("name"): d.find("k:value", KML_NS).text
             for d in pm.findall("k:ExtendedData/k:Data", KML_NS)}
     assert data == {"notes": "line 1\nline 2", "color": "rgba(255,0,0,1)", "style": "dash",
-                    "weight": "6.0", "fill_color": "rgba(255,0,0,0.1)"}
+                    "weight": "6.0", "fill_color": "rgba(212,83,47,0.1)"}
     assert pm.find("k:Style", KML_NS) is not None  # the KML Style stays alongside
 
 
@@ -245,7 +245,7 @@ def test_rereading_cairn_kml_keeps_notes_colour_style_weight_and_holes(tmp_path)
     assert shape.notes == "line 1\nline 2"
     assert (shape.style.OnX_color_rgba, shape.style.OnX_style, shape.style.OnX_weight) == (
         "rgba(255,0,0,1)", "dash", "6.0")
-    assert shape.style.extra["fill_color"] == "rgba(255,0,0,0.1)"
+    assert shape.style.extra["fill_color"] == "rgba(212,83,47,0.1)"
     assert len(shape.rings) == 2
 
 

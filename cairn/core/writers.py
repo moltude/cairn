@@ -16,12 +16,18 @@ import uuid
 import logging
 from datetime import datetime, timezone
 import math
+import re
 
 from cairn.core.parser import ParsedFeature
 from cairn.core.mapper import map_icon
 from cairn.utils.utils import PLAIN_NOTES_KEY, clean_notes, strip_html, natural_sort_key, sanitize_name_for_onx
 from cairn.core.config import IconMappingConfig, resolve_waypoint_color
 from cairn.core.color_mapper import (
+    AREA_FILL_KEY,
+    AREA_STYLE_KEY,
+    AREA_WEIGHT_KEY,
+    ONX_LINE_STYLES,
+    ONX_LINE_WEIGHTS,
     ColorMapper,
     pattern_to_style,
     stroke_width_to_weight,
@@ -1143,8 +1149,6 @@ DEFAULT_MAX_KML_BYTES = DEFAULT_MAX_GPX_BYTES
 
 # KML <width> when CalTopo gives no stroke-width (the writer's historical value).
 _DEFAULT_KML_WIDTH = "2"
-# PolyStyle alpha when CalTopo gives no fill-opacity (historical 50% fill).
-_DEFAULT_FILL_ALPHA = 0x7F
 
 
 def _is_position(p) -> bool:
@@ -1234,6 +1238,45 @@ def kml_area_color(feature: ParsedFeature) -> str:
     )
 
 
+def area_onx_style(feature: ParsedFeature) -> tuple[str, str, str, str]:
+    """(color, style, weight, fill_color): the onX values an area is written with.
+
+    The one rule every area writer (GPX and KML) and web/bridge.py share.
+
+    - color: kml_area_color (11-colour line palette; onX areas use the same one).
+    - style / weight: the exact onX value pinned in properties (AREA_STYLE_KEY /
+      AREA_WEIGHT_KEY -- an onX file's own value, including "dot" and "2.0", or
+      the user's edit), else CalTopo's pattern and stroke-width mapped as for
+      tracks (pattern_to_style, stroke_width_to_weight).
+    - fill: the pinned onX fill (AREA_FILL_KEY) or CalTopo's fill colour, else
+      the area's line colour, mapped to the nearest of onX's 10 fill swatches;
+      CalTopo fill-opacity 0, or a transparent rgba, is onX's "none". onX's
+      importer ignores the fill (2026-10-23, docs/ONX_ROUND_TRIP.md
+      #area-fidelity); it is written to match onX's own export.
+    """
+    props = getattr(feature, "properties", None) or {}
+    color = kml_area_color(feature)
+    style = (props.get(AREA_STYLE_KEY) or "").strip()
+    if style not in ONX_LINE_STYLES:
+        style = pattern_to_style(getattr(feature, "pattern", "") or "")
+    weight = str(props.get(AREA_WEIGHT_KEY) or "").strip()
+    if weight not in ONX_LINE_WEIGHTS:
+        weight = stroke_width_to_weight(props.get("stroke-width", getattr(feature, "stroke_width", None)))
+    pinned = (props.get(AREA_FILL_KEY) or "").strip()
+    if pinned:
+        fill = ColorMapper.map_area_fill(pinned)
+    else:
+        source = (getattr(feature, "fill", "") or "").strip() or (getattr(feature, "stroke", "") or "").strip() or color
+        fill = ColorMapper.map_area_fill(source, getattr(feature, "fill_opacity", None))
+    return color, style, weight, fill
+
+
+def _fill_alpha_255(fill_rgba: str) -> int:
+    """onX fill rgba -> 0..255 alpha for a KML PolyStyle (none -> 0, swatch -> 0.1)."""
+    m = re.match(r"rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)", fill_rgba or "")
+    return _opacity_alpha(m.group(1) if m else None, 0)
+
+
 def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
     """Build one area Placemark, or None when the polygon has no usable ring."""
     rings = _polygon_rings(feature.coordinates)
@@ -1257,11 +1300,11 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
     # Style. VERIFIED 2026-10-22 (ENG-05): onX's importer IGNORES this style --
     # a real Web Map import of these Placemarks (inline Style, a shared styleUrl
     # style, and the ExtendedData below) came in with onX's default area style.
-    # They still carry CalTopo's values faithfully in standard KML 2.2 for other
-    # KML consumers and for read_onx_kml; the web export writes areas with
-    # write_gpx_areas_maybe_split instead. KML 2.2 has no dash pattern, so
-    # CalTopo's `pattern` cannot be expressed and is not written.
-    area_rgba = kml_area_color(feature)
+    # They still carry the area's values in standard KML 2.2 for other KML
+    # consumers and for read_onx_kml; the web export writes areas with
+    # write_gpx_areas_maybe_split instead. KML 2.2 has no dash pattern, so the
+    # style travels only in the ExtendedData below.
+    area_rgba, area_style, area_weight, fill_rgba = area_onx_style(feature)
     style = ET.SubElement(placemark, "Style")
     line_style = ET.SubElement(style, "LineStyle")
     ET.SubElement(line_style, "color").text = _rgba_to_kml(
@@ -1277,15 +1320,10 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
         pass
     ET.SubElement(line_style, "width").text = width
 
-    # Fill hue follows the area's (displayed, possibly user-edited) color, not
-    # CalTopo's separate `fill`: the UI shows one color per area, and following
-    # the raw fill would leave e.g. a red fill under a user's blue outline.
-    # CalTopo's fill-opacity IS carried (0.1 -> 1a, 0 -> 00 = outline only).
-    fill_alpha = _opacity_alpha(
-        getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA
-    )
+    # Fill: the same onX swatch the GPX writer writes (area_onx_style), at its
+    # own alpha (0.1 -> 1a; onX's "none" -> 00, outline only).
     poly_style = ET.SubElement(style, "PolyStyle")
-    ET.SubElement(poly_style, "color").text = _rgba_to_kml(area_rgba, fill_alpha)
+    ET.SubElement(poly_style, "color").text = _rgba_to_kml(fill_rgba, _fill_alpha_255(fill_rgba))
 
     # The same values again as onX-style ExtendedData, the way onX's own KML export
     # (mapbox tokml) carries every property (KG section 3.5). This is what lets
@@ -1293,15 +1331,14 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
     # weight and fill all come back. Placed after <Style>, before the geometry, per
     # the KML 2.2 Placemark element order. VERIFIED 2026-10-22: onX's importer
     # reads neither these Data fields nor the <Style> for an area's colour/fill.
-    r, g, b = ColorMapper.parse_color(area_rgba)
     onx_data = []
     if notes_text:
         onx_data.append(("notes", notes_text))
     onx_data += [
         ("color", area_rgba),
-        ("style", pattern_to_style(getattr(feature, "pattern", "") or "")),
-        ("weight", stroke_width_to_weight(raw_width)),
-        ("fill_color", f"rgba({r},{g},{b},{round(fill_alpha / 255, 2):g})"),
+        ("style", area_style),
+        ("weight", area_weight),
+        ("fill_color", fill_rgba),
     ]
     extended = ET.SubElement(placemark, "ExtendedData")
     for key, value in onx_data:
@@ -1430,13 +1467,17 @@ def write_kml_shapes(
 # VERIFIED 2026-10-22 in a real onX Web Map import: onX ignores an area's colour
 # and fill in KML (LineStyle/PolyStyle, a shared styleUrl and onX-style
 # ExtendedData all came in as onX's default red outline / blue 10% fill), but
-# a GPX <rte> with <type>Area</type> and <onx:color>/<onx:fill_color> extensions
-# imports as a real onX Area WITH its colour -- the shape onX's own GPX export
-# uses. The fill is NOT kept: every import (2026-10-23, docs/ONX_ROUND_TRIP.md)
-# stored onX's default rgba(74,144,226,0.1) whatever onx:fill_color said, so
-# <onx:fill_color> is written only to match onX's own export shape. So areas are exported this way; the KML writer above is kept for its
-# other callers. onX areas are single-ring: a polygon's holes cannot be written
-# and are reported (get_areas_without_holes) rather than dropped silently.
+# a GPX <rte> with <type>Area</type> and onX extensions imports as a real onX
+# Area -- the shape onX's own GPX export uses. VERIFIED 2026-10-23
+# (docs/ONX_ROUND_TRIP.md#area-fidelity): onX's GPX importer keeps
+# <onx:color>, <onx:style> (solid / dash / dot) and <onx:weight> (2.0 / 4.0 /
+# 6.0), and never reads the fill -- not onX's own swatch strings, not "none",
+# not any of eight other encodings; every imported area gets the default
+# rgba(74,144,226,0.1). <onx:fill_color> is still written, as the nearest onX
+# swatch, to match onX's own export. So areas are exported this way; the KML
+# writer above is kept for its other callers. onX areas are single-ring: a
+# polygon's holes cannot be written and are reported (get_areas_without_holes)
+# rather than dropped silently.
 
 # Titles of areas whose holes were not written, since the last clear.
 _areas_without_holes: List[str] = []
@@ -1450,17 +1491,6 @@ def get_areas_without_holes() -> List[str]:
 def clear_areas_without_holes() -> None:
     """Reset the holes record (call before processing a new folder)."""
     _areas_without_holes.clear()
-
-
-def _area_fill_rgba(feature: ParsedFeature, area_rgba: str) -> str:
-    """Fill: the area's own colour, alpha = CalTopo fill-opacity, else 0.5.
-
-    Same value the KML writer puts in its fill_color Data (the hue follows the
-    displayed, possibly user-edited, colour -- see _kml_placemark).
-    """
-    fill_alpha = _opacity_alpha(getattr(feature, "fill_opacity", None), _DEFAULT_FILL_ALPHA)
-    r, g, b = ColorMapper.parse_color(area_rgba)
-    return f"rgba({r},{g},{b},{round(fill_alpha / 255, 2):g})"
 
 
 def write_gpx_areas_maybe_split(
@@ -1477,9 +1507,10 @@ def write_gpx_areas_maybe_split(
     other GPX writers. Preserves order (after the optional natural sort).
 
     Each area is one <rte>: <name>, <desc> (the user's note only; omitted when
-    empty), <type>Area</type>, <extensions> with <onx:color> (kml_area_color,
-    the value the web UI shows) and <onx:fill_color>, then the closed OUTER
-    ring as <rtept lat lon/> -- the element order of onX's own export. Holes
+    empty), <type>Area</type>, <extensions> with <onx:color>, <onx:style>,
+    <onx:weight> and <onx:fill_color> (area_onx_style, the values the web UI
+    shows), then the closed OUTER ring as <rtept lat lon/> -- the element order
+    of onX's own export. Holes
     are not representable; such areas are recorded in get_areas_without_holes.
 
     Returns [(path, size_bytes, written_area_count)]. Polygons with no usable
@@ -1511,8 +1542,7 @@ def write_gpx_areas_maybe_split(
         if len(rings) > 1:
             _areas_without_holes.append(sanitized)
 
-        area_rgba = kml_area_color(feature)
-        fill_rgba = _area_fill_rgba(feature, area_rgba)
+        area_rgba, area_style, area_weight, fill_rgba = area_onx_style(feature)
         notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
         area_id = (getattr(feature, "id", "") or "").strip() or str(uuid.uuid4())
         desc_content = _desc_text(
@@ -1523,6 +1553,8 @@ def write_gpx_areas_maybe_split(
                 f"id={area_id}",
                 "type=Area",
                 f"color={area_rgba}",
+                f"style={area_style}",
+                f"weight={area_weight}",
                 f"fill_color={fill_rgba}",
             ],
             debug_desc,
@@ -1534,6 +1566,8 @@ def write_gpx_areas_maybe_split(
         block.append("    <type>Area</type>")
         block.append("    <extensions>")
         block.append(f"      <onx:color>{area_rgba}</onx:color>")
+        block.append(f"      <onx:style>{area_style}</onx:style>")
+        block.append(f"      <onx:weight>{area_weight}</onx:weight>")
         block.append(f"      <onx:fill_color>{fill_rgba}</onx:fill_color>")
         block.append("    </extensions>")
         # Bare lat/lon, as in onX's own area export (the verified import used

@@ -24,6 +24,7 @@ from pathlib import Path
 
 import pytest
 
+from cairn.core.color_mapper import AREA_FILL_KEY, AREA_STYLE_KEY, AREA_WEIGHT_KEY
 from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.parser import ParsedFeature
 from cairn.core.writers import (
@@ -68,14 +69,14 @@ SOURCE = {
                         style="solid", weight="6.0", id=_ID + "4", pts=3,
                         ele=(None, None, None), time=(None, None, None))],
     "Hunt unit": [dict(kind="Shape", notes="has a hole", color="rgba(255,255,0,1)",
-                       style="solid", weight="4.0", fill="rgba(255,255,0,0.3)",
+                       style="solid", weight="4.0", fill="rgba(238,255,125,0.1)",
                        id=_ID + "5", pts=10, rings=2)],
     "Two-part area": [
         dict(kind="Shape", notes="north & south parcels", color="rgba(132,212,0,1)",
-             style="dash", weight="6.0", fill="rgba(132,212,0,0.1)", id=_ID + "6",
+             style="dash", weight="6.0", fill="rgba(42,139,97,0.1)", id=_ID + "6",
              pts=4, rings=1),
         dict(kind="Shape", notes="north & south parcels", color="rgba(132,212,0,1)",
-             style="dash", weight="6.0", fill="rgba(132,212,0,0.1)", id=_ID + "6",
+             style="dash", weight="6.0", fill="rgba(42,139,97,0.1)", id=_ID + "6",
              pts=4, rings=1),
     ],
 }
@@ -142,6 +143,9 @@ def _to_parsed(it) -> ParsedFeature:
                  "pattern": s.OnX_style or "solid"}
         if _alpha(s.extra.get("fill_color")) is not None:
             props["fill-opacity"] = _alpha(s.extra.get("fill_color"))
+        # As cairn.io.document_adapter does: the area's onX values, exactly.
+        props.update({AREA_STYLE_KEY: s.OnX_style or "", AREA_WEIGHT_KEY: s.OnX_weight or "",
+                      AREA_FILL_KEY: s.extra.get("fill_color") or ""})
         geom = {"type": "Polygon", "coordinates": [[list(p) for p in r] for r in it.rings]}
     return ParsedFeature({"id": it.id, "geometry": geom, "properties": props})
 

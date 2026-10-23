@@ -45,6 +45,6 @@ type=Area
 color=rgba(255,255,0,1)
 style=solid
 weight=4.0
-fill_color=rgba(255,255,0,0.3)</desc><type>Area</type><extensions><onx:color>rgba(255,255,0,1)</onx:color><onx:style>solid</onx:style><onx:weight>4.0</onx:weight><onx:fill_color>rgba(255,255,0,0.3)</onx:fill_color></extensions>
+fill_color=rgba(238,255,125,0.1)</desc><type>Area</type><extensions><onx:color>rgba(255,255,0,1)</onx:color><onx:style>solid</onx:style><onx:weight>4.0</onx:weight><onx:fill_color>rgba(238,255,125,0.1)</onx:fill_color></extensions>
 <rtept lat="46.12" lon="-114.28"/><rtept lat="46.12" lon="-114.29"/><rtept lat="46.13" lon="-114.29"/><rtept lat="46.13" lon="-114.28"/><rtept lat="46.12" lon="-114.28"/></rte>
 </gpx>

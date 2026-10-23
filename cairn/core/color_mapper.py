@@ -117,6 +117,14 @@ def stroke_width_to_weight(stroke_width) -> str:
 ONX_LINE_STYLES = ("solid", "dash", "dot")
 ONX_LINE_WEIGHTS = ("2.0", "4.0", "6.0")
 
+# ParsedFeature.properties keys that pin an area's exact onX style, weight and
+# fill for the area writers (read first, before CalTopo's pattern / stroke-width /
+# fill). Set by the onX readers' adapter (passthrough of the file's values) and by
+# web/bridge.py's export (the values the UI shows, edited or not).
+AREA_STYLE_KEY = "cairn_onx_style"
+AREA_WEIGHT_KEY = "cairn_onx_weight"
+AREA_FILL_KEY = "cairn_onx_fill"
+
 
 _RGB_REGEX = re.compile(r"rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)")
 _ALPHA_REGEX = re.compile(r"rgba\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)", re.I)

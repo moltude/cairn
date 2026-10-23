@@ -1,8 +1,9 @@
 """Areas are exported as onX Area routes in GPX (ENG-05).
 
 Verified 2026-10-22 in a real onX Web Map import: onX ignores an area's colour
-and fill in KML, but a GPX <rte> with <type>Area</type> and <onx:color> /
-<onx:fill_color> imports as an Area with its colour. These tests pin the
+and fill in KML, but a GPX <rte> with <type>Area</type> and onX extensions
+imports as an Area with its colour; 2026-10-23 (docs/ONX_ROUND_TRIP.md
+#area-fidelity): and with its <onx:style> and <onx:weight>, never its fill. These tests pin the
 writer's output shape, the web export's switch to it, the RUNBOOK's "Holes not
 kept in onX" list, and that Cairn reads its own (and onX's) area GPX back.
 """
@@ -64,8 +65,12 @@ def test_area_is_an_onx_area_route_in_onx_element_order(tmp_path):
     assert rte.findtext("g:desc", namespaces=NS) == "line one\nline two"
     ext = rte.find("g:extensions", NS)
     assert ext.findtext("onx:color", namespaces=NS) == "rgba(255,0,0,1)"
-    assert ext.findtext("onx:fill_color", namespaces=NS) == "rgba(255,0,0,0.1)"
-    assert [c.tag.split("}")[1] for c in ext] == ["color", "fill_color"]
+    assert ext.findtext("onx:style", namespaces=NS) == "solid"
+    assert ext.findtext("onx:weight", namespaces=NS) == "4.0"
+    # No CalTopo fill colour: the nearest onX fill swatch to the line colour.
+    assert ext.findtext("onx:fill_color", namespaces=NS) == "rgba(212,83,47,0.1)"
+    # onX's own export order.
+    assert [c.tag.split("}")[1] for c in ext] == ["color", "style", "weight", "fill_color"]
     pts = [(float(p.get("lon")), float(p.get("lat"))) for p in rte.findall("g:rtept", NS)]
     assert pts == [tuple(p) for p in SQUARE]
 
@@ -79,14 +84,37 @@ def test_desc_is_the_note_only_and_omitted_when_empty(tmp_path):
     assert "name=" not in path.read_text()
 
 
-def test_fill_alpha_defaults_to_half_and_follows_the_area_colour(tmp_path):
+def test_fill_is_the_nearest_onx_fill_swatch_or_none(tmp_path):
     (path, _s, _c), = _write(tmp_path, [
-        _shape("a", stroke="#FF0000", fill="#00FF00"),
-        _shape("b", stroke="#FF0000", **{"fill-opacity": 0}),
-        _shape("c"),
+        _shape("a", stroke="#FF0000", fill="#00FF00"),             # CalTopo's own fill colour
+        _shape("b", stroke="#FF0000", **{"fill-opacity": 0}),      # outline only
+        _shape("c"),                                               # nothing: Blue line, Blue fill
+        _shape("d", stroke="#FF0000", fill="#E876FF", **{"fill-opacity": 0.5}),
     ])
     fills = [r.findtext("g:extensions/onx:fill_color", namespaces=NS) for r in _rtes(path)]
-    assert fills == ["rgba(255,0,0,0.5)", "rgba(255,0,0,0)", "rgba(8,122,255,0.5)"]
+    assert fills == ["rgba(42,139,97,0.1)", "rgba(0,0,0,0)", "rgba(74,144,226,0.1)",
+                     "rgba(232,118,255,0.1)"]
+
+
+def test_caltopo_pattern_and_width_map_to_onx_style_and_weight(tmp_path):
+    (path, _s, _c), = _write(tmp_path, [
+        _shape("a", pattern="M0 -1 L0 1,,8,F", **{"stroke-width": 6}),
+        _shape("b", **{"stroke-width": 2}),
+    ])
+    got = [(r.findtext("g:extensions/onx:style", namespaces=NS),
+            r.findtext("g:extensions/onx:weight", namespaces=NS)) for r in _rtes(path)]
+    assert got == [("dash", "6.0"), ("solid", "4.0")]
+
+
+def test_pinned_onx_values_pass_through_exactly(tmp_path):
+    (path, _s, _c), = _write(tmp_path, [_shape(
+        "onx", stroke="rgba(132,212,0,1)", pattern="solid", **{
+            "stroke-width": 4, W.AREA_STYLE_KEY: "dot", W.AREA_WEIGHT_KEY: "2.0",
+            W.AREA_FILL_KEY: "rgba(0,0,0,0)"})])
+    ext = _rtes(path)[0].find("g:extensions", NS)
+    assert [(c.tag.split("}")[1], c.text) for c in ext] == [
+        ("color", "rgba(132,212,0,1)"), ("style", "dot"), ("weight", "2.0"),
+        ("fill_color", "rgba(0,0,0,0)")]
 
 
 def test_area_colour_is_the_one_the_ui_shows(tmp_path):
@@ -151,7 +179,8 @@ def test_cairn_area_gpx_reads_back_as_an_area(tmp_path):
     assert isinstance(shp, Shape)
     assert (shp.name, shp.notes) == ("Burn", "two\nlines")
     assert shp.style.OnX_color_rgba == "rgba(255,0,0,1)"
-    assert shp.style.extra["fill_color"] == "rgba(255,0,0,0.1)"
+    assert (shp.style.OnX_style, shp.style.OnX_weight) == ("solid", "4.0")
+    assert shp.style.extra["fill_color"] == "rgba(212,83,47,0.1)"
     assert [tuple(p) for p in shp.rings[0]] == [tuple(p) for p in SQUARE]
 
 
@@ -233,7 +262,8 @@ def test_web_export_areas_round_trip_through_load_files():
     back = json.loads(bridge.load_files(json.dumps(files)))
     (item,) = [i for g in back["groups"] for i in g["items"]]
     assert item["kind"] == "shapes"
-    assert (item["name"], item["desc"], item["color"]) == (
-        shown[0]["name"], shown[0]["desc"], shown[0]["color"])
+    keys = ("name", "desc", "color", "style", "weight", "fill")
+    assert [item[k] for k in keys] == [shown[0][k] for k in keys]
+    # onX fills are all alpha 0.1: CalTopo's 0.2 becomes the swatch's 0.1.
     feat = next(iter(bridge._STATE["doc"].folders.values()))["shapes"][0]
-    assert feat.fill_opacity == 0.2
+    assert feat.fill_opacity == 0.1
