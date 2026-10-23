@@ -94,7 +94,9 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     stripped them. Both are put back before hashing, so nothing else may move.
     Re-pinned for ENG-05: the 6 *_Areas.kml members are now *_Areas.gpx (onX Area
     routes) and RUNBOOK.md lists those names and no KML warning; see the
-    baseline's notes."""
+    baseline's notes. Lines also carry their onX style and weight for the line-style
+    editor (2026-10-23); those two keys are taken off before hashing, and the export
+    is unchanged by them."""
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     raw = bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
     loaded = json.loads(raw)
@@ -108,6 +110,11 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert len(stripped) == 4
     for i in stripped:
         i["name"] += " "
+    tracks = [i for g in loaded["groups"] for i in g["items"] if i["kind"] == "tracks"]
+    assert tracks and all(i["style"] in ("solid", "dash", "dot") and i["weight"] in ("4.0", "6.0") for i in tracks)
+    assert sum(i.pop("style") == "dash" for i in tracks) == 6   # the 6 dashed lines, as exported
+    for i in tracks:
+        i.pop("weight")
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])

@@ -185,16 +185,60 @@ function glyphSVG(icon, size = 18) {
   return `<svg class="glyph" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${g.path}"/></svg>`;
 }
 
-/** Lines get a drawn line in their color; areas a filled patch. A dark
-    underlay keeps white and yellow visible on the paper background. */
-function lineSVG(hex, kind = "tracks", w = 30, h = 26) {
+/** onX line styles and weights (bridge LINE_STYLES / LINE_WEIGHTS), drawn.
+    Dashes and dots use flat ends so neither the dash nor its dark underlay
+    spills into the gaps. Width: [overlay, underlay] in the 30x26 swatch. */
+const LINE_DASH = { solid: "", dash: "8 4", dot: "2 3.5" };
+const LINE_WIDTH = { "4.0": [3, 5.4], "6.0": [5, 7.4] };
+function _lineStroke(style, weight, scale = 1) {
+  const dash = (LINE_DASH[style] || "").split(" ").filter(Boolean).map(n => n * scale).join(" ");
+  const [w, uw] = (LINE_WIDTH[weight] || [4, 6]).map(n => n * scale);
+  const cap = dash ? "butt" : "round";
+  return { w, uw, attrs: `${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linecap="${cap}"` };
+}
+
+/** Lines get a drawn line in their color, style and weight; areas a filled
+    patch. A dark underlay keeps white and yellow visible on the paper background. */
+function lineSVG(hex, kind = "tracks", w = 30, h = 26, style = "solid", weight = "4.0") {
   if (kind === "shapes")
     return `<svg class="lineswatch" width="${w}" height="${h}" viewBox="0 0 30 26" aria-hidden="true">` +
       `<path d="M4 20 L8 6 L20 4 L26 14 L18 22 Z" fill="${_escAttr(hex)}" fill-opacity="0.45" stroke="#2A241C" stroke-width="3.6" stroke-linejoin="round"/>` +
       `<path d="M4 20 L8 6 L20 4 L26 14 L18 22 Z" fill="none" stroke="${_escAttr(hex)}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  const k = _lineStroke(style, weight);
   return `<svg class="lineswatch" width="${w}" height="${h}" viewBox="0 0 30 26" aria-hidden="true">` +
-    `<path d="M3 20 C 9 10, 15 22, 27 6" fill="none" stroke="#2A241C" stroke-width="6" stroke-linecap="round"/>` +
-    `<path d="M3 20 C 9 10, 15 22, 27 6" fill="none" stroke="${_escAttr(hex)}" stroke-width="4" stroke-linecap="round"/></svg>`;
+    `<path d="M3 20 C 9 10, 15 22, 27 6" fill="none" stroke="#2A241C" stroke-width="${k.uw}"${k.attrs}/>` +
+    `<path d="M3 20 C 9 10, 15 22, 27 6" fill="none" stroke="${_escAttr(hex)}" stroke-width="${k.w}"${k.attrs}/></svg>`;
+}
+
+/** A long straight sample in the line's color, style and weight (Line style dialog). */
+function lineStripSVG(hex, style = "solid", weight = "4.0", w = 160) {
+  const dash = { solid: "", dash: "14 9", dot: "3 6" }[style] || "";
+  const [sw, uw] = weight === "6.0" ? [5, 7.4] : [3, 5.4];
+  const d = `M3 9 H${w - 3}`, a = `${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linecap="butt"`;
+  return `<svg class="linestrip" width="${w}" height="18" viewBox="0 0 ${w} 18" aria-hidden="true">` +
+    `<path d="${d}" stroke="#2A241C" stroke-width="${uw}"${a}/><path d="${d}" stroke="${_escAttr(hex)}" stroke-width="${sw}"${a}/></svg>`;
+}
+
+/** Ink-only sample for the style / weight toggles: the drawn line is the label. */
+function lineGlyphSVG(style = "solid", weight = null) {
+  const dash = { solid: "", dash: "9 8", dot: "3 6" }[style] || "";
+  const sw = weight === "6.0" ? 6 : weight === "4.0" ? 2.5 : 3;
+  return `<svg class="lineglyph" width="100%" height="14" viewBox="0 0 90 14" preserveAspectRatio="none" aria-hidden="true">` +
+    `<path d="M6 7 H84" stroke="#2A241C" stroke-width="${sw}"${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linecap="butt"/></svg>`;
+}
+
+/** The line drawn across a strip of contour paper, roughly as onX shows it. */
+function lineMapSVG(hex, style = "solid", weight = "4.0") {
+  const dash = { solid: "", dash: "16 13", dot: "4 9" }[style] || "";
+  const sw = weight === "6.0" ? 6 : 4;
+  const c = "#C9B58C";
+  return `<svg class="linemap" width="100%" height="100%" viewBox="0 0 480 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">` +
+    `<path d="M-10 40 C 80 10, 160 70, 260 30 S 420 10, 500 50" fill="none" stroke="${c}" stroke-width="1.2"/>` +
+    `<path d="M-10 70 C 90 40, 170 100, 270 60 S 420 40, 500 80" fill="none" stroke="${c}" stroke-width="1.2"/>` +
+    `<path d="M-10 100 C 100 70, 180 130, 280 90 S 420 70, 500 110" fill="none" stroke="${c}" stroke-width="1.6"/>` +
+    `<path d="M-10 130 C 110 100, 190 160, 290 120 S 420 100, 500 140" fill="none" stroke="${c}" stroke-width="1.2"/>` +
+    `<path d="M30 118 C 90 60, 150 120, 220 74 S 360 30, 452 52" fill="none" stroke="#2A241C" stroke-width="${sw + 2}"${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linecap="butt" stroke-linejoin="round" opacity=".55"/>` +
+    `<path d="M30 118 C 90 60, 150 120, 220 74 S 360 30, 452 52" fill="none" stroke="${_escAttr(hex)}" stroke-width="${sw}"${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linecap="butt" stroke-linejoin="round"/></svg>`;
 }
 
 /** Small inline UI icons (chrome, not data). */

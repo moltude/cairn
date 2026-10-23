@@ -88,11 +88,12 @@ def test_track_style_and_weight_edits_are_exported_from_onx_source():
 def test_unknown_style_or_weight_is_refused_and_applies_nothing():
     data = _load(RANDOM)
     trk = _items(data, "tracks")[0]
+    before = (trk["style"], trk["weight"])
     with pytest.raises(ValueError, match="line style"):
         bridge.apply_edits(json.dumps({trk["uid"]: {"style": "dashed-ish", "name": "X"}}))
     with pytest.raises(ValueError, match="line weight"):
         bridge.apply_edits(json.dumps({trk["uid"]: {"weight": "5.0"}}))
-    assert trk["name"] != "X" and "style" not in trk and "weight" not in trk
+    assert trk["name"] != "X" and (trk["style"], trk["weight"]) == before
 
 
 def test_style_and_weight_are_ignored_for_waypoints():

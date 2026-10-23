@@ -413,7 +413,7 @@ function row(it) {
           // An icon an onX file named that isn't in onX's list (Phase 2 flags
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
-      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}. Change color">${lineSVG(it.hex, it.kind)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
+      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}${it.kind === "tracks" ? `, ${STYLE_NAMES[it.style] || "Dotted"}, ${WEIGHT_NAMES[it.weight] || ""}. Change line` : ". Change color"}">${lineSVG(it.hex, it.kind, 30, 26, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {
@@ -599,6 +599,7 @@ function updateSel() {
     el.disabled = n === 0;
     el.title = n === 0 ? "Select rows first" : "";
   });
+  $("#bulk-line").classList.toggle("hidden", !selectedItems().some(i => i.kind === "tracks"));
   closeMenu();
 }
 
@@ -614,6 +615,25 @@ function paletteFor(items) {
 function paletteHTML(colors, current) {
   return colors.map(c => `<button type="button" class="swatch-btn" data-rgba="${esc(c.rgba)}" aria-label="${esc(c.name)}" title="${esc(c.name)}" aria-pressed="${c.rgba === current}" style="background:${esc(c.hex)}"></button>`).join("");
 }
+/* ---------- line style and weight ---------- */
+const STYLE_NAMES = { solid: "Solid", dash: "Dashed" };
+const WEIGHT_NAMES = { "4.0": "Thin", "6.0": "Thick" };
+/** Two titled groups of drawn-line toggles; the drawing is the label. */
+function lineOptsHTML(style, weight) {
+  const tog = (attr, k, name, glyph, on) =>
+    `<button type="button" class="tog" data-${attr}="${k}" aria-label="${name}" title="${name}" aria-pressed="${on}">${glyph}</button>`;
+  return `<div class="pop-sec line-opts">
+      <div class="opt-group"><span class="label">Style</span><div class="toggles" role="group" aria-label="Style">${
+        Object.keys(STYLE_NAMES).map(k => tog("style", k, STYLE_NAMES[k], lineGlyphSVG(k), k === style)).join("")}</div></div>
+      <div class="opt-group"><span class="label">Weight</span><div class="toggles" role="group" aria-label="Weight">${
+        Object.keys(WEIGHT_NAMES).map(k => tog("weight", k, WEIGHT_NAMES[k], lineGlyphSVG("solid", k), k === weight)).join("")}</div></div>
+    </div>`;
+}
+function syncLineOpts(root, style, weight) {
+  root.querySelectorAll(".tog[data-style]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.style === style)));
+  root.querySelectorAll(".tog[data-weight]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.weight === weight)));
+}
+
 function iconMatches(q) {
   const s = q.trim().toLowerCase();
   return DATA.icons.filter(n => !s || n.toLowerCase().includes(s));
@@ -622,24 +642,28 @@ function iconMatches(q) {
 /* ---------- single item: popover anchored to the marker ---------- */
 function openPop(it, anchor) {
   closeMenu(); closeBulk();
-  POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor };
+  POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor,
+          style: it.style, weight: it.weight };
   const isWp = it.kind === "waypoints";
+  const isLine = it.kind === "tracks";
   const pop = $("#mark-pop");
-  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : "color"} for ${it.name}`);
+  pop.classList.toggle("line", isLine);
+  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "color"} for ${it.name}`);
   pop.innerHTML = `
     <div class="pop-head">
       <span class="pop-preview"></span>
       <div class="pop-title"><span class="pop-name">${esc(it.name || "Untitled")}</span><span class="pop-desc"></span></div>
     </div>
+    ${isLine ? `<div class="pop-map"></div>` : ""}
     <div class="pop-sec">
       <span class="label">Color</span>
-      <div class="palette">${paletteHTML(paletteFor([it]), POP.color)}</div>
+      <div class="palette${isLine ? " spread" : ""}">${paletteHTML(paletteFor([it]), POP.color)}</div>
     </div>
     ${isWp ? `<div class="pop-sec icons">
       <div class="sec-row"><span class="label">Icon</span><span class="sec-count">${DATA.icons.length} icons</span></div>
-      <input type="search" class="icon-search" aria-label="Find an icon" placeholder="${document.documentElement.clientWidth < 640 ? "Find an icon" : "Find an icon — try “climb”, “water”, “camp”"}" autocomplete="off">
+      <input type="search" class="icon-search" aria-label="Find an icon" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
-    </div>` : `<p class="pop-hint">Lines take the color only.</p>`}
+    </div>` : isLine ? lineOptsHTML(POP.style, POP.weight) : ""}
     <div class="pop-foot">
       <button type="button" class="btn pop-cancel">Cancel</button>
       <button type="button" id="pop-apply" class="btn primary pop-apply">Apply</button>
@@ -651,6 +675,8 @@ function openPop(it, anchor) {
     const s = pop.querySelector(".icon-search");
     s.oninput = () => { POP.q = s.value; drawPopGrid(); };
   }
+  pop.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => { POP.style = b.dataset.style; drawPop(); });
+  pop.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => { POP.weight = b.dataset.weight; drawPop(); });
   pop.querySelector(".pop-cancel").onclick = closePop;
   pop.querySelector(".pop-apply").onclick = applyPop;
   pop.classList.remove("hidden");
@@ -671,9 +697,15 @@ function drawPop() {
   const hex = (colorOf(POP.color) || {}).hex || it.hex;
   const isWp = it.kind === "waypoints";
   const showIcon = isWp && (POP.iconPicked || !it.needs_attention) ? POP.icon : "Default pin";
-  pop.querySelector(".pop-preview").innerHTML = isWp ? markerSVG(POP.icon, hex, 52, 64) : lineSVG(hex, it.kind, 52, 44);
+  const isLine = it.kind === "tracks";
+  // A line is previewed on the map strip, so its header carries no second drawing.
+  pop.querySelector(".pop-preview").innerHTML = isWp ? markerSVG(POP.icon, hex, 52, 64) : isLine ? "" : lineSVG(hex, it.kind, 52, 44);
   pop.querySelector(".pop-desc").textContent = `${isWp ? showIcon : rowKindWord(it)} · ${colorName(POP.color)}`;
   pop.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === POP.color)));
+  if (isLine) {
+    pop.querySelector(".pop-map").innerHTML = lineMapSVG(hex, POP.style, POP.weight);
+    syncLineOpts(pop, POP.style, POP.weight);
+  }
   if (isWp) drawPopGrid();
 }
 
@@ -719,6 +751,10 @@ function applyPop() {
   const patch = {};
   if (POP.color !== it.color) patch.color = POP.color;
   if (it.kind === "waypoints" && POP.iconPicked) patch.icon = POP.icon;
+  if (it.kind === "tracks") {
+    if (POP.style !== it.style) patch.style = POP.style;
+    if (POP.weight !== it.weight) patch.weight = POP.weight;
+  }
   closePop();
   if (Object.keys(patch).length) edit(it, patch);
 }
@@ -739,9 +775,8 @@ function openBulk() {
   if (!items.length) return;
   const ret = document.activeElement;
   closeMenu(); closePop();
-  BULK = { uids: new Set(items.map(i => i.uid)), color: null, icon: null, q: "", ret };
+  BULK = { mode: "mark", uids: new Set(items.map(i => i.uid)), color: null, icon: null, q: "", ret };
   const hasWp = items.some(i => i.kind === "waypoints");
-  const hasLines = items.some(i => i.kind !== "waypoints");
   const d = $("#mark-dialog");
   d.setAttribute("aria-label", `Change icon and color for ${items.length} items`);
   d.innerHTML = `
@@ -762,8 +797,7 @@ function openBulk() {
       <div class="bulk-icon-row"><button type="button" class="reset-chip icon-reset" aria-pressed="true">Reset</button>
         <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off"></div>
       <div class="icon-grid compact" role="group" aria-label="Icons"></div>
-      ${hasLines ? `<span class="hint">Lines take the color only.</span>` : ""}
-    </div>` : `<div class="pop-sec"><span class="hint">Lines take the color only.</span></div>`}
+    </div>` : ""}
     <div class="pop-foot">
       <button type="button" class="btn bulk-cancel">Cancel</button>
       <button type="button" id="bulk-apply" class="btn primary">Apply</button>
@@ -829,6 +863,64 @@ function applyBulk() {
   });
   refreshAfterEdit();
   setStatus(`Changed ${n} item${n === 1 ? "" : "s"}`, "ready");
+}
+
+/* ---------- several lines: the Line style dialog ---------- */
+function openLineBulk() {
+  const lines = selectedItems().filter(i => i.kind === "tracks");
+  if (!lines.length) return;
+  const ret = document.activeElement;
+  closeMenu(); closePop();
+  BULK = { mode: "line", uids: new Set(lines.map(i => i.uid)), style: null, weight: null, ret };
+  const d = $("#mark-dialog");
+  d.setAttribute("aria-label", "Line style");
+  d.innerHTML = `
+    <div class="bulk-head">
+      <div class="modal-head plain"><h2>Line style</h2>
+        <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
+      <div class="line-rows"></div>
+    </div>
+    ${lineOptsHTML(null, null)}
+    <div class="pop-foot">
+      <button type="button" class="btn bulk-cancel">Cancel</button>
+      <button type="button" id="line-apply" class="btn primary">Apply</button>
+    </div>`;
+  // Picking the chosen toggle again un-picks it: that line keeps its own value.
+  d.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => {
+    BULK.style = BULK.style === b.dataset.style ? null : b.dataset.style; drawLineBulk(); });
+  d.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => {
+    BULK.weight = BULK.weight === b.dataset.weight ? null : b.dataset.weight; drawLineBulk(); });
+  d.querySelector(".bulk-x").onclick = closeBulk;
+  d.querySelector(".bulk-cancel").onclick = closeBulk;
+  d.querySelector("#line-apply").onclick = applyLineBulk;
+  $("#mark-modal").classList.remove("hidden");
+  drawLineBulk();
+  d.querySelector(".tog").focus();
+}
+
+function drawLineBulk() {
+  const d = $("#mark-dialog");
+  const lines = allItems().filter(i => BULK.uids.has(i.uid));
+  d.querySelector(".line-rows").innerHTML = lines.map(it =>
+    `<span class="lr-name">${esc(it.name || "Untitled")}</span>` +
+    `<span class="lr-line">${lineStripSVG(it.hex, BULK.style || it.style, BULK.weight || it.weight)}</span>`).join("");
+  syncLineOpts(d, BULK.style, BULK.weight);
+}
+
+function applyLineBulk() {
+  const { style, weight, uids } = BULK;
+  const lines = allItems().filter(i => uids.has(i.uid));
+  closeBulk();
+  let n = 0;
+  lines.forEach(it => {
+    const patch = {};
+    if (style && style !== it.style) patch.style = style;
+    if (weight && weight !== it.weight) patch.weight = weight;
+    if (Object.keys(patch).length) { edit(it, patch, { render: false }); n++; }
+  });
+  if (!n) return;
+  refreshAfterEdit();
+  setStatus(`Changed ${n} line${n === 1 ? "" : "s"}`, "ready");
 }
 
 function closeBulk() {
@@ -1029,6 +1121,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // pointer, so the document-level "outside click" test can't be trusted.
   $("#mark-pop").addEventListener("click", e => e.stopPropagation());
   $("#bulk-icon").onclick = openBulk;
+  $("#bulk-line").onclick = openLineBulk;
   $("#export").onclick = requestExport;
   $("#back").onclick = () => showStage("edit");
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
