@@ -600,3 +600,14 @@ over, unsaved note) stay. Help is documentation and is exempt.
 Also removed (2026-10-23, owner's example "Line · Brown"): the words under the name in the
 single-item popover ("Summit · Red", "Line · Brown") and beside each After mark in the
 several-items dialog ("Camp · Blue"). The drawn marker or line already shows the choice.
+
+
+Audit of the whole app page (2026-10-23): removed the note editor's "Line breaks kept" hint, the
+Start over tooltip ("Clears this map and your edits. To combine several files, drop them
+together at the start." -- the confirmation already says what is lost), the note button's
+tooltip ("Becomes the markup's Notes in onX") and the folder checkbox tooltip ("Select every row
+shown in this folder", which repeated its label). Kept: the Excluded row tooltip, the CalTopo GPX
+source notice, the note-over-limit, dropped-item and markup-limit warnings, and the runbook
+text. Edit commits now read "Save", not "Apply" (note editor, icon & color popover and dialog,
+Line style dialog, "Save your note?"). The note editor opens with the caret and scroll at the
+start of the note.

@@ -695,6 +695,39 @@ def test_note_editor_apply_and_cancel_buttons(loaded: Page):
     assert loaded.evaluate(f"EDITS[{uid!r}].desc") == "keep me"
 
 
+def test_note_editor_opens_at_the_start_of_a_long_note(loaded: Page):
+    long_note = "\n".join(f"line {i} of a long note" for i in range(60))
+    uid = loaded.locator(ROW).first.get_attribute("data-uid")
+    loaded.evaluate(
+        "([u, v]) => { DATA.groups.flatMap(g=>g.items).find(i=>i.uid===u).desc = v; renderFolders(); }",
+        [uid, long_note],
+    )
+    loaded.locator(f"{ROW} .note-btn").first.click()
+    ta = loaded.locator(".desc-in").first
+    expect(ta).to_be_focused()
+    assert loaded.evaluate(
+        "(() => { const t = document.querySelector('.desc-in');"
+        " return [t.selectionStart, t.selectionEnd, t.scrollTop, t.scrollHeight > t.clientHeight]; })()"
+    ) == [0, 0, 0, True]
+
+
+def test_note_editor_has_no_line_break_hint_and_buttons_say_save(loaded: Page):
+    loaded.locator(f"{ROW} .note-btn").first.click()
+    assert "Line breaks kept" not in loaded.inner_text(".note-ed")
+    assert loaded.locator(".note-apply").inner_text() == "Save"
+    loaded.click(".note-cancel")
+    loaded.locator(f"{ROW} .icon-btn, {ROW} .line-btn").first.click()
+    assert loaded.locator("#pop-apply").inner_text() == "Save"
+    loaded.keyboard.press("Escape")
+
+
+def test_icon_color_dialog_says_save(loaded: Page):
+    loaded.locator(f"{ROW} .sel-box").first.check()
+    loaded.click("#bulk-icon")
+    assert loaded.locator("#bulk-apply").inner_text() == "Save"
+    loaded.click(".bulk-cancel")
+
+
 def test_marker_popover_changes_one_items_icon_and_color(loaded: Page):
     """Clicking a row's marker opens the single-item editor; previews are live
     and nothing changes until Apply."""
@@ -1050,7 +1083,7 @@ def test_icon_popover_and_dialog_stay_inside_short_windows(loaded: Page, width, 
     fits = """(sel) => {
       const box = document.querySelector(sel).getBoundingClientRect();
       const apply = [...document.querySelector(sel).querySelectorAll('button')]
-        .find(b => b.textContent.trim() === 'Apply').getBoundingClientRect();
+        .find(b => b.textContent.trim() === 'Save').getBoundingClientRect();
       return box.top >= 0 && box.bottom <= innerHeight
         && apply.top >= box.top && apply.bottom <= Math.min(innerHeight, box.bottom) + 1;
     }"""
@@ -1216,13 +1249,13 @@ def test_export_with_unapplied_note_prompts_and_apply_exports_it(loaded: Page):
     dlg = loaded.locator("#confirm")
     expect(dlg).to_be_visible()
     expect(dlg.locator("#confirm-title")).to_have_text("Save your note?")
-    assert "hasn't been applied" in loaded.inner_text("#confirm-body")
-    assert loaded.evaluate("document.activeElement.textContent") == "Apply"
+    assert "hasn't been saved" in loaded.inner_text("#confirm-body")
+    assert loaded.evaluate("document.activeElement.textContent") == "Save"
     assert loaded.evaluate("window.__cairnExported") is False  # nothing exported yet
     loaded.keyboard.press("Escape")  # Esc == Cancel
     expect(dlg).to_be_hidden()
 
-    assert f"<desc>{marker}</desc>" in _gpx_blob(export_zip_bytes(loaded, confirm="Apply"))
+    assert f"<desc>{marker}</desc>" in _gpx_blob(export_zip_bytes(loaded, confirm="Save"))
 
 
 def test_export_with_unapplied_note_discard_leaves_draft_out(loaded: Page):
