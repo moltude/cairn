@@ -663,7 +663,7 @@ function openPop(it, anchor) {
   pop.innerHTML = `
     <div class="pop-head">
       <span class="pop-preview"></span>
-      <div class="pop-title"><span class="pop-name">${esc(it.name || "Untitled")}</span><span class="pop-desc"></span></div>
+      <div class="pop-title"><span class="pop-name">${esc(it.name || "Untitled")}</span></div>
     </div>
     ${isLine ? `<div class="pop-map"></div>` : ""}
     <div class="pop-sec">
@@ -707,11 +707,9 @@ function drawPop() {
   const pop = $("#mark-pop");
   const hex = (colorOf(POP.color) || {}).hex || it.hex;
   const isWp = it.kind === "waypoints";
-  const showIcon = isWp && (POP.iconPicked || !it.needs_attention) ? POP.icon : "Default pin";
   const isLine = it.kind === "tracks";
   // A line is previewed on the map strip, so its header carries no second drawing.
   pop.querySelector(".pop-preview").innerHTML = isWp ? markerSVG(POP.icon, hex, 52, 64) : isLine ? "" : lineSVG(hex, it.kind, 52, 44);
-  pop.querySelector(".pop-desc").textContent = `${isWp ? showIcon : rowKindWord(it)} · ${colorName(POP.color)}`;
   pop.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === POP.color)));
   if (isLine) {
     pop.querySelector(".pop-map").innerHTML = lineMapSVG(hex, POP.style, POP.weight);
@@ -838,9 +836,9 @@ function drawBulk() {
     const toIcon = isWp ? (BULK.icon || it.icon) : null;
     const nowMark = isWp ? markerSVG(it.icon, it.hex, 22, 28) : lineSVG(it.hex, it.kind, 22, 20);
     const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28) : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20);
-    const afterIcon = isWp ? (BULK.icon || (it.needs_attention ? "Default pin" : it.icon)) : rowKindWord(it);
+    // The drawn marks show the change; no "Camp · Blue" words beside them (UI-26).
     return `<span class="na-cell">${nowMark}<span class="na-name">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
-      `<span class="na-cell">${afterMark}<span class="na-after">${esc(afterIcon)} · ${esc(colorName(toColor))}</span></span>`;
+      `<span class="na-cell">${afterMark}</span>`;
   }).join("");
   d.querySelector(".color-reset").setAttribute("aria-pressed", String(!BULK.color));
   d.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === BULK.color)));
