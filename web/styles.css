@@ -93,61 +93,84 @@ body[data-stage=edit] .topbar{display:none}
 
 /* ---------- loaded screen: collar rail + content ---------- */
 .edit{display:flex;flex-wrap:wrap;align-items:stretch;min-height:100vh}
+/* Edit-stage sizes are UI-28's scale (13px body, 248px rail, 42px rows). The
+   popover, dialogs, confirmations and Help keep today's sizes: they sit outside
+   #edit-stage and reset the body size below. */
+body[data-stage=edit]{font-size:13px}
+.pop,.modal{font-size:15px}
+.edit .label{font-size:10px}
+.edit .btn{min-height:34px;padding:4px 14px}
+.edit .btn.big{font-size:14px;min-height:40px;padding:8px 16px}
+.edit .btn.small{min-height:30px;padding:3px 10px}
+.edit input[type=checkbox]{width:14px;height:14px}
+.edit .note{font-size:13px;padding:8px 12px}
+
 .rail{position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;overflow-x:hidden;
-  flex:1 1 300px;max-width:340px;background:var(--rail);border-right:1px solid var(--rule);
+  flex:0 0 248px;max-width:248px;background:var(--rail);border-right:1px solid var(--rule);
   display:flex;flex-direction:column}
-.rail-head{position:relative;padding:26px 26px 0;display:flex;flex-direction:column;gap:22px}
-.rail-head .wordmark .help-link{margin-left:auto;font-weight:400}
-.title-block{border-top:3px double var(--ink);border-bottom:3px double var(--ink);padding:18px 0}
-.title-block h1{margin-top:4px;font-size:30px;line-height:1.15;overflow-wrap:anywhere;text-wrap:balance}
-.facet{position:relative;padding:18px 26px 0;display:flex;flex-direction:column;gap:2px}
-.facet>.label{padding-bottom:6px}
-.facet-list{display:flex;flex-direction:column;gap:2px}
-.facet-btn{text-align:left;display:flex;justify-content:space-between;gap:8px;padding:7px 10px;
-  background:transparent;border:none;border-left:3px solid transparent;min-height:34px;cursor:pointer;color:var(--ink)}
+.rail-head{position:relative;padding:18px 18px 0;display:flex;flex-direction:column;gap:12px}
+.rail-brand{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rail-brand .wordmark{font-size:17px;gap:8px}
+.rail-brand .label{text-align:right}
+.title-block{border-top:3px double var(--ink);border-bottom:3px double var(--ink);padding:10px 0}
+.title-block h1{font-size:21px;line-height:1.15;overflow-wrap:anywhere;text-wrap:balance}
+/* Filter sections (UI-28): a header button that folds the list below it. */
+.facet{position:relative;padding:0 18px;display:flex;flex-direction:column}
+.facet+.facet{margin-top:2px}
+.rail-head+.facet{margin-top:12px}
+.sec-h{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;
+  border-top:1px solid var(--contour);padding:10px 0 6px;cursor:pointer;color:var(--ink);text-align:left}
+.rail-head+.facet .sec-h{border-top:none}
+.sec-h .label{flex:none}
+.sec-sum{flex:1 1 auto;min-width:0;text-align:right;font-size:12px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec-h .caret{flex:none;width:12px;text-align:center;font-size:12px;color:var(--muted);margin-left:auto}
+.sec-sum:not(:empty)+.caret{margin-left:0}
+.sec-h:hover .label,.sec-h:hover .caret{color:var(--ink)}
+.facet-list{display:flex;flex-direction:column;gap:1px;padding-bottom:8px}
+.facet-btn{text-align:left;display:flex;justify-content:space-between;gap:8px;padding:4px 10px;
+  background:transparent;border:none;border-left:3px solid transparent;min-height:26px;cursor:pointer;color:var(--ink)}
 .facet-btn:hover{background:rgba(247,242,230,.6)}
 .facet-btn[aria-pressed=true]{background:var(--card);border-left-color:var(--brown)}
 .facet-btn.unorg .facet-name{font-style:italic}
+.facet-name{min-width:0;overflow-wrap:anywhere}
 .facet-count{color:var(--muted);font-style:italic}
-.icon-facet{display:flex;align-items:center;gap:10px;padding:5px 10px;min-height:30px;cursor:pointer;color:var(--ink)}
+.icon-facet{display:flex;align-items:center;gap:8px;padding:3px 10px 3px 13px;min-height:24px;cursor:pointer;color:var(--ink)}
 .icon-facet:hover{background:rgba(247,242,230,.6)}
 .icon-facet .glyph{flex:none}
+.icon-facet .facet-count{margin-left:auto}
 .icon-facet.default-pin{color:var(--warning);font-style:italic}
-.facet-empty{font-style:italic;color:var(--muted);padding:5px 10px}
-.rail-foot{position:sticky;bottom:0;z-index:1;margin-top:auto;padding:18px 26px 22px;display:flex;flex-direction:column;gap:10px;
+.facet-empty{font-style:italic;color:var(--muted);padding:3px 10px}
+.rail-foot{position:sticky;bottom:0;z-index:1;margin-top:auto;padding:14px 18px 16px;display:flex;flex-direction:column;gap:8px;
   background:var(--rail);border-top:1px solid var(--rule)}
-.rail-foot .status-slot{min-height:20px}
-.rail-foot .status{font-size:13px}
+.rail-foot .status-slot{min-height:18px}
+.rail-foot .status{font-size:12px}
 
-.content{flex:999 1 560px;min-width:0;padding:26px 36px 48px;display:flex;flex-direction:column;gap:16px}
-.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-.search{flex:1 1 280px;display:flex;align-items:center;gap:10px;background:var(--card);
-  border:1px solid var(--control);border-radius:2px;padding:0 12px;min-height:42px}
+.content{flex:999 1 560px;min-width:0;padding:18px 26px 40px;display:flex;flex-direction:column;gap:10px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.search{flex:1 1 280px;display:flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--control);border-radius:2px;padding:0 12px;min-height:34px}
+.search svg{width:16px;height:16px;flex:none}
 .search:focus-within{border-color:var(--brown);outline:2px solid var(--link);outline-offset:1px}
-.search input{border:none;background:none;flex-grow:1;min-width:0;min-height:40px;outline:none}
+.search input{border:none;background:none;flex-grow:1;min-width:0;min-height:32px;outline:none}
 .search input::placeholder{color:var(--muted);font-style:italic;opacity:1}
-.seg{display:flex;border:1px solid var(--control);border-radius:2px;overflow:hidden;flex-wrap:wrap}
-.seg button{background:var(--card);color:var(--ink);border:none;border-left:1px solid var(--control);
-  padding:0 14px;min-height:42px;cursor:pointer}
-.seg button:first-child{border-left:none}
-.seg button:hover{background:var(--sheet)}
-.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
 
+/* Applied filters as removable chips; x removes that one, Clear all removes all. */
 .chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.chips-label{font-size:13px;color:var(--muted);font-style:italic}
-.chip{display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--rule);
-  border-radius:14px;padding:2px 4px 2px 12px;font-size:14px;max-width:100%}
+.chips-label{font-size:12px;color:var(--muted);font-style:italic}
+.chip{display:inline-flex;align-items:center;gap:2px;background:var(--sel-row);border:1px solid var(--green);
+  border-radius:14px;padding:0 2px 0 11px;min-height:28px;font-size:13px;max-width:100%}
 .chip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.chip button{background:none;border:none;color:var(--muted);min-width:26px;min-height:26px;padding:0;
+.chip button{background:none;border:none;color:var(--muted);min-width:24px;min-height:24px;padding:0;
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%}
-.chip button:hover{color:var(--ink);background:var(--rail)}
-.chip button svg{width:12px;height:12px}
-.chips .linkbtn{font-size:14px}
+.chip button:hover{color:var(--ink);background:var(--card)}
+.chip button svg{width:11px;height:11px}
+.chips .linkbtn{font-size:13px;min-height:24px}
 
-.selbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--rail);
+.selbar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--rail);
   border:1px solid var(--rule);flex-wrap:wrap;position:sticky;top:0;z-index:20}
 .selcount{font-style:italic;margin-right:6px;font-variant-numeric:tabular-nums}
-.selbar .push{margin-left:auto;min-height:36px}
+.selbar .push{margin-left:auto;min-height:30px}
 .menu-wrap{position:relative}
 .menu{position:absolute;top:calc(100% + 6px);left:0;z-index:30;min-width:240px;background:var(--sheet);
   border:1px solid var(--brown);box-shadow:var(--shadow);padding:6px 0;display:flex;flex-direction:column}
@@ -155,34 +178,35 @@ body[data-stage=edit] .topbar{display:none}
 .menu button:hover,.menu button:focus-visible{background:var(--sel-row);outline:none}
 
 /* ---------- folder sections + table ---------- */
-.folders{display:flex;flex-direction:column;gap:18px}
+.folders{display:flex;flex-direction:column;gap:12px}
 .folder{position:relative;background:var(--card);border:1px solid var(--rule)}
-.folder-head{display:flex;align-items:baseline;gap:12px;padding:14px 12px 14px 18px;border-bottom:1px solid var(--rule)}
-.folder-head h2{font-size:22px;line-height:1.2;overflow-wrap:anywhere}
-.folder-sub{margin-left:auto;font-style:italic;color:var(--muted);font-size:14px;text-align:right}
-.collapse{align-self:center;background:none;border:none;color:var(--muted);min-width:32px;min-height:32px;
+.folder-head{display:flex;align-items:baseline;gap:10px;padding:8px 10px 8px 16px;border-bottom:1px solid var(--rule)}
+.folder-head h2{font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.folder-sub{margin-left:auto;font-style:italic;color:var(--muted);font-size:13px;text-align:right}
+.collapse{align-self:center;background:none;border:none;color:var(--muted);min-width:26px;min-height:26px;
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px}
 .collapse:hover{color:var(--ink);background:var(--rail)}
 .collapse[aria-expanded=false] svg{transform:rotate(-90deg)}
 .folder:has(.collapse[aria-expanded=false]) .folder-head{border-bottom:none}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
-col.c-sel{width:48px} col.c-name{width:32%} col.c-icon{width:220px}
+col.c-sel{width:40px} col.c-name{width:32%} col.c-icon{width:200px}
 th{text-align:left;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
   font-weight:400;padding:10px 12px}
-th.selcol{padding-left:18px}
-td{padding:6px 12px;vertical-align:top}
-td.selcol{padding:16px 12px 6px 18px}
+.edit th{font-size:10px;padding:7px 12px;line-height:1.4}
+.edit th.selcol{padding-left:16px}
+td{padding:4px 12px 3px;vertical-align:top}
+td.selcol{padding:14px 10px 3px 16px}
 tbody tr{border-top:1px dotted var(--rule)}
 tbody tr:hover{background:var(--hover-row)}
 tbody tr.sel{background:var(--sel-row)}
 tbody tr.note-open{background:var(--open-row)}
 tbody tr.editing{background:var(--open-row);box-shadow:inset 3px 0 0 var(--brown)}
 .name-in{width:100%;background:transparent;border:1px solid transparent;border-radius:2px;
-  padding:6px 8px;margin-top:4px;min-height:34px}
+  padding:4px 8px;min-height:34px;display:block}
 .name-in:hover{border-color:var(--rule)}
 .name-in:focus{border-color:var(--brown);background:var(--sheet);outline:none}
-.note-btn{text-align:left;width:100%;background:none;border:none;padding:4px 0;margin-top:5px;min-height:32px;
+.note-btn{text-align:left;width:100%;background:none;border:none;padding:0;min-height:34px;
   color:var(--muted);font-style:italic;display:flex;gap:6px;align-items:center;cursor:pointer}
 .note-btn svg{flex:none;color:var(--brown);opacity:.65}
 .note-btn:hover svg,.note-btn:focus-visible svg{opacity:1}
@@ -191,12 +215,12 @@ tbody tr.editing{background:var(--open-row);box-shadow:inset 3px 0 0 var(--brown
 .note-text.empty{font-style:italic;color:var(--muted)}
 .note-ed{display:flex;flex-direction:column;gap:8px;padding:4px 0 8px}
 .desc-in{width:100%;line-height:1.5;background:var(--sheet);border:1px solid var(--brown);border-radius:2px;
-  padding:8px 10px;color:var(--ink);resize:vertical;min-height:110px}
+  padding:8px 10px;color:var(--ink);resize:vertical;min-height:96px}
 .desc-in:focus{outline:2px solid var(--link);outline-offset:1px}
 .note-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .hint{font-size:13px;color:var(--muted);font-style:italic}
-.icon-btn,.line-btn{background:none;border:none;padding:0;display:inline-flex;align-items:center;gap:10px;
-  color:var(--ink);min-height:44px;cursor:pointer;text-align:left;max-width:100%}
+.icon-btn,.line-btn{background:none;border:none;padding:0;display:inline-flex;align-items:center;gap:8px;
+  color:var(--ink);min-height:34px;cursor:pointer;text-align:left;max-width:100%;vertical-align:top}
 .icon-btn .marker,.line-btn .lineswatch{flex:none;transition:transform .1s}
 .icon-btn:hover .marker,.line-btn:hover .lineswatch{transform:translateY(-1px)}
 .icon-btn:hover .icon-name,.line-btn:hover .icon-name{text-decoration:underline;text-decoration-color:var(--rule)}
@@ -204,8 +228,8 @@ tbody tr.editing{background:var(--open-row);box-shadow:inset 3px 0 0 var(--brown
 .icon-name{overflow:hidden;text-overflow:ellipsis}
 .icon-name.kind{color:var(--muted);font-style:italic}
 .whymark{font-style:italic;color:var(--warning)}
-.exc-label{display:inline-block;margin:4px 8px 0;color:var(--warning);font-style:italic;font-size:13px}
-.exc-chip{background:none;border:none;color:var(--link);text-decoration:underline;font-size:13px;cursor:pointer;padding:2px}
+.exc-label{display:inline-block;margin:2px 8px 0;color:var(--warning);font-style:italic;font-size:12px}
+.exc-chip{background:none;border:none;color:var(--link);text-decoration:underline;font-size:12px;cursor:pointer;padding:2px}
 tr.excluded .name-in{text-decoration:line-through;color:var(--muted)}
 tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .note{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--brown);
@@ -475,11 +499,6 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
   .wt-pair{grid-template-columns:minmax(0,1fr)}
   .faq-q .anchor{display:none}
 }
-/* the rail's wordmark row now carries Help, FAQ and Walkthrough */
-.rail-head .wordmark{gap:4px 12px;flex-wrap:wrap}
-.rail-head .wordmark .help-link{font-size:14px;padding:4px 0;margin-left:0;min-height:24px}
-.rail-head .wordmark .cairn-mark + span{flex:1 0 calc(100% - 40px)}
-.rail-head .wordmark .help-link:first-of-type{margin-left:0}
 a.linkbtn{display:inline-flex;align-items:center;text-decoration:underline}
 .wt-ph{min-width:0}.wt-ph span,.wt-ph b{overflow-wrap:anywhere}
 

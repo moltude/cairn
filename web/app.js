@@ -3,12 +3,13 @@
 let py = null, DATA = null, EDITS = {}, SEL = new Set(), ZIP = null, MANIFEST = null;
 let ANCHOR = null;   // last row clicked without shift -- the pivot for range select
 
-/* Every filter lives here; the rail facets, the chips, the type buttons and
+/* Every filter lives here; the rail facets (Type, Folders, Icon), the chips and
    #only-attention all render FROM this object, and visibleItems() reads only
    it -- so select-all and shift-range automatically respect every filter. */
 const FILTERS = { q: "", kind: "", folder: null, icons: new Set(), attention: false };
 const DEFAULT_PIN = "\u0000default";   // facet key for "fell back to the default pin"
 const COLLAPSED = new Set();           // folder sections the user folded away
+const RAIL_FOLDED = new Set();         // rail filter sections folded away (UI-28); view only
 let NOTE_EDIT = null;                  // {uid, draft} -- the one note open for editing
 let POP = null;                        // single-item icon & color popover state
 let BULK = null;                       // several-items dialog state
@@ -146,13 +147,10 @@ async function handleFiles(files) {
     py.globals.set("_cairn_files", JSON.stringify(payload));
     const raw = py.runPython("bridge.load_files(_cairn_files)");
     DATA = JSON.parse(raw); EDITS = {}; SEL.clear(); ANCHOR = null;
-    resetFilters(); COLLAPSED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
+    resetFilters(); COLLAPSED.clear(); RAIL_FOLDED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
     renderSourceNotice(DATA);
-    // "Areas" only when the map has any.
-    const hasAreas = allItems().some(i => i.kind === "shapes");
-    $('#type-filter [data-kind="shapes"]').classList.toggle("hidden", !hasAreas);
     renderEdit();
     showStage("edit");
     setStatus("Map loaded", "ready");
@@ -216,8 +214,7 @@ function resetFilters() {
   FILTERS.q = ""; FILTERS.kind = ""; FILTERS.folder = null;
   FILTERS.icons.clear(); FILTERS.attention = false;
   $("#filter").value = "";
-  document.querySelectorAll("#type-filter button").forEach(b =>
-    b.setAttribute("aria-pressed", String(b.dataset.kind === "")));
+  syncTypeFacet();
 }
 
 const isUnorganized = g => g.key === "orphaned_features" || /^(Unorganized|Uncategorized)$/.test(g.name);
@@ -234,11 +231,43 @@ function visibleItems(g) {
     (!keys.size || (i.kind === "waypoints" && keys.has(iconKey(i)))));
 }
 
+function syncTypeFacet() {
+  document.querySelectorAll("#type-filter [data-kind]").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.kind === FILTERS.kind)));
+}
+
 function setKind(kind) {
   FILTERS.kind = kind;
-  document.querySelectorAll("#type-filter button").forEach(b =>
-    b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
+  syncTypeFacet();
   renderFolders();
+}
+
+const KIND_LABEL = { "": "All", waypoints: "Waypoints", tracks: "Lines", shapes: "Areas" };
+
+/* The rail's three filter sections fold (UI-28). Folding only hides the list;
+   whatever is picked in it stays applied, and the header says what that is. */
+function renderRailHeads() {
+  const icons = [...FILTERS.icons];
+  if (FILTERS.attention) icons.push("Default pin");
+  const g = FILTERS.folder !== null && DATA.groups.find(g => g.key === FILTERS.folder);
+  const sums = {
+    type: KIND_LABEL[FILTERS.kind] || "All",
+    folders: g ? g.name : "All",
+    icon: !icons.length ? "Any" : icons.length === 1 ? icons[0] : `${icons.length} icons`,
+  };
+  document.querySelectorAll(".rail .facet[data-sec]").forEach(sec => {
+    const k = sec.dataset.sec, folded = RAIL_FOLDED.has(k);
+    const h = sec.querySelector(".sec-h");
+    h.setAttribute("aria-expanded", String(!folded));
+    h.querySelector(".sec-sum").textContent = folded ? sums[k] : "";
+    h.querySelector(".caret").textContent = folded ? "\u25B8" : "\u25BE";
+    sec.querySelector(".facet-list").classList.toggle("hidden", folded);
+  });
+}
+
+function toggleRailSection(k) {
+  RAIL_FOLDED.has(k) ? RAIL_FOLDED.delete(k) : RAIL_FOLDED.add(k);
+  renderRailHeads();
 }
 
 /* ---------- edit stage ---------- */
@@ -249,6 +278,15 @@ function renderEdit() {
 
 function renderRail() {
   const fk = focusedKey();
+  // Type: each kind with its count; "Areas" only when the map has any.
+  const byKind = { "": 0, waypoints: 0, tracks: 0, shapes: 0 };
+  allItems().forEach(i => { byKind[""]++; byKind[i.kind] = (byKind[i.kind] || 0) + 1; });
+  document.querySelectorAll("#type-filter [data-kind]").forEach(b => {
+    b.querySelector(".facet-count").textContent = byKind[b.dataset.kind] || 0;
+    if (b.dataset.kind === "shapes") b.classList.toggle("hidden", !byKind.shapes && FILTERS.kind !== "shapes");
+  });
+  syncTypeFacet();
+
   // Folders: "All" first, then each folder with its item count.
   const fl = $("#folder-facets"); fl.innerHTML = "";
   const facetBtn = (label, count, key, italic) => {
@@ -283,7 +321,7 @@ function renderRail() {
     lab.className = "icon-facet" + (def ? " default-pin" : "");
     lab.title = def ? "Waypoints that fell back to onX's default pin" : "";
     lab.innerHTML = `<input type="checkbox"${def ? ' id="only-attention"' : ""} data-icon="${esc(k)}" data-fk="icon|${esc(k)}">` +
-      glyphSVG(def ? "Location" : k) + `<span>${def ? "Default pin" : esc(k)}</span>`;
+      glyphSVG(def ? "Location" : k, 15) + `<span class="facet-name">${def ? "Default pin" : esc(k)}</span><span class="facet-count">${counts.get(k) || 0}</span>`;
     const box = lab.querySelector("input");
     box.checked = def ? FILTERS.attention : FILTERS.icons.has(k);
     box.onchange = () => {
@@ -294,14 +332,16 @@ function renderRail() {
     il.appendChild(lab);
   });
   if (!keys.length) il.innerHTML = `<span class="facet-empty">No waypoints</span>`;
+  renderRailHeads();
   refocus(fk);
 }
 
 function renderChips() {
+  renderRailHeads();
   const host = $("#chips"); host.innerHTML = "";
   const chips = [];
   if (FILTERS.q) chips.push([`Search: “${FILTERS.q}”`, () => { FILTERS.q = ""; $("#filter").value = ""; }]);
-  if (FILTERS.kind) chips.push([`Type: ${$(`#type-filter [data-kind="${FILTERS.kind}"]`).textContent}`, () => setKind("")]);
+  if (FILTERS.kind) chips.push([`Type: ${KIND_LABEL[FILTERS.kind]}`, () => { FILTERS.kind = ""; syncTypeFacet(); }]);
   if (FILTERS.folder !== null) {
     const g = DATA.groups.find(g => g.key === FILTERS.folder);
     chips.push([`Folder: ${g ? g.name : "?"}`, () => { FILTERS.folder = null; }]);
@@ -320,8 +360,8 @@ function renderChips() {
     host.appendChild(c);
   });
   const clear = document.createElement("button");
-  clear.type = "button"; clear.className = "linkbtn"; clear.textContent = "Clear filters";
-  clear.onclick = () => { resetFilters(); setKind(""); renderRail(); renderFolders(); };
+  clear.type = "button"; clear.className = "linkbtn"; clear.textContent = "Clear all";
+  clear.onclick = () => { resetFilters(); renderRail(); renderFolders(); };
   host.appendChild(clear);
 }
 
@@ -413,12 +453,12 @@ function row(it) {
       `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
         <span class="note-text${it.desc ? "" : " empty"}">${esc(oneLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
     <td class="iconcol">${isWp
-      ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex)}${it.needs_attention
+      ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
           ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>`
           // An icon an onX file named that isn't in onX's list (Phase 2 flags
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
-      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}${it.kind === "tracks" ? `, ${STYLE_NAMES[it.style] || "Dotted"}, ${WEIGHT_NAMES[it.weight] || ""}. Change line` : ". Change color"}">${lineSVG(it.hex, it.kind, 30, 26, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
+      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}${it.kind === "tracks" ? `, ${STYLE_NAMES[it.style] || "Dotted"}, ${WEIGHT_NAMES[it.weight] || ""}. Change line` : ". Change color"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {
@@ -1108,7 +1148,9 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   wireDrop();
   $("#filter").oninput = e => { FILTERS.q = e.target.value; renderFolders(); };
-  document.querySelectorAll("#type-filter button").forEach(b => b.onclick = () => setKind(b.dataset.kind));
+  document.querySelectorAll("#type-filter [data-kind]").forEach(b => b.onclick = () => setKind(b.dataset.kind));
+  document.querySelectorAll(".rail .facet[data-sec] .sec-h").forEach(h =>
+    h.onclick = () => toggleRailSection(h.closest(".facet").dataset.sec));
   $("#clear-sel").onclick = () => { SEL.clear(); ANCHOR = null; renderFolders(); };
   $("#more-btn").onclick = e => {
     e.stopPropagation();

@@ -178,8 +178,8 @@ def _clear_selection(page):
 
 
 def _set_type(page, kind):
-    """The type filter is a segmented button group (All / Waypoints / Lines /
-    Areas); "" is All."""
+    """The type filter is the rail's Type section (All / Waypoints / Lines /
+    Areas, UI-28); "" is All."""
     page.click(f'#type-filter [data-kind="{kind}"]')
     page.wait_for_timeout(150)
     assert page.get_attribute(f'#type-filter [data-kind="{kind}"]', "aria-pressed") == "true"
@@ -980,10 +980,128 @@ def test_folder_facet_filters_and_chip_clears_it(loaded: Page):
     _select_all_shown(loaded)
     assert loaded.evaluate("SEL.size") == g["n"]
 
-    loaded.click("#chips .linkbtn")  # Clear filters
+    loaded.click("#chips .linkbtn")  # Clear all
     loaded.wait_for_timeout(150)
     assert loaded.locator(ROW).count() == EXPECTED_TOTALS["items"]
     assert loaded.locator("#chips").is_hidden()
+
+
+# ---------------------------------------------------------------------------
+# UI-28: filters live in the rail as folding sections; applied ones are chips
+# ---------------------------------------------------------------------------
+
+SECTIONS = ["type", "folders", "icon"]
+
+
+def _sec(page, name):
+    return page.locator(f'.rail .facet[data-sec="{name}"]')
+
+
+def test_type_filter_lives_in_the_rail_with_counts(loaded: Page):
+    assert loaded.locator(".toolbar #type-filter, .toolbar [data-kind]").count() == 0
+    assert _sec(loaded, "type").locator("#type-filter").count() == 1
+    counts = loaded.evaluate("""Object.fromEntries([...document.querySelectorAll('#type-filter [data-kind]')]
+        .map(b => [b.dataset.kind, b.querySelector('.facet-count').textContent]))""")
+    assert counts == {"": "177", "waypoints": "68", "tracks": "92", "shapes": "17"}
+    names = loaded.locator("#type-filter .facet-name").all_inner_texts()
+    assert names == ["All", "Waypoints", "Lines", "Areas"]
+
+
+def test_rail_sections_fold_and_unfold(loaded: Page):
+    rows = loaded.locator(ROW).count()
+    for name in SECTIONS:
+        head, body = _sec(loaded, name).locator(".sec-h"), _sec(loaded, name).locator(".facet-list")
+        assert head.get_attribute("aria-expanded") == "true"
+        assert body.is_visible()
+        head.click()
+        assert head.get_attribute("aria-expanded") == "false"
+        assert body.is_hidden()
+        # folding is view only: no filter changes, no rows hidden
+        assert loaded.locator(ROW).count() == rows
+        assert loaded.locator("#chips").is_hidden()
+        head.click()
+        assert head.get_attribute("aria-expanded") == "true"
+        assert body.is_visible()
+        assert head.locator(".sec-sum").inner_text() == ""
+
+
+def test_a_folded_section_summarises_what_is_picked_in_it(loaded: Page):
+    g = loaded.evaluate("DATA.groups[0].name")
+    _set_type(loaded, "waypoints")
+    loaded.locator("#folder-facets .facet-btn").nth(1).click()
+    for name in SECTIONS:
+        _sec(loaded, name).locator(".sec-h").click()
+    sums = {n: _sec(loaded, n).locator(".sec-sum").inner_text() for n in SECTIONS}
+    assert sums == {"type": "Waypoints", "folders": g, "icon": "Any"}
+    # a filter changed while its section is folded updates the summary
+    loaded.locator('#chips button[aria-label="Remove filter Type: Waypoints"]').click()
+    assert _sec(loaded, "type").locator(".sec-sum").inner_text() == "All"
+    _sec(loaded, "icon").locator(".sec-h").click()
+    loaded.check("#only-attention")
+    _sec(loaded, "icon").locator(".sec-h").click()
+    assert _sec(loaded, "icon").locator(".sec-sum").inner_text() == "Default pin"
+
+
+def test_each_chip_removes_exactly_its_own_filter(loaded: Page):
+    g = loaded.evaluate("({key: DATA.groups[0].key, name: DATA.groups[0].name})")
+    _set_type(loaded, "waypoints")
+    loaded.locator("#folder-facets .facet-btn").nth(1).click()
+    loaded.check("#only-attention")
+    loaded.wait_for_timeout(150)
+
+    def chip_labels():
+        return [s.strip() for s in loaded.locator("#chips .chip > span").all_inner_texts()]
+
+    def expected(kind, folder, attention):
+        return loaded.evaluate(
+            """([kind, folder, attention]) => DATA.groups.filter(g => !folder || g.key === folder)
+                 .flatMap(g => g.items).filter(i => (!kind || i.kind === kind) &&
+                   (!attention || (i.kind === 'waypoints' && i.needs_attention))).length""",
+            [kind, folder, attention],
+        )
+
+    assert chip_labels() == ["Type: Waypoints", f"Folder: {g['name']}", "Icon: Default pin"]
+    assert loaded.locator("#chips .linkbtn").inner_text() == "Clear all"
+    assert loaded.locator(ROW).count() == expected("waypoints", g["key"], True)
+
+    loaded.locator('#chips button[aria-label="Remove filter Type: Waypoints"]').click()
+    assert chip_labels() == [f"Folder: {g['name']}", "Icon: Default pin"]
+    assert loaded.get_attribute('#type-filter [data-kind=""]', "aria-pressed") == "true"
+    assert loaded.locator("#only-attention").is_checked()
+    assert loaded.locator(ROW).count() == expected("", g["key"], True)
+
+    loaded.locator('#chips button[aria-label="Remove filter Icon: Default pin"]').click()
+    assert chip_labels() == [f"Folder: {g['name']}"]
+    assert not loaded.locator("#only-attention").is_checked()
+    assert loaded.locator(ROW).count() == expected("", g["key"], False)
+
+    _set_type(loaded, "tracks")
+    loaded.click("#chips .linkbtn")
+    assert loaded.locator("#chips").is_hidden()
+    assert loaded.locator(ROW).count() == EXPECTED_TOTALS["items"]
+    assert loaded.get_attribute('#type-filter [data-kind=""]', "aria-pressed") == "true"
+    assert loaded.get_attribute("#folder-facets .facet-btn >> nth=0", "aria-pressed") == "true"
+
+
+def test_edit_stage_is_scaled_down_but_the_popover_is_not(loaded: Page):
+    loaded.set_viewport_size({"width": 1440, "height": 900})
+    loaded.wait_for_timeout(150)
+    m = loaded.evaluate("""() => ({
+        body: getComputedStyle(document.body).fontSize,
+        row: document.querySelector('.folder tbody tr').getBoundingClientRect().height,
+        rail: document.querySelector('.rail').getBoundingClientRect().width,
+        search: document.querySelector('.search').getBoundingClientRect().height,
+        title: getComputedStyle(document.querySelector('#map-title')).fontSize })""")
+    assert m["body"] == "13px"
+    assert 40 <= m["row"] <= 44, m
+    assert m["rail"] == 248
+    assert m["search"] == 34
+    assert m["title"] == "21px"
+    loaded.locator("#folders .icon-btn").first.click()
+    pop = loaded.locator("#mark-pop")
+    expect(pop).to_be_visible()
+    assert pop.bounding_box()["width"] == 440
+    assert loaded.evaluate("getComputedStyle(document.querySelector('#mark-pop')).fontSize") == "15px"
 
 
 def test_a_name_cannot_be_committed_empty(fresh_page):
