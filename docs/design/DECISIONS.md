@@ -597,8 +597,10 @@ dialog). Engine support already existed (`apply_edits` `style`, `weight`).
   colors, then the same Style and Weight groups. Picking the selected toggle again un-picks it,
   and an un-picked group leaves each line as it is. Color stays in Icon & color….
 - The list draws every line's mark in its real style and weight; the row label stays "Line".
-- Dotted is not offered: onX has only ever exported `solid` and `dash` in our tests. A dotted
-  line from a file is drawn dotted and kept unless changed.
+- Dotted (and weight 2.0) are not offered as choices, though onX has all three styles and weights
+  (2026-10-23: `dot` and `2.0` appear in onX exports). A dotted line, or a 2.0 area outline, from a
+  file is drawn as such and kept unless changed. (A track's 2.0 still exports as 4.0:
+  `stroke_width_to_weight` has two buckets, Phase 1 item 5.)
 - **Areas too (2026-10-23):** an area's outline takes the same Style and Weight (popover and
   Line style… dialog), solid / dashed and 4.0 / 6.0 only. An onX area's dotted or 2.0
   ("Extra thin") outline is drawn and kept unless changed. No fill choice is offered: onX's
