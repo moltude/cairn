@@ -14,7 +14,7 @@
  */
 export default {
   async fetch(request, env, ctx) {
-    const TARGET_ORIGIN = "https://cairn-web.vercel.app"; // <-- replace with your actual Vercel production alias
+    const TARGET_ORIGIN = "https://cairn-five-blue.vercel.app"; // the Vercel production alias (web/ root)
 
     const url = new URL(request.url);
 
@@ -41,9 +41,17 @@ export default {
       headers: upstreamHeaders,
       body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
       redirect: "manual", // so we can rewrite Location ourselves, not silently follow it
+      // Never serve from Cloudflare's edge cache: it kept old app.js/styles.css for hours
+      // after a deploy (its default caches .js/.css), so a visitor could get old JS with a
+      // new engine. Vercel already answers revalidations with a cheap 304.
+      cache: "no-store",
     });
 
     const responseHeaders = new Headers(upstreamResponse.headers);
+    // Pass Vercel's Cache-Control through as sent (web/vercel.json: no-cache), so the
+    // zone's Browser Cache TTL cannot stretch it to hours (DECISIONS.md ENG-01).
+    const cacheControl = upstreamResponse.headers.get("cache-control");
+    if (cacheControl) responseHeaders.set("cache-control", cacheControl);
 
     // Vercel's cleanUrls emits redirects like `Location: /index` — rewrite
     // those back under /cairn or the browser gets bounced into the blog root.
