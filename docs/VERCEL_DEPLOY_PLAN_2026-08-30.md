@@ -174,6 +174,7 @@ likely fail schema validation at deploy time. Letting Root Directory + auto-dete
 avoids the type risk entirely; `vercel build` (once logged in) will validate this file locally
 before the first real deploy.
 
+> **Superseded 2026-10-22:** the cache rules below broke returning visitors after engine deploys; every file is now `Cache-Control: no-cache` (see `docs/design/DECISIONS.md` ENG-01).
 - `/dist/` (the wheel) gets a 1-year immutable cache since the filename is version-pinned; every
   other file gets a 1-hour cache with revalidation so app.js/index.html fixes propagate quickly
 - No custom MIME mapping needed — Vercel serves `.whl` as a generic binary type by default and

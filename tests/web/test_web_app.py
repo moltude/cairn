@@ -1199,6 +1199,16 @@ def test_selection_is_limited_to_rows_in_expanded_folders(loaded: Page):
     assert loaded.evaluate(in_first) == 0
 
 
+def test_site_files_always_revalidate():
+    """Every file the site serves (bridge.py, app.js and the engine wheel, whose
+    filename never changes) must be revalidated on each visit. A long-lived or
+    "immutable" cache let a browser keep an old wheel next to a new bridge.py and
+    fail to boot with "cannot import name 'input_check'" (ENG-01, reversed)."""
+    rules = json.loads((Path(__file__).resolve().parents[2] / "web" / "vercel.json").read_text())["headers"]
+    cache = [(r["source"], h["value"]) for r in rules for h in r["headers"] if h["key"].lower() == "cache-control"]
+    assert cache == [("/(.*)", "no-cache")]
+
+
 def test_csp_cdn_allowance_is_pinned_to_the_pyodide_version_in_use():
     """The CSP allows jsdelivr only under the exact Pyodide folder the app
     loads (not all of cdn.jsdelivr.net). A Pyodide bump must update every

@@ -407,7 +407,11 @@ already in a box (the empty screen's intro, the done screen) sits on a paper pan
 ## Engineering decisions from the PR #20 red-team review (2026-10-21)
 
 ### ENG-01 — Engine wheel cached as "immutable" under an unchanged filename
-Status: decided — **accept the risk**.
+Status: **reversed 2026-10-22** — every site file is now served `Cache-Control: no-cache`.
+
+Reversal: the owner hit it on the live site — "cannot import name 'input_check'" after a deploy, because the browser kept the year-cached old wheel while `bridge.py` (1-hour cache) updated. Every returning visitor hits this on every engine-changing deploy, which was not the impact the original call assumed. `web/vercel.json` now sends one rule, `no-cache`, for all of `web/`: the browser keeps its copy but revalidates (ETag, a 304 when unchanged), so the wheel, `bridge.py` and `app.js` always arrive as a matching set. Pyodide from jsDelivr is unaffected (versioned URL). `test_site_files_always_revalidate` guards it. The original decision follows.
+
+Original status: decided — **accept the risk**.
 
 Finding: `web/dist/cairn_maps-1.0.0-py3-none-any.whl` changed content but kept its name, and
 `/dist/*` is served `public, max-age=31536000, immutable`. A visitor whose browser cached the old
