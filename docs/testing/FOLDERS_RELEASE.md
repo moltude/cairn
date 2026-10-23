@@ -26,7 +26,7 @@ DragToFolder, DragToNewFolder, NameNewFolder, RenameMerge, KeyboardMove.
   members are pinned with no adjustment and still match.
 
 ### Tested
-- `tests/test_web_bridge_folders.py` (68 tests): uids opaque, unique and mapped to their own
+- `tests/test_web_bridge_folders.py` (69 tests): uids opaque, unique and mapped to their own
   features (single file and CalTopo + onX mixed); same ids on reload; rename (trim, unsafe
   characters → `_safe` file names, export dir and runbook use the new name); rename to own name
   in another case; rename onto a duplicate is reported and changes nothing; empty / whitespace /
@@ -56,7 +56,7 @@ DragToFolder, DragToNewFolder, NameNewFolder, RenameMerge, KeyboardMove.
 - In the browser: `test_folder_primitives_run_in_pyodide_and_an_edit_follows_a_moved_item`
   calls `bridge.move_items` in Pyodide after a UI edit and checks the export puts the edited
   item only in the new folder's file.
-- Full suite with the dev server (port 8781): **1129 passed** (main: 1060; +68 bridge tests,
+- Full suite with the dev server (port 8781): **1130 passed** (main: 1060; +69 bridge tests,
   +1 web test; the replaced uid web test is net zero).
 - Manual (headless Chromium via Playwright against localhost:8781): Bitterroots, the onX
   dialect GPX+KML pair and the onX areas GPX+KML pair. For each: name edit through the row's
@@ -68,6 +68,11 @@ DragToFolder, DragToNewFolder, NameNewFolder, RenameMerge, KeyboardMove.
 
 ### Found
 - `scripts/onx_roundtrip.py` also decoded uids (not in the original list); fixed.
+- Review caught that the first `_move` dropped EVERY empty folder, not just the ones it
+  emptied. `parse_geojson` keeps a CalTopo folder with no members, so such a folder vanished on
+  the first unrelated move without appearing in `removed`. Fixed; pinned by
+  `test_a_folder_empty_at_load_survives_other_moves` (fails on the old code). No fixture set in
+  the property test has an empty folder, which is why it passed.
 - The load-JSON half of the Bitterroots pin necessarily changes with any opaque id; handled by
   rebuilding the old strings in the test, not by re-pinning.
 - An areas-only onX map where "Leave these out" excludes every item can't be exported

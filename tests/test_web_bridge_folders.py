@@ -294,6 +294,25 @@ def test_moving_a_folders_last_item_removes_the_folder_and_renumbers_export():
     _check_export(zf)
 
 
+def test_a_folder_empty_at_load_survives_other_moves():
+    """Only a folder a move empties is removed, and `removed` names exactly it."""
+    def pt(fid, title, folder):
+        return {"type": "Feature", "id": fid, "geometry": {"type": "Point", "coordinates": [-114, 46]},
+                "properties": {"class": "Marker", "title": title, "folderId": folder}}
+    doc = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "id": f, "geometry": None, "properties": {"class": "Folder", "title": t}}
+        for f, t in (("fa", "A"), ("fb", "B"), ("fe", "Empty"))
+    ] + [pt("p1", "One", "fa"), pt("p2", "Two", "fa"), pt("p3", "Three", "fb")]}
+    data = json.loads(bridge.load_document(json.dumps(doc), "m.json"))
+    if "Empty" not in [g["name"] for g in data["groups"]]:
+        pytest.skip("parse_geojson no longer keeps an empty folder")
+    res = _move([_uids("A")[0]], _key("B"))
+    assert res["removed"] == [] and "Empty" in [g["name"] for g in _groups()]
+    res = _move(_uids("A"), _key("B"))
+    assert res["removed"] == ["fa"] and [g["name"] for g in _groups()] == ["B", "Empty"]
+    assert set(bridge._STATE["doc"].folders) == {"fb", "fe"}
+
+
 def test_emptying_a_middle_folder_closes_the_gap_in_numbering():
     _load(BITTERROOTS)
     _move(_uids("North Roots"), _key("Paddling"))

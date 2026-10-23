@@ -709,8 +709,11 @@ def _move(items: list, target: dict) -> list:
     # Stable sort: target's own items keep their order, and each moved item
     # lands after the target's items of its kind, in the order given.
     target["items"] = sorted(target["items"] + items, key=lambda i: _KIND_ORDER[i["kind"]])
-    removed = [g["key"] for g in sources if not g["items"]]
-    _STATE["groups"] = [g for g in _STATE["groups"] if g["items"]]
+    # Only folders THIS move emptied go: a folder that loaded empty (a CalTopo
+    # folder with no members) is left alone, and `removed` names exactly what went.
+    emptied = [g for g in sources if not g["items"]]
+    removed = [g["key"] for g in emptied]
+    _STATE["groups"] = [g for g in _STATE["groups"] if not any(g is e for e in emptied)]
     _sync_doc([g["key"] for g in sources] + [target["key"]])
     return removed
 

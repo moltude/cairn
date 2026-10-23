@@ -614,8 +614,9 @@ pointed every edit and exclusion at the wrong feature. Now:
 - `merge_folders(source_key, target_key)` → the same success shape; the target keeps its name
   and place.
 
-**Rules.** An item is in exactly one folder. A folder left with no items is removed (a folder
-whose items are all excluded stays). Names are trimmed and must be non-empty (else ValueError);
+**Rules.** An item is in exactly one folder. A folder a move or merge leaves with no items is
+removed, and `removed` names exactly those; a folder that loaded empty (a CalTopo folder with no
+members) or whose items are all excluded stays. Names are trimmed and must be non-empty (else ValueError);
 inner spacing and case are kept. Two folders may not share a name compared trimmed and
 case-insensitively (`casefold`); renaming a folder to its own name in another case is allowed.
 A clash is reported, never merged silently. New folders go at the end with a fresh key
