@@ -59,6 +59,10 @@ Screenshots (gitignored): `tests/output/export-screen/` — `bitterroots.png`,
 `bitterroots_end.png`, `bitterroots_full.png`, `one_folder.png`, `onx_pair.png`,
 `warnings.png`. They match the mockup apart from the page's contour background (UI-20).
 
+`web/walkthrough/06-export.webp` is replaced with the new Bitterroots export screen (from
+`bitterroots.png`, `cwebp -q 82`) and its walkthrough text updated. Still showing the old screen:
+`docs/screenshots/web-07-runbook.png` in README.md (follow-up).
+
 ### For the owner to check
 
 - [ ] Download all, then import one folder's files in onX's Web Map following the three steps.
