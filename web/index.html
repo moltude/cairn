@@ -121,21 +121,20 @@
   </main>
 </div>
 
-<!-- 3. IMPORT RUNBOOK -->
+<!-- 3. EXPORT (UI-31): one box per folder, filled by app.js renderRunbook -->
 <main id="done-stage" class="stage done hidden">
   <div class="done-head">
     <span class="kicker">Export</span>
     <h1>Your files are ready</h1>
     <div class="done-actions">
-      <button id="download" type="button" class="btn primary big">Download</button>
+      <button id="download" type="button" class="btn primary big">Download all</button>
+      <span class="done-hint">One zip, one folder inside it per onX folder</span>
+      <span class="push"></span>
       <button id="back" type="button" class="btn">Back</button>
       <button type="button" class="btn newmap">Start over</button>
     </div>
   </div>
-  <div class="runbook-intro">
-    <p><b>onX makes one folder per import, and names it with a timestamp.</b> That's why this
-    checklist exists — it tells you which files go together and what to rename each folder to.</p>
-  </div>
+  <p class="rb-intro">Import each folder into onX's Web Map, one at a time. Importing needs onX Premium or Elite.</p>
   <div id="runbook" class="runbook"></div>
 </main>
 

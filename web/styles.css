@@ -343,27 +343,31 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
   padding-left:12px;margin-top:12px !important}
 
 /* ---------- done screen ---------- */
-.done{width:100%;max-width:960px;margin:0 auto;padding:44px 32px 64px}
-.done-head{display:flex;flex-direction:column;gap:12px;padding-bottom:22px;border-bottom:3px double var(--ink)}
-.done-head h1{font-size:clamp(30px,4vw,40px);line-height:1.1}
-.done-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
-.runbook-intro{border-left:3px solid var(--brown);padding:2px 0 2px 16px;margin:22px 0;max-width:760px;line-height:1.6}
-.runbook-intro p{margin:0}
-.runbook{background:var(--card);border:1px solid var(--rule);padding:4px 24px 12px}
-.runbook>.note{margin:16px 0 4px}
-.rb-step{border-bottom:1px dotted var(--rule);padding:16px 0}
-.rb-step:last-child{border-bottom:none}
-.rb-step.done{opacity:.55}
-.rb-step.done .rb-title span:first-of-type{text-decoration:line-through}
-.rb-title{display:flex;align-items:baseline;gap:11px;font-weight:700;font-size:17px;margin-bottom:8px;cursor:pointer;flex-wrap:wrap}
-.rb-title input{width:17px;height:17px;align-self:center}
-.rb-count{font-weight:400;font-style:italic;color:var(--muted);font-size:14px}
-.rb-files{margin:6px 0 6px 28px;display:flex;gap:7px;flex-wrap:wrap}
-.rb-file{font-size:13px;background:var(--sheet);border:1px solid var(--rule);padding:3px 8px;overflow-wrap:anywhere}
+/* Export screen (UI-31, from ExportScreen.dc.html): header with Download all,
+   one intro line, the warnings, then one box per folder. */
+.done{width:100%;max-width:1040px;margin:0 auto;padding:56px 32px 64px;display:flex;flex-direction:column;gap:28px;
+  font-size:16px;line-height:1.5}
+.done-head{display:flex;flex-direction:column;gap:14px;padding-bottom:28px;border-bottom:3px double var(--ink)}
+.done .kicker{font-size:13px;letter-spacing:.18em}
+.done-head h1{font-size:clamp(36px,4.4vw,52px);line-height:1.1}
+.done-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.done-actions .btn{padding:10px 20px;min-height:48px}
+.done-actions #download{font-size:18px;padding:12px 26px}
+.done-hint{font-size:15px;font-style:italic;color:var(--muted)}
+.done-actions .push{flex-grow:1}
+.rb-intro{margin:0;font-size:18px}
+.runbook{display:flex;flex-direction:column;gap:28px}
+.runbook:empty{display:none}
+.rb-step{background:var(--sheet);border:1px solid var(--rule);padding:24px 28px;display:flex;flex-direction:column;gap:14px}
+.rb-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.rb-title{font-size:24px;flex-grow:1;min-width:0;overflow-wrap:anywhere}
+.rb-meta{font-size:16px;font-weight:400;font-style:italic;color:var(--muted)}
+.rb-dl.btn{font-size:15px;min-height:44px;border-color:var(--green)}
+.rb-files{display:flex;gap:8px;flex-wrap:wrap}
+.rb-file{font-size:15px;background:#fff;border:1px solid var(--rule);padding:4px 12px;overflow-wrap:anywhere}
 .rb-file.kml{border-color:var(--warning);color:var(--warning)}
-.rb-do{margin:0 0 0 28px;color:var(--muted);font-size:14px}
-.rb-rename{margin:8px 0 0 28px;font-size:14px}
-.rb-rename code,code{font-family:var(--serif);font-weight:700;background:var(--sheet);border:1px solid var(--brown);
+.rb-do{margin:0;padding-left:24px;display:flex;flex-direction:column;gap:8px}
+code{font-family:var(--serif);font-weight:700;background:var(--sheet);border:1px solid var(--brown);
   color:var(--brown);padding:2px 8px;font-size:14px}
 
 /* ---------- narrow screens ---------- */
@@ -385,8 +389,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
   .drop{grid-template-columns:minmax(0,1fr);gap:32px;padding:32px 16px}
   .drop-target{min-height:300px;padding:28px 16px}
   .done{padding:28px 16px 48px}
-  .runbook{padding:4px 14px 10px}
-  .rb-files,.rb-do,.rb-rename{margin-left:0}
+  .rb-step{padding:18px 16px}
 }
 @media (max-width: 640px){
   /* table rows become two-line cards: [box][name][marker] / [note] */
