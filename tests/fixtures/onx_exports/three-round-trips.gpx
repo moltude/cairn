@@ -1,0 +1,46 @@
+<gpx xmlns:onx="https://wwww.onxmaps.com/" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="onXmaps backcountry web"><metadata/><wpt lat="46.4052" lon="-121.4911"><name>ZZTEST multi-step-cycle-gpx · waypoint · edited-2</name><desc>name=ZZTEST multi-step-cycle-gpx · waypoint · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · waypoint · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · waypoint · edited-2
+notes=edited-2 waypoint note
+id=a218c42b-6c46-419e-a1fe-a713aff5d767
+color=rgba(8, 122, 255, 1)
+icon=Camp
+id=4b1c36f0-6fab-4162-a345-9ad6b2785dee
+color=rgba(8, 122, 255, 1)
+icon=Camp
+id=5396e8c2-051c-4a8c-a6e7-761af2835c02
+color=rgba(8, 122, 255, 1)
+icon=Camp</desc><extensions><onx:color>rgba(8, 122, 255, 1)</onx:color><onx:icon>Camp</onx:icon></extensions></wpt><trk><name>ZZTEST multi-step-cycle-gpx · line · edited-2</name><desc>name=ZZTEST multi-step-cycle-gpx · line · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · line · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · line · edited-2
+notes=edited-2 line note
+id=bf3a774b-9ed1-44e7-8909-6c675772a748
+color=rgba(8,122,255,1)
+style=solid
+weight=4.0
+id=897270bc-0ec0-4ef1-9279-dfeaa84890a9
+color=rgba(8,122,255,1)
+style=solid
+weight=4.0
+id=69d7fc78-feab-417d-93d5-29dbe12af124
+color=rgba(8,122,255,1)
+style=solid
+weight=4.0</desc><extensions><onx:color>rgba(8,122,255,1)</onx:color><onx:style>solid</onx:style><onx:weight>4.0</onx:weight></extensions><trkseg><trkpt lat="46.4" lon="-121.5"><ele>0</ele><time>2026-10-23T15:10:46.123Z</time></trkpt><trkpt lat="46.401" lon="-121.495"><ele>0</ele><time>2026-10-23T15:10:46.123Z</time></trkpt><trkpt lat="46.403" lon="-121.492"><ele>0</ele><time>2026-10-23T15:10:46.123Z</time></trkpt><trkpt lat="46.405" lon="-121.49"><ele>0</ele><time>2026-10-23T15:10:46.123Z</time></trkpt></trkseg></trk><rte><name xmlns="http://www.topografix.com/GPX/1/1">ZZTEST multi-step-cycle-gpx · area · edited-2</name><desc xmlns="http://www.topografix.com/GPX/1/1">name=ZZTEST multi-step-cycle-gpx · area · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · area · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · area · edited-2
+notes=edited-2 area note
+id=ac601e74-6398-490f-828c-c60d634997e2
+type=Area
+color=rgba(132,212,0,1)
+weight=4.0
+fill_color=rgba(74,144,226,0.1)
+id=5d4bb89a-03bf-404b-bbea-ae928a1a9bc9
+type=Area
+color=rgba(132,212,0,1)
+weight=4.0
+fill_color=rgba(74,144,226,0.1)
+id=0b54c7db-1da4-484a-bf0b-c3d40e5bce33
+type=Area
+color=rgba(132,212,0,1)
+weight=4.0
+fill_color=rgba(74,144,226,0.1)</desc><type>Area</type><extensions><onx:color>rgba(132,212,0,1)</onx:color><onx:weight>4.0</onx:weight><onx:fill_color>rgba(74,144,226,0.1)</onx:fill_color></extensions><rtept lat="46.41" lon="-121.5"/><rtept lat="46.41" lon="-121.49"/><rtept lat="46.415" lon="-121.49"/><rtept lat="46.415" lon="-121.5"/><rtept lat="46.41" lon="-121.5"/></rte></gpx>

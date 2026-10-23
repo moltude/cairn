@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>ZZTEST multi-step-cycle-gpx · waypoint · edited-2</name><ExtendedData><Data name="name"><value>ZZTEST multi-step-cycle-gpx · waypoint · edited-2</value></Data><Data name="notes"><value>name=ZZTEST multi-step-cycle-gpx · waypoint · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · waypoint · edited-2
+notes=edited-2 waypoint note
+id=a218c42b-6c46-419e-a1fe-a713aff5d767
+color=rgba(8, 122, 255, 1)
+icon=Camp
+id=4b1c36f0-6fab-4162-a345-9ad6b2785dee
+color=rgba(8, 122, 255, 1)
+icon=Camp</value></Data><Data name="id"><value>5396e8c2-051c-4a8c-a6e7-761af2835c02</value></Data><Data name="color"><value>rgba(8, 122, 255, 1)</value></Data><Data name="icon"><value>Camp</value></Data></ExtendedData><Point><coordinates>-121.4911,46.4052,1650</coordinates></Point></Placemark><Placemark><name>ZZTEST multi-step-cycle-gpx · line · edited-2</name><ExtendedData><Data name="name"><value>ZZTEST multi-step-cycle-gpx · line · edited-2</value></Data><Data name="notes"><value>name=ZZTEST multi-step-cycle-gpx · line · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · line · edited-2
+notes=edited-2 line note
+id=bf3a774b-9ed1-44e7-8909-6c675772a748
+color=rgba(8,122,255,1)
+style=solid
+weight=4.0
+id=897270bc-0ec0-4ef1-9279-dfeaa84890a9
+color=rgba(8,122,255,1)
+style=solid
+weight=4.0</value></Data><Data name="id"><value>69d7fc78-feab-417d-93d5-29dbe12af124</value></Data><Data name="color"><value>rgba(8,122,255,1)</value></Data><Data name="style"><value>solid</value></Data><Data name="weight"><value>4.0</value></Data></ExtendedData><LineString><coordinates>-121.5,46.4,0 -121.495,46.401,0 -121.492,46.403,0 -121.49,46.405,0</coordinates></LineString></Placemark><Placemark><name>ZZTEST multi-step-cycle-gpx · area · edited-2</name><ExtendedData><Data name="name"><value>ZZTEST multi-step-cycle-gpx · area · edited-2</value></Data><Data name="notes"><value>name=ZZTEST multi-step-cycle-gpx · area · edited-2
+notes=name=ZZTEST multi-step-cycle-gpx · area · edited-2
+notes=edited-2 area note
+id=ac601e74-6398-490f-828c-c60d634997e2
+type=Area
+color=rgba(132,212,0,1)
+weight=4.0
+fill_color=rgba(74,144,226,0.1)
+id=5d4bb89a-03bf-404b-bbea-ae928a1a9bc9
+type=Area
+color=rgba(132,212,0,1)
+weight=4.0
+fill_color=rgba(74,144,226,0.1)</value></Data><Data name="id"><value>0b54c7db-1da4-484a-bf0b-c3d40e5bce33</value></Data><Data name="type"><value>Area</value></Data><Data name="color"><value>rgba(132,212,0,1)</value></Data><Data name="weight"><value>4.0</value></Data><Data name="fill_color"><value>rgba(74,144,226,0.1)</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>-121.5,46.41,0 -121.49,46.41,0 -121.49,46.415,0 -121.5,46.415,0 -121.5,46.41,0</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark></Document></kml>

@@ -671,9 +671,10 @@ def export_zip() -> bytes:
                     files.append((p, cnt))
             if shapes:
                 shapes = sorted(shapes, key=lambda f: natural_sort_key(f.title or ""))
-                # GPX <rte type=Area>, not KML: onX ignores area colour and
-                # fill in KML but keeps them from GPX (verified 2026-10-22,
-                # ENG-05). The count is areas actually WRITTEN, so a polygon
+                # GPX <rte type=Area>, not KML: onX ignores area colour in KML
+                # but keeps it from GPX (verified 2026-10-22, ENG-05). The fill
+                # is ignored either way: onX stores its default
+                # rgba(74,144,226,0.1) (docs/ONX_ROUND_TRIP.md, 2026-10-23). The count is areas actually WRITTEN, so a polygon
                 # with no usable ring shows up as dropped, not written.
                 for p, size, cnt in write_gpx_areas_maybe_split(
                     shapes, d / f"{safe}_Areas.gpx", g["name"]

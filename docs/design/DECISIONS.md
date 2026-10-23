@@ -515,7 +515,9 @@ Evidence, from a real onX Web Map import on the owner's account (2026-10-22):
   style all came in as the default red.
 - **A GPX `<rte>` with `<type>Area</type>`** and `<extensions><onx:color>rgba(255,255,0,1)
   </onx:color><onx:fill_color>rgba(255,255,0,0.3)</onx:fill_color></extensions>` imported as a
-  real onX Area (acreage shown) **with its yellow color**.
+  real onX Area (acreage shown) **with its yellow color**. *Correction 2026-10-23:* only the
+  outline color was kept. Every import in `docs/ONX_ROUND_TRIP.md` stored onX's default fill
+  `rgba(74,144,226,0.1)` whatever `onx:fill_color` said, so the fill is never carried.
 - **onX does not parse a key=value `<desc>` on import**: a desc of `name=…\nnotes=…\ntype=Area\n
   color=…` became the Notes verbatim. So `<desc>` carries only the user's note text, as the
   waypoint and track writers already did.
