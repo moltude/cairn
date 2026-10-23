@@ -33,6 +33,16 @@ Cairn reads all three and treats them the same way. When you start from the KML 
 
 This matters more than it sounds. Per project docs (Aug 2026), the onX Web Map filters markups by icon and color, the phone app filters by icon only, and search covers names only, not notes. If 300 waypoints arrive without their icons and colors, you can't filter them or tell them apart at a glance, and you end up fixing them one at a time. (What onX shows for a GPX waypoint that has no onX icon hasn't been tested. It's an open probe in the project docs.)
 
+## Your files
+
+### Which file should I export?
+
+Whichever you pick, what comes out is the same: onX-ready GPX files (waypoints, tracks, and areas as onX areas) and an import checklist. What differs is how much arrives to begin with.
+
+- **GeoJSON (best).** Brings in everything: folders, icons, colors, line style and width, areas and notes. Goes out with all of it.
+- **KML.** Brings in folders, icons, colors, line width, areas and notes, but not dashed lines (every line comes in solid). Goes out with what came in.
+- **GPX.** Brings in only names, notes and most line colors: no folders, no icons, no waypoint colors, no areas. Goes out with what came in, plus any icons and colors you add in Cairn first.
+
 ## What Cairn does
 
 ### What does Cairn actually do?
@@ -82,14 +92,14 @@ Some edge cases:
 
 ### Do dashed and dotted lines come across?
 
-Only a dashed line, and only from the GeoJSON. Line styles in onX are `solid`, `dash` and `dot`, written as `<onx:style>` on a track. These three values come from the project's reading of onX's Web Map code. No real onX export containing a line has been inspected yet, so none of them is confirmed from a real file. onX's code shows no arrow style.
+Only a dashed line, and only from the GeoJSON or an onX export. Line styles in onX are `solid`, `dash` and `dot`, written as `<onx:style>` on a track. These three values come from the project's reading of onX's Web Map code. No real onX export containing a line has been inspected yet, so none of them is confirmed from a real file. onX's code shows no arrow style.
 
 CalTopo writes a line's style in the GeoJSON `pattern` property:
 - `solid` is solid.
 - `M0 -1 L0 1,,8,F` is CalTopo's dashed line. It's a short stroke repeated every 8 pixels, written as an SVG path. This value appears in real exports, and Cairn exports it as `dash`.
 - CalTopo's dotted and arrow styles exist, but nobody has seen what they write yet, so Cairn exports them as `solid` for now. Once a CalTopo export with each style turns up, mapping them takes one line each. A directional arrow can only become `solid` or `dash`.
 
-CalTopo's KML and GPX don't carry a pattern at all, so every line read from them is solid.
+CalTopo's KML and GPX don't carry a pattern at all, so every line read from them is solid. An onX export does carry its line style, and Cairn keeps it.
 
 ### Can I bulk-edit before export?
 
@@ -177,17 +187,26 @@ The page loads only a few things:
 
 The site's Content Security Policy only lets the page's scripts load code from, or connect to, its own origin and that one jsdelivr folder. The host (Vercel, possibly behind a Cloudflare proxy that passes the same security headers through) and jsdelivr see ordinary request metadata, such as your IP and that you loaded the page, but never your file. Whether hosting-level analytics are turned on can't be determined from the code.
 
-## The onX round trip
+## Round trip
 
-### Can I export from onX, clean it up in Cairn, and import it back?
+### Round-tripping onX data (batch edits)
 
-Partly. The first half works; the second half is untested.
+This is optional, and it takes some effort. onX's web map has no bulk editing, so if you want to change many icons, colors or line styles at once, you can send a folder through Cairn and back. The steps:
 
-**Into Cairn: yes.** The web app opens the GPX and KML files onX exports. Drop the GPX and the KML of one export together and they become one folder: the KML keeps areas' holes, the GPX keeps tracks' times. onX icons and colors are kept as they are, not re-guessed, and each says "Kept from your onX file." An icon name that isn't in Cairn's list of onX icons is kept too, but marked so you check it. Rows say whether a line is an onX Line or a Track. The gaps:
-- **No real onX export file has ever been tested.** The test files are synthetic, written to match onX's export code as decoded in the project's research (Oct 2026), not exported from a real account.
-- **Folders aren't in the files.** onX export files carry no folder information (per project docs, Aug 2026). Each file you drop becomes one folder named after the file, so exporting one onX folder at a time and dropping all the files together brings your folders back. Whether onX lets you name those export files is untested; if it doesn't, rename the files before dropping them. Cairn can't rename a folder yet.
-- **XML input is guarded.** Now that the browser reads XML, Cairn refuses any GPX or KML with a DTD and any XML file over 16 MB before parsing it.
+1. In the onX web map, put the markups you want to edit in one folder. Export that folder twice: once as **GPX** and once as **KML**.
+2. Drop both files into Cairn together. They become one folder. Icons, colors, line style and weight, and notes arrive as they are in onX.
+3. Edit. Icon, color, line style and weight can be changed for many rows at once. Names and notes are edited one item at a time.
+4. Export from Cairn.
+5. Import the files into onX, following the checklist.
+6. Delete the originals in onX yourself.
 
-**Re-importing creates duplicates. Tested on 2026-10-22.** We exported two waypoints from onX and re-imported that exact file, onX's own IDs included. onX added two *new* markups in a new folder instead of updating the originals. So a round trip today is: export from onX and keep that file as a backup, delete the originals in onX, then import the cleaned files from Cairn. Anything onX keeps outside the file (photos, shares, folder membership) is lost when you delete the originals, so back those up first. Otherwise every markup ends up twice and the copies count against the 3,000-markup limit.
+Things to know:
+- **onX imports everything as new markups.** It ignores the ids in the file, so it can't update the originals in place. Until you delete the originals you have every markup twice, and the copies count against the 3,000-markup limit.
+- **Deleting a folder in onX does not delete the markups inside it.** Delete the markups, then the folder.
+- **Keep your onX export as a backup.** Anything onX keeps outside the file (photos, shares) goes with the originals.
+- **Long notes are cut.** onX keeps the first 512 bytes of a note. Plain English is one byte per letter; accents and dashes take two or three. Cairn warns about notes that are too long.
+- **Long lines get thinner.** The first time a line goes into onX it drops about 15 to 25 percent of its points, keeping the ends.
+- **Areas lose holes.** An onX area has one outline.
+- **Folders aren't in the files.** Each file or pair you drop becomes one folder named after the file, so export one onX folder at a time.
 
-So the cleanup half works today, and the way back into onX is "replace", not "update".
+In two rounds of tests in a real onX account (October 2026), the edits listed in step 3 all came back as made.
