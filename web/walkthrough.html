@@ -42,7 +42,7 @@
       <span class="step-tag">Before</span>
       <h2>What the plain export gives onX</h2>
       <p>onX Backcountry only imports GPX and KML. CalTopo's own export page says those two formats lose line and marker
-        styles and folder organization. The one CalTopo export that keeps everything, GeoJSON, is the one onX can't open.
+        styles and folder organization. The one CalTopo export that keeps everything, GeoJSON, is the one onX can't open. Cairn reads GeoJSON, KML and GPX, so you can start from any of them (GeoJSON keeps the most).
         A CalTopo GPX carries names, coordinates, notes and Garmin line-color names, and nothing onX can use for icons or folders.</p>
       <div class="tbl-wrap"><table class="tbl wt-cmp">
         <thead><tr><th>Carried by</th><th>CalTopo GPX / KML</th><th>CalTopo GeoJSON, through Cairn</th></tr></thead>
@@ -63,10 +63,10 @@
 
     <section class="wt-step" id="drop">
       <span class="step-tag">Step 1</span>
-      <h2>Export from CalTopo as GeoJSON and add it to Cairn</h2>
+      <h2>Export from CalTopo (GeoJSON is best) and add it to Cairn</h2>
       <p>One export, one file. Cairn runs entirely in your browser, so the map never leaves your computer.</p>
       <figure class="wt-fig"><img src="walkthrough/01-landing.webp" width="1440" height="900" alt="Cairn's landing page: three steps and a drop zone for a CalTopo export">
-        <figcaption>The landing page. Drop a <code>.json</code> or <code>.geojson</code> file.</figcaption></figure>
+        <figcaption>The landing page. Drop a <code>.json</code>, <code>.geojson</code>, <code>.kml</code> or <code>.gpx</code> file.</figcaption></figure>
     </section>
 
     <section class="wt-step" id="found">
@@ -126,7 +126,7 @@
         <ul>
           <li>The onX side of the story hasn't been captured. The placeholders above stand in for it.</li>
           <li>What onX displays for a GPX waypoint with no onX icon hasn't been tested, so "no icon" describes the file, not what you will see in onX.</li>
-          <li>Whether onX shows imported descriptions as Notes, and whether re-importing updates items or duplicates them, are open questions. The <a href="faq.html#the-onx-round-trip">FAQ</a> has the details.</li>
+          <li>onX imports every file as new markups; it never updates existing ones. The <a href="faq.html#round-tripping-onx-data-batch-edits">FAQ</a> has the details.</li>
         </ul>
       </div>
     </section>

@@ -23,11 +23,11 @@ for how it's deployed.
 ### A walkthrough
 
 A real transformation, start to finish — a 100k trail race's aid stations, mile splits and
-course lines exported from CalTopo as GeoJSON.
+course lines exported from CalTopo as GeoJSON (KML and GPX work too).
 
 **1. Drop the file.** Nothing uploads anywhere; this all runs in your browser.
 
-<img src="./docs/screenshots/web-01-drop.png" alt="Cairn's drop-zone screen, prompting for a CalTopo GeoJSON export" width="800">
+<img src="./docs/screenshots/web-01-drop.png" alt="Cairn's drop-zone screen, prompting for a CalTopo export" width="800">
 
 **2. Review what came in.** 49 markups across aid stations, mile markers and the course lines,
 each already given a best-guess onX icon and color.
