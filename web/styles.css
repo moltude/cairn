@@ -285,8 +285,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
   align-items:center;max-height:min(236px,25vh);overflow-y:auto}
 .na-cell{display:flex;align-items:center;gap:8px;min-width:0}
 .na-cell svg{flex:none}
-.na-name,.na-after{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.na-after{font-style:italic;color:var(--muted)}
+.na-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---------- modals ---------- */
 .modal{position:fixed;inset:0;background:rgba(42,36,28,.38);display:flex;align-items:center;

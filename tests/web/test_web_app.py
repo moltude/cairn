@@ -714,7 +714,9 @@ def test_marker_popover_changes_one_items_icon_and_color(loaded: Page):
     pop.locator(".icon-search").fill("summ")
     assert pop.locator(".icon-pick").count() >= 1
     pop.locator('.icon-pick[data-icon="Summit"]').click()
-    assert "Summit · Blue" in pop.locator(".pop-desc").inner_text()
+    # The header shows the picked marker, not words for it (UI-26).
+    assert pop.locator(".pop-desc").count() == 0
+    assert pop.locator(".pop-preview svg.marker path").first.get_attribute("fill") == "#087AFF"
     assert loaded.evaluate(get)["icon"] == before["icon"]  # not yet applied
 
     loaded.click("#pop-apply")
@@ -861,8 +863,10 @@ def test_bulk_dialog_palette_follows_the_selection(loaded: Page):
     assert loaded.locator("#mark-dialog .icon-pick").count() == 0  # lines take no icon
     # live Now -> After preview
     loaded.locator('#mark-dialog .swatch-btn[aria-label="Purple"]').click()
-    after = loaded.locator("#mark-dialog .na-after").all_inner_texts()
-    assert after and all(t.endswith("· Purple") for t in after), after
+    assert loaded.locator("#mark-dialog .na-after").count() == 0   # marks only, no "Line · Purple"
+    after = loaded.locator("#mark-dialog .na-rows .na-cell:nth-child(3n) svg path").evaluate_all(
+        "els => [...new Set(els.map(e => e.getAttribute('stroke')).filter(c => c !== '#2A241C'))]")
+    assert after == ["#800080"], after
     loaded.click("#bulk-apply")
     colors = loaded.evaluate(
         "DATA.groups.flatMap(g=>g.items).filter(i=>SEL.has(i.uid)).map(i=>i.color)"

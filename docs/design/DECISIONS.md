@@ -596,3 +596,7 @@ the controls themselves, no explanatory sentences or example-laden placeholders.
 "Lines take the color only." removed (three places); the icon search placeholder is "Find an
 icon" (no "— try “climb”, “water”, “camp”"). Confirmations that say what will be lost (Start
 over, unsaved note) stay. Help is documentation and is exempt.
+
+Also removed (2026-10-23, owner's example "Line · Brown"): the words under the name in the
+single-item popover ("Summit · Red", "Line · Brown") and beside each After mark in the
+several-items dialog ("Camp · Blue"). The drawn marker or line already shows the choice.
