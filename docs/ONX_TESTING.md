@@ -29,7 +29,7 @@ mess. Written after the 2026-10-22 round (97 test markups, cleaned up by hand).
 
 | Topic | Result |
 |---|---|
-| Re-import of an onX export | Always creates new markups (ids ignored) |
+| Re-import of an onX export | Always creates new markups with new uuids. Both GPX `<desc>` `id=` and KML `<Data name="id">` are ignored, even when they hold the uuids of live markups in the same account, and the originals are left untouched: byte-identical KML re-export, unchanged API records (run id1, `docs/ONX_ROUND_TRIP_IDENTITY.md`) |
 | Waypoint icon / color | Kept (`onx:icon`, `onx:color` in GPX) |
 | Track color / style (dash) / weight | Kept |
 | Area color / fill | **Only** via GPX `<rte>` + `<type>Area</type>` + `onx:color` / `onx:fill_color`; KML area styles are ignored |
