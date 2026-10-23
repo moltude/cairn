@@ -654,6 +654,10 @@ def export_zip() -> bytes:
     out = Path("/tmp/out")
     buf = io.BytesIO()
     manifest = []
+    # Every member's bytes, by zip path, so export_folder_zip can hand out one
+    # folder's files without exporting again (and without re-reading /tmp/out,
+    # where a previous export's files may linger).
+    blobs: dict = {}
     unlisted_dropped = 0  # dropped items in folders that produced no file at all
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for n, g in enumerate(groups, 1):
@@ -703,14 +707,15 @@ def export_zip() -> bytes:
                 ):
                     files.append((p, cnt))
 
-            entry = {"n": n, "folder": g["name"], "files": [], "count": 0}
+            entry = {"n": n, "folder": g["name"], "safe": safe, "files": [], "count": 0}
             for p, cnt in files:
                 if not cnt:
                     # Every item of this kind was unusable: an empty file would
                     # be an import step that imports nothing.
                     continue
                 rel = f"{n:02d}_{safe}/{p.name}"
-                zf.writestr(rel, p.read_bytes())
+                blobs[rel] = p.read_bytes()
+                zf.writestr(rel, blobs[rel])
                 entry["files"].append({"path": rel, "count": cnt, "kml": p.suffix == ".kml"})
                 entry["count"] += cnt
             entry["expected"] = len(wps) + len(trks) + len(shapes)
@@ -744,6 +749,23 @@ def export_zip() -> bytes:
     _STATE["manifest"] = manifest
     _STATE["unlisted_dropped"] = unlisted_dropped
     _STATE["runbook"] = runbook
+    _STATE["blobs"] = blobs
+    return buf.getvalue()
+
+
+def export_folder_zip(n: int) -> bytes:
+    """A .zip of ONE folder from the last export_zip: that folder's NN_Name/
+    directory with the same files, byte for byte, and nothing else (no
+    RUNBOOK.md). `n` is the folder's number on screen (manifest "n"), which is
+    not a list index: folders that wrote no file are skipped but keep a number."""
+    entry = next((e for e in _STATE.get("manifest") or [] if e["n"] == int(n)), None)
+    if entry is None:
+        raise ValueError(f"No exported folder {n}. Export again.")
+    blobs = _STATE["blobs"]
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in entry["files"]:
+            zf.writestr(f["path"], blobs[f["path"]])
     return buf.getvalue()
 
 
@@ -778,6 +800,11 @@ def runbook_summary_json() -> str:
     )
 
 
+def _n(count: int, word: str) -> str:
+    """'1 file', '3 files', '1,200 markups'."""
+    return f"{count:,} {word}{'' if count == 1 else 's'}"
+
+
 def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
     """The artifact that was missing: how to actually get this INTO onX.
 
@@ -788,16 +815,16 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
     s = runbook_summary(manifest, unlisted_dropped)
     total_items = s["written"]
     kml_batches = s["kml_batches"]
+    nf = len(manifest)
     L = [
         "# Import checklist",
         "",
-        f"**{len(manifest)} folders · {total_items} markups · {len(manifest)} imports**",
+        f"**{_n(nf, 'folder')} · {_n(total_items, 'markup')} · {_n(nf, 'import')}**",
         "",
-        "Before you start:",
-        "- onX **Premium or Elite** is required to import.",
-        f"- Use the **Web Map** at webmap.onxmaps.com on a computer."
-        + (f" {kml_batches} of these batches contain KML, which the phone app cannot import." if kml_batches else ""),
-        "- Each numbered step is ONE import. Drag in **all** the files for that step together.",
+        # The same intro line as the export screen (web/app.js renderRunbook).
+        "Import each folder into onX's **Web Map** (webmap.onxmaps.com), one at a time. "
+        "Importing needs onX **Premium or Elite**."
+        + (f" {kml_batches} of these folders contain KML, which the phone app cannot import." if kml_batches else ""),
         "",
     ]
     if s["dropped"]:
@@ -815,15 +842,16 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "",
         ]
     for e in manifest:
+        # The same three steps as each folder box on the export screen.
+        nfiles = len(e["files"])
         flist = ", ".join(f["path"].split("/")[-1] for f in e["files"])
+        add = "add this file" if nfiles == 1 else f"add these {nfiles} files together"
         L += [
-            f"### {e['n']}. {e['folder']}  ({e['count']} markups)",
+            f"### {e['n']}. {e['folder']}  ({_n(e['count'], 'markup')} · {_n(nfiles, 'file')})",
             "",
-            f"- [ ] My Content → **Import** → select **{flist}**",
-            "- [ ] Tick **“Import map data to a new folder”**",
-            "- [ ] Click **Import**",
-            f"- [ ] The new folder appears at the top named `Import <today>`. "
-            f"**Rename it to:** `{e['folder']}`",
+            f"1. In onX, choose **Import** and {add}: **{flist}**",
+            "2. Tick **Import map data to a new folder**.",
+            f"3. onX names the folder by date. **Rename it to:** `{e['folder']}`",
             "",
         ]
     renamed = [(e["folder"], o, nw) for e in manifest for o, nw in e.get("renamed", ())]
@@ -863,8 +891,8 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
     L += [
         "---",
         "",
-        f"When finished, My Content should show **{len(manifest)} folders** "
-        f"and **{total_items} markups**.",
+        f"When finished, My Content should show **{_n(nf, 'folder')}** "
+        f"and **{_n(total_items, 'markup')}**.",
         "",
         "If a folder is missing items, delete that folder and redo just its step.",
     ]
