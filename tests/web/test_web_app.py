@@ -494,8 +494,9 @@ def test_download_all_and_each_folder_download(loaded: Page):
         loaded.wait_for_timeout(300)
         with loaded.expect_download() as dl:
             btns.nth(i).click()
-        safe = e["files"][0]["path"].split("/")[0].split("_", 1)[1]
-        assert dl.value.suggested_filename == f"{safe}.zip"
+        # Named after its NN_Name/ directory, so "A/B" and "A_B" can't both be A_B.zip.
+        nn_dir = e["files"][0]["path"].split("/")[0]
+        assert dl.value.suggested_filename == f"{nn_dir}.zip"
         one = zipfile.ZipFile(dl.value.path())
         assert one.namelist() == [f["path"] for f in e["files"]]
         for name in one.namelist():
@@ -2072,7 +2073,7 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     # Download this folder, under the enforced CSP: the same three files, no runbook.
     with page.expect_download() as dl1:
         page.click(".rb-dl")
-    assert dl1.value.suggested_filename == "onx_dialect.zip"
+    assert dl1.value.suggested_filename == "01_onx_dialect.zip"
     one = zipfile.ZipFile(dl1.value.path())
     assert sorted(one.namelist()) == sorted(n for n in zf.namelist() if n != "RUNBOOK.md")
     assert all(one.read(n) == zf.read(n) for n in one.namelist())
@@ -2263,3 +2264,486 @@ def test_caltopo_gpx_icons_and_colors_set_in_cairn_reach_the_exported_gpx(csp_pa
     # The rest keep what Cairn chose at load, still written as onX styling.
     assert got["Point with no colour"][0] == "Location"
     assert all(icon and color for icon, color in got.values())
+
+
+# ---------------------------------------------------------------------------
+# Folders UI (UI-32): drag rows to a rail folder, + New folder, rename in the
+# header (and merge on a taken name), More ▸ Move to…
+# Bitterroots at load: Unorganized 43, Lost Trail Pass 31, North Roots 22,
+# Trapper area 21, Lost Horse Canyon 18, Blodgett 17, Central roots 10,
+# Sheafman ridge 9, Paddling 5, Mill Creek Canyon 1.
+# ---------------------------------------------------------------------------
+
+
+def _layout(page: Page) -> list:
+    """[(name, count)] as the UI has it, after checking the bridge agrees."""
+    ui = page.evaluate("DATA.groups.map(g => [g.key, g.name, g.items.map(i => i.uid)])")
+    py = page.evaluate(
+        "JSON.parse(py.runPython('import json; json.dumps(bridge._layout())'))"
+    )
+    assert [[f["key"], f["name"], f["uids"]] for f in py] == ui
+    return [(name, len(uids)) for _key, name, uids in ui]
+
+
+def _rail(page: Page, name: str):
+    return page.locator("#folder-facets .facet-btn", has=page.locator(
+        ".facet-name", has_text=re.compile(rf"^{re.escape(name)}$")))
+
+
+def _section(page: Page, name: str):
+    return page.locator("section.folder", has=page.locator(
+        ".folder-name", has_text=re.compile(rf"^{re.escape(name)}$")))
+
+
+def _press(page: Page, source):
+    """Mouse down on a control in a row, then move past the 6px threshold."""
+    source.scroll_into_view_if_needed()
+    b = source.bounding_box()
+    x, y = b["x"] + min(20, b["width"] / 2), b["y"] + b["height"] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 10, y + 10, steps=3)
+
+
+def _hover_to(page: Page, target):
+    # Centre it in its scroller first: a rail entry low in the list can sit
+    # under the rail's sticky footer (auto-scroll has its own test).
+    target.evaluate("e => e.scrollIntoView({block: 'center'})")
+    b = target.bounding_box()
+    page.mouse.move(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2, steps=6)
+
+
+def _drag(page: Page, source, target):
+    _press(page, source)
+    _hover_to(page, target)
+    page.mouse.up()
+
+
+def _first_row(page: Page, folder: str):
+    return _section(page, folder).locator("tbody tr").first
+
+
+def test_drag_one_row_to_a_rail_folder(loaded: Page):
+    page = loaded
+    row = _first_row(page, "Lost Trail Pass")
+    uid = row.get_attribute("data-uid")
+    _press(page, row.locator(".note-btn"))
+    _hover_to(page, _rail(page, "North Roots"))
+    expect(page.locator("#drag-ghost")).to_have_text("Move 1 item")
+    expect(_rail(page, "Lost Trail Pass")).to_have_class(re.compile(r"\bhere-now\b"))
+    expect(_rail(page, "Lost Trail Pass").locator(".facet-count")).to_have_text("here now")
+    expect(_rail(page, "North Roots")).to_have_class(re.compile(r"\bdrop-over\b"))
+    expect(page.locator(f'tr[data-uid="{uid}"]')).to_have_class(re.compile(r"\bdragging\b"))
+    page.mouse.up()
+    expect(page.locator("#drag-ghost")).to_have_count(0)
+    expect(page.locator("#status")).to_have_text("Moved 1 item to North Roots.")
+    lay = dict(_layout(page))
+    assert lay["Lost Trail Pass"] == 30 and lay["North Roots"] == 23
+    expect(_section(page, "North Roots").locator(f'tr[data-uid="{uid}"]')).to_have_count(1)
+    expect(_rail(page, "North Roots").locator(".facet-count")).to_have_text("23")
+    expect(page.locator(".here-now, .drop-over, tr.dragging")).to_have_count(0)
+
+
+def test_drag_several_ticked_rows_moves_them_all(loaded: Page):
+    page = loaded
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    uids = [rows.nth(i).get_attribute("data-uid") for i in (0, 2, 4)]
+    for u in uids:
+        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
+    _press(page, page.locator(f'tr[data-uid="{uids[1]}"] .icon-btn, tr[data-uid="{uids[1]}"] .line-btn'))
+    _hover_to(page, _rail(page, "Paddling"))
+    expect(page.locator("#drag-ghost")).to_have_text("Move 3 items")
+    expect(page.locator("tr.dragging")).to_have_count(3)
+    page.mouse.up()
+    expect(page.locator("#status")).to_have_text("Moved 3 items to Paddling.")
+    paddling = page.evaluate("DATA.groups.find(g => g.name === 'Paddling').items.map(i => i.uid)")
+    assert set(uids) <= set(paddling) and len(paddling) == 8
+    # Moved rows are unticked (their ticks did their job).
+    assert page.evaluate("SEL.size") == 0
+    expect(page.locator("#selbar")).to_be_hidden()
+
+    # Dragging an unticked row moves only that row, and leaves other ticks alone.
+    keep = _first_row(page, "Trapper area").get_attribute("data-uid")
+    page.locator(f'tr[data-uid="{keep}"] .sel-box').check()
+    other = _first_row(page, "North Roots")
+    ouid = other.get_attribute("data-uid")
+    _drag(page, other.locator(".note-btn"), _rail(page, "Blodgett"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to Blodgett.")
+    assert dict(_layout(page))["Blodgett"] == 18
+    assert page.evaluate("[...SEL]") == [keep]
+    expect(page.locator("#selcount")).to_have_text("1 selected")
+
+
+def test_drag_from_an_unfocused_name_but_not_a_focused_one(loaded: Page):
+    page = loaded
+    row = _first_row(page, "Trapper area")
+    uid = row.get_attribute("data-uid")
+    name = row.locator(".name-in")
+    before = name.input_value()
+    _drag(page, name, _rail(page, "Paddling"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to Paddling.")
+    assert page.evaluate("Object.keys(EDITS).length") == 0
+    moved = page.locator(f'tr[data-uid="{uid}"] .name-in')
+    expect(moved).to_have_value(before)
+
+    # In a name field you are already typing in, a press-and-drag selects text.
+    field = _first_row(page, "Blodgett").locator(".name-in")
+    field.click()
+    _press(page, field)
+    _hover_to(page, _rail(page, "Paddling"))
+    expect(page.locator("#drag-ghost")).to_have_count(0)
+    page.mouse.up()
+    assert dict(_layout(page))["Blodgett"] == 17
+
+
+def test_drag_onto_new_folder_then_name_it(loaded: Page):
+    page = loaded
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    uids = [rows.nth(i).get_attribute("data-uid") for i in (0, 1, 2)]
+    for u in uids:
+        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
+    _press(page, page.locator(f'tr[data-uid="{uids[0]}"] .note-btn'))
+    _hover_to(page, page.locator(".new-folder"))
+    expect(page.locator(".new-folder")).to_have_class(re.compile(r"\bdrop-over\b"))
+    page.mouse.up()
+    expect(page.locator("#status")).to_have_text("Moved 3 items to a new folder.")
+    inp = page.locator("#folder-facets .folder-name-in")
+    expect(inp).to_be_focused()
+    expect(inp).to_have_value("New folder")
+    assert page.evaluate("[document.activeElement.selectionStart, document.activeElement.selectionEnd]") == [0, 10]
+    page.keyboard.type("Camps")
+    page.keyboard.press("Enter")
+    expect(_rail(page, "Camps")).to_be_focused()
+    lay = _layout(page)
+    assert lay[-1] == ("Camps", 3) and dict(lay)["Lost Trail Pass"] == 28
+    expect(_section(page, "Camps").locator("tbody tr")).to_have_count(3)
+
+    # A second one: "New folder" is free again, so it is taken; Esc keeps it.
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
+    expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder")
+    page.keyboard.press("Escape")
+    assert _layout(page)[-1] == ("New folder", 1)
+    # The default is never a name that's taken: the third is "New folder 2".
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
+    expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder 2")
+    page.locator("#filter").click()   # leaving the field keeps the name
+    expect(page.locator("#folder-facets .folder-name-in")).to_have_count(0)
+    assert _layout(page)[-1] == ("New folder 2", 1)
+
+
+def test_drag_onto_its_own_folder_or_nowhere_does_nothing(loaded: Page):
+    page = loaded
+    before = _layout(page)
+    row = _first_row(page, "Lost Trail Pass")
+    _drag(page, row.locator(".note-btn"), _rail(page, "Lost Trail Pass"))
+    assert _layout(page) == before
+    expect(page.locator("#status")).to_have_text("Map loaded")
+    # Dropped on the list, the search box, the rail's "All": nothing.
+    for target in (page.locator("#folders tbody tr").nth(5), page.locator("#filter"),
+                   page.locator("#folder-facets .facet-btn").first):
+        _drag(page, row.locator(".note-btn"), target)
+        assert _layout(page) == before
+    expect(page.locator("#status")).to_have_text("Map loaded")
+    # The drop's click didn't land as a click on what was under it.
+    assert page.evaluate("FILTERS.folder") is None
+    assert page.evaluate("POP") is None and page.evaluate("NOTE_EDIT") is None
+
+
+def test_escape_cancels_a_drag(loaded: Page):
+    page = loaded
+    before = _layout(page)
+    _press(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"))
+    target = _rail(page, "North Roots")
+    _hover_to(page, target)
+    expect(target).to_have_class(re.compile(r"\bdrop-over\b"))
+    page.keyboard.press("Escape")
+    expect(page.locator("#drag-ghost")).to_have_count(0)
+    expect(page.locator(".drop-over, .here-now, tr.dragging")).to_have_count(0)
+    page.mouse.move(10, 10)
+    _hover_to(page, target)
+    page.mouse.up()
+    assert _layout(page) == before
+    # Releasing over North Roots after Esc didn't filter to it either.
+    assert page.evaluate("FILTERS.folder") is None
+    expect(target).to_have_attribute("aria-pressed", "false")
+
+
+def test_rename_a_folder_in_its_header(loaded: Page):
+    page = loaded
+    btn = _section(page, "North Roots").locator(".folder-name")
+    btn.click()
+    inp = page.locator(".folder-head .folder-name-in")
+    expect(inp).to_be_focused()
+    expect(inp).to_have_value("North Roots")
+
+    # Empty: refused, the old name kept.
+    inp.fill("   ")
+    page.keyboard.press("Enter")
+    expect(page.locator("#status")).to_have_text("A folder needs a name.")
+    expect(_section(page, "North Roots")).to_have_count(1)
+    expect(_section(page, "North Roots").locator(".folder-name")).to_be_focused()
+
+    # The same name: nothing happens and it isn't a change.
+    _section(page, "North Roots").locator(".folder-name").click()
+    page.keyboard.press("Enter")
+    assert page.evaluate("RENAMED.size") == 0
+
+    # Esc keeps the old name.
+    _section(page, "North Roots").locator(".folder-name").click()
+    page.keyboard.type("Nope")
+    page.keyboard.press("Escape")
+    expect(_section(page, "North Roots")).to_have_count(1)
+
+    # Another case of its own name is a rename.
+    _section(page, "North Roots").locator(".folder-name").click()
+    page.keyboard.type("north roots")
+    page.keyboard.press("Enter")
+    expect(_section(page, "north roots")).to_have_count(1)
+    expect(_rail(page, "north roots")).to_have_count(1)
+    assert ("north roots", 22) in _layout(page)
+
+    # A new name, by leaving the field.
+    _section(page, "north roots").locator(".folder-name").click()
+    page.keyboard.type("High Roots")
+    page.locator("#filter").click()
+    expect(_section(page, "High Roots")).to_have_count(1)
+    assert ("High Roots", 22) in _layout(page)
+
+
+def test_rename_onto_a_taken_name_offers_to_merge(loaded: Page):
+    page = loaded
+    before = dict(_layout(page))
+    _section(page, "Lost Trail Pass").locator(".folder-name").click()
+    page.keyboard.type("north ROOTS ")
+    page.keyboard.press("Enter")
+    dlg = page.locator("#confirm")
+    expect(dlg).to_be_visible()
+    expect(page.locator("#confirm-title")).to_have_text("“North Roots” already exists")
+    expect(page.locator("#confirm-body")).to_have_text(
+        "Move the 31 items in “Lost Trail Pass” into it?")
+    expect(page.locator("#confirm-actions button")).to_have_text(["Move them", "Cancel"])
+    expect(page.locator("#confirm-actions button", has_text="Cancel")).to_be_focused()
+
+    # Cancel (Enter on the default) keeps the old name and both folders.
+    page.keyboard.press("Enter")
+    expect(dlg).to_be_hidden()
+    assert dict(_layout(page)) == before
+    expect(_section(page, "Lost Trail Pass").locator(".folder-name")).to_be_focused()
+    # Esc is Cancel too.
+    _section(page, "Lost Trail Pass").locator(".folder-name").click()
+    page.keyboard.type("North Roots")
+    page.keyboard.press("Enter")
+    page.keyboard.press("Escape")
+    assert dict(_layout(page)) == before
+
+    # Move them: everything goes into North Roots, which keeps its name and place.
+    _section(page, "Lost Trail Pass").locator(".folder-name").click()
+    page.keyboard.type("North Roots")
+    page.keyboard.press("Enter")
+    page.click("#confirm-actions button:text-is('Move them')")
+    lay = _layout(page)
+    names = [n for n, _ in lay]
+    assert "Lost Trail Pass" not in names
+    assert names.index("North Roots") == 1 and dict(lay)["North Roots"] == 53
+    expect(page.locator("#status")).to_have_text("Moved 31 items to North Roots.")
+    expect(_rail(page, "Lost Trail Pass")).to_have_count(0)
+    assert page.evaluate("DATA.totals.folders") == 9
+
+
+def test_keyboard_move_to_end_to_end(loaded: Page):
+    page = loaded
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    uids = [rows.nth(i).get_attribute("data-uid") for i in (0, 1)]
+    page.locator(f'tr[data-uid="{uids[0]}"] .sel-box').focus()
+    page.keyboard.press("Space")
+    page.locator(f'tr[data-uid="{uids[1]}"] .sel-box').focus()
+    page.keyboard.press("Space")
+    expect(page.locator("#selcount")).to_have_text("2 selected")
+
+    page.locator("#more-btn").focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#bulk-move")).to_be_focused()
+    expect(page.locator("#more-menu button").first).to_have_text("Move to…")
+    page.keyboard.press("Enter")
+    pop = page.locator("#move-pop")
+    expect(pop).to_be_visible()
+    expect(pop.locator(".move-h")).to_have_text("Move 2 items to")
+    here = pop.locator(".move-opt", has_text="Lost Trail Pass")
+    expect(here).to_be_disabled()
+    expect(here).to_contain_text("here now")
+    expect(pop.locator(".move-opt").last).to_have_text("+ New folder…")
+    expect(pop.locator(".move-opt").first).to_be_focused()   # Unorganized
+
+    # Esc closes it and gives focus back to More.
+    page.keyboard.press("Escape")
+    expect(pop).to_be_hidden()
+    expect(page.locator("#more-btn")).to_be_focused()
+    expect(page.locator("#selcount")).to_have_text("2 selected")
+
+    # Arrow keys skip "here now": Down from Unorganized lands on North Roots.
+    page.keyboard.press("Enter")
+    page.keyboard.press("Enter")
+    page.keyboard.press("ArrowDown")
+    expect(pop.locator(".move-opt", has_text="North Roots")).to_be_focused()
+    page.keyboard.press("ArrowUp")
+    page.keyboard.press("ArrowUp")          # wraps to the end
+    expect(pop.locator(".move-new")).to_be_focused()
+    page.keyboard.press("Home")
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Enter")
+    expect(pop).to_be_hidden()
+    expect(page.locator("#status")).to_have_text("Moved 2 items to North Roots.")
+    # The moved rows are unticked, so More is off: focus goes to where they went.
+    expect(_rail(page, "North Roots")).to_be_focused()
+    expect(page.locator("#selbar")).to_be_hidden()
+    lay = dict(_layout(page))
+    assert lay["North Roots"] == 24 and lay["Lost Trail Pass"] == 29
+
+    # + New folder…: the folder is made, its name is open in the rail.
+    for u in uids:
+        page.locator(f'tr[data-uid="{u}"] .sel-box').focus()
+        page.keyboard.press("Space")
+    page.locator("#more-btn").focus()
+    page.keyboard.press("Enter")
+    page.keyboard.press("Enter")
+    page.keyboard.press("End")
+    page.keyboard.press("Enter")
+    inp = page.locator("#folder-facets .folder-name-in")
+    expect(inp).to_be_focused()
+    page.keyboard.type("Yurts")
+    page.keyboard.press("Enter")
+    expect(_rail(page, "Yurts")).to_be_focused()
+    lay = _layout(page)
+    assert lay[-1] == ("Yurts", 2) and dict(lay)["North Roots"] == 22
+
+
+def test_move_to_opens_the_folded_folders_section_for_the_new_name(loaded: Page):
+    page = loaded
+    page.click('.facet[data-sec="folders"] .sec-h')
+    expect(page.locator("#folder-facets")).to_be_hidden()
+    _first_row(page, "Paddling").locator(".sel-box").check()
+    page.click("#more-btn")
+    page.click("#bulk-move")
+    page.click("#move-pop .move-new")
+    expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
+    page.keyboard.press("Enter")
+    assert _layout(page)[-1] == ("New folder", 1)
+
+
+def test_an_emptied_folder_disappears_with_its_filter(loaded: Page):
+    page = loaded
+    _rail(page, "Mill Creek Canyon").click()
+    expect(page.locator("#chips")).to_contain_text("Folder: Mill Creek Canyon")
+    row = _first_row(page, "Mill Creek Canyon")
+    key = page.evaluate("DATA.groups.find(g => g.name === 'Mill Creek Canyon').key")
+    _drag(page, row.locator(".note-btn, .icon-btn, .line-btn").first, _rail(page, "Paddling"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to Paddling.")
+    expect(_rail(page, "Mill Creek Canyon")).to_have_count(0)
+    assert page.evaluate("FILTERS.folder") is None
+    expect(page.locator("#chips")).to_be_hidden()
+    expect(page.locator(ROW)).to_have_count(177)
+    assert dict(_layout(page))["Paddling"] == 6
+    assert page.evaluate("DATA.totals.folders") == 9
+
+
+def test_a_collapsed_folder_that_is_merged_away_is_forgotten(loaded: Page):
+    page = loaded
+    _section(page, "Paddling").locator(".collapse").click()
+    key = page.evaluate("DATA.groups.find(g => g.name === 'Paddling').key")
+    assert page.evaluate(f"COLLAPSED.has({json.dumps(key)})")
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.type("Blodgett")
+    page.keyboard.press("Enter")
+    page.click("#confirm-actions button:text-is('Move them')")
+    assert page.evaluate(f"COLLAPSED.has({json.dumps(key)})") is False
+    assert dict(_layout(page))["Blodgett"] == 22
+
+
+def test_moved_items_keep_their_edits_and_exclusion(loaded: Page):
+    page = loaded
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    a, b = rows.nth(0).get_attribute("data-uid"), rows.nth(1).get_attribute("data-uid")
+    name = page.locator(f'tr[data-uid="{a}"] .name-in')
+    name.fill("Renamed before the move")
+    name.press("Enter")
+    page.locator(f'tr[data-uid="{b}"] .sel-box').check()
+    _menu_action(page, "#bulk-exclude")
+    _clear_selection(page)
+    for u in (a, b):
+        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
+    page.click("#more-btn")
+    page.click("#bulk-move")
+    page.click('#move-pop .move-opt:has-text("Paddling")')
+    sec = _section(page, "Paddling")
+    expect(sec.locator(f'tr[data-uid="{a}"] .name-in')).to_have_value("Renamed before the move")
+    expect(sec.locator(f'tr[data-uid="{b}"]')).to_have_class(re.compile(r"\bexcluded\b"))
+    excluded_name = page.evaluate(f"DATA.groups.flatMap(g => g.items).find(i => i.uid === '{b}').name")
+    zf = zipfile.ZipFile(io.BytesIO(export_zip_bytes(page)))
+    pad = "".join(zf.read(n).decode() for n in zf.namelist() if "_Paddling/" in n)
+    lost = "".join(zf.read(n).decode() for n in zf.namelist() if "_Lost_Trail_Pass/" in n)
+    assert "Renamed before the move" in pad and "Renamed before the move" not in lost
+    assert f"<name>{excluded_name}</name>" not in pad + lost
+
+
+def test_export_after_moves_and_renames(loaded: Page):
+    page = loaded
+    # Empty Mill Creek Canyon into Paddling, rename Blodgett, make a new folder.
+    _drag(page, _first_row(page, "Mill Creek Canyon").locator(".note-btn"), _rail(page, "Paddling"))
+    _section(page, "Blodgett").locator(".folder-name").click()
+    page.keyboard.type("Blodgett / Big Creek")
+    page.keyboard.press("Enter")
+    rows = _section(page, "Unorganized").locator("tbody tr")
+    for i in (0, 1, 2, 3):
+        rows.nth(i).locator(".sel-box").check()
+    _press(page, rows.nth(0).locator(".note-btn"))
+    _hover_to(page, page.locator(".new-folder"))
+    page.mouse.up()
+    page.keyboard.type("Ski lines")
+    page.keyboard.press("Enter")
+    lay = _layout(page)
+    _done(page)
+    boxes = page.locator("#runbook .rb-step")
+    expect(boxes).to_have_count(10)
+    manifest = page.evaluate("MANIFEST")
+    assert [e["folder"] for e in manifest] == [n for n, _ in lay]
+    assert [e["count"] for e in manifest] == [c for _, c in lay]
+    assert manifest[-1]["folder"] == "Ski lines" and manifest[-1]["count"] == 4
+    expect(boxes.last.locator("h2")).to_have_text("Ski lines · 4 markups · 1 file")
+    expect(boxes.last.locator(".rb-do li").last).to_have_text("onX names the folder by date. Rename it to Ski lines.")
+    big = boxes.filter(has_text="Blodgett / Big Creek")
+    expect(big.locator(".rb-do li").last).to_contain_text("Rename it to Blodgett / Big Creek.")
+    for i, e in enumerate(manifest):
+        page.wait_for_timeout(300)
+        with page.expect_download() as dl:
+            boxes.nth(i).locator(".rb-dl").click()
+        nn = f"{i + 1:02d}_{e['safe']}"
+        assert dl.value.suggested_filename == f"{nn}.zip"
+        names = zipfile.ZipFile(dl.value.path()).namelist()
+        assert names == [f["path"] for f in e["files"]] and all(n.startswith(nn + "/") for n in names)
+    assert manifest[5]["safe"] == "Blodgett_Big_Creek"
+    assert manifest[-1]["files"][0]["path"].startswith("10_Ski_lines/Ski_lines_")
+    # Back, move more, export again: the screen follows.
+    page.click("#back")
+    _drag(page, _first_row(page, "Ski lines").locator(".note-btn"), _rail(page, "Paddling"))
+    _done(page)
+    manifest = page.evaluate("MANIFEST")
+    assert manifest[-1]["count"] == 3
+    assert [e["count"] for e in manifest] == [c for _, c in _layout(page)]
+
+
+def test_start_over_counts_moves_and_renames(loaded: Page):
+    page = loaded
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    rows.nth(0).locator(".sel-box").check()
+    rows.nth(1).locator(".sel-box").check()
+    _drag(page, rows.nth(0).locator(".note-btn"), _rail(page, "Paddling"))
+    _section(page, "Blodgett").locator(".folder-name").click()
+    page.keyboard.type("Blodgett 2")
+    page.keyboard.press("Enter")
+    page.locator(".newmap").first.click()
+    expect(page.locator("#confirm-body")).to_have_text(
+        "You have 3 unexported changes to this map. Starting over discards them.")
+    page.click("#confirm-actions button:text-is('Start over')")
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    assert page.evaluate("MOVED.size + RENAMED.size") == 0
+    assert page.evaluate("window.__cairnLoaded") is False

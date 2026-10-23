@@ -579,3 +579,23 @@ def _random_session(rng: random.Random, paths) -> None:
 @pytest.mark.parametrize("seed", range(4))
 def test_random_folder_sessions_lose_and_duplicate_nothing(fixture, seed):
     _random_session(random.Random(f"{fixture}:{seed}"), FIXTURE_SETS[fixture])
+
+
+def test_merging_an_empty_folder_removes_it():
+    """PR-C: renaming a folder that loaded empty onto a taken name, then "Move
+    them", must not leave the empty folder behind under its old name."""
+    def pt(fid, title, folder):
+        return {"type": "Feature", "id": fid, "geometry": {"type": "Point", "coordinates": [-114, 46]},
+                "properties": {"class": "Marker", "title": title, "folderId": folder}}
+    doc = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "id": f, "geometry": None, "properties": {"class": "Folder", "title": t}}
+        for f, t in (("fa", "A"), ("fe", "Empty"))
+    ] + [pt("p1", "One", "fa")]}
+    data = json.loads(bridge.load_document(json.dumps(doc), "m.json"))
+    if "Empty" not in [g["name"] for g in data["groups"]]:
+        pytest.skip("parse_geojson no longer keeps an empty folder")
+    assert json.loads(bridge.rename_folder("fe", "a"))["duplicate"]["key"] == "fa"
+    res = json.loads(bridge.merge_folders("fe", "fa"))
+    assert res["removed"] == ["fe"] and res["moved"] == 0
+    assert [f["name"] for f in res["folders"]] == ["A"]
+    assert set(bridge._STATE["doc"].folders) == {"fa"}

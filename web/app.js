@@ -342,7 +342,10 @@ function renderRail() {
   DATA.groups.forEach(g => facetBtn(g.name, g.items.length, g.key, isUnorganized(g)));
   // The drop target for a new folder. Not a button: folders are only ever
   // made by moving items into them (no empty folders up front).
-  fl.insertAdjacentHTML("beforeend", `<div class="new-folder" data-drop="${NEW_TARGET}">+ New folder</div>`);
+  const nf = document.createElement("div");
+  nf.className = "new-folder"; nf.textContent = "+ New folder";
+  nf.dataset.drop = NEW_TARGET;   // set as a property: an HTML parser turns the NUL into U+FFFD
+  fl.appendChild(nf);
 
   // Icons present in the map, most common first; "Default pin" last.
   const counts = new Map();
@@ -1113,6 +1116,10 @@ function keepNoteDraft() {
 function afterMove(res, uids, before) {
   const after = groupOfUid();
   uids.forEach(u => { if (before.get(u)?.key !== after.get(u)?.key) MOVED.add(u); });
+  // The ticks did their job: moved rows are unticked, so the next drag of one
+  // of them doesn't drag the whole old selection along. Other ticks stay.
+  uids.forEach(u => SEL.delete(u));
+  if (!SEL.size) ANCHOR = null;
   keepNoteDraft();
   refreshAfterEdit();
   const target = groupByKey(res.key);
@@ -1268,7 +1275,9 @@ function openMoveTo() {
     <div class="move-list" role="group" aria-labelledby="move-h">${DATA.groups.map(g => {
       const h = g.key === here;
       return `<button type="button" class="move-opt${isUnorganized(g) ? " unorg" : ""}" data-key="${esc(g.key)}"${h ? " disabled" : ""}>` +
-        `<span class="facet-name">${esc(g.name)}</span>${h ? `<span class="here"> · here now</span>` : ""}</button>`;
+        `<span class="facet-name">${esc(g.name)}${h ? " · here now" : ""}</span>` +
+        // The count tells apart two folders a file named alike ("Camp", "camp").
+        `<span class="facet-count">${h ? "" : g.items.length}</span></button>`;
     }).join("")}<button type="button" class="move-opt move-new">+ New folder…</button></div>`;
   p.querySelectorAll(".move-opt[data-key]").forEach(b => b.onclick = () => {
     const k = b.dataset.key; closeMove(false);
@@ -1518,7 +1527,9 @@ function downloadBlob(blob, name) {
 function downloadFolder(e) {
   try {
     const bytes = py.runPython(`bridge.export_folder_zip(${Number(e.n)})`).toJs();
-    downloadBlob(new Blob([bytes], { type: "application/zip" }), `${e.safe}.zip`);
+    // Named like its directory inside Download all ("02_Trip_1.zip"): two
+    // names can sanitize alike ("A/B", "A_B"), their numbers can't.
+    downloadBlob(new Blob([bytes], { type: "application/zip" }), `${String(e.n).padStart(2, "0")}_${e.safe}.zip`);
   } catch (err) {
     setStatus("Download failed: " + err.message, "err"); console.error(err);
   }

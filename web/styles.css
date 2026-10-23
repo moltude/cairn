@@ -543,7 +543,7 @@ tbody tr.dragging{background:#E9E3D2;opacity:.45}
   background:var(--sheet);border:1px solid var(--brown);box-shadow:var(--shadow);box-sizing:border-box}
 .move-h{padding:14px 18px 6px;font-weight:700;font-size:17px}
 .move-list{display:flex;flex-direction:column;padding:0 10px 8px}
-.move-opt{font:inherit;text-align:left;background:none;border:2px solid transparent;padding:6px 9px;cursor:pointer;
+.move-opt{display:flex;justify-content:space-between;gap:10px;font:inherit;text-align:left;background:none;border:2px solid transparent;padding:6px 9px;cursor:pointer;
   color:var(--ink);overflow-wrap:anywhere}
 .move-opt:hover:not(:disabled),.move-opt:focus-visible{background:var(--sel-row);border-color:var(--green);outline:none}
 .move-opt:disabled{color:#9A8F7C;cursor:default}
