@@ -27,6 +27,9 @@
   --link:#2F6690; --link-hover:#1F4A6B; --rule:#B9A887; --rule-soft:#D8CBAE; --control:#857555;
   --warning:#8A3F12; --contour:#D2C29F;
   --serif:"Libre Caslon Text",Georgia,"Times New Roman",serif;
+  /* The user's own text (names, notes) in the system face: upright and plain
+     reads better than the serif italic at row size. No font file, so no CSP change. */
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --shadow:0 8px 24px rgba(42,36,28,.18);
 }
 *{box-sizing:border-box}
@@ -79,9 +82,6 @@ body[data-stage=edit] .topbar{display:none}
 .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--brown)}
 .drop h1{font-size:clamp(32px,4.2vw,46px);line-height:1.1}
 .lede{margin:0;line-height:1.65;color:var(--ink)}
-.steps{margin:8px 0 0;padding:0;list-style:none;border-top:1px solid var(--rule)}
-.steps li{display:flex;gap:16px;padding:12px 0;border-bottom:1px solid var(--rule);line-height:1.5}
-.step-n{font-weight:700;color:var(--brown);width:20px;flex:none}
 .fineprint{margin:0;font-size:14px;font-style:italic;color:var(--muted)}
 .drop-target{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:16px;min-height:440px;padding:40px;background:var(--sheet);
@@ -203,19 +203,19 @@ tbody tr.sel{background:var(--sel-row)}
 tbody tr.note-open{background:var(--open-row)}
 tbody tr.editing{background:var(--open-row);box-shadow:inset 3px 0 0 var(--brown)}
 .name-in{width:100%;background:transparent;border:1px solid transparent;border-radius:2px;
-  padding:4px 8px;min-height:34px;display:block}
+  padding:4px 8px;min-height:34px;display:block;font-family:var(--sans);font-size:14px}
 .name-in:hover{border-color:var(--rule)}
 .name-in:focus{border-color:var(--brown);background:var(--sheet);outline:none}
 .note-btn{text-align:left;width:100%;background:none;border:none;padding:0;min-height:34px;
-  color:var(--muted);font-style:italic;display:flex;gap:6px;align-items:center;cursor:pointer}
+  color:var(--ink);font-family:var(--sans);font-size:14px;display:flex;gap:6px;align-items:center;cursor:pointer}
 .note-btn svg{flex:none;color:var(--brown);opacity:.65}
 .note-btn:hover svg,.note-btn:focus-visible svg{opacity:1}
 .note-btn:hover .note-text{color:var(--ink)}
 .note-text{flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.note-text.empty{font-style:italic;color:var(--muted)}
+.note-text.empty{color:var(--muted)}
 .note-ed{display:flex;flex-direction:column;gap:8px;padding:4px 0 8px}
 .desc-in{width:100%;line-height:1.5;background:var(--sheet);border:1px solid var(--brown);border-radius:2px;
-  padding:8px 10px;color:var(--ink);resize:vertical;min-height:96px}
+  padding:8px 10px;color:var(--ink);resize:vertical;min-height:96px;font-family:var(--sans);font-size:14px}
 .desc-in:focus{outline:2px solid var(--link);outline-offset:1px}
 .note-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .hint{font-size:13px;color:var(--muted);font-style:italic}
