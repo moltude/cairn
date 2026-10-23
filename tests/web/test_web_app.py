@@ -206,14 +206,76 @@ def _export_zip(page):
     return zipfile.ZipFile(io.BytesIO(base64.b64decode(b64)))
 
 
-def test_pyodide_boots_and_reports_engine_version(fresh_page: Page):
-    status_text = fresh_page.text_content("#status")
-    status_class = fresh_page.get_attribute("#status", "class")
+def test_no_loading_or_version_text_after_boot(fresh_page: Page):
+    body = fresh_page.inner_text("body")
+    for text in ("Loading", "Starting", "Ready", "engine v", "Python runtime"):
+        assert text not in body, text
+    assert fresh_page.text_content("#status").strip() == ""
+    assert fresh_page.is_enabled("#pick")
 
-    assert status_text is not None
-    assert "Ready" in status_text
-    assert re.search(r"engine v\d+\.\d+\.\d+", status_text), status_text
-    assert "ready" in (status_class or "")
+
+FOOTER_LINKS = ["Help", "FAQ", "Walkthrough", "GitHub"]
+
+
+@pytest.mark.parametrize("path", ["index.html", "faq.html", "walkthrough.html"])
+def test_footer_has_the_four_links_on_every_page(context, path):
+    page = context.new_page()
+    page.goto(f"{BASE_URL}/{path}")
+    foot = page.locator("footer.site-foot")
+    expect(foot).to_have_count(1)
+    labels = foot.locator("a, button").all_inner_texts()
+    assert labels == FOOTER_LINKS
+    assert "·" in foot.inner_text()
+    assert foot.locator("a[href='https://github.com/moltude/cairn']").count() == 1
+    page.close()
+
+
+def test_footer_help_opens_help_from_the_app(fresh_page: Page):
+    expect(fresh_page.locator("#help")).to_be_hidden()
+    fresh_page.click("footer.site-foot >> text=Help")
+    expect(fresh_page.locator("#help")).to_be_visible()
+
+
+def test_old_help_links_are_gone_from_the_app_chrome(fresh_page: Page):
+    assert fresh_page.locator("#topbar a, #topbar button, .rail-head a, .rail-head button").count() == 0
+
+
+@pytest.mark.parametrize("path", ["faq.html", "walkthrough.html"])
+def test_footer_help_on_doc_pages_links_to_the_app_help(context, path):
+    page = context.new_page()
+    page.goto(f"{BASE_URL}/{path}")
+    assert page.get_attribute("footer.site-foot >> text=Help", "href") == "./#help"
+    page.close()
+
+
+def test_hash_help_opens_the_help_modal(context):
+    page = context.new_page()
+    page.goto(f"{BASE_URL}/index.html#help")
+    expect(page.locator("#help")).to_be_visible()
+    page.close()
+
+
+def test_file_chosen_before_ready_is_processed_once_ready(context):
+    page = context.new_page()
+    held = []
+    page.route("**/dist/*.whl", lambda route: held.append(route))
+    page.goto(f"{BASE_URL}/index.html")
+    page.wait_for_function("document.body.dataset.stage === 'drop'")
+    page.set_input_files("#file", str(FIXTURE))
+    expect(page.locator("#drop-wait")).to_have_text("Getting ready…")
+    assert page.evaluate("window.__cairnReady") is not True
+    # The wheel request is held; wait until it arrives, then release it.
+    for _ in range(600):
+        if held:
+            break
+        page.wait_for_timeout(100)
+    assert held, "wheel request never arrived"
+    assert page.evaluate("window.__cairnLoaded") is not True
+    held[0].continue_()
+    page.wait_for_function("window.__cairnLoaded === true", timeout=120_000)
+    assert page.evaluate("document.body.dataset.stage") == "edit"
+    assert page.evaluate("DATA.totals") == EXPECTED_TOTALS
+    page.close()
 
 
 # ---------------------------------------------------------------------------
@@ -945,7 +1007,7 @@ def test_help_panel_opens_and_closes(fresh_page):
 
     hidden = "document.querySelector('#help').classList.contains('hidden')"
     assert fresh_page.evaluate(hidden) is True
-    fresh_page.click("#help-btn")
+    fresh_page.click("#help-link")
     fresh_page.wait_for_timeout(250)
     assert fresh_page.evaluate(hidden) is False
     body = fresh_page.inner_text("#help")
@@ -1067,7 +1129,7 @@ def test_page_boots_under_enforced_csp(browser):
     )
     try:
         page.goto(f"{BASE_URL}/index.html")
-        expect(page.locator("#status")).to_contain_text("Ready", timeout=60000)
+        page.wait_for_function("window.__cairnReady === true", timeout=60000)
         assert not violations, f"CSP violations during boot: {violations}"
     finally:
         ctx.close()
@@ -1154,7 +1216,7 @@ def test_popover_apply_returns_focus_to_the_rows_marker(loaded: Page):
 
 
 def test_help_traps_tab_and_returns_focus_on_escape(loaded: Page):
-    loaded.focus("#help-btn")
+    loaded.focus("#help-link")
     loaded.keyboard.press("Enter")
     expect(loaded.locator("#help")).to_be_visible()
     inside = "document.querySelector('#help .modal-card').contains(document.activeElement)"
@@ -1164,7 +1226,7 @@ def test_help_traps_tab_and_returns_focus_on_escape(loaded: Page):
         assert loaded.evaluate(inside), f"{key} left the help dialog"
     loaded.keyboard.press("Escape")
     expect(loaded.locator("#help")).to_be_hidden()
-    assert loaded.evaluate("document.activeElement.id") == "help-btn"
+    assert loaded.evaluate("document.activeElement.id") == "help-link"
 
 
 def test_export_with_everything_excluded_stays_on_the_edit_stage(loaded: Page):
@@ -1444,7 +1506,7 @@ def csp_page(browser):
     page.on("console", lambda m: violations.append(m.text)
             if "Content Security Policy" in m.text else None)
     page.goto(f"{BASE_URL}/index.html")
-    expect(page.locator("#status")).to_contain_text("Ready", timeout=60000)
+    page.wait_for_function("window.__cairnReady === true", timeout=60000)
     yield page
     ctx.close()
     assert not violations, f"CSP violations: {violations}"
