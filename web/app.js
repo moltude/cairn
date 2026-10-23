@@ -46,44 +46,49 @@ function trapTab(e, card) {
 let PENDING_FILES = null;
 async function boot() {
   try {
-    py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.5/full/" });
-    await py.loadPackage("micropip");
-    const micropip = py.pyimport("micropip");
-    // Pinned; resolves from the Pyodide lockfile on jsdelivr, not PyPI.
-    await micropip.install("pyyaml==6.0.2");
-    // deps:false -- the engine needs only pyyaml (installed above), and with
-    // the CLI gone that is all it declares. Kept anyway so a future dependency
-    // can never make the browser silently fetch from PyPI (the CSP blocks it).
-    // callKwargs is load-bearing: a plain JS object argument is NOT keyword
-    // args to a Python function -- it lands as the second positional
-    // (keep_going), silently leaving deps=True. Caught by
-    // test_page_boots_under_enforced_csp when the CSP blocked pypi.org.
-    // The URL is built against document.baseURI, not location.origin, so the
-    // app works served from a subpath (e.g. quietmarch.to/cairn/).
+    // Everything starts at once: Pyodide (whose big files index.html already
+    // preloads) alongside our three files, instead of one after another.
     //
-    // The app fetches the wheel itself, with cache "no-cache", and installs it from
-    // Pyodide's in-memory filesystem. micropip's own download obeys the browser's
-    // cache, and browsers that saw the old "immutable, 1 year" header (ENG-01) kept
-    // serving their old wheel to it -- even after a hard reload -- next to a new
-    // bridge.py: "cannot import name 'input_check'". "no-cache" always asks the
-    // server (a 304 when unchanged), so the wheel and bridge.py always match.
+    // The engine wheel, bridge.py and the config are fetched with cache
+    // "no-cache": browsers that saw the old "immutable, 1 year" header on the
+    // wheel (ENG-01) kept serving their old copy -- even after a hard reload --
+    // next to a new bridge.py: "cannot import name 'input_check'". "no-cache"
+    // always asks the server (a 304 when unchanged), so they always match.
+    // URLs are built against document.baseURI, not location.origin, so the app
+    // works served from a subpath (e.g. quietmarch.to/cairn/).
+    //
+    // No micropip: pyyaml (the engine's only dependency) comes from the
+    // Pyodide lockfile on jsdelivr, and the wheel is unpacked straight into
+    // site-packages, so nothing can ever resolve from PyPI (the CSP blocks it).
     const fresh = { cache: "no-cache" };
     const name = "cairn_maps-1.0.0-py3-none-any.whl";
-    const res = await fetch(new URL(`dist/${name}`, document.baseURI), fresh);
-    if (!res.ok) throw new Error(`Couldn't load the map engine (HTTP ${res.status}).`);
-    py.FS.writeFile(`/tmp/${name}`, new Uint8Array(await res.arrayBuffer()));
-    await micropip.install.callKwargs(`emfs:/tmp/${name}`, { deps: false });
-    const bridge = await (await fetch("bridge.py", fresh)).text();
-    py.FS.writeFile("/bridge.py", bridge);
+    const ours = async (path, read) => {
+      const res = await fetch(new URL(path, document.baseURI), fresh);
+      if (!res.ok) throw new Error(`Couldn't load the map engine (HTTP ${res.status}).`);
+      return read(res);
+    };
     // Carry the user's symbol mappings into the sandbox. Without this the
-    // engine falls back to built-in defaults only, and the browser produces
-    // different icons than the CLI for the same map.
-    try {
-      const cfg = await fetch("cairn_config.yaml", fresh);
-      if (cfg.ok) py.FS.writeFile("/cairn_config.yaml", await cfg.text());
-    } catch (_) { /* defaults are a fine fallback */ }
+    // engine falls back to built-in defaults only (a fine fallback).
+    const config = fetch(new URL("cairn_config.yaml", document.baseURI), fresh)
+      .then((r) => (r.ok ? r.text() : null)).catch(() => null);
+    // Promise.all, not one await after another: a fetch that fails while
+    // Pyodide is still loading must not surface as an unhandled rejection.
+    let wheel, bridge, cfg;
+    [py, wheel, bridge, cfg] = await Promise.all([
+      loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.5/full/", packages: ["pyyaml"] }),
+      ours(`dist/${name}`, (r) => r.arrayBuffer()),
+      ours("bridge.py", (r) => r.text()),
+      config,
+    ]);
+    const site = py.runPython("import sysconfig; sysconfig.get_path('purelib')");
+    py.unpackArchive(wheel, "wheel", { extractDir: site });
+    py.FS.writeFile("/bridge.py", bridge);
+    if (cfg !== null) py.FS.writeFile("/cairn_config.yaml", cfg);
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
     window.__cairnReady = true;
+    // The same signal as a DOM attribute, for tests that run under the
+    // enforced CSP, where Playwright can't evaluate window.__cairnReady.
+    document.body.dataset.engine = "ready";
     // A file chosen or dropped while the engine was still booting waits here.
     if (PENDING_FILES) { const f = PENDING_FILES; PENDING_FILES = null; handleFiles(f); }
   } catch (e) {

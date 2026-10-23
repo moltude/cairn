@@ -183,7 +183,7 @@ It stays in your browser. Cairn runs entirely client-side: the conversion is Pyt
 
 The page loads only a few things:
 - Its own files: the page, its scripts, the Python bridge, the Cairn engine package, its config and its fonts.
-- The Pyodide runtime and its `micropip` and `pyyaml` packages, from one pinned folder on `cdn.jsdelivr.net`.
+- The Pyodide runtime and its `pyyaml` package, from one pinned folder on `cdn.jsdelivr.net`.
 
 The site's Content Security Policy only lets the page's scripts load code from, or connect to, its own origin and that one jsdelivr folder. The host (Vercel, possibly behind a Cloudflare proxy that passes the same security headers through) and jsdelivr see ordinary request metadata, such as your IP and that you loaded the page, but never your file. Whether hosting-level analytics are turned on can't be determined from the code.
 
