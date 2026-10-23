@@ -583,6 +583,66 @@ tracker and RUNBOOK section are kept but are always empty (they stay as the plac
 rename if one is ever needed again). Dark Divide `cairn_output` baselines and `PARITY.md`
 changed only in the five `#1` / `#2` track names (now identical to the review screen).
 
+### ENG-07 — Stable item ids and folder primitives (2026-10-23, folders PR-A)
+Status: decided. Engine half of the approved folders feature (rename, merge on a duplicate
+name, drag to a folder, + New folder, More ▸ Move to…); the UI is PR-C.
+
+**Item ids.** An item's `uid` used to be `<folder key>::<kind>::<index within kind>`, and that
+position was load-bearing: `export_zip` dropped excluded items by decoding the index, and pushed
+edits onto features by zipping items with the folder's feature list. Moving an item would have
+pointed every edit and exclusion at the wrong feature. Now:
+- `uid` (name unchanged, so web/app.js needed no logic change) is an opaque id, `i0`, `i1`, …,
+  numbered in load order across every folder and file. It never changes while the map is open
+  and encodes no folder or position. The same file loads with the same ids.
+- `_STATE["features"]` maps uid → the ParsedFeature the writers read. The groups (in order, and
+  each group's `items` in order) are the only record of where an item is; `export_zip` iterates
+  them and reaches each feature by uid. `doc.folders` is kept in step for code that inspects it,
+  but export does not read it.
+- A map with no moves or renames exports byte for byte as before (Bitterroots sha pin). The
+  pinned load-JSON hash in that test is compared after rebuilding the old uid strings, the only
+  change to that baseline check.
+- Nothing may parse a uid. EDITS, SEL, ANCHOR, NOTE_EDIT, POP and BULK key by it as before.
+
+**Primitives** (web/bridge.py; JSON in/out like `apply_edits`; no UI yet):
+- `rename_folder(key, name)` → `{"ok": true, "key", "name", "safe"}`, or when another folder
+  has that name `{"ok": false, "name", "duplicate": {"key", "name", "count"}}` with nothing
+  changed, so the UI can offer "Move the N items into it?" → `merge_folders`.
+- `move_items(uids_json, target_key=None, new_name=None)` (exactly one target) →
+  `{"ok": true, "key", "created", "moved", "removed": [emptied keys], "folders": layout}`, or
+  the duplicate report when `new_name` is taken. `layout` is every folder in order as
+  `{"key", "name", "safe", "uids"}`: the UI rearranges its own copies of the items from it.
+- `merge_folders(source_key, target_key)` → the same success shape; the target keeps its name
+  and place.
+
+**Rules.** An item is in exactly one folder. A folder left with no items is removed (a folder
+whose items are all excluded stays). Names are trimmed and must be non-empty (else ValueError);
+inner spacing and case are kept. Two folders may not share a name compared trimmed and
+case-insensitively (`casefold`); renaming a folder to its own name in another case is allowed.
+A clash is reported, never merged silently. New folders go at the end with a fresh key
+(`new:N`). Moving an item to the folder it is in does nothing. Moved items keep the map's
+order (not the order given) and go to the end of their kind's run in the target, so a folder
+is still waypoints, then lines, then areas. Unknown uids or keys, an empty list or both/neither
+targets raise ValueError and change nothing. "Unorganized" is a folder like any other: it can
+be renamed, emptied (and so removed) and moved into.
+
+**Export numbering and the runbook.** Folders are sorted by size once, at load, and never
+re-sorted: a drag must not reshuffle the rail. Export's `NN_` prefix and the runbook's step
+number are each folder's current position (1-based) at export time, so removing a folder
+closes the gap and a new folder is numbered last. The runbook's heading and "Rename it to:"
+line use the current display name. As before, a folder whose items are all excluded still
+takes a number but writes no files and gets no runbook step.
+
+**File names for a renamed folder.** `safe` is recomputed with the existing `_safe()` (strip
+everything but word characters, spaces and hyphens; spaces/hyphen runs → `_`; empty →
+`Unnamed`) and names the folder's directory and file stems (`02_Trip_1_AB/Trip_1_AB_Tracks.gpx`).
+The GPX's own folder name is the display name, unchanged. Two names with the same `safe` form
+("Trip 1" and "Trip-1") can't collide in the zip: the `NN_` directory differs.
+
+Options not taken: uuid4 ids (nondeterministic, unhashable load JSON); keeping the old uid
+string as an opaque value (it would still read as a position and invite parsing); auto-merging
+on a duplicate name (the owner wants the merge offered, RenameMerge mockup); re-sorting folders
+by size after each move.
+
 ### UI-25 — Line style and weight editing
 Status: decided 2026-10-23 (from the line-style option canvas: 2C, and the Style / Weight
 dialog). Engine support already existed (`apply_edits` `style`, `weight`).
