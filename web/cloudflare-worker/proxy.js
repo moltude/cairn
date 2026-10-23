@@ -14,7 +14,7 @@
  */
 export default {
   async fetch(request, env, ctx) {
-    const TARGET_ORIGIN = "https://cairn-web.vercel.app"; // <-- replace with your actual Vercel production alias
+    const TARGET_ORIGIN = "https://cairn-five-blue.vercel.app"; // the Vercel production alias (web/ root)
 
     const url = new URL(request.url);
 
