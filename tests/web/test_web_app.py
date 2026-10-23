@@ -2452,6 +2452,7 @@ def test_drag_onto_its_own_folder_or_nowhere_does_nothing(loaded: Page):
 def test_escape_cancels_a_drag(loaded: Page):
     page = loaded
     before = _layout(page)
+    _first_row(page, "Paddling").locator(".sel-box").check()   # a tick the drag must not clear
     _press(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"))
     target = _rail(page, "North Roots")
     _hover_to(page, target)
@@ -2459,6 +2460,7 @@ def test_escape_cancels_a_drag(loaded: Page):
     page.keyboard.press("Escape")
     expect(page.locator("#drag-ghost")).to_have_count(0)
     expect(page.locator(".drop-over, .here-now, tr.dragging")).to_have_count(0)
+    page.keyboard.press("Escape")   # again, still holding: not the selection's Esc
     page.mouse.move(10, 10)
     _hover_to(page, target)
     page.mouse.up()
@@ -2466,6 +2468,7 @@ def test_escape_cancels_a_drag(loaded: Page):
     # Releasing over North Roots after Esc didn't filter to it either.
     assert page.evaluate("FILTERS.folder") is None
     expect(target).to_have_attribute("aria-pressed", "false")
+    assert page.evaluate("SEL.size") == 1
 
 
 def test_rename_a_folder_in_its_header(loaded: Page):

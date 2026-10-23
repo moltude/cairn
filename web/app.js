@@ -1469,7 +1469,7 @@ function endDrag() {
     is still held, so DRAG stays (cancelled) until it is released and the
     click that follows can be swallowed. */
 function cancelDrag() {
-  if (!DRAG) return;
+  if (!DRAG || DRAG.cancelled) return;   // a second Esc while still held
   if (!DRAG.active) { DRAG = null; return; }
   const id = DRAG.pointerId;
   endDrag();
@@ -1742,7 +1742,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape") {
       // Priority: a drag in progress, then what's in front, then an open note,
       // then let a focused field revert its own edit, else clear the selection.
-      if (DRAG) { if (DRAG.active) { e.preventDefault(); e.stopPropagation(); } cancelDrag(); if (e.defaultPrevented) return; }
+      if (DRAG) {
+        const held = DRAG.active || DRAG.cancelled;   // Esc again while still held: still the drag's
+        cancelDrag();
+        if (held) { e.preventDefault(); e.stopPropagation(); return; }
+      }
       if (CONFIRM) { e.preventDefault(); cancelConfirm(); return; }
       if (!$("#help").classList.contains("hidden")) { closeHelp(); return; }
       if (MOVE) { closeMove(true); return; }

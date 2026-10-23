@@ -277,6 +277,7 @@ match the mockups apart from the rail's existing Type and Icon sections and the 
 | 5 | Renamed "Unorganized" kept its italics and "Not in any CalTopo folder" (matched by key); a folder renamed to "Unorganized" turned italic. | Name and key both, and not after a user rename. | `test_a_renamed_unorganized_is_an_ordinary_folder` |
 | 6 | Merging a folder that loaded empty (rename onto a taken name, Move them) left it in place under its old name. | `merge_folders` always removes the source. | `test_merging_an_empty_folder_removes_it` |
 | 7 | Rail auto-scroll was too slow for 200 folders (~600 px/s, ~9 s to the end). | Speed grows with depth, up to 48 px a frame over the footer (~2.5 s for 8,000 px). | `test_a_long_rail_scrolls_while_dragging_to_new_folder` |
+| 9 | Esc pressed twice while still holding a drag: the second Esc cleared the selection, and the release's click was no longer swallowed (it could toggle the folder filter under the pointer). | A cancelled drag stays the drag's until released; a second Esc is ignored. | `test_escape_cancels_a_drag` |
 | 8 | Two folders sanitizing alike ("A/B", "A_B", "..", "/") downloaded as the same zip name. | `NN_<safe>.zip` (hardening note). | updated download tests |
 
 ### Open
@@ -286,6 +287,11 @@ match the mockups apart from the rail's existing Type and Icon sections and the 
   and order; the merge dialog names the first.
 - A folder whose items are all excluded has no export box (existing PR-A/B behaviour).
 - Folders can't be dragged to reorder, and an empty folder can't be made up front (owner rules).
+- "Merge a folder into itself" can't be reached from the UI (renaming to its own name is a no-op
+  or a case change; the bridge's own no-op is pinned by PR-A tests).
+- If `applyLayout` ever threw after the bridge had moved items, the UI and bridge would disagree
+  until the next load (the catch doesn't roll back). Never seen: break-it checked UI == bridge
+  after every step.
 
 ### For the owner to check
 - [ ] Drag ticked rows to a folder, and to + New folder, in a real browser (mouse and trackpad).
