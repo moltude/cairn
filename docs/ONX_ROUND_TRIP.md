@@ -6,10 +6,12 @@ and kept locally under `tests/fixtures/roundtrip/<test-id>/`. Each test folder h
 `README.md`. This doc replaces `docs/ONX_ROUND_TRIP_IDENTITY.md` (run id1), whose findings are
 folded in below as [`new-folder-gpx-with-ids`](#new-folder-gpx-with-ids),
 [`new-folder-kml-with-ids`](#new-folder-kml-with-ids) and
-[`new-folder-cairn-output`](#new-folder-cairn-output).
+[`new-folder-cairn-output`](#new-folder-cairn-output). A separate test of area styling,
+[`area-fidelity`](#area-fidelity), ran later the same day (16:29–17:00 UTC).
 
 Contents: [Summary](#summary) · [Test index](#test-index) · [Method](#method) ·
-[What the Web Map offers](#import-paths) · [Tests](#tests) · [Export format](#format-inventory) ·
+[What the Web Map offers](#import-paths) · [Tests](#tests) · [Area fidelity](#area-fidelity) ·
+[Export format](#format-inventory) ·
 [Confidence and limits](#confidence) · [Implications for Cairn](#implications) ·
 [Created in onX](#created) · [Re-running](#rerun) · [Appendix](#appendix)
 
@@ -63,6 +65,12 @@ Contents: [Summary](#summary) · [Test index](#test-index) · [Method](#method) 
    repeated cycles. A second-generation copy still claimed to have been created at the moment
    of the first export ([`multi-step-cycle-gpx`](#multi-step-cycle-gpx)).
 
+8. **An imported area keeps its line colour, style and weight, never its fill.** onX's
+   importer reads `<onx:color>`, `<onx:style>` (solid / dash / dot) and `<onx:weight>`
+   (2.0 / 4.0 / 6.0) and ignores the fill in every encoding tried, onX's own included: each
+   imported area gets the default `rgba(74,144,226,0.1)`. onX's area fill palette is 10 swatches
+   plus None; the area line palette is the track palette ([`area-fidelity`](#area-fidelity)).
+
 In short: an onX import adds and never updates. The only way to "replace" a markup is to
 delete it and import the new version.
 
@@ -86,6 +94,7 @@ waypoint, one line and one area.
 | [`new-folder-gpx-with-ids`](#new-folder-gpx-with-ids) | (run id1) Edited GPX, ids kept, new folder | ticked | GPX | 3 new; originals untouched |
 | [`new-folder-kml-with-ids`](#new-folder-kml-with-ids) | (run id1) Edited KML, ids kept, new folder | ticked | KML | 3 new; ExtendedData ignored |
 | [`new-folder-cairn-output`](#new-folder-cairn-output) | (run id1) Cairn's own output (no ids), new folder | ticked | GPX ×3 | 3 new; originals untouched |
+| [`area-fidelity`](#area-fidelity) | Area line colour, fill, style and weight (66 areas in 5 stages) | ticked | GPX | Colour, style, weight, points and notes kept; fill never read |
 
 <a id="method"></a>
 ## Method
@@ -1253,6 +1262,111 @@ The originals' GPX and KML exports went through `web/bridge.py` (`load_files` �
 untouched. Cairn's `<time>` pass-through gave the new track a `createdAt` equal to the export
 moment, the same effect seen in every GPX test here.
 
+<a id="area-fidelity"></a>
+### `area-fidelity`: an area's line colour, fill, style and weight through onX
+
+Run 2026-10-23, 16:29–17:00 UTC, same account and method as above (ticked imports, the page's
+own import responses and `GET /v1/markups/shapes` records, exports moved out of `~/Downloads`
+within two minutes). Raw files: `tests/fixtures/roundtrip/area-fidelity/` (tracked
+[README](../tests/fixtures/roundtrip/area-fidelity/README.md)). It answers what PR #41 left as a
+guess: is the fill dropped because Cairn's values were not onX swatches, or always?
+
+**Answer: always.** onX's GPX importer reads an area's `<onx:color>`, `<onx:style>` and
+`<onx:weight>` and never reads its fill. Every imported area's server record has **no**
+`fill_color` property; the Web Map then draws, and the export writes, the default
+`rgba(74,144,226,0.1)`. This held for onX's own swatch values re-imported byte for byte, for
+onX's "None" (`rgba(0,0,0,0)`), and for six other encodings. Style (`solid` / `dash` / `dot`)
+and weight (`2.0` / `4.0` / `6.0`, stored as `thin` / `normal` / `thick`) are kept exactly.
+
+Stages, in order:
+
+| Stage | Folder | What | Result |
+|---|---|---|---|
+| `palette` | `ZZTEST · area-fidelity · palette` | 12 areas written by Cairn (`bridge.load_files` → `export_zip`, all red line, CalTopo red fill at 0.1 → `onx:fill_color rgba(255,0,0,0.1)`). Then, **in onX**, areas 01–11 were each set to a different Area Color swatch, Line Color, Style and Weight; 12 was left alone. Exported GPX + KML. | Gives the palettes below. The import stored `{color, weight: "normal"}` only: no fill, and no style (Cairn then wrote none). Area 12 exports with no `<onx:style>` and the default fill. |
+| `palette-reimport` | `ZZTEST · area-fidelity · palette-reimport` | `palette.export.gpx` re-imported unmodified (sha-256 `a4081e3ad86a0170…` for both). | All 12 kept line colour, style (incl. `dot`) and weight (incl. `thin`); **all 12 lost the fill**, including onX's own swatches and `rgba(0,0,0,0)`. |
+| `fill-encoding` | `ZZTEST · area-fidelity · fill-encoding` | Areas 01–08 of `palette.upload.gpx`, renamed, with the `<onx:fill_color>` line replaced by text: (a) `232,118,255,0.1` (the Web Map's `dbValue` form), (b) `rgba(232, 118, 255, 0.1)` with spaces, (c) `<onx:fillColor>`, (d) `<onx:fill>`, (e) `#E876FF`, (f) `rgba(232,118,255,1)`, (g) `rgba(0,0,0,0)`, (h) magenta plus `<onx:style>dash</onx:style><onx:weight>6.0</onx:weight>`. | No fill stored for any of the eight. (h) stored `dash` / `thick`. |
+| `sent` | `ZZTEST · area-fidelity · sent` | 17 areas written by Cairn's real export path from three inputs loaded together: the owner's two onX area exports (`tests/fixtures/onx_exports/areas-{before,after}-edit.gpx`, coordinates moved by text to an empty patch NE of the owner's areas; 3 of the 8 edited in Cairn with `apply_edits`) and a CalTopo-style GeoJSON reusing the same rings (9 areas with CalTopo `stroke`, `fill`, `fill-opacity`, `stroke-width` and `pattern` values). 3 files, one ticked import. Exported GPX + KML. | Table below: every line colour, style, weight, point count and note came back exactly; every fill came back as the default. |
+| `modified` | `ZZTEST · area-fidelity · modified` | `sent.export.{gpx,kml}` loaded into Cairn as a pair, every area renamed (` · modified` / ` · resent`), style and/or weight changed on 6 (incl. `dot` → `dash` and `2.0` → `6.0`), exported, imported ticked. Exported GPX + KML. | Every value as sent. No fill change was possible: Cairn offers none, since onX would drop it, and the `sent` export already carried the default. |
+
+**onX's area palettes** (the Web Map's own colour table in `28452.82d4fd468f694a173259.js`,
+confirmed by `palette.export.gpx`):
+
+| Area Color (fill) key | Label | `onx:fill_color` |
+|---|---|---|
+| `blue` (default) | Blue | `rgba(74,144,226,0.1)` |
+| `orange` | Orange | `rgba(212,83,47,0.1)` |
+| `green_brown` | Green-Brown | `rgba(113,95,46,0.1)` |
+| `red` | Red | `rgba(193,76,90,0.1)` |
+| `yellow` | Yellow | `rgba(238,255,125,0.1)` |
+| `blue_green` | Blue-Green | `rgba(42,139,97,0.1)` |
+| `white` | White | `rgba(255,255,255,0.1)` |
+| `cyan` | Cyan | `rgba(153,255,255,0.1)` |
+| `gray` | Gray | `rgba(80,80,80,0.1)` |
+| `magenta` | Magenta | `rgba(232,118,255,0.1)` |
+| `transparent` | None | `rgba(0,0,0,0)` |
+
+That is 10 swatches plus None (11 choices), not 11 plus None. The **Line Color** of an area is
+the track palette exactly: the 11 entries with `shapeStroke: true` are Cairn's
+`ColorMapper.TRACK_PALETTE` (Fuchsia, onX's "Magenta" `255,0,255`, included). Style keys are
+`solid` / `dash` / `dot`; weight keys `thin` / `normal` / `thick` export as `2.0` / `4.0` /
+`6.0`. In the export, `<extensions>` is always `color`, `style`, `weight`, `fill_color` in that
+order, and the KML carries the same four only as `ExtendedData` (no `<Style>`).
+
+**Round trip, per area.** "Stored record" is the `geo_json.properties` of the new markup in the
+page's own `GET /v1/markups/shapes` response right after the import. Point counts include the
+closing point. Notes (CalTopo descriptions and the owner's multi-line `test 4` note) came back
+word for word, with no `id=` or key=value nesting.
+
+`sent` (first pass):
+
+| Area (`ZZTEST area-fidelity · …`) | Sent: line · style · weight · fill · points | GPX export | KML export | Stored record (`style`, `weight`, `fill_color`) |
+|---|---|---|---|---|
+| `caltopo-black-arrows-fill-grey` | `0,0,0,1` · solid · 4.0 · `80,80,80,0.1` · 18 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `normal`, none |
+| `caltopo-blue-fill-onx-default` | `8,122,255,1` · solid · 4.0 · `74,144,226,0.1` · 18 | all same | all same | `solid`, `normal`, none |
+| `caltopo-blue-transparent` | `8,122,255,1` · solid · 4.0 · `0,0,0,0` · 56 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `normal`, none |
+| `caltopo-brown-longdash-w3-fill-brown` | `139,69,19,1` · dash · 4.0 · `113,95,46,0.1` · 56 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `dash`, `normal`, none |
+| `caltopo-fuchsia-fill-pink` | `255,0,255,1` · solid · 4.0 · `232,118,255,0.1` · 56 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `normal`, none |
+| `caltopo-green-dash-w6-fill-green` | `132,212,0,1` · dash · 6.0 · `42,139,97,0.1` · 18 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `dash`, `thick`, none |
+| `caltopo-red-solid-w2-fill-red` | `255,0,0,1` · solid · 4.0 · `212,83,47,0.1` · 18 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `normal`, none |
+| `caltopo-white-w1-fill-white` | `255,255,255,1` · solid · 4.0 · `255,255,255,0.1` · 56 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `normal`, none |
+| `caltopo-yellow-w5-no-fill-colour` | `255,255,0,1` · solid · 6.0 · `238,255,125,0.1` · 18 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `thick`, none |
+| `onx-black-dash-6-fill-magenta` | `0,0,0,1` · dash · 6.0 · `232,118,255,0.1` · 204 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `dash`, `thick`, none |
+| `onx-black-edited-to-white-dash-4` | `255,255,255,1` · dash · 4.0 · `232,118,255,0.1` · 204 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `dash`, `normal`, none |
+| `onx-lime-dot-4-fill-magenta` | `132,212,0,1` · dot · 4.0 · `232,118,255,0.1` · 161 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `dot`, `normal`, none |
+| `onx-lime-solid-4-fill-none` | `132,212,0,1` · solid · 4.0 · `0,0,0,0` · 161 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `normal`, none |
+| `onx-redorange-edited-to-purple-solid-6` | `128,0,128,1` · solid · 6.0 · `238,255,125,0.1` · 56 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `thick`, none |
+| `onx-redorange-solid-4-fill-yellow` | `255,51,0,1` · solid · 4.0 · `238,255,125,0.1` · 56 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `normal`, none |
+| `onx-yellow-solid-2-fill-magenta` | `255,255,0,1` · solid · 2.0 · `232,118,255,0.1` · 18 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `solid`, `thin`, none |
+| `onx-yellow-thin-edited-to-cyan-dash-6` | `0,255,255,1` · dash · 6.0 · `232,118,255,0.1` · 18 | fill → default `74,144,226,0.1` | fill → default `74,144,226,0.1` | `dash`, `thick`, none |
+
+`modified` (second pass, edited in Cairn):
+
+| Area (`ZZTEST area-fidelity · …`) | Sent: line · style · weight · fill · points | GPX export | KML export | Stored record (`style`, `weight`, `fill_color`) |
+|---|---|---|---|---|
+| `caltopo-black-arrows-fill-grey · resent` | `0,0,0,1` · solid · 4.0 · `74,144,226,0.1` · 18 | all same | all same | `solid`, `normal`, none |
+| `caltopo-blue-fill-onx-default · resent` | `8,122,255,1` · solid · 4.0 · `74,144,226,0.1` · 18 | all same | all same | `solid`, `normal`, none |
+| `caltopo-blue-transparent · modified` | `8,122,255,1` · dash · 4.0 · `74,144,226,0.1` · 56 | all same | all same | `dash`, `normal`, none |
+| `caltopo-brown-longdash-w3-fill-brown · resent` | `139,69,19,1` · dash · 4.0 · `74,144,226,0.1` · 56 | all same | all same | `dash`, `normal`, none |
+| `caltopo-fuchsia-fill-pink · resent` | `255,0,255,1` · solid · 4.0 · `74,144,226,0.1` · 56 | all same | all same | `solid`, `normal`, none |
+| `caltopo-green-dash-w6-fill-green · modified` | `132,212,0,1` · solid · 4.0 · `74,144,226,0.1` · 18 | all same | all same | `solid`, `normal`, none |
+| `caltopo-red-solid-w2-fill-red · modified` | `255,0,0,1` · dash · 6.0 · `74,144,226,0.1` · 18 | all same | all same | `dash`, `thick`, none |
+| `caltopo-white-w1-fill-white · resent` | `255,255,255,1` · solid · 4.0 · `74,144,226,0.1` · 56 | all same | all same | `solid`, `normal`, none |
+| `caltopo-yellow-w5-no-fill-colour · resent` | `255,255,0,1` · solid · 6.0 · `74,144,226,0.1` · 18 | all same | all same | `solid`, `thick`, none |
+| `onx-black-dash-6-fill-magenta · modified` | `0,0,0,1` · solid · 4.0 · `74,144,226,0.1` · 204 | all same | all same | `solid`, `normal`, none |
+| `onx-black-edited-to-white-dash-4 · resent` | `255,255,255,1` · dash · 4.0 · `74,144,226,0.1` · 204 | all same | all same | `dash`, `normal`, none |
+| `onx-lime-dot-4-fill-magenta · modified` | `132,212,0,1` · dash · 6.0 · `74,144,226,0.1` · 161 | all same | all same | `dash`, `thick`, none |
+| `onx-lime-solid-4-fill-none · resent` | `132,212,0,1` · solid · 4.0 · `74,144,226,0.1` · 161 | all same | all same | `solid`, `normal`, none |
+| `onx-redorange-edited-to-purple-solid-6 · resent` | `128,0,128,1` · solid · 6.0 · `74,144,226,0.1` · 56 | all same | all same | `solid`, `thick`, none |
+| `onx-redorange-solid-4-fill-yellow · resent` | `255,51,0,1` · solid · 4.0 · `74,144,226,0.1` · 56 | all same | all same | `solid`, `normal`, none |
+| `onx-yellow-solid-2-fill-magenta · modified` | `255,255,0,1` · solid · 6.0 · `74,144,226,0.1` · 18 | all same | all same | `solid`, `thick`, none |
+| `onx-yellow-thin-edited-to-cyan-dash-6 · resent` | `0,255,255,1` · dash · 6.0 · `74,144,226,0.1` · 18 | all same | all same | `dash`, `thick`, none |
+
+**What this changes.** Cairn now writes `onx:style` and `onx:weight` on every area (they were
+missing, so every Cairn area arrived solid / normal whatever CalTopo or onX said) and writes the
+fill as an onX swatch (it used to be the line colour at an arbitrary alpha, and turned onX's
+None into a filled area). The fill is written for format fidelity only. See
+[Implications](#implications).
+
 <a id="format-inventory"></a>
 ## Export format: complete inventory, and what was missed before
 
@@ -1279,8 +1393,8 @@ elevation are masked, except for element order: 7 files list `wpt, rte, trk` and
 | Waypoint `<ele>`/`<time>` | none | none in GPX; KML `<coordinates>` third value = DEM elevation (e.g. `2136.199951172`) | Partly (KML DEM yes) |
 | Track points | `<trkpt/>` | `<ele>0</ele><time>EXPORT-MOMENT</time>` on every point | Yes |
 | Track extensions | color, style, weight | the same | — |
-| Area fill | `onx:fill_color rgba(132,212,0,0.1)` | **`rgba(74,144,226,0.1)`**: the uploaded fill is ignored and onX's default stored | id1 said "default fill", not that the upload was ignored |
-| Area weight | none | `weight=4.0` / `<onx:weight>4.0</onx:weight>` added | No |
+| Area fill | `onx:fill_color rgba(132,212,0,0.1)` | **`rgba(74,144,226,0.1)`**: the uploaded fill is ignored and onX's default stored | id1 said "default fill", not that the upload was ignored. [`area-fidelity`](#area-fidelity): it is never read, whatever the value |
+| Area weight | none | `weight=4.0` / `<onx:weight>4.0</onx:weight>` added | No. Area style and weight are kept when sent ([`area-fidelity`](#area-fidelity)) |
 | KML line / area coordinates | — | third value `0` | No |
 | KML empty note | — | `<value>` + newline + `</value>` | No |
 | KML Placemark order | — | follows the folder's internal list: uuid-ascending after a fresh page load, insertion order right after Add Content | No |
@@ -1361,10 +1475,16 @@ detect a real in-place change.
   decision.
 - **Comparing exports** (any future verify step) must key on the markup id. It must ignore
   `<trkpt><time>` and element order, and must not compare files by sha.
-- **Area fill.** onX ignores `onx:fill_color` on import and always stores
-  `rgba(74,144,226,0.1)`. Cairn's area fill colour does not survive into onX.
-  `docs/ONX_TESTING.md` "Area color / fill: Only via GPX `<rte>` … `onx:fill_color`" should be
-  re-checked against this.
+- **Areas: write style and weight; the fill is cosmetic.** onX keeps an area's
+  `<onx:style>` and `<onx:weight>` and never reads `<onx:fill_color>`
+  ([`area-fidelity`](#area-fidelity)). Cairn now writes all four in onX's order
+  (`cairn/core/writers.py:area_onx_style`), passes an onX file's values through exactly (dot,
+  2.0 and None included), maps CalTopo areas like tracks, writes the fill as the nearest onX
+  swatch, and lets the user edit an area's style and weight but not its fill (it would not
+  survive). `docs/ONX_TESTING.md` and DECISIONS.md ENG-05 are corrected.
+- **Tracks have the same 2.0 gap (not fixed here).** The area probe shows onX keeps `thin`
+  (2.0); Cairn's track writer still maps every weight to 4.0 / 6.0
+  (`stroke_width_to_weight`), so an onX track's 2.0 becomes 4.0. Phase 1 item 5.
 
 <a id="created"></a>
 ## Created in onX (the owner deletes: markups first, then folders)
@@ -1454,6 +1574,91 @@ folders.
 | [`multi-step-cycle-gpx`](#multi-step-cycle-gpx) | `ZZTEST multi-step-cycle-gpx · line · edited-2` | track | `69d7fc78-feab-417d-93d5-29dbe12af124` | ZZTEST · multi-step-cycle-gpx · reimported-2 |
 | [`multi-step-cycle-gpx`](#multi-step-cycle-gpx) | `ZZTEST multi-step-cycle-gpx · waypoint · edited` | waypoint | `4b1c36f0-6fab-4162-a345-9ad6b2785dee` | ZZTEST · multi-step-cycle-gpx · reimported |
 | [`multi-step-cycle-gpx`](#multi-step-cycle-gpx) | `ZZTEST multi-step-cycle-gpx · waypoint · edited-2` | waypoint | `5396e8c2-051c-4a8c-a6e7-761af2835c02` | ZZTEST · multi-step-cycle-gpx · reimported-2 |
+
+### Added by [`area-fidelity`](#area-fidelity)
+
+The owner deletes the markups, then the folders. After cleanup the Areas count returns to 35
+(the count at 16:29 UTC; the account's 4 areas `temp`, `Area 10/23/26 10:09`,
+`Area 10/23/26 10:10` and `test 4` were never touched).
+
+| Folder | uuid | Markups |
+|---|---|---|
+| `ZZTEST · area-fidelity · palette` | `8e3aec81-d632-4225-a24f-cda0c5f6c73f` | 12 |
+| `ZZTEST · area-fidelity · palette-reimport` | `7f9adceb-bc33-4a48-9e57-b02ff1fbffd6` | 12 |
+| `ZZTEST · area-fidelity · fill-encoding` | `8e6afe20-218b-4ecf-9f34-b1b3bb49b72c` | 8 |
+| `ZZTEST · area-fidelity · sent` | `1ef9d280-6479-42dc-a8e8-e40c06e6b9c1` | 17 |
+| `ZZTEST · area-fidelity · modified` | `6881448b-b54e-417f-9e80-e85eb215997e` | 17 |
+
+Markups (66 areas; `palette-reimport` repeats the `palette` names):
+
+| Folder | Markup | uuid |
+|---|---|---|
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 01` | `9a2d5b5a-5150-45e4-8825-1d34e28cb276` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 02` | `87d5e425-23f6-437b-8c98-c75d9eb2bc57` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 03` | `1ac5373c-b9a8-47f6-99db-b4354feb4d04` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 04` | `3ed689a8-1993-4bfd-ab44-5b25b8e23237` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 05` | `8680b0ce-df1d-44dc-bbcb-5a75246ba147` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 06` | `711500e4-46cd-4231-b2de-5ddf06ed4164` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 07` | `9d2de335-7ba0-4b03-b814-2c53a3adb7a0` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 08` | `fb897772-e77a-451f-956b-5f70ce337fea` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 09` | `fd045dc4-cb28-424c-b39e-2def2c773bc3` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 10` | `8e0db938-58a8-41a0-bd24-c55088b99d8b` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 11` | `80cc8fae-2e26-461b-bbf2-cf3312a29dd7` |
+| `ZZTEST · area-fidelity · palette` | `ZZTEST area-fidelity · palette · 12` | `2a900eb4-9556-4451-bea7-9fe9cfaff023` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 03` | `d3eddc70-a184-482a-9f32-3b3a7ea87471` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 12` | `43555c2f-80a8-48ec-a0fd-6eac0941947b` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 04` | `f81842ce-4e26-4fcd-91c7-9387d919f9d4` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 06` | `eb997993-3af9-48bd-8d8d-001319266101` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 11` | `57460d4f-3395-4e1a-af7f-751a548813e9` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 05` | `c2946ae9-44df-4a0b-8ede-1f22acde8744` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 02` | `01551b25-3fdd-4ce6-8152-039ae86a0061` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 10` | `9b6b45df-17ff-481a-9eec-81c1e1aebddb` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 01` | `2da0e2a5-3d64-43a7-8be1-6fe0a621b5e1` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 07` | `894fb388-075d-4747-b2c2-aa7894144040` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 08` | `4f6a9bcc-0156-4e38-ab5d-9dcbf4662307` |
+| `ZZTEST · area-fidelity · palette-reimport` | `ZZTEST area-fidelity · palette · 09` | `d1d47ee4-de11-4f38-a3f0-031fff3e9867` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · a dbValue` | `65eb6eb2-f29b-4af7-a7a9-4292514cf69d` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · b spaced rgba` | `04b736ab-41ed-40bd-bae2-e5c39783b835` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · c fillColor` | `d2f25333-9a91-45da-9854-9f8a78895968` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · d fill` | `2f9bd598-7b98-4eb0-b8a0-322d108cd506` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · e hex` | `660ef066-4679-463f-9a17-49972abfc994` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · f opaque` | `ee0115f2-9df3-4b63-bb0f-cefe7e1d995c` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · g none` | `43eea38f-90d8-4568-ad43-5ee3231cb9e9` |
+| `ZZTEST · area-fidelity · fill-encoding` | `ZZTEST area-fidelity · fill-encoding · h with style+weight` | `d9fe7a14-9c94-4e41-aa92-e00d320d35c1` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-black-arrows-fill-grey` | `25251fd2-e2a4-4d80-89d4-cd4892e662ce` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-blue-fill-onx-default` | `f7cb93c3-5634-4fb1-ae09-a81a7b985a4c` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-blue-transparent` | `c6842101-7b55-4c30-a25f-edc9294c1c05` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-brown-longdash-w3-fill-brown` | `062ca002-3699-408b-8cc3-5e5e7f24f797` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-fuchsia-fill-pink` | `036439e1-fd24-4f5a-99ec-dc8dac459834` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-green-dash-w6-fill-green` | `9c318c0d-e7aa-4a50-b8f8-9c371e4d0504` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-red-solid-w2-fill-red` | `7a929707-d1da-4616-b85e-58de47e7af77` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-white-w1-fill-white` | `fe88c4a7-c3cc-4cc0-b186-c9e100a09102` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · caltopo-yellow-w5-no-fill-colour` | `4e8b4f31-5974-472a-ac4a-ec2fa3a35c9c` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-black-edited-to-white-dash-4` | `f06c54f7-c03f-4ca5-86a4-c5d213e7fd62` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-lime-solid-4-fill-none` | `c84c0772-7f74-4e4d-86f4-2bbc1ccdfe7c` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-redorange-edited-to-purple-solid-6` | `bbe500a4-bc8c-4721-be26-6ed8085252c0` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-yellow-thin-edited-to-cyan-dash-6` | `fb0772ca-0b62-47f2-9fd8-e7897f28c07b` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-black-dash-6-fill-magenta` | `93d24b89-ed53-4aa1-b804-f43caa098ce3` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-lime-dot-4-fill-magenta` | `bb793ade-175c-4b7d-8964-f459e8793659` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-redorange-solid-4-fill-yellow` | `d0064d6c-2aea-49ec-863d-a56dcc5d68a6` |
+| `ZZTEST · area-fidelity · sent` | `ZZTEST area-fidelity · onx-yellow-solid-2-fill-magenta` | `9ed568b9-5181-4589-9ca9-5ad0f6e94016` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-black-arrows-fill-grey · resent` | `f5778e85-c286-4c3c-950b-8ba5dabf4543` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-blue-fill-onx-default · resent` | `7865dc35-fffa-4445-8e14-bf448acfd2d8` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-blue-transparent · modified` | `ba47baa9-299b-45f8-937f-1dc6db47b28f` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-brown-longdash-w3-fill-brown · resent` | `f15770ee-7ef5-422b-9f95-340015f05b35` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-fuchsia-fill-pink · resent` | `b4225e43-51c7-429e-8248-65184b0900e0` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-green-dash-w6-fill-green · modified` | `5ac861df-b5f4-41ad-a05f-f55f04c7bebb` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-red-solid-w2-fill-red · modified` | `7f1a245e-97f0-441f-878c-3109fa3c3bc6` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-white-w1-fill-white · resent` | `e41e1dde-faa2-497b-b3ff-b24919834c43` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · caltopo-yellow-w5-no-fill-colour · resent` | `2ab0593b-14be-4cb4-8e5b-72614d56ca90` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-black-dash-6-fill-magenta · modified` | `63695d0d-cc51-4f3a-a975-6cf272293b3c` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-black-edited-to-white-dash-4 · resent` | `81fd48d1-c9d0-472c-9ec2-6df3c1cd1a08` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-lime-dot-4-fill-magenta · modified` | `3bffe48a-50cd-4a03-b646-67e85d96799b` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-lime-solid-4-fill-none · resent` | `2e0aef86-50b4-480b-8b45-e8cc244a80ec` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-redorange-edited-to-purple-solid-6 · resent` | `61c95f77-dbb9-46ae-8be7-9576d7b1ca31` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-redorange-solid-4-fill-yellow · resent` | `9322d0ed-7dee-4b67-bde3-4ea030190f08` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-yellow-solid-2-fill-magenta · modified` | `6da36457-70e9-4fef-9061-ef12ebcfaf7a` |
+| `ZZTEST · area-fidelity · modified` | `ZZTEST area-fidelity · onx-yellow-thin-edited-to-cyan-dash-6 · resent` | `738e8009-9bdf-4125-a560-fbb694f47434` |
 
 <a id="rerun"></a>
 ## Re-running
