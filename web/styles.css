@@ -358,6 +358,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .rb-intro{margin:0;font-size:18px}
 .runbook{display:flex;flex-direction:column;gap:28px}
 .runbook:empty{display:none}
+.runbook>.note+.note{margin-top:-16px}
 .rb-step{background:var(--sheet);border:1px solid var(--rule);padding:24px 28px;display:flex;flex-direction:column;gap:14px}
 .rb-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 .rb-title{font-size:24px;flex-grow:1;min-width:0;overflow-wrap:anywhere}
