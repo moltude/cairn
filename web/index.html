@@ -109,6 +109,7 @@
       <div class="menu-wrap">
         <button id="more-btn" type="button" class="btn small" aria-haspopup="menu" aria-expanded="false" disabled>More<span data-ui-icon="chevron"></span></button>
         <div id="more-menu" class="menu hidden" role="menu" aria-label="More actions">
+          <button id="bulk-move" type="button" role="menuitem" aria-haspopup="dialog">Move to…</button>
           <button id="bulk-desc" type="button" role="menuitem">Use note as name</button>
           <button id="bulk-exclude" type="button" role="menuitem">Exclude</button>
           <button id="bulk-include" type="button" role="menuitem">Include</button>
@@ -140,6 +141,9 @@
 
 <!-- single-item icon & color popover (filled by app.js) -->
 <div id="mark-pop" class="pop hidden" role="dialog"></div>
+
+<!-- More ▸ Move to…: the folders to move the selection to (filled by app.js) -->
+<div id="move-pop" class="move-pop hidden" role="dialog" aria-label="Move to folder"></div>
 
 <!-- several-items icon & color dialog (filled by app.js) -->
 <div id="mark-modal" class="modal hidden"><div id="mark-dialog" class="modal-card mark-dialog" role="dialog" aria-modal="true"></div></div>

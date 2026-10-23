@@ -789,7 +789,14 @@ def merge_folders(source_key: str, target_key: str) -> str:
         return json.dumps({"ok": True, "key": target_key, "created": False, "moved": 0,
                            "removed": [], "folders": _layout()})
     items = list(source["items"])
-    removed = _move(items, target)
+    removed = _move(items, target) if items else []
+    # A merged folder always goes, even one that was empty (loaded empty, or
+    # all of it moved out earlier): the user asked for its name to be the
+    # other folder's, and two folders may not share a name.
+    if any(g is source for g in _STATE["groups"]):
+        _STATE["groups"] = [g for g in _STATE["groups"] if g is not source]
+        removed.append(source_key)
+        _sync_doc([source_key])
     return json.dumps({"ok": True, "key": target_key, "created": False, "moved": len(items),
                        "removed": removed, "folders": _layout()})
 
