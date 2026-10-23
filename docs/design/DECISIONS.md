@@ -568,3 +568,31 @@ XML escaping stays in the writers and whitespace trimming at load time. The "Ren
 tracker and RUNBOOK section are kept but are always empty (they stay as the place to report a
 rename if one is ever needed again). Dark Divide `cairn_output` baselines and `PARITY.md`
 changed only in the five `#1` / `#2` track names (now identical to the review screen).
+
+### UI-25 — Line style and weight editing
+Status: decided 2026-10-23 (from the line-style option canvas: 2C, and the Style / Weight
+dialog). Engine support already existed (`apply_edits` `style`, `weight`).
+
+- **One line** (2C): the row's line mark opens the popover with the line drawn on a strip of
+  contour paper, the color row spread to full width, and below it two titled groups,
+  **Style** (solid, dashed) and **Weight** (thin, thick), whose four toggles line up with the
+  palette. The toggles show only the drawn line, no words (screen readers and hover still name
+  them).
+- **Several lines**: a **Line style…** button in the selection bar, shown only when the selection
+  has lines, opens a dialog titled **Line style**: the selected lines drawn long in their own
+  colors, then the same Style and Weight groups. Picking the selected toggle again un-picks it,
+  and an un-picked group leaves each line as it is. Color stays in Icon & color….
+- The list draws every line's mark in its real style and weight; the row label stays "Line".
+- Dotted is not offered: onX has only ever exported `solid` and `dash` in our tests. A dotted
+  line from a file is drawn dotted and kept unless changed.
+- Options not taken (canvas): style rows with word labels (2A), one 2×2 sample grid (2B), Style
+  and Weight inside Icon & color… (3A/3D), toggles in the selection bar with no dialog (3F).
+
+### UI-26 — Modals don't over-explain
+Status: decided 2026-10-23 (owner, as a rule).
+
+A popover or dialog shows what is being changed, not instructions about it: section titles and
+the controls themselves, no explanatory sentences or example-laden placeholders. Applied now:
+"Lines take the color only." removed (three places); the icon search placeholder is "Find an
+icon" (no "— try “climb”, “water”, “camp”"). Confirmations that say what will be lost (Start
+over, unsaved note) stay. Help is documentation and is exempt.

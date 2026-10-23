@@ -751,6 +751,85 @@ def test_icon_grids_stay_neutral_when_a_color_is_picked(loaded: Page):
     assert preview[1::2] == ["#84D400"] * 2 and "#84D400" not in preview[0::2]
 
 
+_LINE = "DATA.groups.flatMap(g=>g.items).find(i=>i.uid==={uid!r})"
+
+
+def test_line_rows_draw_their_own_style(loaded: Page):
+    """A dashed line's mark is drawn dashed; a solid one is not."""
+    styles = loaded.evaluate("DATA.groups.flatMap(g=>g.items).filter(i=>i.kind==='tracks').map(i=>i.style)")
+    assert styles.count("dash") == 6 and "solid" in styles   # Bitterroots: 6 dashed lines
+    _set_type(loaded, "tracks")
+    dashed = loaded.locator(f"{ROW} .line-btn svg path[stroke-dasharray]")
+    assert dashed.count() == 6 * 2   # underlay + line, per dashed row
+
+
+def test_line_popover_sets_style_and_weight(loaded: Page):
+    """One line: Style and Weight toggles under the color row, a map-strip
+    preview, nothing changed until Apply, and the export carries the result."""
+    _set_type(loaded, "tracks")
+    row = loaded.locator(ROW).filter(has=loaded.locator('.line-btn')).first
+    uid = row.get_attribute("data-uid")
+    get = _LINE.format(uid=uid)
+    before = loaded.evaluate(get)
+    assert before["style"] == "solid" or before["style"] == "dash"
+    row.locator(".line-btn").click()
+    pop = loaded.locator("#mark-pop")
+    assert pop.locator(".pop-map svg").count() == 1
+    assert pop.locator(".tog").count() == 4
+    assert pop.get_by_text("Lines take the color only").count() == 0
+    target = "dash" if before["style"] == "solid" else "solid"
+    pop.locator(f'.tog[data-style="{target}"]').click()
+    pop.locator('.tog[data-weight="6.0"]').click()
+    assert pop.locator(f'.tog[data-style="{target}"]').get_attribute("aria-pressed") == "true"
+    assert (pop.locator(".pop-map path").last.get_attribute("stroke-dasharray") is not None) == (target == "dash")
+    assert loaded.evaluate(get)["style"] == before["style"]   # not yet applied
+    loaded.click("#pop-apply")
+    after = loaded.evaluate(get)
+    assert (after["style"], after["weight"]) == (target, "6.0")
+
+    loaded.click("#export")
+    expect(loaded.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+    with loaded.expect_download() as dl:
+        loaded.click("#download")
+    zf = zipfile.ZipFile(dl.value.path())
+    gpx = "".join(zf.read(n).decode() for n in zf.namelist() if n.endswith("_Tracks.gpx"))
+    import html
+    blocks = [b for b in re.findall(r"<trk>.*?</trk>", gpx, flags=re.S)
+              if html.unescape(re.search(r"<name>(.*?)</name>", b, flags=re.S).group(1)) == after["name"]]
+    assert blocks and all(f"<onx:style>{target}</onx:style>" in b and "<onx:weight>6.0</onx:weight>" in b for b in blocks)
+
+
+def test_line_style_dialog_for_several_lines(loaded: Page):
+    """Line style… appears only when lines are selected; its dialog is titled
+    "Line style", picks apply to every selected line, and a second click on the
+    picked toggle un-picks it (each line keeps its own value)."""
+    _set_type(loaded, "waypoints")
+    loaded.locator(f"{ROW} .sel-box").nth(0).check()
+    expect(loaded.locator("#bulk-line")).to_be_hidden()
+    _clear_selection(loaded)
+
+    _set_type(loaded, "tracks")
+    rows = loaded.locator(ROW)
+    uids = [rows.nth(i).get_attribute("data-uid") for i in range(2)]
+    for i in range(2):
+        rows.nth(i).locator(".sel-box").check()
+    expect(loaded.locator("#bulk-line")).to_be_visible()
+    before = [loaded.evaluate(_LINE.format(uid=u)) for u in uids]
+    loaded.click("#bulk-line")
+    d = loaded.locator("#mark-dialog")
+    expect(d.locator("h2")).to_have_text("Line style")
+    assert d.locator(".line-rows .lr-name").count() == 2
+    d.locator('.tog[data-weight="6.0"]').click()
+    d.locator('.tog[data-weight="6.0"]').click()          # un-pick: weights stay as they are
+    assert d.locator('.tog[aria-pressed="true"]').count() == 0
+    d.locator('.tog[data-style="dash"]').click()
+    loaded.click("#line-apply")
+    expect(loaded.locator("#mark-modal")).to_be_hidden()
+    after = [loaded.evaluate(_LINE.format(uid=u)) for u in uids]
+    assert [a["style"] for a in after] == ["dash", "dash"]
+    assert [a["weight"] for a in after] == [b["weight"] for b in before]
+
+
 def test_marker_popover_cancel_changes_nothing(loaded: Page):
     row = loaded.locator(ROW).first
     uid = row.get_attribute("data-uid")

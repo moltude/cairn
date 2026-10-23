@@ -15,7 +15,7 @@ import zipfile
 from pathlib import Path
 
 from cairn.core.config import get_all_onx_icons, load_config
-from cairn.core.color_mapper import ColorMapper
+from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_to_weight
 from cairn.core.config import GENERIC_SYMBOLS, resolve_waypoint_color
 from cairn.core.icon_resolver import IconResolver
 from cairn.core.mapper import map_icon
@@ -513,6 +513,11 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
         # source symbol carried no intent is one only a human can fix.
         "needs_attention": kind == "waypoints" and icon == "Location" and not confirmed,
     }
+    if kind == "tracks":
+        # The onX line style and weight this line exports with -- the same
+        # pattern_to_style / stroke_width_to_weight the track writer applies.
+        item["style"] = pattern_to_style(feat.pattern or "")
+        item["weight"] = stroke_width_to_weight(feat.stroke_width)
     if origin:
         # Items read by the onX readers only: the GeoJSON path's JSON is unchanged.
         # onx_id is held for roadmap Phase 6 (nothing writes it yet); subkind is
