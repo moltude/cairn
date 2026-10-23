@@ -166,6 +166,17 @@ function markerSVG(icon, hex, w = 30, h = 38) {
     `<path d="${PIN_PATH}" fill="${_escAttr(hex)}" stroke="#2A241C" stroke-width="1"/>${inner}</svg>`;
 }
 
+/** The same marker in ink outline on paper, no color: the icon pickers' grids, so
+    choosing a color recolors only the item being edited, never every choice. */
+function markerOutlineSVG(icon, w = 30, h = 38) {
+  const g = glyphFor(icon);
+  const inner = g.path
+    ? `<g transform="translate(8 7) scale(0.75)" fill="none" stroke="#2A241C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${g.path}"/></g>`
+    : `<text x="17" y="20.5" text-anchor="middle" font-size="${g.abbr.length > 1 ? 11 : 13}" font-weight="700" fill="#2A241C" font-family="'Libre Caslon Text', Georgia, serif">${_escAttr(g.abbr)}</text>`;
+  return `<svg class="marker outline" width="${w}" height="${h}" viewBox="0 0 34 42" aria-hidden="true">` +
+    `<path d="${PIN_PATH}" fill="#FFFDF7" stroke="#2A241C" stroke-width="1.6"/>${inner}</svg>`;
+}
+
 /** Plain stroke glyph (no marker), for the rail's icon facet. */
 function glyphSVG(icon, size = 18) {
   const g = glyphFor(icon);

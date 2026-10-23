@@ -726,6 +726,31 @@ def test_marker_popover_changes_one_items_icon_and_color(loaded: Page):
     assert pop.is_hidden()
 
 
+def test_icon_grids_stay_neutral_when_a_color_is_picked(loaded: Page):
+    """The icon choices are drawn in ink outline on paper; picking a color recolors
+    only the item being edited (the popover's preview, the dialog's Now -> After),
+    never the grid of choices."""
+    grid_fills = ("els => [...new Set(els.map(e => e.querySelector('svg.marker path')"
+                  ".getAttribute('fill')))]")
+    _set_type(loaded, "waypoints")
+    loaded.locator(f"{ROW} .icon-btn").first.click()
+    pop = loaded.locator("#mark-pop")
+    pop.locator('.swatch-btn[aria-label="Purple"]').click()
+    assert pop.locator(".icon-pick").evaluate_all(grid_fills) == ["#FFFDF7"]
+    assert pop.locator(".pop-preview svg.marker path").first.get_attribute("fill") == "#800080"
+    pop.locator(".pop-cancel").click()
+
+    loaded.locator(f"{ROW} .sel-box").nth(0).check()
+    loaded.locator(f"{ROW} .sel-box").nth(1).check()
+    loaded.click("#bulk-icon")
+    d = loaded.locator("#mark-dialog")
+    d.locator('.swatch-btn[aria-label="Lime"]').click()
+    assert d.locator(".icon-pick").evaluate_all(grid_fills) == ["#FFFDF7"]
+    # Now keeps each item's color; After shows the picked one
+    preview = d.locator(".na-rows svg.marker > path").evaluate_all("els => els.map(e => e.getAttribute('fill'))")
+    assert preview[1::2] == ["#84D400"] * 2 and "#84D400" not in preview[0::2]
+
+
 def test_marker_popover_cancel_changes_nothing(loaded: Page):
     row = loaded.locator(ROW).first
     uid = row.get_attribute("data-uid")

@@ -610,7 +610,6 @@ function paletteFor(items) {
   const ln = items.some(i => i.kind !== "waypoints");
   return !wp && ln ? (DATA.line_colors || DATA.colors) : DATA.colors;
 }
-const NEUTRAL_HEX = "#FF0000";
 
 function paletteHTML(colors, current) {
   return colors.map(c => `<button type="button" class="swatch-btn" data-rgba="${esc(c.rgba)}" aria-label="${esc(c.name)}" title="${esc(c.name)}" aria-pressed="${c.rgba === current}" style="background:${esc(c.hex)}"></button>`).join("");
@@ -681,11 +680,10 @@ function drawPop() {
 function drawPopGrid() {
   const it = popItem(); if (!it) return;
   const grid = $("#mark-pop .icon-grid"); if (!grid) return;
-  const hex = (colorOf(POP.color) || {}).hex || it.hex;
   const top = grid.scrollTop;
   const list = iconMatches(POP.q);
   grid.innerHTML = list.length ? list.map(n =>
-    `<button type="button" class="icon-pick" data-icon="${esc(n)}" aria-pressed="${n === POP.icon}">${markerSVG(n, hex, 28, 35)}<span>${esc(n)}</span></button>`).join("")
+    `<button type="button" class="icon-pick" data-icon="${esc(n)}" aria-pressed="${n === POP.icon}">${markerOutlineSVG(n, 28, 35)}<span>${esc(n)}</span></button>`).join("")
     : `<span class="grid-empty">No icon matches “${esc(POP.q)}”.</span>`;
   grid.scrollTop = top;
   grid.querySelectorAll(".icon-pick").forEach(b => b.onclick = () => {
@@ -808,11 +806,10 @@ function drawBulk() {
 
 function drawBulkGrid() {
   const grid = $("#mark-dialog .icon-grid"); if (!grid) return;
-  const hex = (BULK.color && (colorOf(BULK.color) || {}).hex) || NEUTRAL_HEX;
   const top = grid.scrollTop;
   const list = iconMatches(BULK.q);
   grid.innerHTML = list.length ? list.map(n =>
-    `<button type="button" class="icon-pick" data-icon="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}" aria-pressed="${n === BULK.icon}">${markerSVG(n, hex, 24, 30)}</button>`).join("")
+    `<button type="button" class="icon-pick" data-icon="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}" aria-pressed="${n === BULK.icon}">${markerOutlineSVG(n, 24, 30)}</button>`).join("")
     : `<span class="grid-empty">No icon matches “${esc(BULK.q)}”.</span>`;
   grid.scrollTop = top;
   grid.querySelectorAll(".icon-pick").forEach(b => b.onclick = () => { BULK.icon = b.dataset.icon; drawBulk(); });
