@@ -312,7 +312,7 @@ function renderRail() {
   syncTypeFacet();
 
   // Folders: "All" first, then each folder with its item count.
-  const fl = $("#folder-facets"); fl.innerHTML = "";
+  const fl = $("#folder-facets"); rebuild(fl);
   const facetBtn = (label, count, key, italic) => {
     const fkey = "folder|" + (key === null ? "\u0000all" : key);
     if (key !== null && RENAME && RENAME.where === "rail" && RENAME.key === key) {
@@ -419,7 +419,7 @@ function renderFolders() {
   if (NOTE_EDIT && !shownUids.has(NOTE_EDIT.uid)) NOTE_EDIT = null;
   renderChips();
 
-  const host = $("#folders"); host.innerHTML = "";
+  const host = $("#folders"); rebuild(host);
   DATA.groups.forEach(g => {
     const items = visibleItems(g);
     if (!items.length) return;
@@ -1123,7 +1123,8 @@ function afterMove(res, uids, before) {
   keepNoteDraft();
   refreshAfterEdit();
   const target = groupByKey(res.key);
-  setStatus(`Moved ${plural(res.moved, "item")} to ${res.created ? "a new folder" : target ? target.name : "the folder"}.`, "ready");
+  const short = s => { const c = [...s]; return c.length > 48 ? c.slice(0, 47).join("").trimEnd() + "…" : s; };
+  setStatus(`Moved ${plural(res.moved, "item")} to ${res.created ? "a new folder" : target ? short(target.name) : "the folder"}.`, "ready");
 }
 
 function newFolderName() {
@@ -1195,8 +1196,9 @@ function wireFolderName(inp) {
     if (e.key === "Enter") { e.preventDefault(); finishRename(key, true); }
     else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finishRename(key, false); }
   });
-  // A re-render that replaces the input is not the user leaving it.
-  inp.addEventListener("blur", () => { if (inp.isConnected) finishRename(key, true, { defer: true }); });
+  // A re-render that replaces the input is not the user leaving it (Chrome
+  // fires blur on a focused element as it is removed).
+  inp.addEventListener("blur", () => { if (!REBUILDING && inp.isConnected) finishRename(key, true, { defer: true }); });
 }
 
 function finishRename(key, save, { defer = false } = {}) {
@@ -1222,10 +1224,24 @@ function finishRename(key, save, { defer = false } = {}) {
   // control being focused isn't rebuilt under it (as wireTextField does).
   const done = () => {
     if (!DATA) return;
+    // Leaving one name for another folder's: keep the new field's selection.
+    const a = document.activeElement;
+    const sel = a && a.classList.contains("folder-name-in") ? [a.selectionStart, a.selectionEnd] : null;
     renderEdit();
+    const now = document.activeElement;
+    if (sel && now && now.classList.contains("folder-name-in")) now.setSelectionRange(...sel);
     if (dup && g && groupByKey(key)) offerMerge(g, dup, where);
   };
   defer ? setTimeout(done) : done();
+}
+
+/** Empty a host before re-rendering it. Removing a focused folder-name field
+    fires its blur; REBUILDING tells that apart from the user leaving it, so a
+    re-render while a name is open keeps it open (RENAME draws it again). */
+let REBUILDING = false;
+function rebuild(host) {
+  REBUILDING = true;
+  try { host.innerHTML = ""; } finally { REBUILDING = false; }
 }
 
 const fkEl = k => [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k) || null;
@@ -1427,8 +1443,10 @@ function autoScroll() {
   const EDGE = 36;
   if (d.x >= r.left && d.x <= r.right) {
     let dy = 0;
-    if (d.y < r.top + EDGE) dy = -Math.ceil((r.top + EDGE - d.y) / 3);
-    else if (d.y > bottom - EDGE) dy = Math.ceil((d.y - (bottom - EDGE)) / 3);
+    // Faster the deeper in: over the footer it races (200 folders is ~5000px).
+    const speed = depth => Math.min(48, Math.ceil(depth / 2));
+    if (d.y < r.top + EDGE) dy = -speed(r.top + EDGE - d.y);
+    else if (d.y > bottom - EDGE) dy = speed(d.y - (bottom - EDGE));
     if (dy) { const was = rail.scrollTop; rail.scrollTop += dy; if (rail.scrollTop !== was) hitTest(); }
   }
   d.raf = requestAnimationFrame(autoScroll);

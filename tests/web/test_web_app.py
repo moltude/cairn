@@ -2747,3 +2747,93 @@ def test_start_over_counts_moves_and_renames(loaded: Page):
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
     assert page.evaluate("MOVED.size + RENAMED.size") == 0
     assert page.evaluate("window.__cairnLoaded") is False
+
+
+def test_leaving_one_folder_name_for_another_keeps_the_second_open(loaded: Page):
+    """Regression: the deferred render after the first name saved removed the
+    second, focused name field; Chrome fires blur on removal, which closed it."""
+    page = loaded
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.type("Pad")
+    _section(page, "Blodgett").locator(".folder-name").click()
+    page.wait_for_timeout(150)
+    inp = page.locator(".folder-head .folder-name-in")
+    expect(inp).to_be_focused()
+    expect(inp).to_have_value("Blodgett")
+    assert page.evaluate("[document.activeElement.selectionStart, document.activeElement.selectionEnd]") == [0, 8]
+    assert ("Pad", 5) in _layout(page)
+    # A re-render for another reason (a filter) doesn't close it either.
+    page.keyboard.type("Blodgett Creek")
+    page.evaluate("renderEdit()")
+    expect(page.locator(".folder-head .folder-name-in")).to_have_value("Blodgett Creek")
+    page.keyboard.press("Enter")
+    assert ("Blodgett Creek", 17) in _layout(page)
+
+
+def test_an_open_note_moved_out_of_view_keeps_its_draft(loaded: Page):
+    page = loaded
+    _rail(page, "Lost Trail Pass").click()
+    row = _first_row(page, "Lost Trail Pass")
+    uid = row.get_attribute("data-uid")
+    row.locator(".note-btn").click()
+    page.locator(".desc-in").fill("draft that must survive")
+    _drag(page, page.locator(f'tr[data-uid="{uid}"] .icon-btn, tr[data-uid="{uid}"] .line-btn'),
+          _rail(page, "North Roots"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to North Roots.")
+    assert page.evaluate(f"EDITS[{json.dumps(uid)}].desc") == "draft that must survive"
+
+
+def test_a_renamed_unorganized_is_an_ordinary_folder(loaded: Page):
+    page = loaded
+    _section(page, "Unorganized").locator(".folder-name").click()
+    page.keyboard.type("Loose ends")
+    page.keyboard.press("Enter")
+    expect(_rail(page, "Loose ends")).not_to_have_class(re.compile(r"\bunorg\b"))
+    expect(_section(page, "Loose ends").locator(".folder-sub")).to_have_text("43 items")
+    # ...and a folder renamed TO "Unorganized" doesn't become the loose items.
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.type("Unorganized")
+    page.keyboard.press("Enter")
+    expect(_rail(page, "Unorganized")).not_to_have_class(re.compile(r"\bunorg\b"))
+    expect(_section(page, "Unorganized").locator(".folder-sub")).to_have_text("5 items")
+
+
+def _many_folders_map(n: int) -> str:
+    feats = []
+    for f in range(n):
+        feats.append({"type": "Feature", "id": f"f{f}", "geometry": None,
+                      "properties": {"class": "Folder", "title": f"Folder {f:03d}"}})
+        for k in range(2):
+            feats.append({"type": "Feature", "id": f"m{f}-{k}",
+                          "geometry": {"type": "Point", "coordinates": [-114 + f * 1e-3, 46 + k * 1e-3]},
+                          "properties": {"class": "Marker", "title": f"WP {f}-{k}", "folderId": f"f{f}"}})
+    return json.dumps({"type": "FeatureCollection", "features": feats})
+
+
+def test_a_long_rail_scrolls_while_dragging_to_new_folder(fresh_page: Page, tmp_path):
+    """With 60 folders "+ New folder" is far below the rail's fold: holding the
+    pointer over the rail's bottom edge scrolls it there."""
+    page = fresh_page
+    page.set_viewport_size({"width": 1440, "height": 900})
+    f = tmp_path / "many.json"
+    f.write_text(_many_folders_map(60))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    assert page.evaluate("DATA.groups.length") == 60
+    foot = page.locator(".rail-foot").bounding_box()
+    nf = page.locator(".new-folder")
+    assert nf.bounding_box()["y"] > foot["y"]          # out of reach at first
+    _press(page, page.locator("#folders tbody tr").first.locator(".note-btn"))
+    page.mouse.move(120, foot["y"] + 40, steps=4)
+    page.wait_for_function(
+        "document.querySelector('.new-folder').getBoundingClientRect().bottom"
+        f" < {foot['y'] - 40}", timeout=10000)
+    page.mouse.move(120, 400)                          # out of the edge: scrolling stops
+    page.wait_for_timeout(100)
+    b = nf.bounding_box()
+    page.mouse.move(b["x"] + 40, b["y"] + b["height"] / 2, steps=3)
+    page.mouse.up()
+    expect(page.locator("#status")).to_have_text("Moved 1 item to a new folder.")
+    expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
+    page.keyboard.press("Enter")
+    assert page.evaluate("DATA.groups.length") == 61
