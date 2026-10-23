@@ -42,11 +42,10 @@ function trapTab(e, card) {
   else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
 }
 
+let PENDING_FILES = null;
 async function boot() {
   try {
-    setStatus("Loading Python runtime…");
     py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.5/full/" });
-    setStatus("Loading map engine…");
     await py.loadPackage("micropip");
     const micropip = py.pyimport("micropip");
     // Pinned; resolves from the Pyodide lockfile on jsdelivr, not PyPI.
@@ -83,20 +82,11 @@ async function boot() {
       if (cfg.ok) py.FS.writeFile("/cairn_config.yaml", await cfg.text());
     } catch (_) { /* defaults are a fine fallback */ }
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
-    const v = py.runPython("import cairn; cairn.__version__");
-    setStatus("Ready · ", "ready");
-    // The engine version links to the source on GitHub. Built with DOM nodes,
-    // not innerHTML, like every other status write.
-    const repo = document.createElement("a");
-    repo.className = "plain-link repo-link";
-    repo.href = "https://github.com/moltude/cairn";
-    repo.target = "_blank"; repo.rel = "noopener noreferrer";
-    repo.title = "Cairn on GitHub";
-    repo.textContent = `engine v${v} on GitHub`;
-    $("#status").appendChild(repo);
-    $("#pick").disabled = false;
     window.__cairnReady = true;
+    // A file chosen or dropped while the engine was still booting waits here.
+    if (PENDING_FILES) { const f = PENDING_FILES; PENDING_FILES = null; handleFiles(f); }
   } catch (e) {
+    PENDING_FILES = null; $("#drop-wait").classList.add("hidden");
     setStatus("Failed: " + e.message, "err");
     window.__cairnError = String(e);
     console.error(e);
@@ -139,10 +129,14 @@ function wireDrop() {
 async function handleFiles(files) {
   // The drop zone accepts files before the engine has finished booting
   // (Choose file… stays disabled until then, a drop can't be).
+  // Quiet loading: nothing is shown while the engine boots. A file that
+  // arrives first is queued and processed by boot() the moment it is ready.
   if (!window.__cairnReady) {
-    setStatus("Still loading the map engine — try again in a moment.", "err");
+    PENDING_FILES = files;
+    $("#drop-wait").classList.remove("hidden");
     return;
   }
+  $("#drop-wait").classList.add("hidden");
   setStatus("Reading " + (files.length === 1 ? files[0].name : `${files.length} files`) + "…");
   try {
     const payload = await Promise.all(files.map(async f => ({ name: f.name, text: await f.text() })));
@@ -1063,7 +1057,7 @@ function resetAll() {
   renderSourceNotice({});
   $("#file").value = "";
   showStage("drop");
-  setStatus("Ready", "ready");
+  setStatus("");
   window.__cairnLoaded = false; window.__cairnExported = false;
 }
 
@@ -1127,7 +1121,9 @@ window.addEventListener("DOMContentLoaded", () => {
   menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: oneLine(it.desc) } : {}));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
-  document.querySelectorAll(".help-link").forEach(b => b.onclick = openHelp);
+  $("#help-link").onclick = openHelp;
+  // faq.html / walkthrough.html link here as "./#help".
+  if (location.hash === "#help") openHelp();
   $("#help-close").onclick = closeHelp;
   $("#help").addEventListener("click", e => { if (e.target === $("#help")) closeHelp(); });
   $("#mark-modal").addEventListener("click", e => { if (e.target === $("#mark-modal")) closeBulk(); });
