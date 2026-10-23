@@ -136,6 +136,9 @@ EXPECTED = {
     "onx_real/onx_web_export_2_waypoints.kml": (KML, ONX),   # REAL onX Web Map export, 2026-10-22
     "onx_dialect/onx_dialect.gpx": (GPX, ONX),            # synthetic, modelled on onX's export code
     "onx_dialect/onx_dialect.kml": (KML, ONX),
+    "onx_exports/README.md": (UNKNOWN, NOT_A_MAP),
+    "onx_exports/three-round-trips.gpx": (GPX, ONX),      # real onX exports, 2026-10-23
+    "onx_exports/three-round-trips.kml": (KML, ONX),
     "onx_export_with_tracks.gpx": (GPX, ONX_LIKE),       # synthetic, creator="OnX Backcountry"
     "onx_export_with_tracks.kml": (KML, GENERIC),        # synthetic, has <Folder>, no Data id
     "onx_waypoint_color_test.gpx": (GPX, CAIRN),

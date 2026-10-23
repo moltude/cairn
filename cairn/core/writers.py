@@ -1432,7 +1432,9 @@ def write_kml_shapes(
 # ExtendedData all came in as onX's default red outline / blue 10% fill), but
 # a GPX <rte> with <type>Area</type> and <onx:color>/<onx:fill_color> extensions
 # imports as a real onX Area WITH its colour -- the shape onX's own GPX export
-# uses. So areas are exported this way; the KML writer above is kept for its
+# uses. The fill is NOT kept: every import (2026-10-23, docs/ONX_ROUND_TRIP.md)
+# stored onX's default rgba(74,144,226,0.1) whatever onx:fill_color said, so
+# <onx:fill_color> is written only to match onX's own export shape. So areas are exported this way; the KML writer above is kept for its
 # other callers. onX areas are single-ring: a polygon's holes cannot be written
 # and are reported (get_areas_without_holes) rather than dropped silently.
 

@@ -20,6 +20,7 @@ import uuid
 import xml.etree.ElementTree as ET
 
 from cairn.core.normalization import normalize_name
+from cairn.io.onx_gpx import parse_onx_desc_kv
 from cairn.utils.utils import strip_html
 from cairn.model import MapDocument, Shape, Style, Track, TrackPoint, Waypoint
 
@@ -140,7 +141,11 @@ def read_onx_kml(path: str | Path, *, trace: Any = None) -> MapDocument:
         # onX (tokml) and Cairn both put notes in ExtendedData. Other KML -- Google
         # Earth, CalTopo, hand-made -- uses <description>, often HTML.
         if "notes" in kv:
-            notes = normalize_name(kv["notes"])
+            # A markup that was itself imported from an onX GPX export carries that
+            # export's whole <desc> block (name=/notes=/id=/...) as its note, one more
+            # level per round trip. Unwrap it the way the GPX reader does: the last
+            # notes= is the user's note, and the old ids stay out of it.
+            notes = normalize_name(parse_onx_desc_kv(kv["notes"])[1])
         else:
             notes = strip_html(_text(pm.find("kml:description", _NS)))
 
