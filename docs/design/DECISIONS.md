@@ -671,8 +671,18 @@ Status: decided 2026-10-23 (owner, from the W5 icon study; option C chosen).
   only moves `aria-pressed` and the selected styling; a colour click does not touch the list.
   Rebuilding it (as the old grid did via `innerHTML` on every pick) dropped keyboard focus to
   `<body>`; the e2e suite now checks focus and DOM identity across picks.
-- Options not taken (icon canvas): **D** is still being iterated as an alternative; **A** (marker
-  band over two balanced lines, W5's recommendation), **B** and **E** are tabled.
+- Options not taken (icon canvas): **A** (marker band over two balanced lines, W5's
+  recommendation), **B** and **E** are tabled. The feature is complete with C.
+- **Follow-up held open: option D** (five columns of tiles). The owner kept it as a fallback while
+  they use C in production. Two variants are drawn on the icon canvas
+  (https://claude.ai/artifact/3RfqgwoQHBGdUYf9rzGsL9, row "Option D, iterated"):
+  - **D1** centres a one-line name vertically in the two-line label band, so it sits level with
+    the middle of a two-line neighbour. The text stays 12px, so "Snowboarder", "Campground" and
+    "Mountaineer" still touch the cell edges.
+  - **D2** shrinks the label font to 10px, the first size at which every name clears both cell
+    edges by at least 4px. At 10.5px only "Visitor Center" falls short, with 3px.
+  - The undrawn combination is D1's centring at 10.5px.
+  - Revisit only if C doesn't hold up in use. The decision is then D1, D2 or that combination.
 - **Every onX icon is drawn**; the two-letter abbreviations are gone. The 22 W5 glyphs were
   adopted except the skiing ones, which were redrawn.
 - **Direction rule for glyphs:** anything that shows travel faces left to right; anything going
