@@ -230,7 +230,7 @@ function glyphSVG(icon, size = 18) {
     Dashes and dots use flat ends so neither the dash nor its dark underlay
     spills into the gaps. Width: [overlay, underlay] in the 30x26 swatch. */
 const LINE_DASH = { solid: "", dash: "8 4", dot: "2 3.5" };
-const LINE_WIDTH = { "4.0": [3, 5.4], "6.0": [5, 7.4] };
+const LINE_WIDTH = { "2.0": [1.8, 4.2], "4.0": [3, 5.4], "6.0": [5, 7.4] };
 function _lineStroke(style, weight, scale = 1) {
   const dash = (LINE_DASH[style] || "").split(" ").filter(Boolean).map(n => n * scale).join(" ");
   const [w, uw] = (LINE_WIDTH[weight] || [4, 6]).map(n => n * scale);
@@ -239,12 +239,16 @@ function _lineStroke(style, weight, scale = 1) {
 }
 
 /** Lines get a drawn line in their color, style and weight; areas a filled
-    patch. A dark underlay keeps white and yellow visible on the paper background. */
+    patch whose outline has the area's style and weight. A dark underlay keeps
+    white and yellow visible on the paper background. */
 function lineSVG(hex, kind = "tracks", w = 30, h = 26, style = "solid", weight = "4.0") {
-  if (kind === "shapes")
+  if (kind === "shapes") {
+    const a = _lineStroke(style, weight, 0.6);
+    const p = "M4 20 L8 6 L20 4 L26 14 L18 22 Z";
     return `<svg class="lineswatch" width="${w}" height="${h}" viewBox="0 0 30 26" aria-hidden="true">` +
-      `<path d="M4 20 L8 6 L20 4 L26 14 L18 22 Z" fill="${_escAttr(hex)}" fill-opacity="0.45" stroke="#2A241C" stroke-width="3.6" stroke-linejoin="round"/>` +
-      `<path d="M4 20 L8 6 L20 4 L26 14 L18 22 Z" fill="none" stroke="${_escAttr(hex)}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+      `<path d="${p}" fill="${_escAttr(hex)}" fill-opacity="0.45" stroke="#2A241C" stroke-width="${a.uw}" stroke-linejoin="round"${a.attrs}/>` +
+      `<path d="${p}" fill="none" stroke="${_escAttr(hex)}" stroke-width="${a.w}" stroke-linejoin="round"${a.attrs}/></svg>`;
+  }
   const k = _lineStroke(style, weight);
   return `<svg class="lineswatch" width="${w}" height="${h}" viewBox="0 0 30 26" aria-hidden="true">` +
     `<path d="M3 20 C 9 10, 15 22, 27 6" fill="none" stroke="#2A241C" stroke-width="${k.uw}"${k.attrs}/>` +
@@ -254,7 +258,7 @@ function lineSVG(hex, kind = "tracks", w = 30, h = 26, style = "solid", weight =
 /** A long straight sample in the line's color, style and weight (Line style dialog). */
 function lineStripSVG(hex, style = "solid", weight = "4.0", w = 160) {
   const dash = { solid: "", dash: "14 9", dot: "3 6" }[style] || "";
-  const [sw, uw] = weight === "6.0" ? [5, 7.4] : [3, 5.4];
+  const [sw, uw] = LINE_WIDTH[weight] || LINE_WIDTH["4.0"];
   const d = `M3 9 H${w - 3}`, a = `${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linecap="butt"`;
   return `<svg class="linestrip" width="${w}" height="18" viewBox="0 0 ${w} 18" aria-hidden="true">` +
     `<path d="${d}" stroke="#2A241C" stroke-width="${uw}"${a}/><path d="${d}" stroke="${_escAttr(hex)}" stroke-width="${sw}"${a}/></svg>`;

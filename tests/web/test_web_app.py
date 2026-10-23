@@ -1018,6 +1018,78 @@ def test_line_style_dialog_for_several_lines(loaded: Page):
     assert [a["weight"] for a in after] == [b["weight"] for b in before]
 
 
+def test_area_popover_sets_style_and_weight(loaded: Page):
+    """One area: the same Style and Weight toggles as a line (UI-25), its mark
+    redrawn in them, and the export's <onx:style>/<onx:weight> carry the pick."""
+    _set_type(loaded, "shapes")
+    row = loaded.locator(ROW).first
+    uid = row.get_attribute("data-uid")
+    get = _LINE.format(uid=uid)
+    before = loaded.evaluate(get)
+    assert (before["style"], before["weight"]) == ("solid", "4.0")   # Bitterroots: CalTopo width 2
+    assert before["fill"].startswith("rgba(")
+    row.locator(".line-btn").click()
+    pop = loaded.locator("#mark-pop")
+    assert pop.locator(".tog").count() == 4
+    assert pop.locator(".pop-map").count() == 0            # areas keep their patch preview
+    pop.locator('.tog[data-style="dash"]').click()
+    pop.locator('.tog[data-weight="6.0"]').click()
+    assert pop.locator(".pop-preview path[stroke-dasharray]").count() == 2
+    assert loaded.evaluate(get)["style"] == "solid"        # not yet saved
+    loaded.click("#pop-apply")
+    after = loaded.evaluate(get)
+    assert (after["style"], after["weight"], after["fill"]) == ("dash", "6.0", before["fill"])
+    expect(row.locator(".line-btn")).to_have_attribute("aria-label", re.compile(r"Dashed, Thick"))
+
+    loaded.click("#export")
+    expect(loaded.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+    with loaded.expect_download() as dl:
+        loaded.click("#download")
+    zf = zipfile.ZipFile(dl.value.path())
+    gpx = "".join(zf.read(n).decode() for n in zf.namelist() if n.endswith("_Areas.gpx"))
+    import html
+    blocks = [b for b in re.findall(r"<rte>.*?</rte>", gpx, flags=re.S)
+              if html.unescape(re.search(r"<name>(.*?)</name>", b, flags=re.S).group(1)) == after["name"]]
+    assert blocks and all("<onx:style>dash</onx:style>" in b and "<onx:weight>6.0</onx:weight>" in b
+                          and f"<onx:fill_color>{before['fill']}</onx:fill_color>" in b for b in blocks)
+
+
+def test_line_style_dialog_takes_areas_too(loaded: Page):
+    """Line style… is offered for a selection of areas and sets their style."""
+    _set_type(loaded, "shapes")
+    rows = loaded.locator(ROW)
+    uids = [rows.nth(i).get_attribute("data-uid") for i in range(2)]
+    for i in range(2):
+        rows.nth(i).locator(".sel-box").check()
+    expect(loaded.locator("#bulk-line")).to_be_visible()
+    loaded.click("#bulk-line")
+    d = loaded.locator("#mark-dialog")
+    expect(d.locator("h2")).to_have_text("Line style")
+    assert d.locator(".line-rows .lr-name").count() == 2
+    d.locator('.tog[data-style="dash"]').click()
+    loaded.click("#line-apply")
+    expect(loaded.locator("#mark-modal")).to_be_hidden()
+    assert [loaded.evaluate(_LINE.format(uid=u))["style"] for u in uids] == ["dash", "dash"]
+    expect(loaded.locator("#status")).to_have_text("Changed 2 areas")
+
+
+def test_onx_area_dot_and_extra_thin_are_shown_and_kept(fresh_page: Page):
+    """An onX file's dotted and 2.0 areas are drawn and named as such; neither is
+    offered as a choice, so no toggle is pressed for them."""
+    fx = FX_DIR / "onx_exports"
+    fresh_page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    marks = fresh_page.locator(f"{ROW} .line-btn")
+    expect(marks).to_have_count(4)
+    labels = [marks.nth(i).get_attribute("aria-label") for i in range(4)]
+    assert "Area, Yellow, Solid, Extra thin. Change area" in labels
+    assert "Area, Lime, Dotted, Thin. Change area" in labels
+    fresh_page.locator(f'{ROW}:has(input[value="test 4"]) .line-btn').click()
+    pop = fresh_page.locator("#mark-pop")
+    assert pop.locator('.tog[data-style][aria-pressed="true"]').count() == 0
+    assert pop.locator('.tog[data-weight="4.0"]').get_attribute("aria-pressed") == "true"
+
+
 def test_marker_popover_cancel_changes_nothing(loaded: Page):
     row = loaded.locator(ROW).first
     uid = row.get_attribute("data-uid")

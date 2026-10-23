@@ -463,7 +463,7 @@ function row(it) {
           // An icon an onX file named that isn't in onX's list (Phase 2 flags
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
-      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}${it.kind === "tracks" ? `, ${STYLE_NAMES[it.style] || "Dotted"}, ${WEIGHT_NAMES[it.weight] || ""}. Change line` : ". Change color"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
+      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {
@@ -654,7 +654,7 @@ function updateSel() {
     el.disabled = n === 0;
     el.title = n === 0 ? "Select rows first" : "";
   });
-  $("#bulk-line").classList.toggle("hidden", !selectedItems().some(i => i.kind === "tracks"));
+  $("#bulk-line").classList.toggle("hidden", !selectedItems().some(hasLineStyle));
   closeMenu();
 }
 
@@ -673,6 +673,11 @@ function paletteHTML(colors, current) {
 /* ---------- line style and weight ---------- */
 const STYLE_NAMES = { solid: "Solid", dash: "Dashed" };
 const WEIGHT_NAMES = { "4.0": "Thin", "6.0": "Thick" };
+/* Lines and areas both have a line style and weight (UI-25). The two of each
+   above are the choices; onX's dot and 2.0 from an onX file are shown and kept. */
+const hasLineStyle = it => it.kind === "tracks" || it.kind === "shapes";
+const styleLabel = s => STYLE_NAMES[s] || (s === "dot" ? "Dotted" : "Solid");
+const weightLabel = w => WEIGHT_NAMES[w] || (w === "2.0" ? "Extra thin" : "Thin");
 /** Two titled groups of drawn-line toggles; the drawing is the label. */
 function lineOptsHTML(style, weight) {
   const tog = (attr, k, name, glyph, on) =>
@@ -722,9 +727,10 @@ function openPop(it, anchor) {
           style: it.style, weight: it.weight };
   const isWp = it.kind === "waypoints";
   const isLine = it.kind === "tracks";
+  const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
   const pop = $("#mark-pop");
   pop.classList.toggle("line", isLine);
-  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "color"} for ${it.name}`);
+  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "area"} for ${it.name}`);
   pop.innerHTML = `
     <div class="pop-head">
       <span class="pop-preview"></span>
@@ -733,13 +739,13 @@ function openPop(it, anchor) {
     ${isLine ? `<div class="pop-map"></div>` : ""}
     <div class="pop-sec">
       <span class="label">Color</span>
-      <div class="palette${isLine ? " spread" : ""}">${paletteHTML(paletteFor([it]), POP.color)}</div>
+      <div class="palette${styled ? " spread" : ""}">${paletteHTML(paletteFor([it]), POP.color)}</div>
     </div>
     ${isWp ? `<div class="pop-sec icons">
       <div class="sec-row"><span class="label">Icon</span><span class="sec-count">${DATA.icons.length} icons</span></div>
       <input type="search" class="icon-search" aria-label="Find an icon" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
-    </div>` : isLine ? lineOptsHTML(POP.style, POP.weight) : ""}
+    </div>` : styled ? lineOptsHTML(POP.style, POP.weight) : ""}
     <div class="pop-foot">
       <button type="button" class="btn pop-cancel">Cancel</button>
       <button type="button" id="pop-apply" class="btn primary pop-apply">Save</button>
@@ -776,12 +782,10 @@ function drawPop() {
   const isWp = it.kind === "waypoints";
   const isLine = it.kind === "tracks";
   // A line is previewed on the map strip, so its header carries no second drawing.
-  pop.querySelector(".pop-preview").innerHTML = isWp ? markerSVG(POP.icon, hex, 52, 64) : isLine ? "" : lineSVG(hex, it.kind, 52, 44);
+  pop.querySelector(".pop-preview").innerHTML = isWp ? markerSVG(POP.icon, hex, 52, 64) : isLine ? "" : lineSVG(hex, it.kind, 52, 44, POP.style, POP.weight);
   pop.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === POP.color)));
-  if (isLine) {
-    pop.querySelector(".pop-map").innerHTML = lineMapSVG(hex, POP.style, POP.weight);
-    syncLineOpts(pop, POP.style, POP.weight);
-  }
+  if (isLine) pop.querySelector(".pop-map").innerHTML = lineMapSVG(hex, POP.style, POP.weight);
+  if (hasLineStyle(it)) syncLineOpts(pop, POP.style, POP.weight);
   // The icon list keeps its neutral outline markers; only the pressed state moves.
   if (isWp) syncIconGrid(pop.querySelector(".icon-grid"), POP.icon);
 }
@@ -814,7 +818,7 @@ function applyPop() {
   const patch = {};
   if (POP.color !== it.color) patch.color = POP.color;
   if (it.kind === "waypoints" && POP.iconPicked) patch.icon = POP.icon;
-  if (it.kind === "tracks") {
+  if (hasLineStyle(it)) {
     if (POP.style !== it.style) patch.style = POP.style;
     if (POP.weight !== it.weight) patch.weight = POP.weight;
   }
@@ -890,8 +894,8 @@ function drawBulk() {
     const isWp = it.kind === "waypoints";
     const toColor = BULK.color || it.color;
     const toIcon = isWp ? (BULK.icon || it.icon) : null;
-    const nowMark = isWp ? markerSVG(it.icon, it.hex, 22, 28) : lineSVG(it.hex, it.kind, 22, 20);
-    const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28) : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20);
+    const nowMark = isWp ? markerSVG(it.icon, it.hex, 22, 28) : lineSVG(it.hex, it.kind, 22, 20, it.style, it.weight);
+    const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28) : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, it.style, it.weight);
     // The drawn marks show the change; no "Camp · Blue" words beside them (UI-26).
     return `<span class="na-cell">${nowMark}<span class="na-name">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
       `<span class="na-cell">${afterMark}</span>`;
@@ -919,9 +923,9 @@ function applyBulk() {
   setStatus(`Changed ${n} item${n === 1 ? "" : "s"}`, "ready");
 }
 
-/* ---------- several lines: the Line style dialog ---------- */
+/* ---------- several lines or areas: the Line style dialog ---------- */
 function openLineBulk() {
-  const lines = selectedItems().filter(i => i.kind === "tracks");
+  const lines = selectedItems().filter(hasLineStyle);
   if (!lines.length) return;
   const ret = document.activeElement;
   closeMenu(); closePop();
@@ -974,7 +978,8 @@ function applyLineBulk() {
   });
   if (!n) return;
   refreshAfterEdit();
-  setStatus(`Changed ${n} line${n === 1 ? "" : "s"}`, "ready");
+  const word = lines.every(i => i.kind === "shapes") ? "area" : lines.every(i => i.kind === "tracks") ? "line" : "item";
+  setStatus(`Changed ${n} ${word}${n === 1 ? "" : "s"}`, "ready");
 }
 
 function closeBulk() {
