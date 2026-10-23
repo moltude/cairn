@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Read KMZ, generic GPX (routes included) and CSV waypoint lists according to each format's published schema, so that a file from any conforming exporter (Gaia, AllTrails, Garmin, Google Earth, Komoot, …) works without testing each app separately.
+**Goal:** Read KMZ and generic GPX (routes included) according to each format's published schema, so that a file from any conforming exporter (Gaia, AllTrails, Garmin, Google Earth, Komoot, …) works without testing each app separately.
 
 **Architecture:** One hand-built **conformance fixture** per schema. It exercises every element that schema defines and that Cairn has a use for, and is **validated against the vendored XSD in the test suite**, so "it follows the standard" is checked by a machine, not asserted. Each reader is then specified as a table: schema element → what Cairn does with it (kept / mapped / ignored-and-documented). Exporter quirks that break the spec go in separate **tolerance fixtures**, never in the conformance ones.
 
@@ -10,15 +10,16 @@
 
 **Spec:** the request of 2026-10-23: "rely on standard prescribed implementations that are generalizable and not tied to specific implementations"; test individual apps only where a standard leaves no choice.
 
-This file holds the standards survey, the decisions, and the shared tasks S1–S2. The format work is in three plans that can run independently once S1–S2 are merged:
+This file holds the standards survey, the decisions, and the shared tasks S1–S2. The format work is in two plans that can run independently once S1–S2 are merged:
 
 | Plan | Standard(s) | Depends on |
 |---|---|---|
 | [`2026-10-23-kml-kmz.md`](2026-10-23-kml-kmz.md) | OGC KML 2.2 (07-147r2) / 2.3 (12-007r2), Google `gx:` extensions 2.2, Google's KMZ rules | S1, S2 |
 | [`2026-10-23-gpx.md`](2026-10-23-gpx.md) | GPX 1.0, GPX 1.1, Garmin GpxExtensions v3, Topografix gpx_style 0/2 | S1, S2 |
-| [`2026-10-23-csv.md`](2026-10-23-csv.md) | RFC 4180 + GPSBabel `unicsv` column names (no geo-CSV standard exists) | S2; Decision 1 |
 
-Recommended order: KML/KMZ, then GPX, then CSV.
+Recommended order: KML/KMZ, then GPX.
+
+CSV was dropped from scope on 2026-10-23 (no geospatial CSV standard exists, and it carries no styling). The research for it is kept in the survey table below in case it returns.
 
 ## Standards survey (2026-10-23)
 
@@ -31,8 +32,8 @@ Recommended order: KML/KMZ, then GPX, then CSV.
 | KML 2.2 / 2.3 | OGC 07-147r2; OGC 12-007r2 (https://docs.ogc.org/is/12-007r2/12-007r2.html) | 2.3 keeps the 2.2 namespace `http://www.opengis.net/kml/2.2` and adopts `Track`/`MultiTrack` into it. Colours are `aabbggrr`. `styleUrl` is `#id` (same file) or `file.kml#id` (external). `StyleMap` → `Pair(key normal\|highlight, styleUrl \| Style)`. Shared styles live in `Document`; an inline `Style` overrides a shared one. Geometry: `Point, LineString, LinearRing, Polygon, MultiGeometry, Model, gx:Track, gx:MultiTrack`. |
 | Google `gx:` 2.2 | https://developers.google.com/kml/documentation/kmlreference | Namespace `http://www.google.com/kml/ext/2.2`. `gx:Track` = parallel lists of `when` and `gx:coord` ("lon lat alt", **space**-separated), equal counts required; `gx:MultiTrack` holds `gx:Track`s. "Unsupported extensions should be ignored". |
 | KMZ | https://developers.google.com/kml/documentation/kmzarchives | A zip. Google Earth reads "the first .kml file" it finds; `doc.kml` at the root is the convention. With several `.kml` files "you cannot be sure which one will be found first". Relative references resolve against the root KML. |
-| CSV | RFC 4180; GPSBabel unicsv (https://www.gpsbabel.org/htmldoc-development/fmt_unicsv.html) | **There is no geospatial CSV standard.** RFC 4180 fixes quoting/structure only. The most widely used column vocabulary is GPSBabel's `unicsv`: `lat`/`y`/`y_pos`, `lon`/`x`/`x_pos` (fuller spellings like `latitude`/`longitude` accepted; spaces for underscores), `name`, `desc`, `notes`/`comment`, `icon`/`symb`, `ele`/`alt`/`height`/`z`, hemisphere columns `n/s` and `e/w`; tab-separated if the header has a tab, else comma. GDAL's CSV driver handles BOM and `;`/tab separators and treats a column named `WKT` as geometry, but its X/Y name lists are opt-in with no defaults, so it is not a naming standard. Neither source covers decimal commas. |
-| Excel `.xlsx` | — | `openpyxl` is not in the Pyodide 0.29.5 lock (`xlrd`, which reads `.xls` only, is). Refused with "save as CSV". Out of scope. |
+| CSV (out of scope) | RFC 4180; GPSBabel unicsv (https://www.gpsbabel.org/htmldoc-development/fmt_unicsv.html) | **There is no geospatial CSV standard.** RFC 4180 fixes quoting/structure only. The most widely used column vocabulary is GPSBabel's `unicsv`: `lat`/`y`/`y_pos`, `lon`/`x`/`x_pos` (fuller spellings like `latitude`/`longitude` accepted; spaces for underscores), `name`, `desc`, `notes`/`comment`, `icon`/`symb`, `ele`/`alt`/`height`/`z`, hemisphere columns `n/s` and `e/w`; tab-separated if the header has a tab, else comma. GDAL's CSV driver handles BOM and `;`/tab separators and treats a column named `WKT` as geometry, but its X/Y name lists are opt-in with no defaults, so it is not a naming standard. Neither source covers decimal commas. |
+| Excel `.xlsx` | — | `openpyxl` is not in the Pyodide 0.29.5 lock (`xlrd`, which reads `.xls` only, is). Refused with a sentence (kml-kmz Task 2). Out of scope. |
 
 ## What the readers do today vs the standards
 
@@ -41,16 +42,14 @@ Checked by running `web/bridge.py:load_files` on synthetic files and reading the
 - **Generic KML** goes to `cairn/io/onx_kml.py`, which ignores `Folder`, `Style`, `StyleMap` and `styleUrl`, so files open flat and default blue. `cairn/io/caltopo_kml.py` already resolves shared styles and walks nested folders, and it is namespace-agnostic (`_ln` drops the namespace). Its own gaps against the spec: a `Pair` holding an inline `<Style>`; `gx:Track`/`gx:MultiTrack`; a standalone `LinearRing`. (`kml-kmz.md`)
 - **Generic GPX** goes to `cairn/io/onx_gpx.py`. Against the XSDs it: reads 1.1 only (1.0 is refused as empty); never reads `<sym>` (`cairn/io/document_adapter.py:77` hard-codes `marker-symbol: ""`, the biggest icon gap); never falls back from `desc` to `cmt`; drops `gpxx:rpt`; ignores `gpxx:DisplayColor` and `gpx_style:line`; joins `trkseg`s into one line. (`gpx.md`)
 - **The icon explanation** (`web/bridge.py:_explain`) says "Your CalTopo symbol …" for every non-onX file. (S2)
-- **CSV** is refused as not a map. (`csv.md`)
+- **CSV** is refused as not a map, and stays that way.
 
 ## Decisions for Scott
 
 Real exports: answered, none available. Plans are standards-first; an app-specific test is added only when a real file contradicts a standard.
 
-1. **CSV at all?** Recommendation: yes, after KML and GPX, auto-detect only (unicsv names), no column-mapping screen.
-2. **`<rtept>` names/symbols** (turn points). Recommendation: drop, document. onX lines have no per-vertex labels.
-3. **`trkseg` gaps.** The spec says segments mark lost reception. Recommendation: keep joining them into one line (onX lines are single LineStrings, and a separate line per GPS dropout would clutter the map), and document it.
-4. **Decimal comma in CSV** (`46,1`). Recommendation: refuse with a sentence. No source defines it, and guessing would put points in the wrong place.
+1. **`<rtept>` names/symbols** (turn points). Recommendation: drop, document. onX lines have no per-vertex labels.
+2. **`trkseg` gaps.** The spec says segments mark lost reception. Recommendation: keep joining them into one line (onX lines are single LineStrings, and a separate line per GPS dropout would clutter the map), and document it.
 
 ## Global Constraints (all four plans)
 
@@ -108,4 +107,4 @@ Real exports: answered, none available. Plans are standards-first; an app-specif
 
 ## Not in these plans
 
-`.xlsx`; a CSV column-mapping screen; UTM/BNG/DMS coordinates in CSV; external `styleUrl` resolution; KML `NetworkLink`, `GroundOverlay`, `Model`, `ScreenOverlay` (ignored, as the gx reference says unsupported elements should be); icon images inside KMZ.
+CSV and `.xlsx` input; external `styleUrl` resolution; KML `NetworkLink`, `GroundOverlay`, `Model`, `ScreenOverlay` (ignored, as the gx reference says unsupported elements should be); icon images inside KMZ.
