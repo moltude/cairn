@@ -87,7 +87,17 @@ LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 # "edited": uids with any UI edit. "color_edited": uids whose edit set a colour.
 # Both are bookkeeping only now: export_zip pins EVERY item to the colour the UI
 # shows, so the colour no longer depends on whether it was edited.
-_STATE: dict = {"doc": None, "groups": [], "config": None, "edited": set(), "color_edited": set()}
+#
+# Item identity (ENG-07): every item's "uid" is an opaque id ("i0", "i1", ...)
+# handed out at load and never changed or reused while the map is open. It says
+# nothing about the item's folder or position, so an item can move between
+# folders without its edits, selection or exclusion losing track of it.
+# "features" maps each uid to the ParsedFeature the writers read; "groups" (in
+# order, and each group's "items" in order) is the ONLY record of which folder
+# an item is in and where it sits. export_zip reads nothing else. doc.folders
+# is kept in step by the folder primitives for code that inspects it.
+_STATE: dict = {"doc": None, "groups": [], "features": {}, "config": None,
+                "edited": set(), "color_edited": set(), "next_folder": 1}
 
 # Path the UI writes the user's cairn_config.yaml to before loading a document.
 CONFIG_PATH = Path("/cairn_config.yaml")
@@ -388,14 +398,16 @@ def load_files(files_json: str) -> str:
     # "default" folders can't collide.
     doc = ParsedData()
     groups = []
+    features: dict = {}
     for si, (parsed, origin) in enumerate(sources):
         for okey, fdata in parsed.folders.items():
             fkey = f"{si}:{okey}" if multi else okey
             doc.folders[fkey] = fdata
-            groups.append(_group(fkey, okey, fdata, origin, resolver, cfg, catalog))
+            groups.append(_group(fkey, okey, fdata, origin, resolver, cfg, catalog, features))
 
     groups.sort(key=lambda g: -len(g["items"]))
-    _STATE.update(doc=doc, groups=groups, config=cfg, edited=set(), color_edited=set())
+    _STATE.update(doc=doc, groups=groups, features=features, config=cfg,
+                  edited=set(), color_edited=set(), next_folder=1)
 
     filename = files[0].get("name") or ""
     return json.dumps(
@@ -432,8 +444,13 @@ def load_document(text: str, filename: str) -> str:
     return load_files(json.dumps([{"name": filename, "text": text}]))
 
 
-def _group(fkey, okey, fdata, origin, resolver, cfg, catalog) -> dict:
-    """One folder's UI group. okey is the reader's own folder key."""
+def _group(fkey, okey, fdata, origin, resolver, cfg, catalog, features) -> dict:
+    """One folder's UI group. okey is the reader's own folder key.
+
+    features is the load's uid -> ParsedFeature map; each new item's opaque uid
+    is the next number in it (ENG-07), so ids are unique across every folder
+    and file of one load, and the same file always gets the same ids.
+    """
     # doc.folders is keyed by CalTopo's folder UUID, not its name. The
     # display name is inside the folder dict. Using the key here put raw
     # UUIDs in the runbook's "rename it to:" instruction.
@@ -442,17 +459,17 @@ def _group(fkey, okey, fdata, origin, resolver, cfg, catalog) -> dict:
         fname = UNORGANIZED_FOLDER_NAME
     items = []
     for kind in ("waypoints", "tracks", "shapes"):
-        # Index PER KIND. This used to be len(items), a running total across
-        # all three kinds, so a folder's tracks were numbered from 23 and its
-        # shapes from 40. Anything decoding the uid back to a position -- the
-        # export's include/exclude filter does -- then addressed the wrong
-        # feature, or an index past the end of the list.
-        for kind_index, feat in enumerate(fdata.get(kind) or []):
-            items.append(_item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog))
+        # A group's items are always waypoints, then tracks, then areas, each
+        # kind in the reader's order (the folder primitives keep it so), and
+        # export_zip writes each kind in that order.
+        for feat in fdata.get(kind) or []:
+            uid = f"i{len(features)}"
+            features[uid] = feat
+            items.append(_item(uid, kind, feat, origin, resolver, cfg, catalog))
     return {"key": fkey, "name": fname, "safe": _safe(fname), "items": items}
 
 
-def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
+def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
     title = feat.title or ""
     props = feat.properties
     kept_icon = (props.get(ONX_ICON_KEY) or "").strip() if origin else ""
@@ -501,7 +518,7 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
         # Lines use the 11-color track palette (keeps Fuchsia).
         color = ColorMapper.map_track_color(feat.stroke or feat.color or "")
     item = {
-        "uid": f"{fkey}::{kind}::{kind_index}",
+        "uid": uid,
         "kind": kind,
         "name": title,
         "notes": feat.description or "",
@@ -605,51 +622,48 @@ def apply_edits(edits_json: str) -> str:
 
 def export_zip() -> bytes:
     """Run the real engine writers; return a .zip of the onX-ready files."""
-    doc, cfg = _STATE["doc"], _STATE["config"]
+    cfg = _STATE["config"]
     groups = _STATE["groups"]
+    features = _STATE["features"]
 
-    # Push UI edits onto the ParsedFeature objects the writers read.
+    # Push UI edits onto the ParsedFeature objects the writers read. Each item
+    # reaches its feature through its uid, never by position (ENG-07).
     for g in groups:
-        by_kind: dict = {}
         for item in g["items"]:
-            by_kind.setdefault(item["kind"], []).append(item)
-        fdata = doc.folders[g["key"]]
-        for kind, items in by_kind.items():
-            feats = fdata.get(kind) or []
-            for item, feat in zip(items, feats):
-                feat.title = item["name"]
-                feat.description = item.get("desc") or ""
-                # Already cleaned at load (or typed by the user): plain text now.
-                feat.properties[PLAIN_NOTES_KEY] = True
-                # Every item is exported in EXACTLY the colour the UI showed
-                # (item["color"]: the load-time value, or the user's pick).
-                # This used to be gated on "the user edited the colour", which
-                # let the writers recompute a colourless item's colour by a
-                # different rule than the UI's -- a colourless Shelter showed
-                # Blue and exported Brown; a strokeless area showed Blue and
-                # exported White. load_document now computes the colour with
-                # the engine's own rules, so pinning it is safe and WYSIWYG.
-                if item["kind"] == "waypoints":
-                    # writers.py reads both override keys.
-                    feat.properties["cairn_onx_icon_override"] = item["icon"]
-                    feat.properties["cairn_onx_color_override"] = item["color"]
-                else:
-                    # Track GPX and the area writers both read feature.stroke
-                    # first (track palette, so Fuchsia round-trips).
-                    feat.stroke = _hex_for(item["color"])
-                if item["kind"] == "shapes":
-                    # Pin the area's style, weight and fill to what the UI shows
-                    # (edited or as loaded); area_onx_style reads these first.
-                    feat.properties[AREA_STYLE_KEY] = item["style"]
-                    feat.properties[AREA_WEIGHT_KEY] = item["weight"]
-                    feat.properties[AREA_FILL_KEY] = item["fill"]
-                if item["kind"] == "tracks":
-                    # Pin the track's style and weight to what the UI shows
-                    # (edited or as loaded); line_onx_style_weight reads these first.
-                    if item.get("style"):
-                        feat.properties[LINE_STYLE_KEY] = item["style"]
-                    if item.get("weight"):
-                        feat.properties[LINE_WEIGHT_KEY] = item["weight"]
+            feat = features[item["uid"]]
+            feat.title = item["name"]
+            feat.description = item.get("desc") or ""
+            # Already cleaned at load (or typed by the user): plain text now.
+            feat.properties[PLAIN_NOTES_KEY] = True
+            # Every item is exported in EXACTLY the colour the UI showed
+            # (item["color"]: the load-time value, or the user's pick).
+            # This used to be gated on "the user edited the colour", which
+            # let the writers recompute a colourless item's colour by a
+            # different rule than the UI's -- a colourless Shelter showed
+            # Blue and exported Brown; a strokeless area showed Blue and
+            # exported White. load_document now computes the colour with
+            # the engine's own rules, so pinning it is safe and WYSIWYG.
+            if item["kind"] == "waypoints":
+                # writers.py reads both override keys.
+                feat.properties["cairn_onx_icon_override"] = item["icon"]
+                feat.properties["cairn_onx_color_override"] = item["color"]
+            else:
+                # Track GPX and the area writers both read feature.stroke
+                # first (track palette, so Fuchsia round-trips).
+                feat.stroke = _hex_for(item["color"])
+            if item["kind"] == "shapes":
+                # Pin the area's style, weight and fill to what the UI shows
+                # (edited or as loaded); area_onx_style reads these first.
+                feat.properties[AREA_STYLE_KEY] = item["style"]
+                feat.properties[AREA_WEIGHT_KEY] = item["weight"]
+                feat.properties[AREA_FILL_KEY] = item["fill"]
+            if item["kind"] == "tracks":
+                # Pin the track's style and weight to what the UI shows
+                # (edited or as loaded); line_onx_style_weight reads these first.
+                if item.get("style"):
+                    feat.properties[LINE_STYLE_KEY] = item["style"]
+                if item.get("weight"):
+                    feat.properties[LINE_WEIGHT_KEY] = item["weight"]
 
     out = Path("/tmp/out")
     buf = io.BytesIO()
@@ -657,7 +671,6 @@ def export_zip() -> bytes:
     unlisted_dropped = 0  # dropped items in folders that produced no file at all
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for n, g in enumerate(groups, 1):
-            fdata = doc.folders[g["key"]]
             safe = g["safe"]
             d = out / f"{n:02d}_{safe}"
             d.mkdir(parents=True, exist_ok=True)
@@ -665,19 +678,16 @@ def export_zip() -> bytes:
             clear_name_changes()
             clear_areas_without_holes()
 
-            # Drop anything the user excluded. Done by position because the
-            # UI's uid encodes the feature's index within its kind.
-            def _keep(kind, feats):
-                dropped = {
-                    int(i["uid"].rsplit("::", 1)[1])
-                    for i in g["items"]
-                    if i["kind"] == kind and not i.get("included", True)
-                }
-                return [f for n, f in enumerate(feats) if n not in dropped]
+            # The folder's CURRENT items of each kind, in order, minus anything
+            # the user excluded. Read from the group, so an item moved here is
+            # written here and an item moved away is not (ENG-07).
+            def _keep(kind):
+                return [features[i["uid"]] for i in g["items"]
+                        if i["kind"] == kind and i.get("included", True)]
 
-            wps = _keep("waypoints", fdata.get("waypoints") or [])
-            trks = _keep("tracks", fdata.get("tracks") or [])
-            shapes = _keep("shapes", fdata.get("shapes") or [])
+            wps = _keep("waypoints")
+            trks = _keep("tracks")
+            shapes = _keep("shapes")
 
             if wps:
                 for p, size, cnt in write_gpx_waypoints_maybe_split(

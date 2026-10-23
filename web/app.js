@@ -2,6 +2,10 @@
    All map logic is the existing Python engine, running in Pyodide. */
 let py = null, DATA = null, EDITS = {}, SEL = new Set(), ZIP = null, MANIFEST = null;
 let ANCHOR = null;   // last row clicked without shift -- the pivot for range select
+/* EDITS, SEL, ANCHOR, NOTE_EDIT, POP and BULK all key items by uid. A uid is
+   an opaque id from bridge.py ("i0", "i1", ...) that stays the same when the
+   item moves to another folder (ENG-07): never parse it for a folder or
+   position -- read the item's group from DATA instead. */
 
 /* Every filter lives here; the rail facets (Type, Folders, Icon), the chips and
    #only-attention all render FROM this object, and visibleItems() reads only

@@ -628,31 +628,21 @@ def test_type_filter_shows_only_that_kind(fresh_page, kind):
     assert expected > 0
 
 
-def test_uids_encode_a_per_kind_index(fresh_page):
-    """Regression: the index used to be a running total across kinds.
+def test_uids_are_opaque_and_unique(fresh_page):
+    """Each item's uid is an opaque id that says nothing about its folder or
+    position (ENG-07), so the UI can never decode one back to a place.
 
-    Tracks were numbered from 23 and shapes from 40, so the export's exclusion
-    filter -- which decodes the uid back to a position -- dropped the wrong
-    features, or indexed past the end of the list entirely.
+    It replaces a regression test for the old `<folder>::<kind>::<index>` uid,
+    whose index was once a running total across kinds and made the export's
+    exclusion filter drop the wrong features.
     """
     fresh_page.set_input_files("#file", str(FIXTURE))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
 
-    bad = fresh_page.evaluate("""
-        DATA.groups.flatMap(g => {
-          const byKind = {};
-          g.items.forEach(i => (byKind[i.kind] = byKind[i.kind] || []).push(
-              parseInt(i.uid.split('::').pop(), 10)));
-          return Object.entries(byKind)
-            .filter(([k, idx]) => Math.min(...idx) !== 0 ||
-                                  Math.max(...idx) !== idx.length - 1)
-            .map(([k]) => g.name + '/' + k);
-        })
-    """)
-    assert bad == [], f"uid indices are not per-kind for: {bad}"
-
     uids = fresh_page.evaluate("DATA.groups.flatMap(g=>g.items).map(i=>i.uid)")
-    assert len(uids) == len(set(uids))
+    assert uids and len(uids) == len(set(uids))
+    keys = fresh_page.evaluate("DATA.groups.map(g=>g.key)")
+    assert not [u for u in uids if "::" in u or any(k in u for k in keys)]
 
 
 def test_excluded_items_are_left_out_of_the_export(fresh_page):

@@ -34,12 +34,11 @@ def review_items(path: Path) -> list[dict]:
     bridge.CONFIG_PATH = ROOT / "web" / "cairn_config.yaml"
     data = json.loads(bridge.load_files(json.dumps(
         [{"name": path.name, "text": path.read_text(encoding="utf-8")}])))
-    doc = bridge._STATE["doc"]
     out = []
     for g in data["groups"]:
         for it in g["items"]:
-            fkey, kind, idx = it["uid"].rsplit("::", 2)
-            feat = doc.folders[fkey][kind][int(idx)]
+            kind = it["kind"]
+            feat = bridge._STATE["features"][it["uid"]]
             out.append({
                 "kind": kind, "folder": g["name"], "name": it["name"], "notes": it["notes"],
                 "icon": it["icon"], "color": it["color"],

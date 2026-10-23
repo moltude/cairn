@@ -107,8 +107,8 @@ def _load(paths: list[Path]) -> dict:
 
 
 def _feature(uid: str):
-    fkey, kind, idx = uid.rsplit("::", 2)
-    return bridge._STATE["doc"].folders[fkey][kind][int(idx)]
+    # uids are opaque (ENG-07): the bridge maps each one to its feature.
+    return bridge._STATE["features"][uid]
 
 
 def _points(feat) -> tuple[list, int]:

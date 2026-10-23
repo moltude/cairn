@@ -120,6 +120,16 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert len(areas) == 17
     assert {(i.pop("style"), i.pop("weight")) for i in areas} == {("solid", "4.0")}
     assert sum(i.pop("fill") == "rgba(0,0,0,0)" for i in areas) == 1  # CalTopo fill-opacity 0
+    # uids are opaque ids since ENG-07 (2026-10-23); the baseline holds the old
+    # `<folder key>::<kind>::<index within kind>` value, so rebuild it to compare
+    # everything else. The export below is pinned with no such adjustment.
+    uids = [i["uid"] for g in loaded["groups"] for i in g["items"]]
+    assert len(set(uids)) == len(uids) and not [u for u in uids if "::" in u]
+    for g in loaded["groups"]:
+        per_kind: dict = {}
+        for i in g["items"]:
+            n = per_kind[i["kind"]] = per_kind.get(i["kind"], -1) + 1
+            i["uid"] = f"{g['key']}::{i['kind']}::{n}"
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
