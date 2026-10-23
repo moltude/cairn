@@ -49,20 +49,31 @@
 <div id="edit-stage" class="stage edit hidden">
   <aside class="rail" aria-label="Map and filters">
     <div class="rail-head">
-      <div class="wordmark"><span class="cairn-mark" data-ui-icon="cairn"></span><span>Cairn</span></div>
-      <div class="title-block">
+      <div class="rail-brand">
+        <div class="wordmark"><span class="cairn-mark" data-ui-icon="cairn"></span><span>Cairn</span></div>
         <span id="map-label" class="label">CalTopo map</span>
-        <h1 id="map-title"></h1>
       </div>
+      <div class="title-block"><h1 id="map-title"></h1></div>
     </div>
-    <nav class="facet" aria-label="Filter by folder">
-      <span class="label">Folders</span>
-      <div id="folder-facets" class="facet-list"></div>
-    </nav>
-    <nav class="facet" aria-label="Filter by icon">
-      <span class="label">Icon</span>
-      <div id="icon-facets" class="facet-list"></div>
-    </nav>
+    <!-- Filters (UI-28): three sections that fold. Folding only hides the list;
+         the filter picked in it stays applied and its header shows a summary. -->
+    <section class="facet" data-sec="type">
+      <button type="button" class="sec-h" data-fk="sec|type" aria-expanded="true" aria-controls="type-filter"><span class="label">Type</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
+      <div id="type-filter" class="facet-list" role="group" aria-label="Filter by type">
+        <button type="button" class="facet-btn" data-kind="" data-fk="type|all" aria-pressed="true"><span class="facet-name">All</span><span class="facet-count"></span></button>
+        <button type="button" class="facet-btn" data-kind="waypoints" data-fk="type|waypoints" aria-pressed="false"><span class="facet-name">Waypoints</span><span class="facet-count"></span></button>
+        <button type="button" class="facet-btn" data-kind="tracks" data-fk="type|tracks" aria-pressed="false"><span class="facet-name">Lines</span><span class="facet-count"></span></button>
+        <button type="button" class="facet-btn" data-kind="shapes" data-fk="type|shapes" aria-pressed="false"><span class="facet-name">Areas</span><span class="facet-count"></span></button>
+      </div>
+    </section>
+    <section class="facet" data-sec="folders">
+      <button type="button" class="sec-h" data-fk="sec|folders" aria-expanded="true" aria-controls="folder-facets"><span class="label">Folders</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
+      <div id="folder-facets" class="facet-list" role="group" aria-label="Filter by folder"></div>
+    </section>
+    <section class="facet" data-sec="icon">
+      <button type="button" class="sec-h" data-fk="sec|icon" aria-expanded="true" aria-controls="icon-facets"><span class="label">Icon</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
+      <div id="icon-facets" class="facet-list" role="group" aria-label="Filter by icon"></div>
+    </section>
     <div class="rail-foot">
       <span id="status-rail" class="status-slot"></span>
       <button id="export" type="button" class="btn primary big">Export</button>
@@ -76,12 +87,6 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5C5242" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg>
         <input id="filter" type="search" placeholder="Name or note" aria-label="Search" autocomplete="off">
       </label>
-      <div id="type-filter" class="seg" role="group" aria-label="Markup type">
-        <button type="button" data-kind="" aria-pressed="true">All</button>
-        <button type="button" data-kind="waypoints" aria-pressed="false">Waypoints</button>
-        <button type="button" data-kind="tracks" aria-pressed="false">Lines</button>
-        <button type="button" data-kind="shapes" aria-pressed="false">Areas</button>
-      </div>
     </div>
 
     <div id="source-notice" class="note source-notice hidden" role="note"></div>
@@ -160,8 +165,8 @@
        line's color, style (solid or dashed) and weight.</p>
 
     <h3>3 · Edit in bulk</h3>
-    <p>Narrow the list with the search box, the type buttons, or the <b>Folders</b> and
-       <b>Icon</b> lists on the left (tick <b>Default pin</b> to see only those). Then tick rows —
+    <p>Narrow the list with the search box or the <b>Type</b>, <b>Folders</b> and
+       <b>Icon</b> sections on the left (tick <b>Default pin</b> to see only those). Then tick rows —
        <b>Icon &amp; color…</b> applies to your selection, and <b>Line style…</b>
        (shown when lines are selected) sets their style and weight. <b>More</b> holds <i>Use note as
        name</i> (when the real information is in the notes) and the export include/exclude

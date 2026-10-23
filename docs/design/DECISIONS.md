@@ -628,3 +628,32 @@ Status: decided 2026-10-23 (owner).
 - Quiet loading: nothing is shown while the engine boots. A file dropped or chosen before it is
   ready shows a brief "Getting ready…" on the drop area and is processed automatically when the
   engine is ready (queued, not rejected).
+
+### UI-28 — Filters in the rail as folding sections; a smaller edit screen
+Status: decided 2026-10-23 (owner, from the layout mockups; option C chosen).
+
+- **All filtering lives in the left rail**, in three sections that fold: **Type** (All /
+  Waypoints / Lines / Areas, each with its count — moved from the segmented control at the top
+  right, which is gone), **Folders** (with counts) and **Icon** (checkboxes with counts, incl.
+  *Default pin*). Each section has a header button (▾ open / ▸ folded, `aria-expanded`). Folding
+  only hides the list: what is picked in it stays applied, and the folded header shows a short
+  summary of it ("Waypoints", the folder name, "Default pin", "3 icons"; "All"/"Any" when nothing
+  is picked). Fold state is not saved; a new map starts with every section open.
+- **Applied filters show above the list as chips** (search, type, folder, each icon); × removes
+  that one filter, "Clear all" removes them all. The search box stays at the top of the list
+  column, now full width.
+- Every filtering behaviour is unchanged: selection follows the visible rows (UI-23), Ctrl/⌘+A,
+  shift-click ranges, collapsed folders, the Default-pin facet, counts.
+- Rail head: Cairn wordmark with the map's source label ("CalTopo map") beside it, then the map
+  title. Rail foot: status, Export, Start over (Help/FAQ/Walkthrough/GitHub stay in the page
+  footer, UI-27).
+- **The edit screen is scaled down; the pop-ups are not.** Body text 15→13px; small-caps labels
+  11→10px; map title 30→21px; folder headings 22→17px; table rows 60→42px; row markers 30×38→22×28
+  (line/area swatches 30×26→22×19); rail 300→248px; buttons and the search box 42→34px tall;
+  Export 48→40px; rail paddings 26→18px. Fonts, colours and rules are unchanged. The single-item
+  icon & color / line popover, the Icon & color… and Line style dialogs, the confirmations and
+  Help keep today's sizes (the owner prefers the larger pop-up). The drop and done screens are
+  unchanged. At 1440×900 the list shows 18 full rows (was 11).
+- Options not taken (layout canvas): A, every filter in the rail as flat lists that don't fold;
+  B, one filter bar over the list with no facet rail. D (the icon popover at the smaller scale)
+  was declined: the pop-ups stay at today's size.
