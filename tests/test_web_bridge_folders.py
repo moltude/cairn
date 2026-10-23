@@ -101,7 +101,8 @@ def _check_export(zf: zipfile.ZipFile) -> None:
         prefix = f"{e['n']:02d}_{g['safe']}/"
         assert e["files"] and all(f["path"].startswith(prefix) for f in e["files"])
         assert sum(_markups(zf.read(f["path"]).decode()) for f in e["files"]) == e["count"]
-        assert f"### {e['n']}. {g['name']}  ({e['count']} markups)" in runbook
+        # The runbook heading as PR-B (UI-31) words it: counts with one/many.
+        assert f"### {e['n']}. {g['name']}  ({bridge._n(e['count'], 'markup')} · {bridge._n(len(e['files']), 'file')})" in runbook
         assert f"**Rename it to:** `{g['name']}`" in runbook
         listed.update(f["path"] for f in e["files"])
     # Nothing else in the zip, and no folder with an included item left unlisted.
@@ -387,7 +388,7 @@ def test_moving_everything_into_one_folder():
     assert sorted(zf.namelist()) == ["01_Paddling/Paddling_Areas.gpx",
                                      "01_Paddling/Paddling_Tracks.gpx",
                                      "01_Paddling/Paddling_Waypoints.gpx", "RUNBOOK.md"]
-    assert "**1 folders · 177 markups · 1 imports**" in zf.read("RUNBOOK.md").decode()
+    assert "**1 folder · 177 markups · 1 import**" in zf.read("RUNBOOK.md").decode()
     _check_export(zf)
 
 
