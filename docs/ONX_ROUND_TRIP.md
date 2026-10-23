@@ -118,7 +118,8 @@ test's position in the index), clear of id1 and of any non-test content.
 **Evidence, all read-only.**
 
 - *Exports*: every GPX and KML export is kept. It was taken from `~/Downloads` only if it was
-  under 2 minutes old, and was moved out at once (the `scripts/onx_fetch_export.sh` rule).
+  under 2 minutes old, and was moved out at once. This is stricter than the 3-minute window
+  in `scripts/onx_fetch_export.sh`.
 - *The import call*: `POST /v1/markups/import`, sent by the page. For
   [`no-folder-gpx-with-ids`](#no-folder-gpx-with-ids) the request and response bodies are saved
   under `net/`. For every test the response's uuid list was read from the importer's own state
