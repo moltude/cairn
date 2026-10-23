@@ -32,8 +32,8 @@ mess. Written after the 2026-10-22 round (97 test markups, cleaned up by hand).
 | Re-import of an onX export | Always creates new markups with new uuids. Both GPX `<desc>` `id=` and KML `<Data name="id">` are ignored, even when they hold the uuids of live markups in the same account, and the originals are left untouched: unchanged API records, unchanged re-exports. This holds on every import path: with or without "new folder", added afterwards to the originals' own folder or another one, unmodified re-imports, content-identical copies with no id, a stale export after an in-onX edit (not reverted), and two full cycles. onX has no "import into an existing folder" (`docs/ONX_ROUND_TRIP.md`) |
 | Waypoint icon / color | Kept (`onx:icon`, `onx:color` in GPX) |
 | Track color / style (dash) / weight | Kept |
-| Area color | **Only** via GPX `<rte>` + `<type>Area</type>` + `onx:color`; KML area styles are ignored |
-| Area fill | **Never** kept: onX ignores `onx:fill_color` (and KML fills) and stores its default `rgba(74,144,226,0.1)` (2026-10-23, `docs/ONX_ROUND_TRIP.md`) |
+| Area color / style / weight | **Only** via GPX `<rte>` + `<type>Area</type>` + `onx:color` / `onx:style` (solid, dash, dot) / `onx:weight` (2.0, 4.0, 6.0); all kept (2026-10-23, `docs/ONX_ROUND_TRIP.md#area-fidelity`). KML area styles are ignored |
+| Area fill | **Never read on import.** Every imported area stores no fill and exports onX's default `rgba(74,144,226,0.1)`, whatever `onx:fill_color` says: onX's own swatch values, `none`, and six other encodings were all dropped (2026-10-23, `docs/ONX_ROUND_TRIP.md#area-fidelity`). onX's area fill palette is 10 swatches at alpha 0.1 plus none (`cairn/core/color_mapper.py` `AREA_FILL_PALETTE`) |
 | Area holes | Not representable in onX |
 | Multi-line notes | Kept |
 | Name characters | Kept: `# & ! @ $ % ^ * ' " ( ) < >`, accents, em dash, emoji (r1 probe, r2 edge set) |

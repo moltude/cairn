@@ -115,6 +115,11 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert sum(i.pop("style") == "dash" for i in tracks) == 6   # the 6 dashed lines, as exported
     for i in tracks:
         i.pop("weight")
+    # Areas carry their onX style, weight and fill (2026-10-23, area fidelity).
+    areas = [i for g in loaded["groups"] for i in g["items"] if i["kind"] == "shapes"]
+    assert len(areas) == 17
+    assert {(i.pop("style"), i.pop("weight")) for i in areas} == {("solid", "4.0")}
+    assert sum(i.pop("fill") == "rgba(0,0,0,0)" for i in areas) == 1  # CalTopo fill-opacity 0
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
@@ -350,13 +355,11 @@ WEB_ALLOWED_LOSSES = ALLOWED_LOSSES | {
     # count and point total drop; RUNBOOK.md lists it under "Holes not kept").
     ("Hunt unit", 0, "rings"),
     ("Hunt unit", 0, "pts"),
-    # onX's own area <rte> carries only <onx:color> and <onx:fill_color>, and
-    # that is the verified import; area line style/weight are not written.
-    *{(name, i, f) for name, n in (("Hunt unit", 1), ("Two-part area", 2))
-      for i in range(n) for f in ("style", "weight")},
+    # (Area line style, weight and fill used to be lost here too: the area GPX
+    # writer wrote only <onx:color>. They now pass through, 2026-10-23.)
 }
-# FIDELITY_FIGURE (52, 62) less the 8 extra losses above.
-WEB_FIDELITY_FIGURE = (44, 62)
+# FIDELITY_FIGURE (53, 62) less the 2 extra losses above.
+WEB_FIDELITY_FIGURE = (51, 62)
 
 
 def test_export_of_an_onx_pair_rereads_to_phase_1_fidelity(tmp_path):

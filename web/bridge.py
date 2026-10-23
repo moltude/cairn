@@ -15,7 +15,14 @@ import zipfile
 from pathlib import Path
 
 from cairn.core.config import get_all_onx_icons, load_config
-from cairn.core.color_mapper import ColorMapper, pattern_to_style, stroke_width_to_weight
+from cairn.core.color_mapper import (
+    AREA_FILL_KEY,
+    AREA_STYLE_KEY,
+    AREA_WEIGHT_KEY,
+    LINE_STYLE_KEY,
+    LINE_WEIGHT_KEY,
+    ColorMapper,
+)
 from cairn.core.config import GENERIC_SYMBOLS, resolve_waypoint_color
 from cairn.core.icon_resolver import IconResolver
 from cairn.core.mapper import map_icon
@@ -34,7 +41,8 @@ from cairn.core.writers import (
     clear_name_changes,
     get_areas_without_holes,
     get_name_changes,
-    kml_area_color,
+    area_onx_style,
+    line_onx_style_weight,
     write_gpx_areas_maybe_split,
     write_gpx_tracks_maybe_split,
     write_gpx_waypoints_maybe_split,
@@ -69,11 +77,12 @@ FUCHSIA = ("Fuchsia", "rgba(255,0,255,1)", "#FF00FF")
 LINE_COLORS = ONX_COLORS + [FUCHSIA]
 _RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in LINE_COLORS}
 
-# onX line styles and weights an edit may set on a track (onx:style / onx:weight,
-# the values onX's own GPX export writes). Weight -> the CalTopo stroke-width
-# the track writer's stroke_width_to_weight maps back to that weight.
-LINE_STYLES = ("solid", "dash", "dot")
-LINE_WEIGHTS = {"4.0": 4, "6.0": 6}
+# What an edit may set on a track or an area: the two styles and two weights
+# Cairn offers. onX also has dot and 2.0 (thin); an onX file's dot / 2.0 line or
+# area keeps it unless the user changes it (pinned at export: LINE_STYLE_KEY /
+# LINE_WEIGHT_KEY for tracks, AREA_STYLE_KEY / AREA_WEIGHT_KEY for areas).
+LINE_STYLES = AREA_STYLES = ("solid", "dash")
+LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 
 # "edited": uids with any UI edit. "color_edited": uids whose edit set a colour.
 # Both are bookkeeping only now: export_zip pins EVERY item to the colour the UI
@@ -486,8 +495,8 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
             feat.color or feat.stroke or "", icon, default=cfg.default_color
         )
     elif kind == "shapes":
-        # Same function the KML writer uses (11-colour track palette).
-        color = kml_area_color(feat)
+        # Same function the area writers use (11-colour track palette).
+        color = area_onx_style(feat)[0]
     else:
         # Lines use the 11-color track palette (keeps Fuchsia).
         color = ColorMapper.map_track_color(feat.stroke or feat.color or "")
@@ -514,10 +523,15 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
         "needs_attention": kind == "waypoints" and icon == "Location" and not confirmed,
     }
     if kind == "tracks":
-        # The onX line style and weight this line exports with -- the same
-        # pattern_to_style / stroke_width_to_weight the track writer applies.
-        item["style"] = pattern_to_style(feat.pattern or "")
-        item["weight"] = stroke_width_to_weight(feat.stroke_width)
+        # The onX line style and weight this line exports with (the track
+        # writer's own rule). An onX file's dot / 2.0 comes through as is.
+        item["style"], item["weight"] = line_onx_style_weight(feat)
+    elif kind == "shapes":
+        # The onX line style, weight and fill this area exports with (the area
+        # writers' own rule). An onX file's dot / 2.0 / none comes through as is.
+        # fill is shown, not edited: onX's importer ignores it (ONX_ROUND_TRIP.md
+        # #area-fidelity), so offering it as a choice would promise nothing.
+        _c, item["style"], item["weight"], item["fill"] = area_onx_style(feat)
     if origin:
         # Items read by the onX readers only: the GeoJSON path's JSON is unchanged.
         # onx_id is held for roadmap Phase 6 (nothing writes it yet); subkind is
@@ -532,19 +546,20 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
 def apply_edits(edits_json: str) -> str:
     """Apply {uid: {icon,color,name,desc,included,confirmed,style,weight}} from the UI.
 
-    style ("solid" | "dash" | "dot") and weight ("4.0" | "6.0") apply to tracks
-    and are ignored for waypoints and areas; any other value raises ValueError.
+    style and weight apply to tracks and areas ("solid" | "dash", "4.0" |
+    "6.0") and are ignored for waypoints; any other value raises ValueError.
     """
     edits = json.loads(edits_json)
     # Validate before touching anything, so a bad edit applies nothing.
     for uid, e in edits.items():
         e = e or {}
-        if e.get("style") is not None and e["style"] not in LINE_STYLES:
+        styles, weights = LINE_STYLES, LINE_WEIGHTS
+        if e.get("style") is not None and e["style"] not in styles:
             raise ValueError(f"Unknown line style {e['style']!r} for {uid}: "
-                             f"use one of {', '.join(LINE_STYLES)}.")
-        if e.get("weight") is not None and str(e["weight"]) not in LINE_WEIGHTS:
+                             f"use one of {', '.join(styles)}.")
+        if e.get("weight") is not None and str(e["weight"]) not in weights:
             raise ValueError(f"Unknown line weight {e['weight']!r} for {uid}: "
-                             f"use one of {', '.join(LINE_WEIGHTS)}.")
+                             f"use one of {', '.join(weights)}.")
     _STATE.setdefault("edited", set()).update(edits.keys())
     _STATE.setdefault("color_edited", set()).update(
         uid for uid, e in edits.items() if e and e.get("color") is not None
@@ -558,11 +573,11 @@ def apply_edits(edits_json: str) -> str:
             for k in ("icon", "color", "name", "desc", "included", "confirmed"):
                 if k in e and e[k] is not None:
                     item[k] = e[k]
-            if item["kind"] == "tracks":
-                # Line style / weight: tracks only (onX has no such thing for a
-                # waypoint, and Cairn's area export writes neither -- ENG-05).
-                # Stored on the item only when edited, so an unedited map's
-                # load JSON and export are byte-for-byte what they were.
+            if item["kind"] in ("tracks", "shapes"):
+                # Line style / weight: tracks and areas (onX has no such thing
+                # for a waypoint). A track stores them on the item only when
+                # edited, so an unedited map's load JSON and export are
+                # byte-for-byte what they were; an area always carries them.
                 if e.get("style") is not None:
                     item["style"] = e["style"]
                 if e.get("weight") is not None:
@@ -619,17 +634,22 @@ def export_zip() -> bytes:
                     feat.properties["cairn_onx_icon_override"] = item["icon"]
                     feat.properties["cairn_onx_color_override"] = item["color"]
                 else:
-                    # Track GPX and area KML both read feature.stroke first
-                    # (track palette, so Fuchsia round-trips).
+                    # Track GPX and the area writers both read feature.stroke
+                    # first (track palette, so Fuchsia round-trips).
                     feat.stroke = _hex_for(item["color"])
+                if item["kind"] == "shapes":
+                    # Pin the area's style, weight and fill to what the UI shows
+                    # (edited or as loaded); area_onx_style reads these first.
+                    feat.properties[AREA_STYLE_KEY] = item["style"]
+                    feat.properties[AREA_WEIGHT_KEY] = item["weight"]
+                    feat.properties[AREA_FILL_KEY] = item["fill"]
                 if item["kind"] == "tracks":
-                    # The track writer reads feat.pattern / feat.stroke_width
-                    # (pattern_to_style / stroke_width_to_weight), whichever
-                    # reader built the feature (CalTopo or onX).
+                    # Pin the track's style and weight to what the UI shows
+                    # (edited or as loaded); line_onx_style_weight reads these first.
                     if item.get("style"):
-                        feat.pattern = item["style"]
+                        feat.properties[LINE_STYLE_KEY] = item["style"]
                     if item.get("weight"):
-                        feat.stroke_width = LINE_WEIGHTS[item["weight"]]
+                        feat.properties[LINE_WEIGHT_KEY] = item["weight"]
 
     out = Path("/tmp/out")
     buf = io.BytesIO()
@@ -671,11 +691,13 @@ def export_zip() -> bytes:
                     files.append((p, cnt))
             if shapes:
                 shapes = sorted(shapes, key=lambda f: natural_sort_key(f.title or ""))
-                # GPX <rte type=Area>, not KML: onX ignores area colour in KML
-                # but keeps it from GPX (verified 2026-10-22, ENG-05). The fill
-                # is ignored either way: onX stores its default
-                # rgba(74,144,226,0.1) (docs/ONX_ROUND_TRIP.md, 2026-10-23). The count is areas actually WRITTEN, so a polygon
-                # with no usable ring shows up as dropped, not written.
+                # GPX <rte type=Area>, not KML: onX ignores area styling in KML
+                # but keeps the line colour, style and weight from GPX (verified
+                # 2026-10-22 / 2026-10-23, ENG-05). The fill is ignored either
+                # way: every import stores onX's default rgba(74,144,226,0.1)
+                # (docs/ONX_ROUND_TRIP.md#area-fidelity). The count is areas
+                # actually WRITTEN, so a polygon with no usable ring shows up as
+                # dropped, not written.
                 for p, size, cnt in write_gpx_areas_maybe_split(
                     shapes, d / f"{safe}_Areas.gpx", g["name"]
                 ):

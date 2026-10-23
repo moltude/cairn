@@ -1018,6 +1018,120 @@ def test_line_style_dialog_for_several_lines(loaded: Page):
     assert [a["weight"] for a in after] == [b["weight"] for b in before]
 
 
+def test_area_popover_sets_style_and_weight(loaded: Page):
+    """One area: the same Style and Weight toggles as a line (UI-25), its mark
+    redrawn in them, and the export's <onx:style>/<onx:weight> carry the pick."""
+    _set_type(loaded, "shapes")
+    row = loaded.locator(ROW).first
+    uid = row.get_attribute("data-uid")
+    get = _LINE.format(uid=uid)
+    before = loaded.evaluate(get)
+    assert (before["style"], before["weight"]) == ("solid", "4.0")   # Bitterroots: CalTopo width 2
+    assert before["fill"].startswith("rgba(")
+    row.locator(".line-btn").click()
+    pop = loaded.locator("#mark-pop")
+    assert pop.locator(".tog").count() == 4
+    assert pop.locator(".pop-map").count() == 0            # areas keep their patch preview
+    pop.locator('.tog[data-style="dash"]').click()
+    pop.locator('.tog[data-weight="6.0"]').click()
+    assert pop.locator(".pop-preview path[stroke-dasharray]").count() == 2
+    assert loaded.evaluate(get)["style"] == "solid"        # not yet saved
+    loaded.click("#pop-apply")
+    after = loaded.evaluate(get)
+    assert (after["style"], after["weight"], after["fill"]) == ("dash", "6.0", before["fill"])
+    expect(row.locator(".line-btn")).to_have_attribute("aria-label", re.compile(r"Dashed, Thick"))
+
+    loaded.click("#export")
+    expect(loaded.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+    with loaded.expect_download() as dl:
+        loaded.click("#download")
+    zf = zipfile.ZipFile(dl.value.path())
+    gpx = "".join(zf.read(n).decode() for n in zf.namelist() if n.endswith("_Areas.gpx"))
+    import html
+    blocks = [b for b in re.findall(r"<rte>.*?</rte>", gpx, flags=re.S)
+              if html.unescape(re.search(r"<name>(.*?)</name>", b, flags=re.S).group(1)) == after["name"]]
+    assert blocks and all("<onx:style>dash</onx:style>" in b and "<onx:weight>6.0</onx:weight>" in b
+                          and f"<onx:fill_color>{before['fill']}</onx:fill_color>" in b for b in blocks)
+
+
+def test_line_style_dialog_takes_areas_too(loaded: Page):
+    """Line style… is offered for a selection of areas and sets their style."""
+    _set_type(loaded, "shapes")
+    rows = loaded.locator(ROW)
+    uids = [rows.nth(i).get_attribute("data-uid") for i in range(2)]
+    for i in range(2):
+        rows.nth(i).locator(".sel-box").check()
+    expect(loaded.locator("#bulk-line")).to_be_visible()
+    loaded.click("#bulk-line")
+    d = loaded.locator("#mark-dialog")
+    expect(d.locator("h2")).to_have_text("Line style")
+    assert d.locator(".line-rows .lr-name").count() == 2
+    d.locator('.tog[data-style="dash"]').click()
+    loaded.click("#line-apply")
+    expect(loaded.locator("#mark-modal")).to_be_hidden()
+    assert [loaded.evaluate(_LINE.format(uid=u))["style"] for u in uids] == ["dash", "dash"]
+    expect(loaded.locator("#status")).to_have_text("Changed 2 areas")
+
+
+def _keep_fills(page: Page) -> None:
+    """Dismiss the load-time area-fill warning (onX files with non-default fills)."""
+    page.click("#confirm .confirm-actions button:text-matches('^Keep')")
+    expect(page.locator("#confirm")).to_be_hidden()
+
+
+def test_onx_areas_with_a_fill_warn_and_can_be_left_out(fresh_page: Page):
+    """onX resets an imported area's fill to its default blue, so an onX export
+    whose areas have another fill (or none) warns once on load, and "Leave these
+    out" unticks exactly those areas."""
+    fx = FX_DIR / "onx_exports"
+    fresh_page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    dlg = fresh_page.locator("#confirm")
+    expect(dlg).to_be_visible()
+    expect(fresh_page.locator("#confirm-title")).to_have_text("4 areas will lose their fill.")
+    expect(fresh_page.locator("#confirm-body")).to_have_text("onX resets area fills to blue on import.")
+    fresh_page.click("#confirm .confirm-actions button:text-is('Leave these 4 out')")
+    expect(dlg).to_be_hidden()
+    expect(fresh_page.locator(f"{ROW}.excluded")).to_have_count(4)
+
+
+def test_onx_areas_keep_them_changes_nothing(fresh_page: Page):
+    fx = FX_DIR / "onx_exports"
+    fresh_page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    _keep_fills(fresh_page)
+    expect(fresh_page.locator(f"{ROW}.excluded")).to_have_count(0)
+    assert fresh_page.evaluate("Object.keys(EDITS).length") == 0
+
+
+@pytest.mark.parametrize("files", [["onx_exports/three-round-trips.gpx", "onx_exports/three-round-trips.kml"],
+                                   ["bitterroots/Bitterroots__Complete_.json"]],
+                         ids=["onx-default-fill", "caltopo"])
+def test_no_fill_warning_when_nothing_would_change(fresh_page: Page, files):
+    fresh_page.set_input_files("#file", [str(FX_DIR / f) for f in files])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    fresh_page.wait_for_timeout(300)
+    expect(fresh_page.locator("#confirm")).to_be_hidden()
+
+
+def test_onx_area_dot_and_extra_thin_are_shown_and_kept(fresh_page: Page):
+    """An onX file's dotted and 2.0 areas are drawn and named as such; neither is
+    offered as a choice, so no toggle is pressed for them."""
+    fx = FX_DIR / "onx_exports"
+    fresh_page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    _keep_fills(fresh_page)
+    marks = fresh_page.locator(f"{ROW} .line-btn")
+    expect(marks).to_have_count(4)
+    labels = [marks.nth(i).get_attribute("aria-label") for i in range(4)]
+    assert "Area, Yellow, Solid, Extra thin. Change area" in labels
+    assert "Area, Lime, Dotted, Thin. Change area" in labels
+    fresh_page.locator(f'{ROW}:has(input[value="test 4"]) .line-btn').click()
+    pop = fresh_page.locator("#mark-pop")
+    assert pop.locator('.tog[data-style][aria-pressed="true"]').count() == 0
+    assert pop.locator('.tog[data-weight="4.0"]').get_attribute("aria-pressed") == "true"
+
+
 def test_marker_popover_cancel_changes_nothing(loaded: Page):
     row = loaded.locator(ROW).first
     uid = row.get_attribute("data-uid")
@@ -1779,6 +1893,7 @@ def test_file_input_accepts_gpx_kml_and_several_files(csp_page: Page):
 def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page):
     page = csp_page
     _load_files(page, ONX_PAIR)
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     # The pair merged: ONE folder, named from the file, in the rail and the list.
     expect(page.locator(".folder")).to_have_count(1)
     expect(page.locator(".folder h2")).to_have_text("onx dialect")
@@ -1813,6 +1928,7 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
 def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     page = csp_page
     _load_files(page, ONX_PAIR)
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     page.click("#export")
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator(".rb-step")).to_have_count(1)
@@ -1853,6 +1969,7 @@ def test_several_files_become_one_folder_each_and_start_over_clears_the_notice(c
     page = csp_page
     rattlesnake = FX_DIR / "rattlesnake_test_waypoints.gpx"
     _load_files(page, [*ONX_PAIR, CALTOPO_GPX, rattlesnake])
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     expect(page.locator(".folder h2")).to_have_text(
         ["rattlesnake test waypoints", "bitterroots subet", "onx dialect"])
     expect(page.locator("#map-title")).to_have_text("onx dialect + 2 more")
@@ -1864,6 +1981,7 @@ def test_several_files_become_one_folder_each_and_start_over_clears_the_notice(c
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
     expect(page.locator("#source-notice")).to_be_hidden()
     _load_files(page, ONX_PAIR)
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     expect(page.locator(".folder")).to_have_count(1)
     expect(page.locator("#source-notice")).to_be_hidden()
 

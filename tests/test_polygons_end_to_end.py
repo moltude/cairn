@@ -65,7 +65,8 @@ def test_area_color_is_nearest_track_palette_color(tmp_path):
     # raw hex through as ff0101fe.
     (line, _w, poly), = _styles(_kml([_shape(stroke="#FE0101")], tmp_path))
     assert line == RED_KML
-    assert poly[2:] == RED_KML[2:]
+    # The fill is onX's nearest FILL swatch (a separate palette): Orange 212,83,47.
+    assert poly == "1a2f53d4"
 
 
 def test_missing_or_malformed_area_color_is_blue_like_the_ui(tmp_path):
@@ -122,11 +123,14 @@ def test_ui_area_color_equals_exported_area_color():
     assert exported == shown
 
 
-def test_user_area_color_edit_wins_on_line_and_fill():
+def test_user_area_color_edit_sets_the_line_colour_not_the_fill():
+    # onX keeps an area's line colour and fill apart (two palettes), and its
+    # importer ignores the fill, so a line-colour edit leaves the fill alone.
     items = _load(_doc(_poly_feature("a", "Zone", [SQUARE], stroke="#FF0000", fill="#FF0000")))
+    assert items[0]["fill"] == "rgba(212,83,47,0.1)"
     (rte,) = _gpx_areas(_export({items[0]["uid"]: {"color": FUCHSIA}}))
     assert rte.findtext("g:extensions/onx:color", namespaces=GPX_NS) == FUCHSIA
-    assert rte.findtext("g:extensions/onx:fill_color", namespaces=GPX_NS) == "rgba(255,0,255,0.5)"
+    assert rte.findtext("g:extensions/onx:fill_color", namespaces=GPX_NS) == "rgba(212,83,47,0.1)"
 
 
 # ---- (b) holes ------------------------------------------------------------
@@ -158,10 +162,12 @@ def test_caltopo_stroke_width_and_fill_opacity_are_carried(tmp_path):
         _shape("defaults", stroke="#FF0000"),
     ]
     styles = _styles(_kml(feats, tmp_path))
-    assert styles[0] == (RED_KML, "1", "1a0000ff")
-    assert styles[1] == (RED_KML, "2", "000000ff")
-    # Nothing provided -> the writer's historical width 2 and 50% fill.
-    assert styles[2] == (RED_KML, "2", "7f0000ff")
+    # The fill is onX's nearest fill swatch (Orange, always alpha 0.1), or onX's
+    # "none" (rgba(0,0,0,0)) for CalTopo's fill-opacity 0.
+    assert styles[0] == (RED_KML, "1", "1a2f53d4")
+    assert styles[1] == (RED_KML, "2", "00000000")
+    # Nothing provided -> the writer's historical width 2; the fill follows the line.
+    assert styles[2] == (RED_KML, "2", "1a2f53d4")
 
 
 # ---- (d) unusable polygons are dropped, and counted as dropped --------------

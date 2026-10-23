@@ -515,31 +515,43 @@ Evidence, from a real onX Web Map import on the owner's account (2026-10-22):
   style all came in as the default red.
 - **A GPX `<rte>` with `<type>Area</type>`** and `<extensions><onx:color>rgba(255,255,0,1)
   </onx:color><onx:fill_color>rgba(255,255,0,0.3)</onx:fill_color></extensions>` imported as a
-  real onX Area (acreage shown) **with its yellow color**. *Correction 2026-10-23:* only the
-  outline color was kept. Every import in `docs/ONX_ROUND_TRIP.md` stored onX's default fill
-  `rgba(74,144,226,0.1)` whatever `onx:fill_color` said, so the fill is never carried.
+  real onX Area (acreage shown) **with its yellow color**. *Correction 2026-10-23
+  (`docs/ONX_ROUND_TRIP.md#area-fidelity`):* onX's importer keeps `<onx:color>`, `<onx:style>`
+  (solid / dash / dot) and `<onx:weight>` (2.0 / 4.0 / 6.0), and never reads the fill. Not
+  onX's own swatch values re-imported byte for byte, not `rgba(0,0,0,0)` ("None"), not six
+  other encodings: every imported area stores no fill and exports the default
+  `rgba(74,144,226,0.1)`. PR #41 had the conclusion right but guessed the reason (non-swatch
+  values); it is not the value, the field is ignored.
 - **onX does not parse a key=value `<desc>` on import**: a desc of `name=…\nnotes=…\ntype=Area\n
   color=…` became the Notes verbatim. So `<desc>` carries only the user's note text, as the
   waypoint and track writers already did.
 - onX's own GPX export of an area
   (`tests/fixtures/caltopo-random/onx_roundtrip/from_geojson/onx_export.gpx`) is
-  `<rte><name/><desc>key=value…</desc><type>Area</type><extensions><onx:color/><onx:fill_color/>
-  </extensions><rtept/>…</rte>`. Tracks (color, dash style, weight 6.0, multi-line notes) and
+  `<rte><name/><desc>key=value…</desc><type>Area</type><extensions><onx:color/><onx:style/>
+  <onx:weight/><onx:fill_color/></extensions><rtept/>…</rte>` (`<onx:style>` is absent when
+  the area has none stored). onX areas have a line palette (the 11 track colors) and a separate
+  **fill palette**: 10 swatches at alpha 0.1 plus None (`AREA_FILL_PALETTE`). Tracks (color, dash style, weight 6.0, multi-line notes) and
   waypoints round-tripped from Cairn's GPX in the same import.
 
 Decision:
 
 - `cairn/core/writers.py:write_gpx_areas_maybe_split` writes each area as that `<rte>`: `<name>`
   (sanitized like every other name), `<desc>` = note only (omitted when empty), `<type>Area</type>`,
-  `<onx:color>` = `kml_area_color` (the 11-color line palette value the UI shows) and
-  `<onx:fill_color>` = the same RGB at CalTopo's `fill-opacity`, else 0.5 (the old KML fill
-  semantics), then the closed outer ring as bare `<rtept lat lon/>`. Size-split at 3.75 MiB like
-  the other GPX writers. File: `<Folder>_Areas.gpx`.
+  then `<onx:color>`, `<onx:style>`, `<onx:weight>`, `<onx:fill_color>` in onX's order, all from
+  `writers.area_onx_style` (2026-10-23): an onX file's values pass through exactly (dot, 2.0 and
+  None included) unless the user edits them; a CalTopo area's style and weight map from its
+  `pattern` and `stroke-width` as a track's do, and its fill is the nearest onX fill swatch to
+  CalTopo's `fill` (to the line colour when there is none), or None for `fill-opacity` 0. Then
+  the closed outer ring as bare `<rtept lat lon/>`. Size-split at 3.75 MiB like the other GPX
+  writers. File: `<Folder>_Areas.gpx`. The KML area writer writes the same four values as
+  ExtendedData (and the fill as its PolyStyle).
 - The web export (`web/bridge.py:export_zip`) uses it; no web export writes KML any more, so the
   runbook's "contains KML, Web Map only" warning is no longer triggered. The KML area writer is
   kept for its other callers and tests.
-- Area line style and weight are not written: onX's own area export carries only color and fill,
-  and that is what was verified.
+- Area line style and weight are written and edited like a line's (UI-25). (Until 2026-10-23
+  they were not, on the mistaken belief that onX's area export carried only color and fill.)
+- The fill is written for format fidelity only. Cairn shows it but offers no fill choice: onX
+  would discard it on import.
 - **Holes — provisional, subject to revision.** An onX area is single-ring, so a polygon with
   holes is written as its outer ring only (the hole is filled in) and listed in RUNBOOK.md under
   "Holes not kept in onX". Not tested: whether onX can keep a hole through any import path (e.g.
@@ -585,8 +597,16 @@ dialog). Engine support already existed (`apply_edits` `style`, `weight`).
   colors, then the same Style and Weight groups. Picking the selected toggle again un-picks it,
   and an un-picked group leaves each line as it is. Color stays in Icon & color….
 - The list draws every line's mark in its real style and weight; the row label stays "Line".
-- Dotted is not offered: onX has only ever exported `solid` and `dash` in our tests. A dotted
-  line from a file is drawn dotted and kept unless changed.
+- Dotted (and weight 2.0) are not offered as choices, though onX has all three styles and weights
+  (2026-10-23: `dot` and `2.0` appear in onX exports). A dotted or 2.0 line or area outline from
+  an onX file is drawn as such and exported exactly as it came in unless changed (tracks:
+  `writers.line_onx_style_weight`; areas: `writers.area_onx_style`). Editing it offers only the two
+  styles and two weights, and dot / 2.0 are refused as edit values. A CalTopo line still maps to
+  4.0 / 6.0 by stroke width.
+- **Areas too (2026-10-23):** an area's outline takes the same Style and Weight (popover and
+  Line style… dialog), solid / dashed and 4.0 / 6.0 only. An onX area's dotted or 2.0
+  ("Extra thin") outline is drawn and kept unless changed. No fill choice is offered: onX's
+  importer ignores area fills (ENG-05).
 - Options not taken (canvas): style rows with word labels (2A), one 2×2 sample grid (2B), Style
   and Weight inside Icon & color… (3A/3D), toggles in the selection bar with no dialog (3F).
 
@@ -694,3 +714,22 @@ Status: decided 2026-10-23 (owner, from the W5 icon study; option C chosen).
   Kayak's paddle mirrored to lean like Canoe's; Snowmobile's windshield now rakes back. Ski
   Touring climbs left to right, which is still travel to the right; Skin Track (switchbacks), Ski, XC
   Skiing and Snowpark show no rider and are unchanged.
+
+### UI-30 — Warn when an onX export's area fills will change
+Status: decided 2026-10-23 (owner; wording option A).
+
+onX gives every imported area its default blue fill (`rgba(74,144,226,0.1)`), whatever the
+file says (docs/ONX_ROUND_TRIP.md #area-fidelity). When a loaded map has areas from an onX
+export (they carry an onX id) whose fill is anything else, "none" included, a dialog shows once
+on load:
+
+> **N areas will lose their fill.** onX resets area fills to blue on import.
+> [Leave these N out] · [Keep them]
+
+- "Leave these N out" unticks exactly those areas, which leaves their originals in onX untouched.
+  They stay in the list and can be included again.
+- "Keep them" is the default focus, and so is Escape; it changes nothing.
+- No dialog for CalTopo maps, or for onX areas that already have the default fill.
+- The broader "This map came from onX" notice and the import-checklist steps (delete the
+  originals; except the ones left out) are still to be worded.
+

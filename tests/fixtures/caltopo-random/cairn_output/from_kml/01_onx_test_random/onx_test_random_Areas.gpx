@@ -9,7 +9,9 @@
     <type>Area</type>
     <extensions>
       <onx:color>rgba(8,122,255,1)</onx:color>
-      <onx:fill_color>rgba(8,122,255,0)</onx:fill_color>
+      <onx:style>solid</onx:style>
+      <onx:weight>4.0</onx:weight>
+      <onx:fill_color>rgba(0,0,0,0)</onx:fill_color>
     </extensions>
     <rtept lat="46.3997546359621" lon="-121.65313770101447"/>
     <rtept lat="46.40271409501781" lon="-121.63923312948127"/>
