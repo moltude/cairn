@@ -6,6 +6,15 @@
 <title>Cairn — CalTopo to onX</title>
 <meta name="description" content="CalTopo to onX, with icons and colors that still mean something.">
 <link rel="preload" href="fonts/libre-caslon-text-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<!-- Start Pyodide's big downloads now, not when app.js calls loadPyodide().
+     Each hint must match how Pyodide requests the file, or the browser fetches
+     it twice: the wasm, stdlib and lockfile with a plain CORS fetch()
+     (as="fetch" crossorigin), pyodide.asm.js with import() (modulepreload).
+     Same pinned folder as the CSP and app.js indexURL (drift test pins it). -->
+<link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.29.5/full/pyodide.asm.wasm" as="fetch" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.29.5/full/python_stdlib.zip" as="fetch" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.29.5/full/pyodide-lock.json" as="fetch" crossorigin>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/pyodide/v0.29.5/full/pyodide.asm.js">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body data-stage="drop">

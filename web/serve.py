@@ -9,14 +9,17 @@ import functools, http.server, json, pathlib, socketserver
 ROOT = pathlib.Path(__file__).parent
 
 def _security_headers():
+    # Every "/(.*)" rule, not just the first: vercel.json has one for
+    # Cache-Control and one for the CSP, and stopping at the first silently
+    # served the dev site (and the enforced-CSP e2e test) with no CSP at all.
+    # Cache-Control is skipped; end_headers sends its own no-store.
     try:
         cfg = json.loads((ROOT / "vercel.json").read_text())
-        for rule in cfg.get("headers", []):
-            if rule.get("source") == "/(.*)":
-                return [(h["key"], h["value"]) for h in rule["headers"]]
+        return [(h["key"], h["value"])
+                for rule in cfg.get("headers", []) if rule.get("source") == "/(.*)"
+                for h in rule["headers"] if h["key"].lower() != "cache-control"]
     except (OSError, ValueError, KeyError):
-        pass
-    return []
+        return []
 
 _HEADERS = _security_headers()
 

@@ -141,13 +141,27 @@ readers via document_adapter.
   e.g. `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/`). A Pyodide bump must change the version
   in `web/index.html` (plus its SRI hash), `web/app.js` `indexURL`, and `web/vercel.json` together;
   `test_csp_cdn_allowance_is_pinned_to_the_pyodide_version_in_use` fails if they drift.
-- **A JS object is not keyword arguments to a Python function.** In `web/app.js`,
-  `micropip.install(url, { deps: false })` silently passed the object as the second
-  *positional* parameter (`keep_going`), leaving `deps=True` — every boot fetched
-  typer/rich/textual from PyPI. Pyodide requires `fn.callKwargs(args, { kw: v })` for kwargs.
+- **A JS object is not keyword arguments to a Python function.** Calling a Pyodide proxy
+  of a Python function with `fn(x, { kw: v })` passes the object as the next *positional*
+  parameter; use `fn.callKwargs(x, { kw: v })`. (It once made `micropip.install(url,
+  { deps: false })` leave `deps=True`, so every boot fetched typer/rich/textual from PyPI.)
   The enforced-CSP e2e test is what caught it; keep that test passing. It also caught an
   inline `<script>` (a since-removed theme-init snippet) that production's CSP silently
   blocked — all JS must live in files under `web/`.
+- **Boot has no micropip (since 2026-10-23).** `web/app.js` starts `loadPyodide({ packages:
+  ["pyyaml"] })` and the no-cache fetches of the wheel, bridge.py and cairn_config.yaml at
+  once, then `unpackArchive`s the wheel into site-packages. The engine's dependencies are
+  therefore whatever the Pyodide lockfile provides by name: a new runtime dependency must be
+  added to that `packages` list (and exist in the lock), it is never resolved from PyPI.
+  `web/index.html` preloads pyodide.asm.wasm / python_stdlib.zip / pyodide-lock.json
+  (`as="fetch" crossorigin`, matching Pyodide's CORS `fetch()`) and pyodide.asm.js
+  (`modulepreload`, matching its `import()`); a mismatched hint downloads the file twice,
+  which `test_pyodide_preloads_are_used_not_fetched_twice` catches.
+- **Tests under the enforced CSP can't evaluate page JS** (no `'unsafe-eval'`, so no
+  `wait_for_function` / `evaluate`). They wait on `body[data-engine="ready"]`, the DOM twin
+  of `window.__cairnReady`. `web/serve.py` must mirror *every* `"/(.*)"` header rule in
+  `vercel.json`; until 2026-10-23 it stopped at the first (Cache-Control) one, so the dev
+  server and CI ran without any CSP and the enforced-CSP tests proved nothing.
 - **XML parsing uses stock `xml.etree.ElementTree`, behind a pre-parse guard.** XML is
   reachable from the web bridge (GPX/KML input, roadmap `docs/ROADMAP_ONX_ROUND_TRIP.md`
   Phase 2: `web/bridge.py:load_files` dispatches every file on `detect()`), so the old "only

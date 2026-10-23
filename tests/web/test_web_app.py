@@ -1247,7 +1247,7 @@ def test_page_boots_under_enforced_csp(browser):
     )
     try:
         page.goto(f"{BASE_URL}/index.html")
-        page.wait_for_function("window.__cairnReady === true", timeout=60000)
+        expect(page.locator("body")).to_have_attribute("data-engine", "ready", timeout=60000)
         assert not violations, f"CSP violations during boot: {violations}"
     finally:
         ctx.close()
@@ -1507,8 +1507,8 @@ def test_site_files_always_revalidate():
 
 def test_boot_survives_a_stale_immutable_wheel_in_the_browser_cache(browser):
     """Browsers that saw the old wheel under "public, max-age=31536000, immutable"
-    (ENG-01, reversed) kept it: micropip's own download obeyed that cache even after
-    a hard reload, so the new bridge.py met an old engine and failed with "cannot
+    (ENG-01, reversed) kept it: micropip's own download (micropip is gone since)
+    obeyed that cache even after a hard reload, so the new bridge.py met an old engine and failed with "cannot
     import name 'input_check'" (owner, 2026-10-23). The app now fetches the wheel
     itself with cache "no-cache". This primes the browser cache with a stale wheel
     under the old header, then serves the real one: an ordinary reload must boot."""
@@ -1575,6 +1575,47 @@ def test_csp_cdn_allowance_is_pinned_to_the_pyodide_version_in_use():
         jsdelivr = [s for s in sources if "jsdelivr" in s]
         assert jsdelivr == [index_url], f"{name} should allow only {index_url}, got {jsdelivr}"
     assert script.startswith(index_url)
+    # Every jsdelivr URL in the page -- the script tag and the <head> preload
+    # hints -- must sit under the same pinned folder: a stale preload is a
+    # wasted multi-MB download, and the CSP blocks anything outside it.
+    html = (web / "index.html").read_text()
+    for url in re.findall(r'https://cdn\.jsdelivr\.net/[^"\'\s>]+', html):
+        assert url.startswith(index_url), f"{url} is not under the pinned {index_url}"
+    # Pyodide fetch()es these in CORS mode; a preload without crossorigin
+    # doesn't match that request, so the browser downloads the file twice.
+    for name in ("pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"):
+        assert re.search(rf'<link rel="preload" href="{re.escape(index_url + name)}" as="fetch" crossorigin>',
+                         html), f"missing CORS preload for {name}"
+
+
+def test_dev_server_mirrors_the_production_csp():
+    """serve.py must send every header vercel.json sets on "/(.*)", the CSP
+    included. It used to stop at the first such rule -- the Cache-Control one
+    -- so the dev site, and test_page_boots_under_enforced_csp, ran with no
+    CSP at all."""
+    req = urllib.request.Request(f"{BASE_URL}/index.html", method="HEAD")
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        assert "jsdelivr" in (resp.headers.get("Content-Security-Policy") or "")
+
+
+def test_pyodide_preloads_are_used_not_fetched_twice(browser):
+    """The <head> preload hints only help if Pyodide's own requests reuse
+    them. A mismatched hint (wrong crossorigin / as) makes Chrome download
+    the file a second time and warn that the preload was not used."""
+    ctx = browser.new_context(bypass_csp=True)
+    try:
+        page = ctx.new_page()
+        warnings = []
+        page.on("console", lambda m: warnings.append(m.text) if "preload" in m.text else None)
+        page.goto(f"{BASE_URL}/index.html")
+        page.wait_for_function("window.__cairnReady === true", timeout=60000)
+        names = page.evaluate("performance.getEntriesByType('resource').map(r => r.name)")
+        for name in ("pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json", "pyodide.asm.js"):
+            hits = [n for n in names if n.endswith("/" + name)]
+            assert len(hits) == 1, f"{name} requested {len(hits)} times: {hits}"
+        assert not warnings, warnings
+    finally:
+        ctx.close()
 
 
 def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
@@ -1624,7 +1665,9 @@ def csp_page(browser):
     page.on("console", lambda m: violations.append(m.text)
             if "Content Security Policy" in m.text else None)
     page.goto(f"{BASE_URL}/index.html")
-    page.wait_for_function("window.__cairnReady === true", timeout=60000)
+    # Not wait_for_function: under the enforced CSP Playwright cannot evaluate
+    # page JS (no 'unsafe-eval'), so readiness is read from the DOM.
+    expect(page.locator("body")).to_have_attribute("data-engine", "ready", timeout=60000)
     yield page
     ctx.close()
     assert not violations, f"CSP violations: {violations}"
