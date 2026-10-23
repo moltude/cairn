@@ -645,6 +645,28 @@ def test_uids_are_opaque_and_unique(fresh_page):
     assert not [u for u in uids if "::" in u or any(k in u for k in keys)]
 
 
+def test_folder_primitives_run_in_pyodide_and_an_edit_follows_a_moved_item(fresh_page):
+    """ENG-07: bridge.move_items works in the browser engine, and an edit the UI
+    keyed by uid before the move lands in the item's NEW folder on export.
+    (No folder UI yet: PR-C adds it. This drives the bridge directly.)"""
+    fresh_page.set_input_files("#file", str(FIXTURE))
+    fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
+    res = fresh_page.evaluate("""() => {
+        const it = DATA.groups[1].items.find(i => i.kind === 'waypoints');
+        edit(it, {name: 'Moved by uid'});
+        py.globals.set('_t_uids', JSON.stringify([it.uid]));
+        return JSON.parse(py.runPython("bridge.move_items(_t_uids, None, 'Moved here')"));
+    }""")
+    fresh_page.wait_for_timeout(300)
+    assert res["ok"] and res["created"] and res["moved"] == 1
+    zf = _export_zip(fresh_page)
+    n = len(res["folders"])
+    moved = zf.read(f"{n:02d}_Moved_here/Moved_here_Waypoints.gpx").decode()
+    assert moved.count("<wpt ") == 1 and "<name>Moved by uid</name>" in moved
+    blob = "".join(zf.read(m).decode() for m in zf.namelist() if m.endswith(".gpx"))
+    assert blob.count("<name>Moved by uid</name>") == 1
+
+
 def test_excluded_items_are_left_out_of_the_export(fresh_page):
     fresh_page.set_input_files("#file", str(FIXTURE))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
