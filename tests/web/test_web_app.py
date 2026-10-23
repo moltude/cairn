@@ -1288,6 +1288,61 @@ def test_site_files_always_revalidate():
     assert cache == [("/(.*)", "no-cache")]
 
 
+def test_boot_survives_a_stale_immutable_wheel_in_the_browser_cache(browser):
+    """Browsers that saw the old wheel under "public, max-age=31536000, immutable"
+    (ENG-01, reversed) kept it: micropip's own download obeyed that cache even after
+    a hard reload, so the new bridge.py met an old engine and failed with "cannot
+    import name 'input_check'" (owner, 2026-10-23). The app now fetches the wheel
+    itself with cache "no-cache". This primes the browser cache with a stale wheel
+    under the old header, then serves the real one: an ordinary reload must boot."""
+    import http.server, io, socketserver, threading
+    web = Path(__file__).resolve().parents[2] / "web"
+    real = (web / "dist" / "cairn_maps-1.0.0-py3-none-any.whl").read_bytes()
+    stale = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(real)) as src, zipfile.ZipFile(stale, "w") as dst:
+        for info in src.infolist():
+            if info.filename != "cairn/io/input_check.py":
+                dst.writestr(info, src.read(info))
+    state = {"wheel": stale.getvalue()}
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, directory=str(web), **kw)
+        def log_message(self, *a):
+            pass
+        def end_headers(self):
+            if not self.path.endswith(".whl"):
+                self.send_header("Cache-Control", "no-cache")
+            super().end_headers()
+        def do_GET(self):
+            if self.path.split("?")[0].endswith(".whl"):
+                body = state["wheel"]
+                self.send_response(200)
+                self.send_header("Content-Type", "application/zip")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            super().do_GET()
+
+    srv = socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    ctx = browser.new_context(bypass_csp=True)
+    try:
+        page = ctx.new_page()
+        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/index.html")
+        page.wait_for_function("document.body.innerText.includes(\"cannot import name 'input_check'\")",
+                               timeout=90000)   # stale engine: the owner's error, now cached for "a year"
+        state["wheel"] = real
+        page.reload()
+        page.wait_for_function("window.__cairnReady === true", timeout=90000)
+        assert "cannot import name" not in page.inner_text("body")
+    finally:
+        ctx.close()
+        srv.shutdown()
+
+
 def test_csp_cdn_allowance_is_pinned_to_the_pyodide_version_in_use():
     """The CSP allows jsdelivr only under the exact Pyodide folder the app
     loads (not all of cdn.jsdelivr.net). A Pyodide bump must update every

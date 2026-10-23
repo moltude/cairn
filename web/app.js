@@ -60,15 +60,26 @@ async function boot() {
     // test_page_boots_under_enforced_csp when the CSP blocked pypi.org.
     // The URL is built against document.baseURI, not location.origin, so the
     // app works served from a subpath (e.g. quietmarch.to/cairn/).
-    const wheel = new URL("dist/cairn_maps-1.0.0-py3-none-any.whl", document.baseURI).href;
-    await micropip.install.callKwargs(wheel, { deps: false });
-    const bridge = await (await fetch("bridge.py")).text();
+    //
+    // The app fetches the wheel itself, with cache "no-cache", and installs it from
+    // Pyodide's in-memory filesystem. micropip's own download obeys the browser's
+    // cache, and browsers that saw the old "immutable, 1 year" header (ENG-01) kept
+    // serving their old wheel to it -- even after a hard reload -- next to a new
+    // bridge.py: "cannot import name 'input_check'". "no-cache" always asks the
+    // server (a 304 when unchanged), so the wheel and bridge.py always match.
+    const fresh = { cache: "no-cache" };
+    const name = "cairn_maps-1.0.0-py3-none-any.whl";
+    const res = await fetch(new URL(`dist/${name}`, document.baseURI), fresh);
+    if (!res.ok) throw new Error(`Couldn't load the map engine (HTTP ${res.status}).`);
+    py.FS.writeFile(`/tmp/${name}`, new Uint8Array(await res.arrayBuffer()));
+    await micropip.install.callKwargs(`emfs:/tmp/${name}`, { deps: false });
+    const bridge = await (await fetch("bridge.py", fresh)).text();
     py.FS.writeFile("/bridge.py", bridge);
     // Carry the user's symbol mappings into the sandbox. Without this the
     // engine falls back to built-in defaults only, and the browser produces
     // different icons than the CLI for the same map.
     try {
-      const cfg = await fetch("cairn_config.yaml");
+      const cfg = await fetch("cairn_config.yaml", fresh);
       if (cfg.ok) py.FS.writeFile("/cairn_config.yaml", await cfg.text());
     } catch (_) { /* defaults are a fine fallback */ }
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
