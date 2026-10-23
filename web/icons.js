@@ -2,13 +2,17 @@
 
    Deliberately NOT onX's own artwork: their icon designs are proprietary, and
    bundling them into a third-party tool is a licensing question we don't need to
-   take on. The common icons get a simple stroke drawing (24x24 box, drawn with
-   round caps at ~2px); the rest show a one- or two-letter abbreviation inside
-   the marker. Every icon is always shown next to onX's exact text label, so
+   take on. Every icon gets a simple stroke drawing (24x24 box, drawn with round
+   caps at ~2px). Every icon is always shown next to onX's exact text label, so
    there is never any doubt which onX icon you are actually setting.
 
-   Every name in onX's list must have an entry here -- the e2e suite checks it,
-   so a new onX icon can't silently fall back to the default pin. */
+   Direction (DECISIONS UI-29): anything that travels faces left to right, and
+   anything going down a slope descends left to right (high on the left, low on
+   the right).
+
+   Every name in onX's list must have a drawing here -- the e2e suite checks it,
+   so a new onX icon can't silently fall back to the default pin. A name that is
+   not in the table (an unknown icon from an input file) shows its initials. */
 const ONX_GLYPHS = (() => {
   const P = {
     pin: "M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z M12 10v.01",
@@ -61,7 +65,7 @@ const ONX_GLYPHS = (() => {
     "Open Gate": "M3 20V5 M3 8l11 3 M3 16l11-3 M14 11v6 M21 20V5",
     "Closed Gate": "M3 20V5 M21 20V5 M3 9h18 M3 15h18 M8 9v6 M13 9v6 M18 9v6",
     "Footbridge": "M2 14h20 M2 14c4-6 16-6 20 0 M6 14v-3 M12 14V9.5 M18 14v-3 M4 18h16",
-    "Fish": "M3 12c3-5 10-6 14 0-4 6-11 5-14 0z M17 12l4-4v8z M8 11h.01",
+    "Fish": "M21 12c-3-5-10-6-14 0 4 6 11 5 14 0z M7 12L3 8v8z M16 11h.01",
     "Waterfall": "M3 4h10 M13 4v3 M9 7v13 M13 7v13 M17 9v11 M3 21h18",
     "Cave": P.cave,
     "Caving": "M5 15a7 7 0 0 1 14 0z M3 15h18 M12 8V5 M10 5h4",
@@ -70,7 +74,7 @@ const ONX_GLYPHS = (() => {
     "Bike": P.bike,
     "Mountain Biking": P.bike + " M14 4l2-2 2 2",
     "Canoe": P.boat + " M9.5 18.5l-1 2",
-    "Kayak": "M2 13c4 4 16 4 20 0z M5 4l14 14 M3 2.5l3 3 M18 17l3 3",
+    "Kayak": "M22 13c-4 4-16 4-20 0z M19 4 5 18 M21 2.5l-3 3 M6 17l-3 3",
     "Fuel": "M5 21V4h9v17 M3 21h13 M7 8h5 M14 9l4 2v7a1.5 1.5 0 0 0 3 0V8l-2-2",
     "Hot Spring": P.steam,
     "Geyser": "M12 20V9 M9 4c0 2 3 3 3 5 M15 4c0 2-3 3-3 5 M4 20h16",
@@ -104,19 +108,56 @@ const ONX_GLYPHS = (() => {
     "4x4": P.car,
     "Wildflower": "M12 12v9 M12 21c-3 0-5-2-5-4 3 0 5 1 5 4 M12 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6",
     "Wetland": "M2 19c3-2 5 2 8 0s5-2 8 0 4 0 4 0 M7 16V8 M12 16V5 M17 16V9",
-  };
-  // No drawing yet: a short abbreviation inside the marker.
-  const A = {
-    "ATV": "AT", "Beach Combing": "Bc", "Dirt Bike": "DB", "Dog Sledding": "DS",
-    "Eagle": "Ea", "Feeding Area": "Fd", "Hand Launch": "HL", "Hang Gliding": "HG",
-    "Horseback": "Hb", "Kennels": "Kn", "Overland": "Ov", "Put In": "PI", "RV": "RV",
-    "Raft": "Rf", "Sasquatch": "Sq", "Ski Areas": "SA", "Snowboarder": "Sb",
-    "Snowmobile": "Sm", "Snowpark": "Sp", "Surfing Area": "Sf", "Take Out": "TO",
-    "Windsurfing": "Ws",
+    // Drawn for Cairn 2026-10-23 (W5 study; adopted with direction fixes in W9). Not
+    // traced from or modelled on onX's artwork.
+    // Quad bike, side on: fat low wheels, flat racks fore and aft, seat and bars.
+    "ATV": "M2.5 17.5a3 3 0 1 0 6 0 3 3 0 1 0-6 0 M15.5 17.5a3 3 0 1 0 6 0 3 3 0 1 0-6 0 M2 12.5h7l2-3h4l2 3h5 M8.5 17.5h7 M17 9.5l1-3h2.5",
+    // Scallop shell: a fan of ribs closed by a short hinge.
+    "Beach Combing": "M12 20.5 3.5 10a8.5 8.5 0 0 1 17 0z M12 20.5 7.5 5.5 M12 20.5V3 M12 20.5l4.5-15 M9.5 20.5h5",
+    // Motorcycle: wheels far apart, high front fender, tank-and-seat line, forks.
+    "Dirt Bike": "M2 17a3 3 0 1 0 6 0 3 3 0 1 0-6 0 M16 17a3 3 0 1 0 6 0 3 3 0 1 0-6 0 M5 17l3-5h6l2.5 5 M7 10h6l2 2 M17.5 13.5 15 6h3.5",
+    // Sled (runner, handlebar, basket) pulled by a husky with a curled tail.
+    "Dog Sledding": "M2 18.5h7c1 0 1.5-.5 1.5-1.5 M3.5 18.5V11 M2.5 11h1 M3.5 14.5h6v4 M9.5 14.5l3.5-2 M13 12.5h5.5l1.5-2.5h2.5 M20 10l.5-1.5 M14 12.5v5 M18 12.5v5 M13 12.5c-1.5 0-2-2-1-3",
+    // Eagle soaring, seen from below: broad fingered wings, fanned tail.
+    "Eagle": "M2 9.5c3-1 6-.5 8 1.5l2 1 2-1c2-2 5-2.5 8-1.5l-2.5 2c-2 .5-4 1.5-5.5 3v3l-2 2.5-2-2.5v-3c-1.5-1.5-3.5-2.5-5.5-3z M12 12V9.5",
+    // Wildlife feeding area (winter elk/deer feedground): antlers over a hay trough.
+    "Feeding Area": "M3 15h18l-2.5 5h-13z M8.5 13V5 M8.5 8l-3-3 M8.5 10.5l-3-1 M15.5 13V5 M15.5 8l3-3 M15.5 10.5l3-1",
+    // Hand-carried launch: a boat carried overhead by one person; no ramp, no trailer.
+    "Hand Launch": "M2 9h20c-2-2.5-5-3.5-10-3.5S4 6.5 2 9z M8.5 9l3.5 4 3.5-4 M12 13v4 M12 17l-2.5 4 M12 17l2.5 4 M12 11h.01",
+    // Delta wing with the pilot hanging under the control frame.
+    "Hang Gliding": "M2 10.5 12 5l10 5.5 M12 5v4 M8.5 15 12 9l3.5 6z M12 15v3 M10 18h4",
+    // Horseshoe, open end down, with nail holes.
+    "Horseback": "M7 20.5 6 12a6 6 0 0 1 12 0l-1 8.5 M4.5 20.5h4 M15.5 20.5h4 M8.5 9h.01 M15.5 9h.01 M8 14h.01 M16 14h.01",
+    // Dog's head: floppy ears, eyes and nose.
+    "Kennels": "M8 5.5C5 5 3 8 3.5 12.5l3-1.5 M16 5.5c3-.5 5 2.5 4.5 7l-3-1.5 M7 8.5c1-2.5 2.5-3.5 5-3.5s4 1 5 3.5V15a5 5 0 0 1-10 0z M10 10.5h.01 M14 10.5h.01 M11 15h2",
+    // Expedition truck: flat-roofed box, A-frame rooftop tent, spare wheel on the back.
+    "Overland": "M3 17.5V10h12l3.5 3.5H21v4z M5.5 10 9 5.5l3.5 4.5 M1.5 12.5V15 M5 17.5a2 2 0 1 0 4 0 2 2 0 1 0-4 0 M15 17.5a2 2 0 1 0 4 0 2 2 0 1 0-4 0",
+    // Put In: arrow straight down into the water (pair with Take Out).
+    "Put In": "M12 2.5v11 M7.5 9l4.5 4.5L16.5 9 M2 17.5c3-2 5 2 8 0s5-2 8 0 4 0 4 0 M2 21c3-2 5 2 8 0s5-2 8 0 4 0 4 0",
+    // Travel trailer: rounded body, window, door, one wheel; the hitch tongue leads on the right.
+    "RV": "M20 16.5V9a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v7.5z M22.5 16.5H20 M17 8.5h-5v3.5h5z M8.5 16.5v-7h-3v7 M15.5 18.5a2 2 0 1 0-4 0 2 2 0 1 0 4 0",
+    // Inflatable raft from above: fat rounded tube, two thwarts.
+    "Raft": "M6 6.5h12a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4v-3a4 4 0 0 1 4-4z M9 6.5v11 M15 6.5v11",
+    // A very large bare footprint: wide ball, narrow heel, five toes.
+    "Sasquatch": "M11.5 21.5c-2.5 0-3.5-2-3-4.5s1-3.5.5-5.5S9.5 8 13 8s5 2.5 4.5 6-2.5 7.5-6 7.5z M17.5 5.5h.01 M14.5 4.5h.01 M11.5 4.5h.01 M9 5.5h.01 M7 7.5h.01",
+    // Downhill skier descending left to right (high left, low right): knees bent,
+    // ski tip turned up in front, pole reaching forward down the slope.
+    "Ski Areas": "M3 12.5 20 18.5c1 .35 2 .1 2.3-.9 M11 15.2l2.5-3-1.5-2.7 2.5-4 M14.5 6l2.5 3.5 M17 9.5l1 5.5 M16 3h.01",
+    // Rider sideways on a board descending left to right (high left, low right), knees bent, arms out.
+    "Snowboarder": "M3 13.5 21 19.5 M9.5 15.5l1.5-3.5 2-1.5 M14.5 17.2l.5-3.5-2-2.2 M13 10.5 12.5 6.5 M7.5 5.5l5 1 4.5 2.5 M11.5 3.5h.01",
+    // Snowmobile: track tread underneath, cowl and raked-back windshield, front ski on a strut.
+    "Snowmobile": "M4 18.5h8a2 2 0 0 0 0-4H4a2 2 0 0 0 0 4z M3 14.5l2.5-4h6l3 3h3 M11.5 10.5 10 7 M17.5 13.5v5 M14.5 18.5H21c1 0 1.5-.5 1.5-1.5",
+    // Terrain park: a kicker ramp and a rail.
+    "Snowpark": "M2 19.5h20 M3 19.5c5 0 8.5-3 9.5-8.5v8.5 M15 13.5h6.5 M16.5 13.5v6 M20 13.5v6",
+    // A wave breaking left to right, curling over, with a surfboard standing beside it.
+    "Surfing Area": "M22 19c-1.5-6.5-6.5-10.5-12-9 3 .5 4.5 3 3.5 5.5s-5 2.5-7 .5 M22 21H6 M4.5 3c2 2.5 2.5 7 1.5 11.5-1.5-4-2.5-8-1.5-11.5z",
+    // Take Out: arrow straight up out of the water (pair with Put In).
+    "Take Out": "M12 13.5v-11 M7.5 7 12 2.5 16.5 7 M2 17.5c3-2 5 2 8 0s5-2 8 0 4 0 4 0 M2 21c3-2 5 2 8 0s5-2 8 0 4 0 4 0",
+    // Windsurfer: board, the mast leading on the right, a curved sail and boom trailing behind it.
+    "Windsurfing": "M13 3v15 M13 3c-4 3-7.5 8.5-7.5 14H13 M13 12.5H7 M21 19.5c-4 1.5-14 1.5-18 0",
   };
   const out = {};
   for (const [k, v] of Object.entries(G)) out[k] = { path: v };
-  for (const [k, v] of Object.entries(A)) out[k] = { abbr: v };
   return out;
 })();
 

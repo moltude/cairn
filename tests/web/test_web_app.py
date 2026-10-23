@@ -489,6 +489,9 @@ def test_every_onx_icon_has_a_glyph(fresh_page):
         "DATA.icons.filter(i => !(i in ONX_GLYPHS))"
     )
     assert missing == [], f"onX icons with no glyph defined: {missing}"
+    # ...and every one is a drawing, not a two-letter abbreviation (UI-29).
+    lettered = fresh_page.evaluate("DATA.icons.filter(i => !ONX_GLYPHS[i].path)")
+    assert lettered == [], f"onX icons drawn as letters: {lettered}"
 
 
 def test_select_all_respects_the_active_filter(fresh_page):
