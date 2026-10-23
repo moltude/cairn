@@ -156,3 +156,56 @@ Screenshots (gitignored): `tests/output/export-screen/` — `bitterroots.png`,
 - [ ] Download all, then import one folder's files in onX's Web Map following the three steps.
 - [ ] Download this folder for one folder; the zip holds just that folder.
 - [ ] Back returns to the map with edits intact; Start over asks first.
+
+## Hardening (engine + export) (2026-10-23)
+
+Branch `test/folders-hardening` (on `feat/folders-release`, 1139 tests). Adversarial pass over
+`rename_folder` / `move_items` / `merge_folders` and the Download all / Download this folder export.
+
+### What was run
+- **Map generator** (`tests/hardening_maps.py`, tracked; scratch drivers in the gitignored
+  `tests/output/hardening/`): CalTopo GeoJSON with 0, 1, 30 and 200 folders; empty folders;
+  lines-only and areas-only folders; 28 hostile names (case/whitespace twins, `A/B` vs `A_B` vs
+  `A:B`, `..`, `.`, `CON`, `NUL`, trailing dots, blank, unicode, RTL, emoji, emoji-only, 300-char
+  and 200-`ä` names, a right-to-left override, tabs, newlines, quotes, `../../etc/passwd`);
+  items with no coordinates (null geometry, empty line, empty point); polygons with 2 holes;
+  3 KB notes; a 5,200-item and a 6,000-item folder (GPX splits at 3.75 MiB into 3 files).
+  Also the Bitterroots map, the onX dialect pair, the onX areas pair and CalTopo + onX mixed.
+- **Bridge fuzzer** (`tests/output/hardening/fuzz.py`): 13 maps x 4 seeds x 40 random steps of
+  apply_edits (names, notes, icon, colour, style/weight, exclusion), move to an existing folder,
+  move to a new folder (hostile names, clashes), rename (hostile names, case/space variants),
+  merge, export, and six error-path calls (each must raise ValueError and leave the layout
+  unchanged). After every step: no item lost or duplicated, unique keys, no new duplicate folder
+  name. After every export: no duplicate or unsafe zip paths (no `..`, absolute, backslash, NUL,
+  component over 255 bytes), zip members = manifest files + RUNBOOK.md exactly, folder prefix and
+  name match the folder at that position, items in files + dropped = included items, each file's
+  element count = its manifest count, every file named in RUNBOOK.md, and every
+  `export_folder_zip(n)` byte-equal to Download all's copies. 52 sessions, 0 failures after the fixes.
+- **Real browser** (headless Chromium, `tests/output/hardening/browser.py`, port 8785): 7 maps
+  (1, 30, 200 folders; empties; no-coordinate items; hostile names; 5,200 items). Each: load,
+  Export, Download all, click EVERY "Download this folder" and unzip (names and bytes vs the full
+  zip), Back, Export again, Download this folder, Start over, load a second map, export,
+  download a folder, reload. 0 console or page errors, 0 mismatches. 5,200 items: load 4.2 s,
+  export 0.7 s, JS heap 81 MB, 5,211 rows rendered. Python side (CPython): 6,000 items load
+  0.4 s, export 0.1 s, ~290 MB peak RSS.
+- Full suite: `BASE_URL=http://127.0.0.1:8785/ uv run pytest`: **1159 passed** (1139 + 20).
+
+### Bugs
+| # | Severity | Repro | Status |
+|---|----------|-------|--------|
+| 1 | High | Load or rename a folder to a name over ~250 bytes (CalTopo allows it; 300 `x`, or 100 CJK characters) and press Export: `OSError: File name too long` from `export_zip`; nothing exports. | Fixed: `_safe` caps the file-system name at 80 UTF-8 bytes (display name untouched, `NN_` still keeps folders apart). |
+| 2 | High | Load map A, export, load map B (no export yet), call `export_folder_zip(1)`: serves map A's files. `load_files` left `manifest` / `blobs` / `runbook` from the last export. | Fixed: `load_files` clears them; `export_folder_zip` then raises "Export again." The shipped UI can't reach this (the buttons exist only after an export), but any caller of the bridge could. |
+| 3 | Low | `_safe` could end in `_` after truncation. | Fixed with #1. |
+| 4 | Info | Two folders whose names differ only in case/whitespace in the SOURCE file (CalTopo allows "Camp" and "camp") both load; the no-duplicate rule only binds renames and new folders. Renaming one onto the other reports a duplicate and offers merge, as designed. | Open by design; worth stating in ENG-07. |
+| 5 | Low | With 100+ folders the prefix is `100_x`, which sorts before `11_x` in a file manager. 200-folder map exports correctly otherwise. | Open (cosmetic; needs a padded width, changes names only above 99 folders). |
+| 6 | Info | After a move/rename/merge, `export_folder_zip(n)` still serves the LAST export whole and self-consistent until the UI exports again (pinned by a test). | Open by design. |
+
+No other violation was found: moves, merges, renames and exclusions never lost or duplicated an
+item, error paths never changed state, and per-folder zips were byte-identical in all runs.
+
+### UI observations (not edited)
+- Download file name is `${e.safe}.zip`; two folders with the same safe form ("A/B", "A_B") both
+  download as `A_B.zip` (the browser adds " (1)"). Harmless, but could use the `NN_` prefix.
+- `window.__cairnLoaded` stays true after Start over (test hook only; a test must reset it).
+
+Regression tests: `tests/test_web_bridge_hardening.py` (20 tests; 12 fail on the pre-fix bridge).

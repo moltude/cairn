@@ -116,9 +116,18 @@ def _config():
     return load_config(CONFIG_PATH if CONFIG_PATH.exists() else None)
 
 
+# Longest safe name, in UTF-8 bytes. A folder name feeds a directory ("NN_<safe>")
+# and file names ("<safe>_Waypoints_partNN.gpx"); filesystems cap one component at
+# 255 bytes, so an uncapped 300-character name made export_zip die with OSError.
+_SAFE_MAX_BYTES = 80
+
+
 def _safe(name: str) -> str:
     s = re.sub(r"[^\w\s-]", "", (name or "").strip()).strip()
-    return re.sub(r"[-\s]+", "_", s) or "Unnamed"
+    s = re.sub(r"[-\s]+", "_", s)
+    while len(s.encode("utf-8")) > _SAFE_MAX_BYTES:
+        s = s[:-1]
+    return s.rstrip("_") or "Unnamed"
 
 
 def _hex_for(rgba: str) -> str:
@@ -408,6 +417,10 @@ def load_files(files_json: str) -> str:
     groups.sort(key=lambda g: -len(g["items"]))
     _STATE.update(doc=doc, groups=groups, features=features, config=cfg,
                   edited=set(), color_edited=set(), next_folder=1)
+    # The last export belonged to the previous map: forget it, or
+    # export_folder_zip(n) would hand out that map's files for this one.
+    for k in ("manifest", "unlisted_dropped", "runbook", "blobs"):
+        _STATE.pop(k, None)
 
     filename = files[0].get("name") or ""
     return json.dumps(
