@@ -714,3 +714,22 @@ Status: decided 2026-10-23 (owner, from the W5 icon study; option C chosen).
   Kayak's paddle mirrored to lean like Canoe's; Snowmobile's windshield now rakes back. Ski
   Touring climbs left to right, which is still travel to the right; Skin Track (switchbacks), Ski, XC
   Skiing and Snowpark show no rider and are unchanged.
+
+### UI-30 — Warn when an onX export's area fills will change
+Status: decided 2026-10-23 (owner; wording option A).
+
+onX gives every imported area its default blue fill (`rgba(74,144,226,0.1)`), whatever the
+file says (docs/ONX_ROUND_TRIP.md #area-fidelity). When a loaded map has areas from an onX
+export (they carry an onX id) whose fill is anything else, "none" included, a dialog shows once
+on load:
+
+> **N areas will lose their fill.** onX resets area fills to blue on import.
+> [Leave these N out] · [Keep them]
+
+- "Leave these N out" unticks exactly those areas, which leaves their originals in onX untouched.
+  They stay in the list and can be included again.
+- "Keep them" is the default focus, and so is Escape; it changes nothing.
+- No dialog for CalTopo maps, or for onX areas that already have the default fill.
+- The broader "This map came from onX" notice and the import-checklist steps (delete the
+  originals; except the ones left out) are still to be worded.
+

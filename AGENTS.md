@@ -35,8 +35,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-23 (area fidelity + track passthrough, after PR #41's 1028): **1056 passed** with the web dev server up; without
-it the 98 `tests/web` tests skip, giving **958 passed, 98 skipped**. (2026-10-22 was 892; 2026-10-21 was 568; the
+Baseline as of 2026-10-23 (area fidelity + track passthrough, after PR #41's 1028): **1060 passed** with the web dev server up; without
+it the 102 `tests/web` tests skip, giving **958 passed, 102 skipped**. (2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 

@@ -160,6 +160,7 @@ async function handleFiles(files) {
     showStage("edit");
     setStatus("Map loaded", "ready");
     window.__cairnLoaded = true;
+    warnFillLoss();
   } catch (e) {
     // Pyodide surfaces the whole Python traceback. The last line is the actual
     // message and the engine's messages are already user-friendly ("No features
@@ -1066,7 +1067,8 @@ function closeHelp() {
 }
 
 /* ---------- confirmations ---------- */
-/* One in-page dialog (#confirm) serves Start over and the unsaved-note prompt.
+/* One in-page dialog (#confirm) serves Start over, the unsaved-note prompt and
+   the area-fill warning.
    Never window.confirm: it blocks automation and doesn't match the design. */
 let CONFIRM = null;   // {ret, cancel}
 function openConfirm({ title, body, buttons, ret }) {
@@ -1094,6 +1096,32 @@ function closeConfirm(focusRet = true) {
   if (focusRet && r && r.isConnected) r.focus({ preventScroll: true });
 }
 function cancelConfirm() { if (CONFIRM && CONFIRM.cancel) CONFIRM.cancel.run(); else closeConfirm(); }
+
+/* onX gives every imported area its default blue fill, whatever the file says
+   (docs/ONX_ROUND_TRIP.md #area-fidelity). Areas from an onX export (they carry
+   an onX id) with any other fill, "none" included, would change, so say so once
+   on load and offer to leave them out of the export. */
+const ONX_DEFAULT_FILL = "rgba(74,144,226,0.1)";
+function fillLossItems() {
+  return allItems().filter(i => i.kind === "shapes" && i.onx_id && i.fill && i.fill !== ONX_DEFAULT_FILL);
+}
+function warnFillLoss() {
+  const hit = fillLossItems();
+  const n = hit.length;
+  if (!n) return;
+  openConfirm({
+    title: n === 1 ? "1 area will lose its fill." : `${n} areas will lose their fill.`,
+    body: "onX resets area fills to blue on import.",
+    buttons: [
+      { label: n === 1 ? "Leave this out" : `Leave these ${n} out`, run: () => {
+          closeConfirm();
+          hit.forEach(it => edit(it, { included: false }, { render: false }));
+          refreshAfterEdit();
+        } },
+      { label: n === 1 ? "Keep it" : "Keep them", initial: true, cancel: true, run: () => closeConfirm() },
+    ],
+  });
+}
 
 function noteIsChanged() {
   if (!NOTE_EDIT || !DATA) return false;

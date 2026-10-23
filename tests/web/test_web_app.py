@@ -1073,12 +1073,54 @@ def test_line_style_dialog_takes_areas_too(loaded: Page):
     expect(loaded.locator("#status")).to_have_text("Changed 2 areas")
 
 
+def _keep_fills(page: Page) -> None:
+    """Dismiss the load-time area-fill warning (onX files with non-default fills)."""
+    page.click("#confirm .confirm-actions button:text-matches('^Keep')")
+    expect(page.locator("#confirm")).to_be_hidden()
+
+
+def test_onx_areas_with_a_fill_warn_and_can_be_left_out(fresh_page: Page):
+    """onX resets an imported area's fill to its default blue, so an onX export
+    whose areas have another fill (or none) warns once on load, and "Leave these
+    out" unticks exactly those areas."""
+    fx = FX_DIR / "onx_exports"
+    fresh_page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    dlg = fresh_page.locator("#confirm")
+    expect(dlg).to_be_visible()
+    expect(fresh_page.locator("#confirm-title")).to_have_text("4 areas will lose their fill.")
+    expect(fresh_page.locator("#confirm-body")).to_have_text("onX resets area fills to blue on import.")
+    fresh_page.click("#confirm .confirm-actions button:text-is('Leave these 4 out')")
+    expect(dlg).to_be_hidden()
+    expect(fresh_page.locator(f"{ROW}.excluded")).to_have_count(4)
+
+
+def test_onx_areas_keep_them_changes_nothing(fresh_page: Page):
+    fx = FX_DIR / "onx_exports"
+    fresh_page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    _keep_fills(fresh_page)
+    expect(fresh_page.locator(f"{ROW}.excluded")).to_have_count(0)
+    assert fresh_page.evaluate("Object.keys(EDITS).length") == 0
+
+
+@pytest.mark.parametrize("files", [["onx_exports/three-round-trips.gpx", "onx_exports/three-round-trips.kml"],
+                                   ["bitterroots/Bitterroots__Complete_.json"]],
+                         ids=["onx-default-fill", "caltopo"])
+def test_no_fill_warning_when_nothing_would_change(fresh_page: Page, files):
+    fresh_page.set_input_files("#file", [str(FX_DIR / f) for f in files])
+    expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    fresh_page.wait_for_timeout(300)
+    expect(fresh_page.locator("#confirm")).to_be_hidden()
+
+
 def test_onx_area_dot_and_extra_thin_are_shown_and_kept(fresh_page: Page):
     """An onX file's dotted and 2.0 areas are drawn and named as such; neither is
     offered as a choice, so no toggle is pressed for them."""
     fx = FX_DIR / "onx_exports"
     fresh_page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
     expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    _keep_fills(fresh_page)
     marks = fresh_page.locator(f"{ROW} .line-btn")
     expect(marks).to_have_count(4)
     labels = [marks.nth(i).get_attribute("aria-label") for i in range(4)]
@@ -1851,6 +1893,7 @@ def test_file_input_accepts_gpx_kml_and_several_files(csp_page: Page):
 def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page):
     page = csp_page
     _load_files(page, ONX_PAIR)
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     # The pair merged: ONE folder, named from the file, in the rail and the list.
     expect(page.locator(".folder")).to_have_count(1)
     expect(page.locator(".folder h2")).to_have_text("onx dialect")
@@ -1885,6 +1928,7 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
 def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     page = csp_page
     _load_files(page, ONX_PAIR)
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     page.click("#export")
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator(".rb-step")).to_have_count(1)
@@ -1925,6 +1969,7 @@ def test_several_files_become_one_folder_each_and_start_over_clears_the_notice(c
     page = csp_page
     rattlesnake = FX_DIR / "rattlesnake_test_waypoints.gpx"
     _load_files(page, [*ONX_PAIR, CALTOPO_GPX, rattlesnake])
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     expect(page.locator(".folder h2")).to_have_text(
         ["rattlesnake test waypoints", "bitterroots subet", "onx dialect"])
     expect(page.locator("#map-title")).to_have_text("onx dialect + 2 more")
@@ -1936,6 +1981,7 @@ def test_several_files_become_one_folder_each_and_start_over_clears_the_notice(c
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
     expect(page.locator("#source-notice")).to_be_hidden()
     _load_files(page, ONX_PAIR)
+    _keep_fills(page)  # onx_dialect's area has a non-default fill
     expect(page.locator(".folder")).to_have_count(1)
     expect(page.locator("#source-notice")).to_be_hidden()
 
