@@ -110,7 +110,16 @@ def stroke_width_to_weight(stroke_width) -> str:
         return "4.0"
 
 
+# onX area line styles and weights, as onX's GPX export writes them (<onx:style>,
+# <onx:weight>). onX's own names for the weights are thin / normal / thick. All
+# three of each are kept on import (live test 2026-10-23, docs/ONX_ROUND_TRIP.md
+# #area-fidelity), so an onX file's value passes through unchanged.
+ONX_LINE_STYLES = ("solid", "dash", "dot")
+ONX_LINE_WEIGHTS = ("2.0", "4.0", "6.0")
+
+
 _RGB_REGEX = re.compile(r"rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)")
+_ALPHA_REGEX = re.compile(r"rgba\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)", re.I)
 
 
 @dataclass(frozen=True)
@@ -164,6 +173,28 @@ class ColorMapper:
         _PaletteColor("red", 255, 0, 0, "rgba(255,0,0,1)"),
         _PaletteColor("brown", 139, 69, 19, "rgba(139,69,19,1)"),
     )
+
+    # onX's area FILL palette ("Area Color" in onX's area editor): 10 swatches,
+    # all at alpha 0.1, plus "None". A separate palette from the line colours.
+    # Source: the Web Map's own colour table (keys, labels, dbValue) and an onX
+    # export after each swatch was set in onX (2026-10-23, docs/ONX_ROUND_TRIP.md
+    # #area-fidelity). onX's GPX/KML importer does NOT read an area's fill -- every
+    # imported area gets the default Blue whatever the file says -- so Cairn writes
+    # the swatch to match onX's own export, not because onX will keep it.
+    AREA_FILL_PALETTE: tuple[_PaletteColor, ...] = (
+        _PaletteColor("blue", 74, 144, 226, "rgba(74,144,226,0.1)"),
+        _PaletteColor("orange", 212, 83, 47, "rgba(212,83,47,0.1)"),
+        _PaletteColor("green_brown", 113, 95, 46, "rgba(113,95,46,0.1)"),
+        _PaletteColor("red", 193, 76, 90, "rgba(193,76,90,0.1)"),
+        _PaletteColor("yellow", 238, 255, 125, "rgba(238,255,125,0.1)"),
+        _PaletteColor("blue_green", 42, 139, 97, "rgba(42,139,97,0.1)"),
+        _PaletteColor("white", 255, 255, 255, "rgba(255,255,255,0.1)"),
+        _PaletteColor("cyan", 153, 255, 255, "rgba(153,255,255,0.1)"),
+        _PaletteColor("gray", 80, 80, 80, "rgba(80,80,80,0.1)"),
+        _PaletteColor("magenta", 232, 118, 255, "rgba(232,118,255,0.1)"),
+    )
+    AREA_FILL_NONE = "rgba(0,0,0,0)"  # onX "None" (outline only)
+    DEFAULT_AREA_FILL = "rgba(74,144,226,0.1)"  # what onX gives every imported area
 
     # Default color when no match or indeterminate
     DEFAULT_TRACK_COLOR = "rgba(8,122,255,1)"  # Track blue
@@ -250,6 +281,43 @@ class ColorMapper:
         r, g, b = cls.parse_color(color_str)
         chosen = cls._find_closest_in_palette(r, g, b, cls.WAYPOINT_PALETTE)
         return chosen.rgba
+
+    @classmethod
+    def map_area_fill(cls, color_str: str, opacity=None) -> str:
+        """An area fill as onX writes it: the nearest of onX's 10 fill swatches, or None.
+
+        - An onX fill value (a swatch, or "rgba(0,0,0,0)") maps to itself, so an
+          onX file's fill passes through unchanged.
+        - ``opacity`` is CalTopo's fill-opacity: 0 means no fill, so None. Any
+          other opacity gives a swatch, which is always alpha 0.1 in onX.
+        - Any rgba with alpha 0 is None. Otherwise the hue is matched by RGB
+          only; a missing or unreadable colour is matched as parse_color's blue.
+
+        Example:
+            >>> ColorMapper.map_area_fill("#FF0000")
+            'rgba(212,83,47,0.1)'
+            >>> ColorMapper.map_area_fill("#FF0000", opacity=0)
+            'rgba(0,0,0,0)'
+        """
+        if opacity is not None and not isinstance(opacity, bool):
+            try:
+                if float(opacity) <= 0:
+                    return cls.AREA_FILL_NONE
+            except (TypeError, ValueError):
+                pass
+        raw = (color_str or "").strip()
+        compact = re.sub(r"\s+", "", raw)
+        if compact == cls.AREA_FILL_NONE or compact in {p.rgba for p in cls.AREA_FILL_PALETTE}:
+            return compact
+        m = _ALPHA_REGEX.match(raw)
+        if m:
+            try:
+                if float(m.group(1)) <= 0:
+                    return cls.AREA_FILL_NONE
+            except ValueError:
+                pass
+        r, g, b = cls.parse_color(raw)
+        return cls._find_closest_in_palette(r, g, b, cls.AREA_FILL_PALETTE).rgba
 
     @classmethod
     def parse_color(cls, color_str: str) -> Tuple[int, int, int]:
