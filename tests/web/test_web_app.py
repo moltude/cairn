@@ -810,7 +810,9 @@ def test_marker_popover_changes_one_items_icon_and_color(loaded: Page):
     assert pop.locator(".icon-pick").count() == loaded.evaluate("DATA.icons.length")
     pop.locator('.swatch-btn[aria-label="Blue"]').click()
     pop.locator(".icon-search").fill("summ")
-    assert pop.locator(".icon-pick").count() >= 1
+    # The filter hides the other buttons rather than removing them (UI-29).
+    assert pop.locator(".icon-pick:visible").count() == 1
+    assert pop.locator(".icon-pick").count() == loaded.evaluate("DATA.icons.length")
     pop.locator('.icon-pick[data-icon="Summit"]').click()
     # The header shows the picked marker, not words for it (UI-26).
     assert pop.locator(".pop-desc").count() == 0
@@ -849,6 +851,92 @@ def test_icon_grids_stay_neutral_when_a_color_is_picked(loaded: Page):
     # Now keeps each item's color; After shows the picked one
     preview = d.locator(".na-rows svg.marker > path").evaluate_all("els => els.map(e => e.getAttribute('fill'))")
     assert preview[1::2] == ["#84D400"] * 2 and "#84D400" not in preview[0::2]
+
+
+_STASH_PICKS = "sel => { window.__picks = [...document.querySelector(sel).children]; }"
+_SAME_PICKS = ("sel => { const now = [...document.querySelector(sel).children];"
+               " return now.length === window.__picks.length && now.every((e, i) => e === window.__picks[i]); }")
+_FOCUSED_ICON = "() => document.activeElement.dataset ? document.activeElement.dataset.icon || null : null"
+
+
+def _assert_list_is_static(page: Page, scope: str):
+    """Pick by click, by keyboard and then a colour: the icon list is never rebuilt,
+    focus stays on the picked button, and only aria-pressed moves (UI-29)."""
+    grid = f"{scope} .icon-grid"
+    page.evaluate(_STASH_PICKS, grid)
+    picks = page.locator(f"{grid} .icon-pick")
+
+    picks.nth(3).click()
+    first = picks.nth(3).get_attribute("data-icon")
+    assert page.evaluate(_FOCUSED_ICON) == first
+    assert picks.nth(3).get_attribute("aria-pressed") == "true"
+    assert page.locator(f'{grid} .icon-pick[aria-pressed="true"]').count() == 1
+    assert page.evaluate(_SAME_PICKS, grid)
+
+    picks.nth(3).press("Tab")   # keyboard to the next option, then pick it with Enter
+    second = picks.nth(4).get_attribute("data-icon")
+    assert page.evaluate(_FOCUSED_ICON) == second
+    page.keyboard.press("Enter")
+    assert page.evaluate(_FOCUSED_ICON) == second
+    assert picks.nth(4).get_attribute("aria-pressed") == "true"
+    assert picks.nth(3).get_attribute("aria-pressed") == "false"
+    page.keyboard.press("Space")
+    assert page.evaluate(_FOCUSED_ICON) == second
+    assert page.evaluate(_SAME_PICKS, grid)
+
+    page.locator(f'{scope} .swatch-btn[aria-label="Red"]').click()
+    assert page.evaluate(_SAME_PICKS, grid)
+
+    page.locator(f"{scope} .icon-search").fill("camp")
+    assert page.evaluate(_SAME_PICKS, grid)
+    assert page.locator(f"{grid} .icon-pick:visible").count() == 4
+    page.locator(f"{scope} .icon-search").fill("zzzz")
+    expect(page.locator(f"{grid} .grid-empty")).to_have_text("No icon matches “zzzz”.")
+    page.locator(f"{scope} .icon-search").fill("")
+    assert page.locator(f"{grid} .icon-pick:visible").count() == page.evaluate("DATA.icons.length")
+    assert page.evaluate(_SAME_PICKS, grid)
+
+
+def test_icon_list_is_built_once_and_keeps_focus_on_a_pick(loaded: Page):
+    """Choosing an icon used to rebuild the grid via innerHTML, so keyboard focus
+    fell to <body>. The list is now built once per open (UI-29)."""
+    _set_type(loaded, "waypoints")
+    loaded.locator(f"{ROW} .icon-btn").first.click()
+    _assert_list_is_static(loaded, "#mark-pop")
+    loaded.locator("#mark-pop .pop-cancel").click()
+
+    loaded.locator(f"{ROW} .sel-box").nth(0).check()
+    loaded.locator(f"{ROW} .sel-box").nth(1).check()
+    loaded.click("#bulk-icon")
+    _assert_list_is_static(loaded, "#mark-dialog")
+    loaded.click(".bulk-cancel")
+
+
+def test_icon_list_rows_are_two_columns_with_the_marker_centred(loaded: Page):
+    """Option C (UI-29): two columns, marker left of the name, at least 44px rows,
+    names wrap only between words and the marker sits on the row's centre line."""
+    _set_type(loaded, "waypoints")
+    loaded.locator(f"{ROW} .icon-btn").first.click()
+    m = loaded.evaluate("""() => {
+      const picks = [...document.querySelectorAll('#mark-pop .icon-pick')];
+      const lefts = new Set(picks.map(p => Math.round(p.getBoundingClientRect().left)));
+      const off = picks.map(p => {
+        const r = p.getBoundingClientRect(), s = p.querySelector('svg').getBoundingClientRect();
+        return Math.abs((s.top + s.height / 2) - (r.top + r.height / 2));
+      });
+      const span = picks[0].querySelector('span');
+      const cs = getComputedStyle(span);
+      return { cols: lefts.size, minH: Math.min(...picks.map(p => p.getBoundingClientRect().height)),
+               drift: Math.max(...off), wrap: cs.overflowWrap, brk: cs.wordBreak,
+               svgLeftOfName: picks.every(p => p.querySelector('svg').getBoundingClientRect().right
+                                                 <= p.querySelector('span').getBoundingClientRect().left) };
+    }""")
+    assert m["cols"] == 2, m
+    assert m["minH"] >= 44, m
+    assert m["drift"] <= 1, m
+    assert m["svgLeftOfName"], m
+    assert (m["wrap"], m["brk"]) == ("normal", "normal"), m
+    assert loaded.locator("#mark-pop").bounding_box()["width"] == 440
 
 
 _LINE = "DATA.groups.flatMap(g=>g.items).find(i=>i.uid==={uid!r})"

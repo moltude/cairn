@@ -689,9 +689,30 @@ function syncLineOpts(root, style, weight) {
   root.querySelectorAll(".tog[data-weight]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.weight === weight)));
 }
 
-function iconMatches(q) {
+/* The icon list (UI-29) is built once per open of the popover or dialog. After
+   that the filter only toggles `hidden` and a pick only flips aria-pressed, so
+   the buttons are never replaced and keyboard focus stays where it was. */
+function buildIconGrid(grid, selected, onPick) {
+  grid.innerHTML = DATA.icons.map(n =>
+    `<button type="button" class="icon-pick" data-icon="${esc(n)}" aria-pressed="${n === selected}">` +
+    `${markerOutlineSVG(n, 24, 30)}<span>${esc(n)}</span></button>`).join("") +
+    `<span class="grid-empty" hidden></span>`;
+  grid.querySelectorAll(".icon-pick").forEach(b => b.onclick = () => onPick(b.dataset.icon));
+}
+function filterIconGrid(grid, q) {
   const s = q.trim().toLowerCase();
-  return DATA.icons.filter(n => !s || n.toLowerCase().includes(s));
+  let shown = 0;
+  grid.querySelectorAll(".icon-pick").forEach(b => {
+    b.hidden = !!s && !b.dataset.icon.toLowerCase().includes(s);
+    if (!b.hidden) shown++;
+  });
+  const empty = grid.querySelector(".grid-empty");
+  empty.hidden = shown > 0;
+  empty.textContent = shown ? "" : `No icon matches “${q}”.`;
+}
+function syncIconGrid(grid, selected) {
+  if (!grid) return;
+  grid.querySelectorAll(".icon-pick").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.icon === selected)));
 }
 
 /* ---------- single item: popover anchored to the marker ---------- */
@@ -727,8 +748,10 @@ function openPop(it, anchor) {
     POP.color = b.dataset.rgba; drawPop();
   });
   if (isWp) {
+    const grid = pop.querySelector(".icon-grid");
+    buildIconGrid(grid, POP.icon, n => { POP.icon = n; POP.iconPicked = true; drawPop(); });
     const s = pop.querySelector(".icon-search");
-    s.oninput = () => { POP.q = s.value; drawPopGrid(); };
+    s.oninput = () => { POP.q = s.value; filterIconGrid(grid, POP.q); };
   }
   pop.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => { POP.style = b.dataset.style; drawPop(); });
   pop.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => { POP.weight = b.dataset.weight; drawPop(); });
@@ -759,21 +782,8 @@ function drawPop() {
     pop.querySelector(".pop-map").innerHTML = lineMapSVG(hex, POP.style, POP.weight);
     syncLineOpts(pop, POP.style, POP.weight);
   }
-  if (isWp) drawPopGrid();
-}
-
-function drawPopGrid() {
-  const it = popItem(); if (!it) return;
-  const grid = $("#mark-pop .icon-grid"); if (!grid) return;
-  const top = grid.scrollTop;
-  const list = iconMatches(POP.q);
-  grid.innerHTML = list.length ? list.map(n =>
-    `<button type="button" class="icon-pick" data-icon="${esc(n)}" aria-pressed="${n === POP.icon}">${markerOutlineSVG(n, 28, 35)}<span>${esc(n)}</span></button>`).join("")
-    : `<span class="grid-empty">No icon matches “${esc(POP.q)}”.</span>`;
-  grid.scrollTop = top;
-  grid.querySelectorAll(".icon-pick").forEach(b => b.onclick = () => {
-    POP.icon = b.dataset.icon; POP.iconPicked = true; drawPop();
-  });
+  // The icon list keeps its neutral outline markers; only the pressed state moves.
+  if (isWp) syncIconGrid(pop.querySelector(".icon-grid"), POP.icon);
 }
 
 function placePop(anchor) {
@@ -849,7 +859,7 @@ function openBulk() {
       <span class="label">Icon</span>
       <div class="bulk-icon-row"><button type="button" class="reset-chip icon-reset" aria-pressed="true">Reset</button>
         <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off"></div>
-      <div class="icon-grid compact" role="group" aria-label="Icons"></div>
+      <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : ""}
     <div class="pop-foot">
       <button type="button" class="btn bulk-cancel">Cancel</button>
@@ -859,8 +869,10 @@ function openBulk() {
   d.querySelectorAll(".swatch-btn").forEach(b => b.onclick = () => { BULK.color = b.dataset.rgba; drawBulk(); });
   if (hasWp) {
     d.querySelector(".icon-reset").onclick = () => { BULK.icon = null; drawBulk(); };
+    const grid = d.querySelector(".icon-grid");
+    buildIconGrid(grid, BULK.icon, n => { BULK.icon = n; drawBulk(); });
     const s = d.querySelector(".icon-search");
-    s.oninput = () => { BULK.q = s.value; drawBulkGrid(); };
+    s.oninput = () => { BULK.q = s.value; filterIconGrid(grid, BULK.q); };
   }
   d.querySelector(".bulk-x").onclick = closeBulk;
   d.querySelector(".bulk-cancel").onclick = closeBulk;
@@ -888,18 +900,7 @@ function drawBulk() {
   d.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === BULK.color)));
   const ir = d.querySelector(".icon-reset");
   if (ir) ir.setAttribute("aria-pressed", String(!BULK.icon));
-  drawBulkGrid();
-}
-
-function drawBulkGrid() {
-  const grid = $("#mark-dialog .icon-grid"); if (!grid) return;
-  const top = grid.scrollTop;
-  const list = iconMatches(BULK.q);
-  grid.innerHTML = list.length ? list.map(n =>
-    `<button type="button" class="icon-pick" data-icon="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}" aria-pressed="${n === BULK.icon}">${markerOutlineSVG(n, 24, 30)}</button>`).join("")
-    : `<span class="grid-empty">No icon matches “${esc(BULK.q)}”.</span>`;
-  grid.scrollTop = top;
-  grid.querySelectorAll(".icon-pick").forEach(b => b.onclick = () => { BULK.icon = b.dataset.icon; drawBulk(); });
+  syncIconGrid(d.querySelector(".icon-grid"), BULK.icon);
 }
 
 function applyBulk() {
