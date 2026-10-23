@@ -820,3 +820,60 @@ sat at the top. Now:
   screen keeps no "imported" state.
 - RUNBOOK.md says the same: the intro line, and each folder's three steps (still naming the files
   and the folder to type).
+
+### UI-32 — Folders: drag to move, + New folder, rename and merge, Move to…
+Status: decided 2026-10-23 (owner, from the DragToFolder, DragToNewFolder, NameNewFolder,
+RenameMerge and KeyboardMove mockups). Engine: ENG-07. Release log: docs/testing/FOLDERS_RELEASE.md PR-C.
+
+Owner rules: an item is in exactly one folder; a folder that empties disappears; no drag to
+reorder folders, no item in two folders, no empty folder made up front.
+
+- **Drag rows to a folder.** Press on a row and move 6px. If that row is ticked, every ticked
+  row comes along, else just that row. A dark label follows the pointer: "Move 3 items" ("Move 1
+  item"); the dragged rows dim. The drop targets are the folders in the rail's Folders list:
+  the one under the pointer gets the green fill and dashed outline; the folder every dragged item
+  is already in reads "here now" and isn't a target (a folder holding only some of them is).
+  "+ New folder" sits at the end of the list. Dropping anywhere else, or Esc, does nothing.
+  Excluded rows move like any other. The status line says "Moved 3 items to North Roots." or
+  "…to a new folder."
+- **Built on pointer events, not HTML5 drag and drop.** A row is mostly controls, the label must
+  be our own element (styled, and visible in screenshots), and Esc must cancel and be testable.
+  A drag doesn't start from a checkbox, from an open note, or from a name field you are already
+  typing in (there a press-and-drag selects text). It does start from a name you haven't clicked
+  into: the row's name is the obvious thing to grab, and the field is left unchanged. The click
+  that ends a drag is swallowed. If the Folders section is folded, a drag opens it and folds it
+  again after.
+- **Long rails.** The rail scrolls on its own, so with many folders "+ New folder" can be below
+  its fold: holding the pointer near the rail's top edge, or near or over its footer, scrolls it,
+  faster the deeper in.
+- **+ New folder** takes the first free name of "New folder", "New folder 2", … and opens it for
+  naming in the rail with the text selected: type, then Enter or click away to keep; Esc keeps the
+  default. It is a drop target only, not a button.
+- **Rename:** click a folder's name in its table header (the one primary control; the rail entry
+  stays the folder filter). Enter or leaving the field saves, Esc cancels, an empty name is
+  refused with "A folder needs a name." and the old one kept, the same name does nothing, another
+  case of its own name is a rename. A name another folder has (compared trimmed, any case) opens
+  **"“X” already exists" / "Move the N items in “Y” into it?" [Move them] [Cancel]**; Cancel is the
+  default (and Esc) and keeps the old name; Move them merges Y into X, which keeps its name and
+  place. New-folder naming happens in the rail because the new folder's rows may not be on screen
+  (a folder filter); renaming happens in the header.
+- **More ▸ Move to…** is first in More. It opens "Move N items to": every folder with its count
+  (the count tells apart folders a file named alike, "Camp" and "camp"), the current one greyed
+  "· here now", and "+ New folder…" (then the same rail naming). Arrow keys (skipping "here now"),
+  Home/End and Enter pick; Esc closes and returns focus to More. After a pick the moved rows are
+  unticked, so More is off and focus goes to the destination's rail entry.
+- **Selection after a move:** moved rows are unticked; other ticks stay. Keeping the ticks meant
+  the next drag of one moved row dragged the whole old selection out again (found in testing),
+  and the mockup shows no selection bar after a move.
+- **State kept in step:** DATA.groups is rebuilt from the bridge's layout after every move or
+  merge, keeping the item objects (and so every edit and exclusion); rail counts, DATA.totals,
+  a folder filter or collapsed fold naming a removed folder are cleared. An open note whose row
+  a move takes off screen saves its draft rather than losing it. A folder renamed from
+  "Unorganized" is an ordinary folder (no italics), and one renamed to it doesn't become the
+  loose items.
+- **Start over** counts each moved item and each renamed folder as an unexported change.
+- **Export** follows the bridge (names, numbering, per-folder zips). A per-folder download is now
+  named after its `NN_` directory (`02_A_B.zip`), since "A/B" and "A_B" sanitize alike.
+
+Options not taken: HTML5 drag and drop (above); renaming from the rail entry (it is the filter);
+keeping the selection after a move; a click on "+ New folder" making an empty folder.

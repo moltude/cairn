@@ -209,3 +209,85 @@ item, error paths never changed state, and per-folder zips were byte-identical i
 - `window.__cairnLoaded` stays true after Start over (test hook only; a test must reset it).
 
 Regression tests: `tests/test_web_bridge_hardening.py` (20 tests; 12 fail on the pre-fix bridge).
+
+## PR-C: the folders UI (UI-32) (2026-10-23)
+
+Branch `feat/folders-ui` (on `feat/folders-release`, merged again after the hardening pass
+`eafb1f6`). Design: `docs/design/DECISIONS.md` UI-32.
+
+### What changed
+- `web/app.js`: drag rows onto a rail folder or "+ New folder" (pointer events, a "Move N items"
+  label, "here now", rail auto-scroll); new-folder naming in the rail; rename by clicking a
+  folder's name in its table header; the merge offer on a taken name; More ▸ Move to… with arrow
+  keys; `applyLayout` rebuilds DATA.groups from the bridge's layout; Start over counts moves and
+  renames; a renamed "Unorganized" is an ordinary folder. Per-folder download named
+  `NN_<safe>.zip` (hardening note).
+- `web/index.html`: "Move to…" first in More, `#move-pop`, Help section "4 · Folders".
+- `web/styles.css`, `web/icons.js` (the move glyph).
+- `web/bridge.py`: `merge_folders` removes the source folder even when it is empty.
+
+### Automated
+`BASE_URL=http://127.0.0.1:8784/ uv run pytest`: **1179 passed** (1159 + 20).
+
+- `tests/web/test_web_app.py` (19 new): drag one row (label, here now, drop highlight, dimmed
+  row, counts, status, UI and bridge layouts equal); drag several ticked rows, then an unticked
+  row alone; drag from an unfocused name but not from a focused one; drag onto + New folder and
+  name it, Esc keeps "New folder", the next default is "New folder 2", click-away keeps it; drop on
+  its own folder, on the list, the search box and "All" (no-op, no stray click); Esc cancels a
+  drag (and the release over a folder doesn't filter); rename (empty, same name, Esc, other case,
+  click-away); rename onto a taken name (dialog text, Cancel default, Enter and Esc cancel, Move
+  them merges and the target keeps its place); keyboard Move to… end to end (Esc returns focus,
+  arrows skip here now and wrap, Home/End, + New folder…); Move to… unfolds a folded Folders
+  section to name; an emptied folder disappears with its folder filter; a merged-away folder's
+  collapsed state is forgotten; moved items keep their edits and exclusion through export; the
+  export after moves and renames (box names, counts, order, every per-folder zip unzipped and
+  checked, Back, move, export again); Start over counts moves and renames; regression tests for
+  bugs 3–6 below; a 60-folder rail auto-scrolls to + New folder.
+- `tests/test_web_bridge_folders.py`: `test_merging_an_empty_folder_removes_it`.
+- Two existing download tests now expect `NN_<safe>.zip`.
+
+### Manual / break-it (headless Chromium 1440×900, port 8784)
+Scripts in the gitignored scratch area. Maps: Bitterroots, the onX areas pair, and generated
+CalTopo GeoJSON from `tests/hardening_maps.py`: 34 hostile names with 3 empty folders, 200
+folders / 1,100 items, and case twins ("Camp", "camp", "Camp", " Camp ", "A/B", "A_B", emoji,
+CJK). On each map: 15 rapid drags to random targets (naming or Esc-ing new folders), a drag during
+a search, renames to `a/b`, `..`, 300 × `x`, emoji, padded and accented names, a merge by case
+variant, exclude then move the excluded rows to a new folder, export and download the first and
+last folder zips, Back, drag to a new folder, export again, everything into one folder (Ctrl+A,
+Move to…), export, Start over, next map. After every step: UI layout == bridge layout, rail
+entries == folders, no item lost or doubled, totals, no stale filter, no leftover drag label, no
+error status, no console or page errors; after every export, manifest names and counts == the
+folders with included items, folder zips == their manifest files, zip names `NN_…`, no path part
+over 255 bytes. Also: a note draft on a row dragged out of a folder filter, a popover open on a
+dragged row, switching from one header name to another, the area-fill dialog blocking a drag,
+keyboard Tab order, rail auto-scroll down and up on 200 folders. Final run: 0 problems.
+
+Screenshots (gitignored): `tests/output/folders-ui/` — `1-drag-to-folder.png`,
+`2-drag-to-new-folder.png`, `3-name-new-folder.png`, `4a-rename-in-header.png`,
+`4b-rename-merge.png`, `5a-more-menu.png`, `5b-keyboard-move.png`, `5c-after-move.png`. They
+match the mockups apart from the rail's existing Type and Icon sections and the contour background.
+
+### Bugs found and fixed
+| # | Bug | Fix | Test |
+|---|-----|-----|------|
+| 1 | "+ New folder" did nothing: its drop key `"\u0000new"` went through innerHTML, and the HTML parser turns NUL into U+FFFD, so the bridge was asked for folder "�new". | The key is set as a DOM property. | `test_drag_onto_new_folder_then_name_it` |
+| 2 | With the selection kept after a move, dragging one moved row out again dragged every row of the old selection (emptying the new folder). | Moved rows are unticked; other ticks stay (UI-32). | `test_drag_several_ticked_rows_moves_them_all`, `test_export_after_moves_and_renames` |
+| 3 | Any re-render while a folder name was open closed it: Chrome fires blur on a focused element as it is removed, which saved and closed the field. Seen when leaving one header name for another (the second closed at once). | Hosts are emptied through `rebuild()`, and a blur during it is ignored. | `test_leaving_one_folder_name_for_another_keeps_the_second_open` |
+| 4 | An open note on a row that a move took off screen (folder filter) was closed by the next render and its draft lost. | Its draft is saved as an edit. | `test_an_open_note_moved_out_of_view_keeps_its_draft` |
+| 5 | Renamed "Unorganized" kept its italics and "Not in any CalTopo folder" (matched by key); a folder renamed to "Unorganized" turned italic. | Name and key both, and not after a user rename. | `test_a_renamed_unorganized_is_an_ordinary_folder` |
+| 6 | Merging a folder that loaded empty (rename onto a taken name, Move them) left it in place under its old name. | `merge_folders` always removes the source. | `test_merging_an_empty_folder_removes_it` |
+| 7 | Rail auto-scroll was too slow for 200 folders (~600 px/s, ~9 s to the end). | Speed grows with depth, up to 48 px a frame over the footer (~2.5 s for 8,000 px). | `test_a_long_rail_scrolls_while_dragging_to_new_folder` |
+| 8 | Two folders sanitizing alike ("A/B", "A_B", "..", "/") downloaded as the same zip name. | `NN_<safe>.zip` (hardening note). | updated download tests |
+
+### Open
+- A 300-character name wraps over many lines in the rail and header (shown in full on purpose;
+  the name input caps typing at 100 characters, a loaded name may be longer).
+- Folders with identical names from the file ("Camp" twice) are told apart only by their counts
+  and order; the merge dialog names the first.
+- A folder whose items are all excluded has no export box (existing PR-A/B behaviour).
+- Folders can't be dragged to reorder, and an empty folder can't be made up front (owner rules).
+
+### For the owner to check
+- [ ] Drag ticked rows to a folder, and to + New folder, in a real browser (mouse and trackpad).
+- [ ] The decisions listed under UI-32: drag from an unfocused name, moved rows unticked, rename
+      in the header vs naming a new folder in the rail, the rail unfolding during a drag.
