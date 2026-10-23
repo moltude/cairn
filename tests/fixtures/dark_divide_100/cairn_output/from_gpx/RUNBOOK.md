@@ -1,18 +1,14 @@
 # Import checklist
 
-**1 folders · 21 markups · 1 imports**
+**1 folder · 21 markups · 1 import**
 
-Before you start:
-- onX **Premium or Elite** is required to import.
-- Use the **Web Map** at webmap.onxmaps.com on a computer.
-- Each numbered step is ONE import. Drag in **all** the files for that step together.
+Import each folder into onX's **Web Map** (webmap.onxmaps.com), one at a time. Importing needs onX **Premium or Elite**.
 
-### 1. 2027 Dark Divide 100 Mile Endurance Run  (21 markups)
+### 1. 2027 Dark Divide 100 Mile Endurance Run  (21 markups · 2 files)
 
-- [ ] My Content → **Import** → select **2027_Dark_Divide_100_Mile_Endurance_Run_Waypoints.gpx, 2027_Dark_Divide_100_Mile_Endurance_Run_Tracks.gpx**
-- [ ] Tick **“Import map data to a new folder”**
-- [ ] Click **Import**
-- [ ] The new folder appears at the top named `Import <today>`. **Rename it to:** `2027 Dark Divide 100 Mile Endurance Run`
+1. In onX, choose **Import** and add these 2 files together: **2027_Dark_Divide_100_Mile_Endurance_Run_Waypoints.gpx, 2027_Dark_Divide_100_Mile_Endurance_Run_Tracks.gpx**
+2. Tick **Import map data to a new folder**.
+3. onX names the folder by date. **Rename it to:** `2027 Dark Divide 100 Mile Endurance Run`
 
 ### Notes longer than onX keeps on import (512 bytes)
 
@@ -22,6 +18,6 @@ onX keeps the first 512 bytes of an imported note -- about 512 characters of pla
 
 ---
 
-When finished, My Content should show **1 folders** and **21 markups**.
+When finished, My Content should show **1 folder** and **21 markups**.
 
 If a folder is missing items, delete that folder and redo just its step.

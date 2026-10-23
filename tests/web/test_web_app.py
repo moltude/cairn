@@ -436,6 +436,117 @@ def test_runbook_names_each_folder_and_has_no_kml_warning(loaded: Page):
 
 
 # ---------------------------------------------------------------------------
+# Export screen (UI-31): one box per folder, Download all / this folder
+# ---------------------------------------------------------------------------
+
+
+def _done(page: Page) -> None:
+    page.click("#export")
+    expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+
+
+def test_export_screen_is_one_box_per_folder_with_three_steps(loaded: Page):
+    _done(loaded)
+    manifest = loaded.evaluate("MANIFEST")
+    done = loaded.locator("#done-stage")
+    # The tick boxes (which only greyed a row) and the boxed explanation are gone.
+    expect(done.locator("input")).to_have_count(0)
+    expect(done.locator(".runbook-intro")).to_have_count(0)
+    expect(done.get_by_role("button", name="Copy")).to_have_count(0)
+    expect(loaded.locator("#download")).to_have_text("Download all")
+    expect(done.locator(".done-hint")).to_have_text("One zip, one folder inside it per onX folder")
+    expect(done.locator(".rb-intro")).to_have_text(
+        "Import each folder into onX's Web Map, one at a time. Importing needs onX Premium or Elite.")
+    boxes = done.locator(".rb-step")
+    expect(boxes).to_have_count(len(manifest))
+    expect(done.locator(".rb-dl")).to_have_text(["Download this folder"] * len(manifest))
+    for i, e in enumerate(manifest):
+        box, nf = boxes.nth(i), len(e["files"])
+        files = f"{nf} file" + ("" if nf == 1 else "s")
+        marks = f"{e['count']} markup" + ("" if e["count"] == 1 else "s")
+        expect(box.locator("h2")).to_have_text(f"{e['folder']} · {marks} · {files}")
+        expect(box.locator(".rb-file")).to_have_text([f["path"].split("/")[-1] for f in e["files"]])
+        add = "add this file." if nf == 1 else f"add these {nf} files together."
+        expect(box.locator(".rb-do li")).to_have_text([
+            f"In onX, choose Import and {add}",
+            "Tick Import map data to a new folder.",
+            f"onX names the folder by date. Rename it to {e['folder']}.",
+        ])
+    # Bitterroots has both kinds: Paddling writes one file, Unorganized three.
+    assert {len(e["files"]) for e in manifest} >= {1, 3}
+    expect(done).not_to_contain_text("Import all")
+    expect(done).not_to_contain_text("1 files")
+
+
+def test_download_all_and_each_folder_download(loaded: Page):
+    _done(loaded)
+    manifest = loaded.evaluate("MANIFEST")
+    with loaded.expect_download() as dl:
+        loaded.click("#download")
+    assert dl.value.suggested_filename == "onx_ready.zip"
+    full = zipfile.ZipFile(dl.value.path())
+    # Download all's layout is unchanged: NN_Name/ per folder in screen order, then RUNBOOK.md.
+    assert full.namelist() == [f["path"] for e in manifest for f in e["files"]] + ["RUNBOOK.md"]
+    btns = loaded.locator(".rb-dl")
+    for i, e in enumerate(manifest):
+        # Chromium drops an 11th download started within half a second of the
+        # first ten (measured); a person never clicks that fast.
+        loaded.wait_for_timeout(300)
+        with loaded.expect_download() as dl:
+            btns.nth(i).click()
+        safe = e["files"][0]["path"].split("/")[0].split("_", 1)[1]
+        assert dl.value.suggested_filename == f"{safe}.zip"
+        one = zipfile.ZipFile(dl.value.path())
+        assert one.namelist() == [f["path"] for f in e["files"]]
+        for name in one.namelist():
+            assert one.read(name) == full.read(name), name
+    expect(loaded.locator("#status")).not_to_have_class(re.compile(r"\berr\b"))
+
+
+def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path):
+    """Dropped items, long notes and the account limit still warn, above the boxes."""
+    square = [[-114.0, 45.0], [-114.1, 45.0], [-114.1, 45.1], [-114.0, 45.0]]
+    feats = [{"type": "Feature", "id": "f1", "geometry": None,
+              "properties": {"class": "Folder", "title": "Big"}},
+             {"type": "Feature", "id": "b", "geometry": {"type": "Polygon", "coordinates": []},
+              "properties": {"class": "Shape", "title": "Broken", "folderId": "f1"}},
+             {"type": "Feature", "id": "a", "geometry": {"type": "Polygon", "coordinates": [square]},
+              "properties": {"class": "Shape", "title": "Long", "folderId": "f1",
+                             "description": "x" * 600}}]
+    feats += [{"type": "Feature", "id": f"w{k}",
+               "geometry": {"type": "Point", "coordinates": [-114 + k / 1e4, 45.0]},
+               "properties": {"class": "Marker", "title": f"P{k}", "folderId": "f1"}}
+              for k in range(3000)]
+    path = tmp_path / "big.json"
+    path.write_text(json.dumps({"type": "FeatureCollection", "features": feats}), encoding="utf-8")
+    fresh_page.set_input_files("#file", str(path))
+    fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=60000)
+    _done(fresh_page)
+    host = fresh_page.locator("#runbook")
+    warns = host.locator(".note.warn")
+    expect(warns).to_have_count(3)
+    expect(warns.nth(0)).to_contain_text("1 item could not be exported")
+    expect(warns.nth(1)).to_contain_text("1 note is longer than 512 bytes")
+    expect(warns.nth(2)).to_contain_text("onX accounts hold at most 3,000 markups; this map has 3,002.")
+    # Every warning comes before the first folder box.
+    order = host.locator(":scope > *").evaluate_all("els => els.map(e => e.className)")
+    assert order[:3] == ["note warn"] * 3 and order[3:] == ["rb-step"]
+    expect(host.locator(".rb-step h2")).to_have_text("Big · 3,001 markups · 2 files")
+
+
+def test_export_screen_back_and_start_over(loaded: Page):
+    _done(loaded)
+    loaded.click("#back")
+    expect(loaded.locator("body")).to_have_attribute("data-stage", "edit")
+    assert loaded.locator(ROW).count() > 0
+    _done(loaded)
+    loaded.locator("#done-stage .newmap").click()
+    loaded.click("#confirm .confirm-actions button:text-is('Start over')")
+    expect(loaded.locator("body")).to_have_attribute("data-stage", "drop")
+    assert loaded.evaluate("DATA === null && ZIP === null")
+
+
+# ---------------------------------------------------------------------------
 # Negative: malformed input
 # ---------------------------------------------------------------------------
 
@@ -1945,6 +2056,10 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator(".rb-step")).to_have_count(1)
     expect(page.locator(".rb-count")).to_have_text("8 markups")
+    expect(page.locator(".rb-step h2")).to_have_text("onx dialect · 8 markups · 3 files")
+    expect(page.locator(".rb-do li").first).to_have_text(
+        "In onX, choose Import and add these 3 files together.")
+    expect(page.locator("#done-stage input")).to_have_count(0)
     with page.expect_download() as dl:
         page.click("#download")
     zf = zipfile.ZipFile(dl.value.path())
@@ -1954,6 +2069,13 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
         "01_onx_dialect/onx_dialect_Waypoints.gpx",
         "RUNBOOK.md",
     ]
+    # Download this folder, under the enforced CSP: the same three files, no runbook.
+    with page.expect_download() as dl1:
+        page.click(".rb-dl")
+    assert dl1.value.suggested_filename == "onx_dialect.zip"
+    one = zipfile.ZipFile(dl1.value.path())
+    assert sorted(one.namelist()) == sorted(n for n in zf.namelist() if n != "RUNBOOK.md")
+    assert all(one.read(n) == zf.read(n) for n in one.namelist())
     wpts = zf.read("01_onx_dialect/onx_dialect_Waypoints.gpx").decode()
     # The writer sorts by name (Camp & water, Main Wall, Slide obs).
     assert re.findall(r"<onx:icon>([^<]*)</onx:icon>", wpts) == ["Campsite", "Climbing", "Hazard"]

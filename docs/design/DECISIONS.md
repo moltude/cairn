@@ -794,3 +794,29 @@ on load:
 - The broader "This map came from onX" notice and the import-checklist steps (delete the
   originals; except the ones left out) are still to be worded.
 
+
+### UI-31 — The export screen: one box per folder
+Status: decided 2026-10-23 (owner, from the `ExportScreen.dc.html` mockup).
+
+The old screen confused the owner: an unlabelled tick box per folder looked like include/exclude
+but only greyed the row, "Import all 1 file together" was ungrammatical, and a boxed explanation
+sat at the top. Now:
+
+- **Header:** "Export", "Your files are ready", then **Download all** (the zip as before: one
+  `NN_Name/` folder per onX folder, in screen order, plus RUNBOOK.md) with the italic hint "One
+  zip, one folder inside it per onX folder". Back and Start over sit on the right.
+- **One intro line:** "Import each folder into onX's Web Map, one at a time. Importing needs onX
+  Premium or Elite." The warnings that apply (dropped items, long notes, over the account limit,
+  KML) follow it, above the boxes.
+- **One box per folder:** the folder name, "· N markups · F files", a **Download this folder**
+  button, the file names as chips, and three numbered steps: "In onX, choose **Import** and add
+  these F files together." ("add this file." for one), "Tick **Import map data to a new
+  folder**.", "onX names the folder by date. Rename it to **<folder>**." Counts are singular for
+  one.
+- **Download this folder** is a zip of that folder's `NN_Name/` directory only, named
+  `<Name>.zip` (the folder name sanitized like the file names). Its files are the same bytes as
+  in Download all: `bridge.export_folder_zip(n)` reads the last export, nothing is exported again.
+- **Removed:** the tick box and its done state, the boxed paragraph, and no Copy button. The
+  screen keeps no "imported" state.
+- RUNBOOK.md says the same: the intro line, and each folder's three steps (still naming the files
+  and the folder to type).

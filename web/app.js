@@ -1019,7 +1019,7 @@ async function doExport() {
     MANIFEST = JSON.parse(py.runPython("import json; json.dumps(bridge._STATE['manifest'])"));
     renderRunbook();
     showStage("done");
-    setStatus(`Built ${MANIFEST.length} import batches`, "ready");
+    setStatus(`Built ${plural(MANIFEST.length, "folder")}`, "ready");
     window.__cairnExported = true;
   } catch (e) {
     setStatus("Export failed: " + e.message, "err"); console.error(e);
@@ -1029,30 +1029,53 @@ async function doExport() {
 function renderRunbook() {
   // Same numbers as RUNBOOK.md: both come from bridge.runbook_summary, so the
   // over-limit check uses max(written, expected) and dropped items are reported.
+  // One box per folder (UI-31); the warnings sit above them.
   const S = JSON.parse(py.runPython("bridge.runbook_summary_json()"));
   const kml = S.kml_batches;
   const host = $("#runbook");
   host.innerHTML =
-    `<div class="note">onX Premium or Elite is required to import.${kml
-      ? ` <b>${kml}</b> of these batches contain a KML file, which the phone app can't import — use the Web Map on a computer.`
-      : ""}</div>` +
+    (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
     (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; RUNBOOK.md lists ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   MANIFEST.forEach(e => {
-    const d = document.createElement("div");
+    const nf = e.files.length;
+    const d = document.createElement("section");
     d.className = "rb-step";
     d.innerHTML = `
-      <label class="rb-title"><input type="checkbox"> <span>${e.n}. ${esc(e.folder)}</span>
-        <span class="rb-count">${e.count} markups</span></label>
+      <div class="rb-head">
+        <h2 class="rb-title">${esc(e.folder)} <span class="rb-meta">· <span class="rb-count">${plural(e.count, "markup")}</span> · <span class="rb-nfiles">${plural(nf, "file")}</span></span></h2>
+        <button type="button" class="btn rb-dl" data-n="${e.n}">Download this folder</button>
+      </div>
       <div class="rb-files">${e.files.map(f =>
         `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(f.path.split("/").pop())}</span>`).join("")}</div>
-      <p class="rb-do">Import <b>all ${e.files.length} file${e.files.length > 1 ? "s" : ""} together</b>,
-         tick “Import map data to a new folder”, then:</p>
-      <div class="rb-rename">Rename the new folder to <code>${esc(e.folder)}</code></div>`;
-    d.querySelector("input").onchange = ev => d.classList.toggle("done", ev.target.checked);
+      <ol class="rb-do">
+        <li>In onX, choose <b>Import</b> and ${nf === 1 ? "add this file" : `add these ${nf} files together`}.</li>
+        <li>Tick <b>Import map data to a new folder</b>.</li>
+        <li>onX names the folder by date. Rename it to <b>${esc(e.folder)}</b>.</li>
+      </ol>`;
+    d.querySelector(".rb-dl").onclick = () => downloadFolder(e);
     host.appendChild(d);
   });
+}
+
+const plural = (n, word) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
+
+function downloadBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+/* One folder's NN_Name/ directory, the same bytes as inside Download all:
+   bridge.export_folder_zip reads the last export, nothing is exported again. */
+function downloadFolder(e) {
+  try {
+    const bytes = py.runPython(`bridge.export_folder_zip(${Number(e.n)})`).toJs();
+    downloadBlob(new Blob([bytes], { type: "application/zip" }), `${e.safe}.zip`);
+  } catch (err) {
+    setStatus("Download failed: " + err.message, "err"); console.error(err);
+  }
 }
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
@@ -1221,10 +1244,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#back").onclick = () => showStage("edit");
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
   $("#confirm").addEventListener("click", e => { if (e.target === $("#confirm")) cancelConfirm(); });
-  $("#download").onclick = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(ZIP); a.download = "onx_ready.zip"; a.click();
-  };
+  $("#download").onclick = () => downloadBlob(ZIP, "onx_ready.zip");
   // Outside click closes the menu and the popover (Cancel semantics).
   document.addEventListener("click", e => {
     closeMenu();
