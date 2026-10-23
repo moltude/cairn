@@ -24,7 +24,9 @@ from pathlib import Path
 
 import pytest
 
-from cairn.core.color_mapper import AREA_FILL_KEY, AREA_STYLE_KEY, AREA_WEIGHT_KEY
+from cairn.core.color_mapper import (
+    AREA_FILL_KEY, AREA_STYLE_KEY, AREA_WEIGHT_KEY, LINE_STYLE_KEY, LINE_WEIGHT_KEY,
+)
 from cairn.core.merge import merge_onx_gpx_and_kml
 from cairn.core.parser import ParsedFeature
 from cairn.core.writers import (
@@ -86,9 +88,8 @@ ALLOWED_LOSSES = {
     # The onX id is never written (writers.py:_desc_text). Whether writing it back would
     # make onX update instead of duplicate is probe P1; until then it stays out.
     *{(name, i, "id") for name, items in SOURCE.items() for i in range(len(items))},
-    # Item 5 of Phase 1 (a "thin" weight bucket) is an owner decision: it also changes
-    # CalTopo output. stroke_width_to_weight can only return "4.0"/"6.0" until then.
-    ("Recorded hike", 0, "weight"),
+    # (Item 5 of Phase 1, the "thin" 2.0 weight, used to be lost here. An onX
+    # track's weight now passes through exactly, 2026-10-23: line_onx_style_weight.)
     # An onX Line is read as a Track tagged as a line, but no writer emits
     # <rte><type>Line</type> yet (not a Phase 1 item), so it comes back as a <trk>.
     ("Ridge line", 0, "line"),
@@ -135,7 +136,9 @@ def _to_parsed(it) -> ParsedFeature:
     elif isinstance(it, Track):
         props = {"class": "Shape", "title": it.name, "description": it.notes,
                  "stroke": s.OnX_color_rgba or "", "stroke-width": width,
-                 "pattern": s.OnX_style or "solid"}
+                 "pattern": s.OnX_style or "solid",
+                 # As cairn.io.document_adapter does: the track's onX values, exactly.
+                 LINE_STYLE_KEY: s.OnX_style or "", LINE_WEIGHT_KEY: s.OnX_weight or ""}
         geom = {"type": "LineString", "coordinates": [list(p) for p in it.points]}
     else:
         props = {"class": "Shape", "title": it.name, "description": it.notes,
@@ -206,7 +209,7 @@ def test_round_trip_fidelity_figure(tmp_path):
 
 # Phase 1's headline figure. tests/test_web_bridge_input_dispatch.py holds the web
 # bridge's export (roadmap Phase 2) to the same number.
-FIDELITY_FIGURE = (52, 62)
+FIDELITY_FIGURE = (53, 62)
 
 _APPLICABLE = {
     "Waypoint": ("kind", "notes", "icon", "color", "id"),

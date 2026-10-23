@@ -124,6 +124,10 @@ ONX_LINE_WEIGHTS = ("2.0", "4.0", "6.0")
 AREA_STYLE_KEY = "cairn_onx_style"
 AREA_WEIGHT_KEY = "cairn_onx_weight"
 AREA_FILL_KEY = "cairn_onx_fill"
+# Tracks pin their onX style and weight with the same keys (line_onx_style_weight):
+# an onX file's dot / 2.0 track passes through, as an area does.
+LINE_STYLE_KEY = AREA_STYLE_KEY
+LINE_WEIGHT_KEY = AREA_WEIGHT_KEY
 
 
 _RGB_REGEX = re.compile(r"rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)")

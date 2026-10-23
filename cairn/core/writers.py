@@ -26,6 +26,8 @@ from cairn.core.color_mapper import (
     AREA_FILL_KEY,
     AREA_STYLE_KEY,
     AREA_WEIGHT_KEY,
+    LINE_STYLE_KEY,
+    LINE_WEIGHT_KEY,
     ONX_LINE_STYLES,
     ONX_LINE_WEIGHTS,
     ColorMapper,
@@ -718,8 +720,7 @@ def write_gpx_tracks_maybe_split(
             if feature.stroke
             else ColorMapper.DEFAULT_COLOR
         )
-        onx_style = pattern_to_style(feature.pattern)
-        onx_weight = stroke_width_to_weight(feature.stroke_width)
+        onx_style, onx_weight = line_onx_style_weight(feature)
 
         # region agent log
         if written_count < 3:
@@ -1085,8 +1086,7 @@ def write_gpx_tracks(
             if feature.stroke
             else ColorMapper.DEFAULT_COLOR
         )
-        onx_style = pattern_to_style(feature.pattern)
-        onx_weight = stroke_width_to_weight(feature.stroke_width)
+        onx_style, onx_weight = line_onx_style_weight(feature)
 
         # <desc> is user-facing: notes only by default; the legacy key=value
         # block (matching OnX's own export format) is available via debug_desc.
@@ -1236,6 +1236,25 @@ def kml_area_color(feature: ParsedFeature) -> str:
     return ColorMapper.map_track_color(
         getattr(feature, "stroke", "") or getattr(feature, "color", "") or ""
     )
+
+
+def line_onx_style_weight(feature: ParsedFeature) -> tuple[str, str]:
+    """(style, weight) a track is written with.
+
+    The exact onX value pinned in properties (LINE_STYLE_KEY / LINE_WEIGHT_KEY:
+    an onX file's own value, including "dot" and "2.0", or the user's edit),
+    else CalTopo's pattern and stroke-width mapped by pattern_to_style /
+    stroke_width_to_weight. onX keeps all three styles and weights on import
+    (docs/ONX_ROUND_TRIP.md #area-fidelity), so nothing it supports is rounded.
+    """
+    props = getattr(feature, "properties", None) or {}
+    style = (props.get(LINE_STYLE_KEY) or "").strip()
+    if style not in ONX_LINE_STYLES:
+        style = pattern_to_style(getattr(feature, "pattern", "") or "")
+    weight = str(props.get(LINE_WEIGHT_KEY) or "").strip()
+    if weight not in ONX_LINE_WEIGHTS:
+        weight = stroke_width_to_weight(getattr(feature, "stroke_width", None))
+    return style, weight
 
 
 def area_onx_style(feature: ParsedFeature) -> tuple[str, str, str, str]:

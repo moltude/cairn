@@ -19,9 +19,9 @@ from cairn.core.color_mapper import (
     AREA_FILL_KEY,
     AREA_STYLE_KEY,
     AREA_WEIGHT_KEY,
+    LINE_STYLE_KEY,
+    LINE_WEIGHT_KEY,
     ColorMapper,
-    pattern_to_style,
-    stroke_width_to_weight,
 )
 from cairn.core.config import GENERIC_SYMBOLS, resolve_waypoint_color
 from cairn.core.icon_resolver import IconResolver
@@ -42,6 +42,7 @@ from cairn.core.writers import (
     get_areas_without_holes,
     get_name_changes,
     area_onx_style,
+    line_onx_style_weight,
     write_gpx_areas_maybe_split,
     write_gpx_tracks_maybe_split,
     write_gpx_waypoints_maybe_split,
@@ -76,16 +77,12 @@ FUCHSIA = ("Fuchsia", "rgba(255,0,255,1)", "#FF00FF")
 LINE_COLORS = ONX_COLORS + [FUCHSIA]
 _RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in LINE_COLORS}
 
-# onX line styles and weights an edit may set on a track (onx:style / onx:weight,
-# the values onX's own GPX export writes). Weight -> the CalTopo stroke-width
-# the track writer's stroke_width_to_weight maps back to that weight.
-LINE_STYLES = ("solid", "dash", "dot")
-LINE_WEIGHTS = {"4.0": 4, "6.0": 6}
-# What an edit may set on an AREA: the two styles and two weights Cairn offers.
-# onX also has dot and 2.0 (thin); an onX file's dot / 2.0 area keeps it unless
-# the user changes it (it is pinned at export, AREA_STYLE_KEY / AREA_WEIGHT_KEY).
-AREA_STYLES = ("solid", "dash")
-AREA_WEIGHTS = ("4.0", "6.0")
+# What an edit may set on a track or an area: the two styles and two weights
+# Cairn offers. onX also has dot and 2.0 (thin); an onX file's dot / 2.0 line or
+# area keeps it unless the user changes it (pinned at export: LINE_STYLE_KEY /
+# LINE_WEIGHT_KEY for tracks, AREA_STYLE_KEY / AREA_WEIGHT_KEY for areas).
+LINE_STYLES = AREA_STYLES = ("solid", "dash")
+LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 
 # "edited": uids with any UI edit. "color_edited": uids whose edit set a colour.
 # Both are bookkeeping only now: export_zip pins EVERY item to the colour the UI
@@ -526,10 +523,9 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
         "needs_attention": kind == "waypoints" and icon == "Location" and not confirmed,
     }
     if kind == "tracks":
-        # The onX line style and weight this line exports with -- the same
-        # pattern_to_style / stroke_width_to_weight the track writer applies.
-        item["style"] = pattern_to_style(feat.pattern or "")
-        item["weight"] = stroke_width_to_weight(feat.stroke_width)
+        # The onX line style and weight this line exports with (the track
+        # writer's own rule). An onX file's dot / 2.0 comes through as is.
+        item["style"], item["weight"] = line_onx_style_weight(feat)
     elif kind == "shapes":
         # The onX line style, weight and fill this area exports with (the area
         # writers' own rule). An onX file's dot / 2.0 / none comes through as is.
@@ -550,17 +546,14 @@ def _item(fkey, kind, kind_index, feat, origin, resolver, cfg, catalog) -> dict:
 def apply_edits(edits_json: str) -> str:
     """Apply {uid: {icon,color,name,desc,included,confirmed,style,weight}} from the UI.
 
-    style and weight apply to tracks ("solid" | "dash" | "dot", "4.0" | "6.0")
-    and to areas ("solid" | "dash", "4.0" | "6.0"), and are ignored for
-    waypoints; any other value raises ValueError.
+    style and weight apply to tracks and areas ("solid" | "dash", "4.0" |
+    "6.0") and are ignored for waypoints; any other value raises ValueError.
     """
     edits = json.loads(edits_json)
     # Validate before touching anything, so a bad edit applies nothing.
     for uid, e in edits.items():
         e = e or {}
-        area = "::shapes::" in uid
-        styles = AREA_STYLES if area else LINE_STYLES
-        weights = AREA_WEIGHTS if area else tuple(LINE_WEIGHTS)
+        styles, weights = LINE_STYLES, LINE_WEIGHTS
         if e.get("style") is not None and e["style"] not in styles:
             raise ValueError(f"Unknown line style {e['style']!r} for {uid}: "
                              f"use one of {', '.join(styles)}.")
@@ -651,13 +644,12 @@ def export_zip() -> bytes:
                     feat.properties[AREA_WEIGHT_KEY] = item["weight"]
                     feat.properties[AREA_FILL_KEY] = item["fill"]
                 if item["kind"] == "tracks":
-                    # The track writer reads feat.pattern / feat.stroke_width
-                    # (pattern_to_style / stroke_width_to_weight), whichever
-                    # reader built the feature (CalTopo or onX).
+                    # Pin the track's style and weight to what the UI shows
+                    # (edited or as loaded); line_onx_style_weight reads these first.
                     if item.get("style"):
-                        feat.pattern = item["style"]
+                        feat.properties[LINE_STYLE_KEY] = item["style"]
                     if item.get("weight"):
-                        feat.stroke_width = LINE_WEIGHTS[item["weight"]]
+                        feat.properties[LINE_WEIGHT_KEY] = item["weight"]
 
     out = Path("/tmp/out")
     buf = io.BytesIO()

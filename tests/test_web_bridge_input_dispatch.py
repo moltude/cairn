@@ -358,8 +358,8 @@ WEB_ALLOWED_LOSSES = ALLOWED_LOSSES | {
     # (Area line style, weight and fill used to be lost here too: the area GPX
     # writer wrote only <onx:color>. They now pass through, 2026-10-23.)
 }
-# FIDELITY_FIGURE (52, 62) less the 2 extra losses above.
-WEB_FIDELITY_FIGURE = (50, 62)
+# FIDELITY_FIGURE (53, 62) less the 2 extra losses above.
+WEB_FIDELITY_FIGURE = (51, 62)
 
 
 def test_export_of_an_onx_pair_rereads_to_phase_1_fidelity(tmp_path):

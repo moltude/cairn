@@ -598,9 +598,11 @@ dialog). Engine support already existed (`apply_edits` `style`, `weight`).
   and an un-picked group leaves each line as it is. Color stays in Icon & color….
 - The list draws every line's mark in its real style and weight; the row label stays "Line".
 - Dotted (and weight 2.0) are not offered as choices, though onX has all three styles and weights
-  (2026-10-23: `dot` and `2.0` appear in onX exports). A dotted line, or a 2.0 area outline, from a
-  file is drawn as such and kept unless changed. (A track's 2.0 still exports as 4.0:
-  `stroke_width_to_weight` has two buckets, Phase 1 item 5.)
+  (2026-10-23: `dot` and `2.0` appear in onX exports). A dotted or 2.0 line or area outline from
+  an onX file is drawn as such and exported exactly as it came in unless changed (tracks:
+  `writers.line_onx_style_weight`; areas: `writers.area_onx_style`). Editing it offers only the two
+  styles and two weights, and dot / 2.0 are refused as edit values. A CalTopo line still maps to
+  4.0 / 6.0 by stroke width.
 - **Areas too (2026-10-23):** an area's outline takes the same Style and Weight (popover and
   Line style… dialog), solid / dashed and 4.0 / 6.0 only. An onX area's dotted or 2.0
   ("Extra thin") outline is drawn and kept unless changed. No fill choice is offered: onX's

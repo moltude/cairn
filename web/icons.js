@@ -243,11 +243,17 @@ function _lineStroke(style, weight, scale = 1) {
     white and yellow visible on the paper background. */
 function lineSVG(hex, kind = "tracks", w = 30, h = 26, style = "solid", weight = "4.0") {
   if (kind === "shapes") {
-    const a = _lineStroke(style, weight, 0.6);
-    const p = "M4 20 L8 6 L20 4 L26 14 L18 22 Z";
+    // Small-size legibility: a light fill keeps the gaps of a dash or dot
+    // readable (a darker one made a dark dashed area one blob at row size),
+    // and dashes are drawn longer than a line's so only a few fit.
+    const dash = (LINE_DASH[style] || "").split(" ").filter(Boolean).map(n => n * 0.85).join(" ");
+    const [ow, ouw] = (LINE_WIDTH[weight] || LINE_WIDTH["4.0"]).map(n => n * 0.55);
+    const da = dash ? ` stroke-dasharray="${dash}" stroke-linecap="butt"` : ' stroke-linecap="round"';
+    const p = "M5 20 L7 6 L20 4 L25 15 L17 22 Z";
     return `<svg class="lineswatch" width="${w}" height="${h}" viewBox="0 0 30 26" aria-hidden="true">` +
-      `<path d="${p}" fill="${_escAttr(hex)}" fill-opacity="0.45" stroke="#2A241C" stroke-width="${a.uw}" stroke-linejoin="round"${a.attrs}/>` +
-      `<path d="${p}" fill="none" stroke="${_escAttr(hex)}" stroke-width="${a.w}" stroke-linejoin="round"${a.attrs}/></svg>`;
+      `<path d="${p}" fill="${_escAttr(hex)}" fill-opacity="0.22"/>` +
+      `<path d="${p}" fill="none" stroke="#2A241C" stroke-width="${ouw}" stroke-linejoin="round"${da}/>` +
+      `<path d="${p}" fill="none" stroke="${_escAttr(hex)}" stroke-width="${ow}" stroke-linejoin="round"${da}/></svg>`;
   }
   const k = _lineStroke(style, weight);
   return `<svg class="lineswatch" width="${w}" height="${h}" viewBox="0 0 30 26" aria-hidden="true">` +

@@ -1482,9 +1482,9 @@ detect a real in-place change.
   2.0 and None included), maps CalTopo areas like tracks, writes the fill as the nearest onX
   swatch, and lets the user edit an area's style and weight but not its fill (it would not
   survive). `docs/ONX_TESTING.md` and DECISIONS.md ENG-05 are corrected.
-- **Tracks have the same 2.0 gap (not fixed here).** The area probe shows onX keeps `thin`
-  (2.0); Cairn's track writer still maps every weight to 4.0 / 6.0
-  (`stroke_width_to_weight`), so an onX track's 2.0 becomes 4.0. Phase 1 item 5.
+- **Tracks pass through too (fixed 2026-10-23).** The area probe shows onX keeps `thin`
+  (2.0) and `dot`. An onX track's style and weight are now pinned and written exactly
+  (`writers.line_onx_style_weight`), as an area's are; before, its 2.0 became 4.0.
 
 <a id="created"></a>
 ## Created in onX (the owner deletes: markups first, then folders)

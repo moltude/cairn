@@ -35,13 +35,15 @@ import re
 from typing import Any, Dict, Optional
 
 from cairn.utils.utils import PLAIN_NOTES_KEY
-from cairn.core.color_mapper import AREA_FILL_KEY, AREA_STYLE_KEY, AREA_WEIGHT_KEY
+from cairn.core.color_mapper import (
+    AREA_FILL_KEY, AREA_STYLE_KEY, AREA_WEIGHT_KEY, LINE_STYLE_KEY, LINE_WEIGHT_KEY,
+)
 from cairn.core.parser import ParsedData, ParsedFeature
 from cairn.model import MapDocument, Shape, Track, Waypoint
 
-# onX weight -> the stroke-width the writers' stroke_width_to_weight reads back.
-# "2.0" (thin) still comes back as "4.0": the thin bucket is roadmap Phase 1
-# item 5, an owner decision.
+# onX weight -> a CalTopo-style stroke-width for the fields that read it. The
+# exact onX style and weight (including "2.0") are pinned separately, under
+# LINE_* / AREA_* keys, and are what the writers use.
 _WEIGHT_TO_WIDTH = {"2.0": 2, "4.0": 4, "6.0": 6}
 _DEFAULT_WIDTH = 4
 
@@ -90,6 +92,13 @@ def to_parsed_feature(item: Any) -> ParsedFeature:
             "pattern": s.OnX_style or "solid",
         })
         if isinstance(item, Track):
+            # A track's onX style and weight pass through exactly, as an area's
+            # do (line_onx_style_weight reads these first): "2.0" has no
+            # stroke-width that stroke_width_to_weight maps back to it.
+            if (s.OnX_style or "").strip():
+                props[LINE_STYLE_KEY] = s.OnX_style.strip()
+            if (s.OnX_weight or "").strip():
+                props[LINE_WEIGHT_KEY] = s.OnX_weight.strip()
             # All four slots [lon, lat, ele, epoch_ms]: the track writer skips a
             # None elevation and writes <time> for a positive time.
             geom = {"type": "LineString", "coordinates": [list(p) for p in item.points]}
@@ -100,7 +109,7 @@ def to_parsed_feature(item: Any) -> ParsedFeature:
             # An area's onX style, weight and fill are passed through EXACTLY
             # (area_onx_style reads these first): "2.0" has no stroke-width that
             # stroke_width_to_weight maps back to it, and the fill's hue is not
-            # in fill-opacity. Tracks still go through pattern / stroke-width.
+            # in fill-opacity.
             if (s.OnX_style or "").strip():
                 props[AREA_STYLE_KEY] = s.OnX_style.strip()
             if (s.OnX_weight or "").strip():

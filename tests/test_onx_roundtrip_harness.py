@@ -70,8 +70,11 @@ def test_track_style_and_weight_edits_are_exported_from_caltopo_source():
     assert _track_ext(tracks_gpx(), "section 1") == ("solid", "4.0")
     bridge.apply_edits(json.dumps({trk["uid"]: {"style": "dash", "weight": "6.0"}}))
     assert _track_ext(tracks_gpx(), "section 1") == ("dash", "6.0")
-    bridge.apply_edits(json.dumps({trk["uid"]: {"style": "dot"}}))
-    assert _track_ext(tracks_gpx(), "section 1") == ("dot", "6.0")
+    # Cairn offers solid / dash only (UI-25); onX's dot passes through from an
+    # onX file but is not an edit choice (tests/test_line_fidelity.py).
+    with pytest.raises(ValueError, match="line style"):
+        bridge.apply_edits(json.dumps({trk["uid"]: {"style": "dot"}}))
+    assert _track_ext(tracks_gpx(), "section 1") == ("dash", "6.0")
 
 
 def test_track_style_and_weight_edits_are_exported_from_onx_source():
