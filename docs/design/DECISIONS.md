@@ -657,3 +657,28 @@ Status: decided 2026-10-23 (owner, from the layout mockups; option C chosen).
 - Options not taken (layout canvas): A, every filter in the rail as flat lists that don't fold;
   B, one filter bar over the list with no facet rail. D (the icon popover at the smaller scale)
   was declined: the pop-ups stay at today's size.
+
+### UI-29 — The icon picker is a list; glyphs travel left to right
+Status: decided 2026-10-23 (owner, from the W5 icon study; option C chosen).
+
+- **The icon picker is a two-column list** in both the single-item popover and the Icon & color…
+  dialog: the neutral outline marker (24×30) on the left, onX's icon name on the right, 14px text,
+  rows at least 44px tall, 4px row / 6px column gaps; the chosen icon has the green 2px border
+  and the selected-row tint. A name wraps only between words, never inside one, and the marker
+  stays vertically centred on its row. The popover stays 440px wide at 15px text (UI-28). The
+  markers stay neutral ink outlines: picking a colour recolours only the item being edited.
+- **The list is built once per open.** "Find an icon" toggles `hidden` on the buttons; a pick
+  only moves `aria-pressed` and the selected styling; a colour click does not touch the list.
+  Rebuilding it (as the old grid did via `innerHTML` on every pick) dropped keyboard focus to
+  `<body>`; the e2e suite now checks focus and DOM identity across picks.
+- Options not taken (icon canvas): **D** is still being iterated as an alternative; **A** (marker
+  band over two balanced lines, W5's recommendation), **B** and **E** are tabled.
+- **Every onX icon is drawn**; the two-letter abbreviations are gone. The 22 W5 glyphs were
+  adopted except the skiing ones, which were redrawn.
+- **Direction rule for glyphs:** anything that shows travel faces left to right; anything going
+  down a slope descends left to right (high on the left, low on the right). Applied 2026-10-23:
+  Ski Areas (a downhill skier, replacing the chairlift) and Snowboarder redrawn; RV (hitch on the
+  right), Fish, Windsurfing (mast leading), Surfing Area (wave breaks to the right) mirrored;
+  Kayak's paddle mirrored to lean like Canoe's; Snowmobile's windshield now rakes back. Ski
+  Touring climbs left to right, which is still travel to the right; Skin Track (switchbacks), Ski, XC
+  Skiing and Snowpark show no rider and are unchanged.
