@@ -21,7 +21,7 @@ const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; 
    data-fk key that is stable across renders (row uid / folder key / facet key
    plus which control); capture it BEFORE rebuilding -- once the node is gone,
    activeElement is already <body> -- and focus the same key afterwards. A row's
-   note button and its open editor share one key, so Apply/Cancel land back on
+   note button and its open editor share one key, so Save/Cancel land back on
    the note button. A key that no longer exists is a silent no-op. */
 const focusedKey = () => document.activeElement?.dataset?.fk || null;
 function refocus(k) {
@@ -362,7 +362,7 @@ function renderFolders() {
       <div class="table-wrap${collapsed ? " hidden" : ""}"><table>
         <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
         <thead><tr>
-          <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}" title="Select every row shown in this folder"></th>
+          <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
           <th>Name</th><th>Note</th><th>Icon</th>
         </tr></thead><tbody></tbody></table></div>`;
     const tb = el.querySelector("tbody");
@@ -416,7 +416,7 @@ function row(it) {
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}" title="Becomes the markup's Notes in onX">
+      `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
         <span class="note-text${it.desc ? "" : " empty"}">${esc(oneLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex)}${it.needs_attention
@@ -514,9 +514,8 @@ function noteEditor(it) {
     <label class="label" for="${id}">Note</label>
     <textarea id="${id}" class="desc-in" data-fk="${fk}" rows="5">${esc(NOTE_EDIT.draft)}</textarea>
     <div class="note-actions">
-      <button type="button" class="btn primary small note-apply" data-fk="${fk}">Apply</button>
+      <button type="button" class="btn primary small note-apply" data-fk="${fk}">Save</button>
       <button type="button" class="btn small note-cancel" data-fk="${fk}">Cancel</button>
-      <span class="hint">Line breaks kept</span>
     </div></div>`;
 }
 
@@ -524,7 +523,13 @@ function openNote(it) {
   NOTE_EDIT = { uid: it.uid, draft: it.desc || "" };
   renderFolders();
   const ta = document.querySelector(`tr[data-uid="${CSS.escape(it.uid)}"] .desc-in`);
-  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  if (ta) {
+    // Caret at the start, scrolled to the top: a long note is read from its
+    // beginning, not dropped at the bottom.
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(0, 0);
+    ta.scrollTop = 0;
+  }
 }
 
 function closeNote(it, apply) {
@@ -677,7 +682,7 @@ function openPop(it, anchor) {
     </div>` : isLine ? lineOptsHTML(POP.style, POP.weight) : ""}
     <div class="pop-foot">
       <button type="button" class="btn pop-cancel">Cancel</button>
-      <button type="button" id="pop-apply" class="btn primary pop-apply">Apply</button>
+      <button type="button" id="pop-apply" class="btn primary pop-apply">Save</button>
     </div>`;
   pop.querySelectorAll(".swatch-btn").forEach(b => b.onclick = () => {
     POP.color = b.dataset.rgba; drawPop();
@@ -809,7 +814,7 @@ function openBulk() {
     </div>` : ""}
     <div class="pop-foot">
       <button type="button" class="btn bulk-cancel">Cancel</button>
-      <button type="button" id="bulk-apply" class="btn primary">Apply</button>
+      <button type="button" id="bulk-apply" class="btn primary">Save</button>
     </div>`;
   d.querySelector(".color-reset").onclick = () => { BULK.color = null; drawBulk(); };
   d.querySelectorAll(".swatch-btn").forEach(b => b.onclick = () => { BULK.color = b.dataset.rgba; drawBulk(); });
@@ -892,7 +897,7 @@ function openLineBulk() {
     ${lineOptsHTML(null, null)}
     <div class="pop-foot">
       <button type="button" class="btn bulk-cancel">Cancel</button>
-      <button type="button" id="line-apply" class="btn primary">Apply</button>
+      <button type="button" id="line-apply" class="btn primary">Save</button>
     </div>`;
   // Picking the chosen toggle again un-picks it: that line keeps its own value.
   d.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => {
@@ -1088,7 +1093,7 @@ function requestExport() {
   const uid = NOTE_EDIT.uid;
   openConfirm({
     title: "Save your note?",
-    body: `Your note for \u201c${it.name}\u201d hasn't been applied.`,
+    body: `Your note for \u201c${it.name}\u201d hasn't been saved.`,
     ret,
     buttons: [
       { label: "Cancel", cancel: true, run: () => {
@@ -1097,7 +1102,7 @@ function requestExport() {
           if (ta) ta.focus({ preventScroll: true });
         } },
       { label: "Discard", run: () => { closeConfirm(false); closeNote(it, false); doExport(); } },
-      { label: "Apply", cls: "primary", initial: true, run: () => { closeConfirm(false); closeNote(it, true); doExport(); } },
+      { label: "Save", cls: "primary", initial: true, run: () => { closeConfirm(false); closeNote(it, true); doExport(); } },
     ],
   });
 }
