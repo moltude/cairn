@@ -3336,3 +3336,38 @@ def test_start_over_counts_only_changes_since_the_last_export(loaded: Page):
     page.locator(".newmap").first.click()
     expect(page.locator("#confirm-body")).to_have_text(
         "You have 3 unexported changes to this map. Starting over discards them.")
+
+
+def test_the_100_character_message_shows_only_when_typing_was_cut(fresh_page: Page, tmp_path):
+    """Round 3 #5: the message showed at exactly 100 characters, and on every
+    keystroke (deletions too) in a longer name loaded from the file."""
+    from tests.hardening_maps import make_map
+    page = fresh_page
+    long = "L" * 150
+    f = tmp_path / "long.json"
+    f.write_text(make_map(2, seed=5, names=[long, "Trips"], per=(2, 2)))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    status = page.locator("#status")
+    msg = "A folder name can be up to 100 characters."
+    # A loaded 150-character name: deleting is not cut.
+    _section(page, long).locator(".folder-name").click()
+    page.keyboard.press("ArrowRight")      # off the selection, to the end
+    page.keyboard.press("Backspace")
+    expect(page.locator(".folder-head .folder-name-in")).to_have_value("L" * 149)
+    expect(status).not_to_have_text(msg)
+    page.keyboard.press("Escape")
+    # Typing up to exactly 100 is fine; the 101st character is cut and said so.
+    _section(page, "Trips").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.insert_text("x" * 99)
+    page.keyboard.type("y")
+    inp = page.locator(".folder-head .folder-name-in")
+    expect(inp).to_have_value("x" * 99 + "y")
+    expect(status).not_to_have_text(msg)
+    page.keyboard.type("z")
+    expect(inp).to_have_value("x" * 99 + "y")
+    expect(status).to_have_text(msg)
+    # Under the limit again: the message goes.
+    page.keyboard.press("Backspace")
+    expect(status).not_to_have_text(msg)

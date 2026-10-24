@@ -890,8 +890,9 @@ reorder folders, no item in two folders, no empty folder made up front.
   that click has landed (redrawing between press and release ate the click). Clicking Export or
   Start over with a taken name just left shows the merge offer on the edit screen instead. New-folder naming happens in the rail because the new folder's rows may not be on screen
   (a folder filter); renaming happens in the header.
-- **Long names** (up to 100 characters can be typed; reaching that says "A folder name can be up
-  to 100 characters.") are cut with an ellipsis in the rail, the folder header and the export box,
+- **Long names** (up to 100 characters can be typed; typing or pasting past that says "A folder
+  name can be up to 100 characters.", which goes once the name is under 100 again; reaching
+  exactly 100, or deleting in a longer name from the file, says nothing) are cut with an ellipsis in the rail, the folder header and the export box,
   with the whole name as a tooltip. The export box's "Rename it to" step always shows it whole.
 - **More ▸ Move to…** is first in More. It opens "Move N items to": every folder with its count
   (the count tells apart folders a file named alike, "Camp" and "camp"), the current one greyed
