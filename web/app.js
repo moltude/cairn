@@ -215,7 +215,6 @@ async function handleFiles(files) {
     SAVED = savedState();
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
-    renderSourceNotice(DATA);
     renderEdit();
     showStage("edit");
     setStatus("");   // the screen says it; the status line is for messages (moves, errors)
@@ -270,17 +269,6 @@ function mapLabel(data) {
   const caltopo = src.length && src.every(s => s.dialect === "caltopo");
   const onx = src.length && src.every(s => s.dialect === "onx" || s.dialect === "onx-like");
   return caltopo ? "CalTopo map" : onx ? "onX map" : "Map";
-}
-
-/** CalTopo's GPX has no folders, waypoint icons or waypoint colors (only line
-    colors, as Garmin color names): say that its GeoJSON or KML would have
-    brought them. CalTopo KML keeps them (roadmap Phase 7), so it gets no notice. */
-const CALTOPO_GPX_NOTICE = "CalTopo's GPX has no folders, icons or waypoint colors. Its GeoJSON or KML export keeps them.";
-function renderSourceNotice(data) {
-  const el = $("#source-notice");
-  const show = (data.sources || []).some(s => s.dialect === "caltopo" && s.kind === "gpx");
-  el.textContent = show ? CALTOPO_GPX_NOTICE : "";
-  el.classList.toggle("hidden", !show);
 }
 
 /* ---------- filters ---------- */
@@ -2091,7 +2079,6 @@ function resetAll() {
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
   SORT = null; hideTip();
   resetFilters();
-  renderSourceNotice({});
   $("#file").value = "";
   showStage("drop");
   setStatus("");

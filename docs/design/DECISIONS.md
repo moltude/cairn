@@ -731,7 +731,7 @@ Start over tooltip ("Clears this map and your edits. To combine several files, d
 together at the start." -- the confirmation already says what is lost), the note button's
 tooltip ("Becomes the markup's Notes in onX") and the folder checkbox tooltip ("Select every row
 shown in this folder", which repeated its label). Kept: the Excluded row tooltip, the CalTopo GPX
-source notice, the note-over-limit, dropped-item and markup-limit warnings, and the runbook
+source notice (2026-10-24: now a line in Help, not a banner), the note-over-limit, dropped-item and markup-limit warnings, and the runbook
 text. Edit commits now read "Save", not "Apply" (note editor, icon & color popover and dialog,
 Line style dialog, "Save your note?"). The note editor opens with the caret and scroll at the
 start of the note.

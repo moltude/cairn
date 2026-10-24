@@ -274,7 +274,8 @@ The sizes are KG §7's estimates, regrouped.
   - onX-sourced items carry a "from your onX file" explanation.
   - A CalTopo GPX/KML shows the notice "CalTopo's GeoJSON keeps icons, colours and folders.
     Export that if you can." (KG §3.2). *(Phase 7: now GPX-only, "CalTopo's GPX has no
-    folders, icons or waypoint colors. Its GeoJSON or KML export keeps them.")*
+    folders, icons or waypoint colors. Its GeoJSON or KML export keeps them.")* *(2026-10-24, owner:
+    no banner any more; the same line is in Help, under exporting from CalTopo.)*
   - The map title strips `.gpx` and `.kml` as well.
 - **Web work** (`web/index.html`, `web/app.js`, `web/styles.css`):
   - `accept=` and `multiple` on the input;

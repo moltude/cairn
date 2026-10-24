@@ -91,8 +91,6 @@
       </label>
     </div>
 
-    <div id="source-notice" class="note source-notice hidden" role="note"></div>
-
     <div id="chips" class="chips hidden"></div>
 
     <div id="selbar" class="selbar hidden">
@@ -155,8 +153,9 @@
     <h3>1 · Export from CalTopo</h3>
     <p>In CalTopo choose <b>Export</b>, then <b>GeoJSON</b>. It keeps everything.
        <b>KML</b> works too, but loses dashed lines. Drop the file here.</p>
-    <p>Cairn also opens <b>GPX</b>. A CalTopo GPX has names, notes and line colors, but no
-       folders or icons; you can add icons here. To clean up an onX map, drop the GPX and KML of
+    <p class="help-note">CalTopo's GPX has no folders, icons or pin colors. Export GeoJSON (or KML) to keep them.</p>
+    <p>Cairn also opens <b>GPX</b>. A CalTopo GPX has names, notes and line colors; you can add
+       icons here. To clean up an onX map, drop the GPX and KML of
        one onX export together: they become one folder. Drop several other files at once and
        each becomes a folder named after the file.</p>
 

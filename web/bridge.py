@@ -455,7 +455,7 @@ def load_files(files_json: str) -> str:
             "filename": filename,
             "filenames": [f.get("name") or "" for f in files],
             # What each file was detected as, in input order, so the UI can say
-            # what it is looking at (the rail label, the CalTopo GPX notice).
+            # what it is looking at (the rail label).
             "sources": [
                 {"name": e["name"], "kind": e["kind"], "dialect": e["dialect"]}
                 for e in entries

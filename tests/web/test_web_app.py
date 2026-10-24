@@ -2019,8 +2019,7 @@ def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
 FX_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 ONX_PAIR = [FX_DIR / "onx_dialect" / "onx_dialect.gpx", FX_DIR / "onx_dialect" / "onx_dialect.kml"]
 CALTOPO_GPX = FX_DIR / "bitterroots" / "bitterroots_subet.gpx"
-CALTOPO_NOTICE = ("CalTopo's GPX has no folders, icons or waypoint colors. "
-                  "Its GeoJSON or KML export keeps them.")
+CALTOPO_GPX_HELP = "CalTopo's GPX has no folders, icons or pin colors. Export GeoJSON (or KML) to keep them."
 
 
 @pytest.fixture()
@@ -2060,10 +2059,9 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
     expect(page.locator(".folder")).to_have_count(1)
     expect(page.locator(".folder h2")).to_have_text("onx dialect")
     expect(page.locator("#folder-facets .facet-btn")).to_have_text(["All", "onx dialect8"])
-    # Title loses .gpx; the label says whose map it is; no CalTopo notice.
+    # Title loses .gpx; the label says whose map it is.
     expect(page.locator("#map-title")).to_have_text("onx dialect")
     expect(page.locator("#map-label")).to_have_text("onX map")
-    expect(page.locator("#source-notice")).to_be_hidden()
     # 3 waypoints, 2 lines (a Track and a Line), 3 areas (a hole-y one + 2 parts).
     expect(page.locator(f"{ROW} .icon-btn")).to_have_count(3)
     expect(page.locator(f"{ROW} .line-btn .icon-name")).to_have_text(
@@ -2126,18 +2124,29 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     assert lines[at + 1] == "                (its hole is not kept: an onX area has one outline)"
 
 
-def test_caltopo_gpx_shows_the_geojson_notice(csp_page: Page):
+def test_caltopo_gpx_has_no_banner_and_help_says_what_its_gpx_lacks(csp_page: Page):
+    """Owner feedback 2026-10-24: no persistent notice on the edit screen for a
+    CalTopo GPX; Help says it once, under exporting from CalTopo."""
     page = csp_page
     _load_files(page, [CALTOPO_GPX])
-    expect(page.locator("#source-notice")).to_be_visible()
-    expect(page.locator("#source-notice")).to_have_text(CALTOPO_NOTICE)
+    expect(page.locator("#source-notice")).to_have_count(0)
+    expect(page.locator(".content")).not_to_contain_text("CalTopo's GPX")
     expect(page.locator("#map-title")).to_have_text("bitterroots subet")
     expect(page.locator("#map-label")).to_have_text("CalTopo map")
     expect(page.locator(".folder h2")).to_have_text("bitterroots subet")
     expect(page.locator(ROW)).to_have_count(10)
+    _shot(page, "fb-1a-caltopo-gpx-no-banner")
+    # Help: one short line right under the paragraph on exporting from CalTopo.
+    page.locator("#help-link").click()
+    first = page.locator(".help-body h3").first
+    expect(first).to_have_text("1 · Export from CalTopo")
+    line = page.locator(".help-body h3:first-child + p + p")
+    expect(line).to_have_text(CALTOPO_GPX_HELP)
+    expect(page.locator(".help-body")).to_contain_text(CALTOPO_GPX_HELP)
+    _shot(page, "fb-1b-help-caltopo-gpx-line")
 
 
-def test_several_files_become_one_folder_each_and_start_over_clears_the_notice(csp_page: Page):
+def test_several_files_become_one_folder_each_and_start_over_clears_them(csp_page: Page):
     page = csp_page
     rattlesnake = FX_DIR / "rattlesnake_test_waypoints.gpx"
     _load_files(page, [*ONX_PAIR, CALTOPO_GPX, rattlesnake])
@@ -2146,24 +2155,20 @@ def test_several_files_become_one_folder_each_and_start_over_clears_the_notice(c
         ["rattlesnake test waypoints", "bitterroots subet", "onx dialect"])
     expect(page.locator("#map-title")).to_have_text("onx dialect + 2 more")
     expect(page.locator("#map-label")).to_have_text("Map")
-    expect(page.locator("#source-notice")).to_have_text(CALTOPO_NOTICE)
     # Start over goes back to an empty drop screen; it never adds (UI-12, UI-21).
     page.locator("#edit-stage .newmap").click()
     page.click("#confirm .confirm-actions button:text-is('Start over')")
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
-    expect(page.locator("#source-notice")).to_be_hidden()
     _load_files(page, ONX_PAIR)
     _keep_fills(page)  # onx_dialect's area has a non-default fill
     expect(page.locator(".folder")).to_have_count(1)
-    expect(page.locator("#source-notice")).to_be_hidden()
 
 
-def test_bitterroots_geojson_still_reads_as_a_caltopo_map_without_the_notice(csp_page: Page):
+def test_bitterroots_geojson_still_reads_as_a_caltopo_map(csp_page: Page):
     page = csp_page
     _load_files(page, [FIXTURE])
     expect(page.locator("#map-title")).to_have_text("Bitterroots (Complete)")
     expect(page.locator("#map-label")).to_have_text("CalTopo map")
-    expect(page.locator("#source-notice")).to_be_hidden()
     expect(page.locator(".folder")).to_have_count(EXPECTED_TOTALS["folders"])
 
 
@@ -2243,11 +2248,10 @@ def _wpts(gpx: str) -> dict:
     return out
 
 
-def test_caltopo_kml_loads_with_its_folders_and_no_notice(csp_page: Page):
+def test_caltopo_kml_loads_with_its_folders(csp_page: Page):
     page = csp_page
     _load_files(page, [CALTOPO_SYN / "caltopo_synthetic.kml"])
     expect(page.locator("#map-label")).to_have_text("CalTopo map")
-    expect(page.locator("#source-notice")).to_be_hidden()
     expect(page.locator(".folder h2")).to_have_text(
         ["Camps & Water #1", "Routes", "Areas", "Routes / Spur lines"])
     # The CalTopo symbol mapped to an onX icon, as it does from the GeoJSON.
@@ -2261,7 +2265,6 @@ def test_caltopo_gpx_icons_and_colors_set_in_cairn_reach_the_exported_gpx(csp_pa
     dialog -- are written to the export as onx:icon / onx:color."""
     page = csp_page
     _load_files(page, [CALTOPO_SYN / "caltopo_synthetic.gpx"])
-    expect(page.locator("#source-notice")).to_have_text(CALTOPO_NOTICE)
     expect(page.locator(".folder h2")).to_have_text(["caltopo synthetic"])
     # Nothing in the GPX said "danger" or "camping": one is a default pin, the
     # other a guess from "spring" in its name.
