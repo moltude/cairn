@@ -108,8 +108,7 @@ CalTopo's KML and GPX don't carry a pattern at all, so every line read from them
 
 Yes. Tick rows, then:
 
-- **Icon & color…** sets one icon and color on all of them. The icon applies to waypoints only, since lines and areas have none. With only lines and areas ticked, the button reads **Color…**. With both, pins and lines each get their own color row, since onX gives lines one more color (Fuchsia).
-- **Line style…** sets the style (solid or dashed) and weight of the ticked lines and areas.
+- **Icon & color…** opens one dialog for everything ticked. Waypoints get a color and an icon. Lines and areas get a color, a style (solid or dashed) and a weight, and areas a fill: onX's blue, the one fill onX keeps. With only lines and areas ticked, the button reads **Color & style…**. With both kinds, pins and lines each get their own color row, since onX gives lines one more color (Fuchsia). Every row starts on **Leave as is**.
 - **More** moves the rows to another folder (**Move to…**), renames each to its own note (**Use note as name**), or leaves them out of the export (**Exclude**, undone by **Include**). Excluded rows stay in the list, struck through. Your source file is never changed.
 
 The search box and the **Type**, **Folders** and **Icon** lists narrow what's shown, and select-all only takes the rows you can see. You edit names and notes one item at a time. Bulk rename (prefix, suffix, find and replace) and bulk note editing aren't built yet.
@@ -119,7 +118,7 @@ The reason for doing this before import: onX's own bulk tools are limited. In th
 ### What do the marks in the list mean?
 
 - **Default pin** under a marker: Cairn found no icon for it (see above).
-- **A caution mark:** onX won't keep something as is. Before a note: the note is over onX's 512-byte import limit (onX imports only the first 512 bytes of a note) and will be cut, or the item has no coordinates and won't export. At the right end of an area's Icon cell, after "Area": onX will reset this area's fill to its default blue. Hover it, or tab to it, for the details.
+- **A caution mark:** onX won't keep something as is. Before a note: the note is over onX's 512-byte import limit (onX imports only the first 512 bytes of a note) and will be cut, or the item has no coordinates and won't export. At the right end of an area's Icon cell, after "Area": onX will reset this area's fill to its default blue; choose "Use onX's blue fill" for it to clear the mark. Hover it, or tab to it, for the details.
 - **A name or note cut short:** hover it, or tab to it, to read all of it. The tip keeps the note's line breaks, and you can select text in it. Esc closes it.
 - **The arrow in a Name header** sorts by name: A–Z, then Z–A, then back to map order. Each folder sorts on its own, and numbers sort naturally ("Camp 2" before "Camp 10"). Sorting changes only the view, never the export.
 

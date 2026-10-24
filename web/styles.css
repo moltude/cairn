@@ -269,9 +269,11 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .pop-name{font-size:20px;font-weight:700;overflow-wrap:anywhere}
 .pop-sec{padding:16px 20px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--rule-soft)}
 .pop-sec.icons{gap:12px}
-.sec-row{display:flex;justify-content:space-between;align-items:baseline}
+.sec-row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:32px}
 .sec-count{font-size:13px;color:var(--muted);font-style:italic}
-.palette{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* Swatches on one line (UI-36): the "Leave as is" chip sits on the label line,
+   so 11 line colours fit the popover (spread, 4px gaps) and the dialog. */
+.palette{display:flex;gap:8px;flex-wrap:nowrap;align-items:center}
 .swatch-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);padding:0;cursor:pointer;flex:none}
 /* Line style (UI: 2C single line, Line style dialog for several). The palette
    spreads to full width so the four line toggles below line up with it. */
@@ -286,9 +288,12 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
   background:var(--sheet);border:1px solid var(--rule-soft);border-radius:2px}
 .tog:hover{border-color:var(--brown)}
 .tog[aria-pressed=true]{background:var(--sel-row);border:2px solid var(--green);padding:0 9px}
-.line-rows{display:grid;grid-template-columns:minmax(0,1fr) 160px;gap:8px 14px;align-items:center;margin-top:10px}
-.lr-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lr-line svg{display:block}
+.fill-btn{display:inline-flex;align-items:center;gap:10px;min-height:40px;padding:0 14px 0 8px;cursor:pointer;
+  background:var(--sheet);border:1px solid var(--rule-soft);border-radius:2px;color:var(--ink);font-size:14px}
+.fill-btn:hover{border-color:var(--brown)}
+.fill-btn[aria-pressed=true]{background:var(--sel-row);border:2px solid var(--green);padding:0 13px 0 7px}
+/* onX's default area fill, rgba(74,144,226,0.1), drawn as a small area patch. */
+.fill-swatch{width:26px;height:22px;flex:none;border:2px solid #4A90E2;background:rgba(74,144,226,.18);border-radius:2px}
 .swatch-btn[aria-pressed=true]{outline:2px solid var(--ink);outline-offset:2px}
 .swatch-btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .icon-search{background:var(--card);border:1px solid var(--control);border-radius:2px;padding:8px 10px;min-height:40px;width:100%}
@@ -314,8 +319,6 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .reset-chip{font-size:13px;background:var(--card);border:1px solid var(--ink);border-radius:16px;
   padding:4px 12px;min-height:32px;color:var(--ink);cursor:pointer}
 .reset-chip[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-.bulk-icon-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.bulk-icon-row .icon-search{flex:1 1 160px;width:auto;min-height:36px;padding:6px 10px}
 .mark-dialog{width:min(620px,100%)}
 /* When the dialog has to scroll on a short window, keep Cancel/Apply in view. */
 .mark-dialog .pop-foot{position:sticky;bottom:0;background:var(--sheet);border-top:1px solid var(--rule-soft)}

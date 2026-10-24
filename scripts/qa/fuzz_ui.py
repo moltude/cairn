@@ -722,6 +722,8 @@ class Session:
         tg = pop.locator(".tog")
         if tg.count() and rng.random() < 0.7:
             tg.nth(rng.randrange(tg.count())).click()
+        if pop.locator(".fill-btn").count() and rng.random() < 0.4:
+            pop.locator(".fill-btn").click()
         if rng.random() < 0.8:
             pop.locator(".pop-apply").click(); how = "Save"
         else:
@@ -730,15 +732,35 @@ class Session:
         return ("edit_mark", u, how), True
 
     def a_edit_line_bulk(self, rng, s):
-        b = self.page.locator("#bulk-line")
-        if not b.is_visible():
-            return ("line_bulk", "hidden"), False
+        """The one dialog (UI-36) with lines or areas ticked: Style / Weight
+        toggles, their "Leave as is", and onX's blue Fill for areas. A picked
+        fill must clear every ticked area's fill caution."""
+        p = self.page
+        b = p.locator("#bulk-icon")
+        if b.is_disabled():
+            return ("line_bulk", "disabled"), False
         b.click(); self.settle()
-        tg = self.page.locator("#mark-dialog .tog")
+        d = p.locator("#mark-dialog")
+        tg = d.locator(".tog")
+        if not tg.count():                      # waypoints only: no line rows
+            p.keyboard.press("Escape"); self.settle()
+            return ("line_bulk", "no-lines"), False
         for _ in range(rng.randint(1, 2)):
             tg.nth(rng.randrange(tg.count())).click()
-        self.page.locator("#line-apply").click(); self.settle()
-        return ("line_bulk",), True
+        if rng.random() < 0.2:
+            d.locator(".style-reset, .weight-reset").nth(rng.randrange(2)).click()
+        fill = d.locator(".fill-btn").count() > 0 and rng.random() < 0.5
+        if fill:
+            d.locator(".fill-btn").click()
+        uids = p.evaluate("[...BULK.uids]")
+        p.locator("#bulk-apply").click(); self.settle()
+        if fill:
+            bad = p.evaluate("""us => allItems().filter(i => us.includes(i.uid) && i.kind === 'shapes'
+                && (i.fill !== ONX_DEFAULT_FILL || document.querySelector(`tr[data-uid="${i.uid}"] .fill-caution`)))
+                .map(i => i.uid)""", uids)
+            if bad:
+                raise Violation("fill_not_applied", f"{bad[:3]}")
+        return ("line_bulk", "fill" if fill else "style"), True
 
     def a_bulk_icon(self, rng, s):
         b = self.page.locator("#bulk-icon")

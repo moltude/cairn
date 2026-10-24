@@ -707,8 +707,9 @@ dialog). Engine support already existed (`apply_edits` `style`, `weight`).
   **Style** (solid, dashed) and **Weight** (thin, thick), whose four toggles line up with the
   palette. The toggles show only the drawn line, no words (screen readers and hover still name
   them).
-- **Several lines**: a **Line style…** button in the selection bar, shown only when the selection
-  has lines, opens a dialog titled **Line style**: the selected lines drawn long in their own
+- **Several lines** (superseded 2026-10-24 by UI-36: one dialog for colour, style, weight and
+  fill): a **Line style…** button in the selection bar, shown only when the selection
+  has lines, opened a dialog titled **Line style**: the selected lines drawn long in their own
   colors, then the same Style and Weight groups. Picking the selected toggle again un-picks it,
   and an un-picked group leaves each line as it is. Color stays in Icon & color….
 - The list draws every line's mark in its real style and weight; the row label stays "Line".
@@ -721,7 +722,8 @@ dialog). Engine support already existed (`apply_edits` `style`, `weight`).
 - **Areas too (2026-10-23):** an area's outline takes the same Style and Weight (popover and
   Line style… dialog), solid / dashed and 4.0 / 6.0 only. An onX area's dotted or 2.0
   ("Extra thin") outline is drawn and kept unless changed. No fill choice is offered: onX's
-  importer ignores area fills (ENG-05).
+  importer ignores area fills (ENG-05). (2026-10-24, UI-36: one fill is offered, onX's own
+  default blue, which is what onX shows anyway.)
 - Options not taken (canvas): style rows with word labels (2A), one 2×2 sample grid (2B), Style
   and Weight inside Icon & color… (3A/3D), toggles in the selection bar with no dialog (3F).
 
@@ -852,6 +854,8 @@ on load:
   They stay in the list and can be included again.
 - "Keep them" is the default focus, and so is Escape; it changes nothing.
 - No dialog for CalTopo maps, or for onX areas that already have the default fill.
+- 2026-10-24 (UI-36): an area's fill can be set to onX's default blue (popover and dialog, the
+  Fill row); such an area is no longer counted as losing its fill, and its caution goes.
 - The broader "This map came from onX" notice and the import-checklist steps (delete the
   originals; except the ones left out) are still to be worded.
 
@@ -1032,7 +1036,8 @@ Status: decided 2026-10-23 (owner, round 4).
     (straight single quotes; up to 8 names, then "and N more"). The bytes
     are measured on the note as written to the GPX (line endings made "\n", trimmed: the
     measure instructions.txt uses), so the mark and the file agree.
-  - "onX will reset this area's fill to its default blue." UI-30's rule (an onX area, from an
+  - "onX will reset this area's fill to its default blue." (Cleared by picking onX's blue in the
+    Fill row, UI-36.) UI-30's rule (an onX area, from an
     onX export, whose fill isn't onX's default), except that a transparent or none fill is not
     flagged (owner).
 - Round 5: an item with no usable coordinates (the writers skip it; the export counts it as
@@ -1069,6 +1074,42 @@ screenshots 5a / 5b.
 - **Icon & color… / Color….** The selection bar's button reads "Icon & color…" when waypoints
   are ticked and "Color…" when only lines and areas are. In a mixed selection the dialog shows
   a **Pin color** row (onX's 10) and a **Line color** row (11, with Fuchsia), each starting on
-  "Leave as is"; one pick no longer recolours both. One kind keeps a single "Color" row. The
+  "Leave as is"; one pick no longer recolours both. One kind keeps a single "Color" row.
+  (2026-10-24, UI-36: "Color…" became "Color & style…", one dialog with Style, Weight and Fill.) The
   chips that used to read "Reset" (colour and icon) now read "Leave as is", which is what they
   do. The single-item popover is unchanged: one item, no coupling.
+
+### UI-36 — One editing panel for lines and areas; a Fill row; one row shape
+Status: decided 2026-10-24 (owner feedback on the folders release, items 9–11). Supersedes the
+split in UI-25 ("Several lines": a separate **Line style…** button and dialog) and UI-35's
+"Color…" label. Release log: docs/testing/FOLDERS_RELEASE.md "Owner feedback 2026-10-24".
+
+- **One button, one dialog.** The selection bar has one edit button: **Icon & color…** when any
+  waypoint is ticked, **Color & style…** when only lines and areas are. The separate **Line
+  style…** button and its dialog are gone. The dialog keeps its title ("Change N items") and
+  the Now → After marks (the After mark now draws the picked style and weight too), then the
+  rows in the single popover's order:
+  - waypoints: **Color** (or **Pin color** in a mixed selection; onX's 10) and **Icon**;
+  - lines and areas: **Color** (or **Line color**; 11, with Fuchsia), **Style** and **Weight**
+    side by side, then **Fill** when the selection has areas.
+  Every row starts on **Leave as is**, which leaves each item its own value; a second click on
+  a picked Style or Weight toggle un-picks it too. Save applies style and weight to lines and
+  areas only, fill to areas only, and says "Changed N areas" / "N lines" / "N items".
+- **Fill** (also in the single-area popover, after Style and Weight): two choices, **Leave as
+  is** (the default) and **Use onX's blue fill**, a patch of onX's default
+  `rgba(74,144,226,0.1)` (`ColorMapper.DEFAULT_AREA_FILL`, read from the bridge at boot). onX
+  gives every imported area that fill (UI-30), so it is the only fill offered: picking it sets
+  the area's fill, clears its caution (UI-34), drops it from the load dialog's count on any later
+  check (`fillLossItems`), and is written to the export. `bridge.apply_edits` accepts `fill`
+  only with that value (anything else raises ValueError and applies nothing) and only for
+  areas (ignored for waypoints and lines).
+- **One row shape** (item 10): each row is a label line, with the "Leave as is" chip at its
+  right end in the dialog, then the choices on one line. With the chip off the swatch line, the
+  11 line colours (Fuchsia last) no longer wrap, in the popover (spread, 4px gaps) and the
+  dialog at 1440×900. "Leave as is" is the only wording for "no change" (icon, every colour
+  row, Style, Weight, Fill). The single-item popover's Color row has no chip (the item has a
+  colour; its swatch is pressed).
+- Options not taken: separate Color… and Line style… dialogs (the owner wants one panel);
+  other fill colours (onX ignores them); a section header per kind in a mixed dialog (the row
+  labels say it: Pin color, Line color).
+

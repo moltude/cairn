@@ -1002,9 +1002,9 @@ function updateSel() {
     el.title = n === 0 ? "Select rows first" : "";
   });
   const sel = selectedItems();
-  $("#bulk-line").classList.toggle("hidden", !sel.some(hasLineStyle));
-  // Lines and areas take a colour, not an icon: say what it does.
-  $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color…";
+  // One button, one dialog (UI-36). Lines and areas take a colour and a line
+  // style, not an icon: say what it does.
+  $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color & style…";
   closeMenu();
 }
 
@@ -1028,20 +1028,52 @@ const WEIGHT_NAMES = { "4.0": "Thin", "6.0": "Thick" };
 const hasLineStyle = it => it.kind === "tracks" || it.kind === "shapes";
 const styleLabel = s => STYLE_NAMES[s] || (s === "dot" ? "Dotted" : "Solid");
 const weightLabel = w => WEIGHT_NAMES[w] || (w === "2.0" ? "Extra thin" : "Thin");
-/** Two titled groups of drawn-line toggles; the drawing is the label. */
-function lineOptsHTML(style, weight) {
+/* Every row of the popover and the dialog has one shape (owner feedback
+   2026-10-24, UI-36): a label line with, in a dialog for several items, the
+   "Leave as is" chip at its right end; the choices below it on one line. */
+const LEAVE = "Leave as is";
+const leaveChip = (cls, on, row = "") =>
+  `<button type="button" class="reset-chip ${cls}"${row ? ` data-row="${row}"` : ""} aria-pressed="${on}">${LEAVE}</button>`;
+const secHead = (label, chip = "") => `<div class="sec-row"><span class="label">${label}</span>${chip}</div>`;
+/** A colour row: `leave` adds the chip (several items), `current` presses a swatch (one item). */
+function colorRowHTML(row, label, colors, { leave = false, current = null, spread = false } = {}) {
+  return `<div class="pop-sec color-sec" data-row="${row}">
+      ${secHead(label, leave ? leaveChip("color-reset", true, row) : "")}
+      <div class="palette${spread ? " spread" : ""}" data-row="${row}">${paletteHTML(colors, current)}</div>
+    </div>`;
+}
+/** Style and Weight side by side, each its drawn-line toggles; `leave` adds
+    each group's chip (several items). */
+function lineOptsHTML(style, weight, leave = false) {
   const tog = (attr, k, name, glyph, on) =>
     `<button type="button" class="tog" data-${attr}="${k}" aria-label="${name}" title="${name}" aria-pressed="${on}">${glyph}</button>`;
   return `<div class="pop-sec line-opts">
-      <div class="opt-group"><span class="label">Style</span><div class="toggles" role="group" aria-label="Style">${
+      <div class="opt-group">${secHead("Style", leave ? leaveChip("style-reset", !style) : "")}<div class="toggles" role="group" aria-label="Style">${
         Object.keys(STYLE_NAMES).map(k => tog("style", k, STYLE_NAMES[k], lineGlyphSVG(k), k === style)).join("")}</div></div>
-      <div class="opt-group"><span class="label">Weight</span><div class="toggles" role="group" aria-label="Weight">${
+      <div class="opt-group">${secHead("Weight", leave ? leaveChip("weight-reset", !weight) : "")}<div class="toggles" role="group" aria-label="Weight">${
         Object.keys(WEIGHT_NAMES).map(k => tog("weight", k, WEIGHT_NAMES[k], lineGlyphSVG("solid", k), k === weight)).join("")}</div></div>
     </div>`;
 }
 function syncLineOpts(root, style, weight) {
   root.querySelectorAll(".tog[data-style]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.style === style)));
   root.querySelectorAll(".tog[data-weight]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.weight === weight)));
+  root.querySelector(".style-reset")?.setAttribute("aria-pressed", String(!style));
+  root.querySelector(".weight-reset")?.setAttribute("aria-pressed", String(!weight));
+}
+/* Fill (owner feedback 2026-10-24, UI-30/UI-36): onX gives every imported area
+   its default blue, whatever the file says, so the one fill on offer is that
+   blue ("Leave as is" or it). Picking it clears the area's fill caution and is
+   what the export writes; the bridge refuses any other fill. */
+const FILL_LABEL = "Use onX's blue fill";
+function fillRowHTML() {
+  return `<div class="pop-sec fill-sec" data-row="fill">
+      ${secHead("Fill", leaveChip("fill-reset", true))}
+      <div class="palette"><button type="button" class="fill-btn" aria-pressed="false"><span class="fill-swatch" aria-hidden="true"></span>${FILL_LABEL}</button></div>
+    </div>`;
+}
+function syncFill(root, fill) {
+  root.querySelector(".fill-reset")?.setAttribute("aria-pressed", String(!fill));
+  root.querySelector(".fill-btn")?.setAttribute("aria-pressed", String(!!fill));
 }
 
 /* The icon list (UI-29) is built once per open of the popover or dialog. After
@@ -1074,7 +1106,7 @@ function syncIconGrid(grid, selected) {
 function openPop(it, anchor) {
   closeMenu(); closeBulk();
   POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor,
-          fk: anchor.dataset.fk, style: it.style, weight: it.weight };
+          fk: anchor.dataset.fk, style: it.style, weight: it.weight, fill: null };
   const isWp = it.kind === "waypoints";
   const isLine = it.kind === "tracks";
   const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
@@ -1087,15 +1119,13 @@ function openPop(it, anchor) {
       <div class="pop-title"><span class="pop-name">${esc(it.name || "Untitled")}</span></div>
     </div>
     ${isLine ? `<div class="pop-map"></div>` : ""}
-    <div class="pop-sec">
-      <span class="label">Color</span>
-      <div class="palette${styled ? " spread" : ""}">${paletteHTML(paletteFor([it]), POP.color)}</div>
-    </div>
+    ${colorRowHTML("color", "Color", paletteFor([it]), { current: POP.color, spread: styled })}
     ${isWp ? `<div class="pop-sec icons">
-      <div class="sec-row"><span class="label">Icon</span><span class="sec-count">${DATA.icons.length} icons</span></div>
+      ${secHead("Icon", `<span class="sec-count">${DATA.icons.length} icons</span>`)}
       <input type="search" class="icon-search" aria-label="Find an icon" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : styled ? lineOptsHTML(POP.style, POP.weight) : ""}
+    ${it.kind === "shapes" ? fillRowHTML() : ""}
     <div class="pop-foot">
       <button type="button" class="btn pop-cancel">Cancel</button>
       <button type="button" id="pop-apply" class="btn primary pop-apply">Save</button>
@@ -1111,6 +1141,11 @@ function openPop(it, anchor) {
   }
   pop.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => { POP.style = b.dataset.style; drawPop(); });
   pop.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => { POP.weight = b.dataset.weight; drawPop(); });
+  const fb = pop.querySelector(".fill-btn");
+  if (fb) {
+    fb.onclick = () => { POP.fill = ONX_DEFAULT_FILL; drawPop(); };
+    pop.querySelector(".fill-reset").onclick = () => { POP.fill = null; drawPop(); };
+  }
   pop.querySelector(".pop-cancel").onclick = closePop;
   pop.querySelector(".pop-apply").onclick = applyPop;
   pop.classList.remove("hidden");
@@ -1144,6 +1179,7 @@ function drawPop() {
   pop.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === POP.color)));
   if (isLine) pop.querySelector(".pop-map").innerHTML = lineMapSVG(hex, POP.style, POP.weight);
   if (hasLineStyle(it)) syncLineOpts(pop, POP.style, POP.weight);
+  syncFill(pop, POP.fill);
   // The icon list keeps its neutral outline markers; only the pressed state moves.
   if (isWp) syncIconGrid(pop.querySelector(".icon-grid"), POP.icon);
 }
@@ -1180,6 +1216,7 @@ function applyPop() {
     if (POP.style !== it.style) patch.style = POP.style;
     if (POP.weight !== it.weight) patch.weight = POP.weight;
   }
+  if (it.kind === "shapes" && POP.fill && POP.fill !== it.fill) patch.fill = POP.fill;
   closePop();
   if (Object.keys(patch).length) edit(it, patch);
 }
@@ -1194,25 +1231,24 @@ function closePop() {
   if (anchor && anchor.isConnected) anchor.focus({ preventScroll: true });
 }
 
-/* ---------- several items: dialog from the selection bar ---------- */
+/* ---------- several items: ONE dialog from the selection bar (UI-36) ----------
+   Waypoints get Pin color and Icon; lines and areas get Color, Style and
+   Weight, and Fill when there are areas. Every row starts on "Leave as is",
+   which leaves each item its own value. A mixed selection gets both sets, the
+   pin and line colours apart (onX's 10 and 11). */
 function openBulk() {
   const items = selectedItems();
   if (!items.length) return;
   const ret = document.activeElement;
   closeMenu(); closePop();
-  // pinColor / lineColor: null leaves each item's own (a mixed
-  // selection picks the two apart, from onX's 10 pin and 11 line colours).
-  BULK = { mode: "mark", uids: new Set(items.map(i => i.uid)), pinColor: null, lineColor: null,
-           icon: null, q: "", ret };
+  BULK = { uids: new Set(items.map(i => i.uid)), pinColor: null, lineColor: null, icon: null,
+           style: null, weight: null, fill: null, q: "", ret };
   const hasWp = items.some(i => i.kind === "waypoints");
-  const hasLn = items.some(i => i.kind !== "waypoints");
+  const hasLn = items.some(hasLineStyle);
+  const hasArea = items.some(i => i.kind === "shapes");
   const mixed = hasWp && hasLn;
-  const colorRow = (row, label, colors) => `<div class="pop-sec">
-      <span class="label">${label}</span>
-      <div class="palette" data-row="${row}"><button type="button" class="reset-chip color-reset" data-row="${row}" aria-pressed="true">Leave as is</button>${paletteHTML(colors, null)}</div>
-    </div>`;
   const d = $("#mark-dialog");
-  d.setAttribute("aria-label", `Change ${hasWp ? "icon and color" : "color"} for ${items.length} items`);
+  d.setAttribute("aria-label", `Change ${hasWp ? "icon and color" : "color and style"} for ${items.length} items`);
   d.innerHTML = `
     <div class="bulk-head">
       <div class="modal-head plain"><h2>Change ${plural(items.length, "item")}</h2>
@@ -1222,14 +1258,13 @@ function openBulk() {
         <div class="na-rows"></div>
       </div>
     </div>
-    ${mixed ? colorRow("pin", "Pin color", DATA.colors) + colorRow("line", "Line color", colorList())
-      : colorRow(hasWp ? "pin" : "line", "Color", paletteFor(items))}
-    ${hasWp ? `<div class="pop-sec icons">
-      <span class="label">Icon</span>
-      <div class="bulk-icon-row"><button type="button" class="reset-chip icon-reset" aria-pressed="true">Leave as is</button>
-        <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off"></div>
+    ${hasWp ? colorRowHTML("pin", mixed ? "Pin color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons">
+      ${secHead("Icon", leaveChip("icon-reset", true))}
+      <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : ""}
+    ${hasLn ? colorRowHTML("line", mixed ? "Line color" : "Color", colorList(), { leave: true }) + lineOptsHTML(null, null, true) : ""}
+    ${hasArea ? fillRowHTML() : ""}
     <div class="pop-foot">
       <button type="button" class="btn bulk-cancel">Cancel</button>
       <button type="button" id="bulk-apply" class="btn primary">Save</button>
@@ -1245,12 +1280,25 @@ function openBulk() {
     const s = d.querySelector(".icon-search");
     s.oninput = () => { BULK.q = s.value; filterIconGrid(grid, BULK.q); };
   }
+  if (hasLn) {
+    // Picking the chosen toggle again un-picks it, like its "Leave as is".
+    d.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => {
+      BULK.style = BULK.style === b.dataset.style ? null : b.dataset.style; drawBulk(); });
+    d.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => {
+      BULK.weight = BULK.weight === b.dataset.weight ? null : b.dataset.weight; drawBulk(); });
+    d.querySelector(".style-reset").onclick = () => { BULK.style = null; drawBulk(); };
+    d.querySelector(".weight-reset").onclick = () => { BULK.weight = null; drawBulk(); };
+  }
+  if (hasArea) {
+    d.querySelector(".fill-btn").onclick = () => { BULK.fill = ONX_DEFAULT_FILL; drawBulk(); };
+    d.querySelector(".fill-reset").onclick = () => { BULK.fill = null; drawBulk(); };
+  }
   d.querySelector(".bulk-x").onclick = closeBulk;
   d.querySelector(".bulk-cancel").onclick = closeBulk;
   d.querySelector("#bulk-apply").onclick = applyBulk;
   $("#mark-modal").classList.remove("hidden");
   drawBulk();
-  d.querySelector(".color-reset").focus();
+  d.querySelector(".reset-chip").focus();
 }
 
 function drawBulk() {
@@ -1262,95 +1310,46 @@ function drawBulk() {
     const toColor = (isWp ? BULK.pinColor : BULK.lineColor) || it.color;
     const toIcon = isWp ? (BULK.icon || it.icon) : null;
     const nowMark = isWp ? markerSVG(it.icon, it.hex, 22, 28) : lineSVG(it.hex, it.kind, 22, 20, it.style, it.weight);
-    const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28) : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, it.style, it.weight);
+    const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28)
+      : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, BULK.style || it.style, BULK.weight || it.weight);
     // The drawn marks show the change; no "Camp · Blue" words beside them (UI-26).
-    return `<span class="na-cell">${nowMark}<span class="na-name">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
+    return `<span class="na-cell">${nowMark}<span class="na-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
       `<span class="na-cell">${afterMark}</span>`;
   }).join("");
   d.querySelectorAll(".palette[data-row]").forEach(p => {
     const v = p.dataset.row === "pin" ? BULK.pinColor : BULK.lineColor;
-    p.querySelector(".color-reset").setAttribute("aria-pressed", String(!v));
+    p.closest(".pop-sec").querySelector(".color-reset").setAttribute("aria-pressed", String(!v));
     p.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === v)));
   });
   const ir = d.querySelector(".icon-reset");
   if (ir) ir.setAttribute("aria-pressed", String(!BULK.icon));
   syncIconGrid(d.querySelector(".icon-grid"), BULK.icon);
+  syncLineOpts(d, BULK.style, BULK.weight);
+  syncFill(d, BULK.fill);
 }
 
 function applyBulk() {
-  const { pinColor, lineColor, icon, uids } = BULK;
+  const { pinColor, lineColor, icon, style, weight, fill, uids } = BULK;
   const items = allItems().filter(i => uids.has(i.uid));
   closeBulk();
-  if (!pinColor && !lineColor && !icon) return;
-  let n = 0;
+  const changed = [];
   items.forEach(it => {
     const patch = {};
     const color = it.kind === "waypoints" ? pinColor : lineColor;
     if (color) patch.color = color;
     if (icon && it.kind === "waypoints") patch.icon = icon;
-    if (Object.keys(patch).length) { edit(it, patch, { render: false }); n++; }
+    if (hasLineStyle(it)) {
+      if (style && style !== it.style) patch.style = style;
+      if (weight && weight !== it.weight) patch.weight = weight;
+    }
+    if (fill && it.kind === "shapes" && fill !== it.fill) patch.fill = fill;
+    if (Object.keys(patch).length) { edit(it, patch, { render: false }); changed.push(it); }
   });
+  if (!changed.length) return;
   refreshAfterEdit();
-  setStatus(`Changed ${plural(n, "item")}`, "ready");
-}
-
-/* ---------- several lines or areas: the Line style dialog ---------- */
-function openLineBulk() {
-  const lines = selectedItems().filter(hasLineStyle);
-  if (!lines.length) return;
-  const ret = document.activeElement;
-  closeMenu(); closePop();
-  BULK = { mode: "line", uids: new Set(lines.map(i => i.uid)), style: null, weight: null, ret };
-  const d = $("#mark-dialog");
-  d.setAttribute("aria-label", "Line style");
-  d.innerHTML = `
-    <div class="bulk-head">
-      <div class="modal-head plain"><h2>Line style</h2>
-        <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
-      <div class="line-rows"></div>
-    </div>
-    ${lineOptsHTML(null, null)}
-    <div class="pop-foot">
-      <button type="button" class="btn bulk-cancel">Cancel</button>
-      <button type="button" id="line-apply" class="btn primary">Save</button>
-    </div>`;
-  // Picking the chosen toggle again un-picks it: that line keeps its own value.
-  d.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => {
-    BULK.style = BULK.style === b.dataset.style ? null : b.dataset.style; drawLineBulk(); });
-  d.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => {
-    BULK.weight = BULK.weight === b.dataset.weight ? null : b.dataset.weight; drawLineBulk(); });
-  d.querySelector(".bulk-x").onclick = closeBulk;
-  d.querySelector(".bulk-cancel").onclick = closeBulk;
-  d.querySelector("#line-apply").onclick = applyLineBulk;
-  $("#mark-modal").classList.remove("hidden");
-  drawLineBulk();
-  d.querySelector(".tog").focus();
-}
-
-function drawLineBulk() {
-  const d = $("#mark-dialog");
-  const lines = allItems().filter(i => BULK.uids.has(i.uid));
-  d.querySelector(".line-rows").innerHTML = lines.map(it =>
-    `<span class="lr-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span>` +
-    `<span class="lr-line">${lineStripSVG(it.hex, BULK.style || it.style, BULK.weight || it.weight)}</span>`).join("");
-  syncLineOpts(d, BULK.style, BULK.weight);
-}
-
-function applyLineBulk() {
-  const { style, weight, uids } = BULK;
-  const lines = allItems().filter(i => uids.has(i.uid));
-  closeBulk();
-  let n = 0;
-  lines.forEach(it => {
-    const patch = {};
-    if (style && style !== it.style) patch.style = style;
-    if (weight && weight !== it.weight) patch.weight = weight;
-    if (Object.keys(patch).length) { edit(it, patch, { render: false }); n++; }
-  });
-  if (!n) return;
-  refreshAfterEdit();
-  const word = lines.every(i => i.kind === "shapes") ? "area" : lines.every(i => i.kind === "tracks") ? "line" : "item";
-  setStatus(`Changed ${n} ${word}${n === 1 ? "" : "s"}`, "ready");
+  const n = changed.length;
+  const word = changed.every(i => i.kind === "shapes") ? "area" : changed.every(i => i.kind === "tracks") ? "line" : "item";
+  setStatus(`Changed ${plural(n, word)}`, "ready");
 }
 
 function closeBulk() {
@@ -2218,7 +2217,6 @@ window.addEventListener("DOMContentLoaded", () => {
   // pointer, so the document-level "outside click" test can't be trusted.
   $("#mark-pop").addEventListener("click", e => e.stopPropagation());
   $("#bulk-icon").onclick = openBulk;
-  $("#bulk-line").onclick = openLineBulk;
   $("#export").onclick = requestExport;
   $("#back").onclick = () => { showStage("edit"); setStatus(""); };
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);

@@ -1141,31 +1141,35 @@ def test_line_popover_sets_style_and_weight(loaded: Page):
     assert blocks and all(f"<onx:style>{target}</onx:style>" in b and "<onx:weight>6.0</onx:weight>" in b for b in blocks)
 
 
-def test_line_style_dialog_for_several_lines(loaded: Page):
-    """Line style… appears only when lines are selected; its dialog is titled
-    "Line style", picks apply to every selected line, and a second click on the
-    picked toggle un-picks it (each line keeps its own value)."""
-    _set_type(loaded, "waypoints")
-    loaded.locator(f"{ROW} .sel-box").nth(0).check()
-    expect(loaded.locator("#bulk-line")).to_be_hidden()
-    _clear_selection(loaded)
-
+def test_one_dialog_sets_the_style_of_several_lines(loaded: Page):
+    """UI-36: one button and one dialog for lines and areas (no separate Line
+    style…): Color, then Style and Weight side by side, each starting on
+    "Leave as is"; a pick applies to every selected line, a second click on the
+    picked toggle (or its "Leave as is") un-picks it."""
+    expect(loaded.locator("#bulk-line")).to_have_count(0)
     _set_type(loaded, "tracks")
     rows = loaded.locator(ROW)
     uids = [rows.nth(i).get_attribute("data-uid") for i in range(2)]
     for i in range(2):
         rows.nth(i).locator(".sel-box").check()
-    expect(loaded.locator("#bulk-line")).to_be_visible()
+    expect(loaded.locator("#bulk-icon")).to_have_text("Color & style…")
     before = [loaded.evaluate(_LINE.format(uid=u)) for u in uids]
-    loaded.click("#bulk-line")
+    loaded.click("#bulk-icon")
     d = loaded.locator("#mark-dialog")
-    expect(d.locator("h2")).to_have_text("Line style")
-    assert d.locator(".line-rows .lr-name").count() == 2
+    expect(d.locator("h2")).to_have_text("Change 2 items")
+    expect(d.locator(".sec-row .label")).to_have_text(["Color", "Style", "Weight"])
+    expect(d.locator(".reset-chip")).to_have_text(["Leave as is"] * 3)
+    expect(d.locator('.reset-chip[aria-pressed="true"]')).to_have_count(3)
+    expect(d.locator(".fill-sec, .icons")).to_have_count(0)      # no areas, no waypoints
     d.locator('.tog[data-weight="6.0"]').click()
+    expect(d.locator(".weight-reset")).to_have_attribute("aria-pressed", "false")
     d.locator('.tog[data-weight="6.0"]').click()          # un-pick: weights stay as they are
     assert d.locator('.tog[aria-pressed="true"]').count() == 0
+    d.locator('.tog[data-style="dot"], .tog[data-style="dash"]').last.click()
+    d.locator(".style-reset").click()                     # "Leave as is" un-picks too
+    assert d.locator('.tog[aria-pressed="true"]').count() == 0
     d.locator('.tog[data-style="dash"]').click()
-    loaded.click("#line-apply")
+    loaded.click("#bulk-apply")
     expect(loaded.locator("#mark-modal")).to_be_hidden()
     after = [loaded.evaluate(_LINE.format(uid=u)) for u in uids]
     assert [a["style"] for a in after] == ["dash", "dash"]
@@ -1211,20 +1215,19 @@ def test_area_popover_sets_style_and_weight(loaded: Page):
     # the item's; the item's own fill is unchanged by the style edit, above.)
 
 
-def test_line_style_dialog_takes_areas_too(loaded: Page):
-    """Line style… is offered for a selection of areas and sets their style."""
+def test_the_dialog_takes_areas_too_with_a_fill_row(loaded: Page):
+    """Several areas: the same dialog, with a Fill row after Style and Weight."""
     _set_type(loaded, "shapes")
     rows = loaded.locator(ROW)
     uids = [rows.nth(i).get_attribute("data-uid") for i in range(2)]
     for i in range(2):
         rows.nth(i).locator(".sel-box").check()
-    expect(loaded.locator("#bulk-line")).to_be_visible()
-    loaded.click("#bulk-line")
+    loaded.click("#bulk-icon")
     d = loaded.locator("#mark-dialog")
-    expect(d.locator("h2")).to_have_text("Line style")
-    assert d.locator(".line-rows .lr-name").count() == 2
+    expect(d.locator(".sec-row .label")).to_have_text(["Color", "Style", "Weight", "Fill"])
+    expect(d.locator(".fill-btn")).to_have_text("Use onX's blue fill")
     d.locator('.tog[data-style="dash"]').click()
-    loaded.click("#line-apply")
+    loaded.click("#bulk-apply")
     expect(loaded.locator("#mark-modal")).to_be_hidden()
     assert [loaded.evaluate(_LINE.format(uid=u))["style"] for u in uids] == ["dash", "dash"]
     expect(loaded.locator("#status")).to_have_text("Changed 2 areas")
@@ -4160,24 +4163,24 @@ def _color(page: Page, uid: str) -> str:
     return page.evaluate("u => allItems().find(i => i.uid === u).color", uid)
 
 
-def test_the_bulk_button_says_color_for_lines_and_areas_only(loaded: Page):
+def test_the_bulk_button_says_color_and_style_for_lines_and_areas_only(loaded: Page):
     page = loaded
     _wide(page)
     btn = page.locator("#bulk-icon")
     lines = _items_of(page, "tracks")
     _tick(page, lines)
-    expect(btn).to_have_text("Color…")
+    expect(btn).to_have_text("Color & style…")
     _shot(page, "5a-color-button-lines-only")
     btn.click()
     d = page.locator("#mark-dialog")
-    expect(d).to_have_attribute("aria-label", "Change color for 2 items")
-    expect(d.locator(".pop-sec > .label")).to_have_text(["Color"])
+    expect(d).to_have_attribute("aria-label", "Change color and style for 2 items")
+    expect(d.locator(".sec-row > .label")).to_have_text(["Color", "Style", "Weight"])
     expect(d.locator(".swatch-btn")).to_have_count(11)
     page.click("#mark-dialog .bulk-cancel")
     _clear_selection(page)
     area = page.evaluate("allItems().find(i => i.kind === 'shapes').uid")
     _tick(page, [area])
-    expect(btn).to_have_text("Color…")
+    expect(btn).to_have_text("Color & style…")
     _clear_selection(page)
     wps = _items_of(page, "waypoints")
     _tick(page, wps)
@@ -4196,8 +4199,8 @@ def test_a_mixed_selection_picks_pin_and_line_colors_apart(loaded: Page):
     _tick(page, wps + lines)
     page.click("#bulk-icon")
     d = page.locator("#mark-dialog")
-    expect(d.locator(".pop-sec > .label")).to_have_text(["Pin color", "Line color", "Icon"])
-    pin, line = d.locator('.palette[data-row="pin"]'), d.locator('.palette[data-row="line"]')
+    expect(d.locator(".sec-row > .label")).to_have_text(["Pin color", "Icon", "Line color", "Style", "Weight"])
+    pin, line = d.locator('.pop-sec[data-row="pin"]'), d.locator('.pop-sec[data-row="line"]')
     expect(pin.locator(".swatch-btn")).to_have_count(10)
     expect(line.locator(".swatch-btn")).to_have_count(11)
     for row in (pin, line):
@@ -4224,7 +4227,7 @@ def test_a_mixed_selection_picks_pin_and_line_colors_apart(loaded: Page):
     page.click("#bulk-icon")
     d.locator('.palette[data-row="pin"] .swatch-btn[aria-label="Blue"]').click()
     d.locator('.palette[data-row="line"] .swatch-btn[aria-label="Lime"]').click()
-    d.locator('.palette[data-row="line"] .color-reset').click()
+    d.locator('.pop-sec[data-row="line"] .color-reset').click()
     expect(d.locator('.palette[data-row="line"] .swatch-btn[aria-pressed="true"]')).to_have_count(0)
     page.click("#bulk-apply")
     assert [_color(page, u) for u in wps] == ["rgba(8,122,255,1)"] * 2
@@ -4241,8 +4244,9 @@ def test_waypoints_only_dialog_keeps_one_color_row(loaded: Page):
     page.click("#bulk-icon")
     d = page.locator("#mark-dialog")
     expect(d).to_have_attribute("aria-label", "Change icon and color for 2 items")
-    expect(d.locator(".pop-sec > .label")).to_have_text(["Color", "Icon"])
+    expect(d.locator(".sec-row > .label")).to_have_text(["Color", "Icon"])
     expect(d.locator(".swatch-btn")).to_have_count(10)
+    expect(d.locator(".tog, .fill-sec")).to_have_count(0)
 
 
 # --- Round 5: design QA ------------------------------------------------------
@@ -4260,7 +4264,7 @@ def _long_name_map(tmp_path) -> str:
     return str(f)
 
 
-def test_long_names_are_cut_with_an_ellipsis_in_rows_and_the_line_dialog(fresh_page: Page, tmp_path):
+def test_long_names_are_cut_with_an_ellipsis_in_rows_and_the_dialog(fresh_page: Page, tmp_path):
     page = fresh_page
     _wide(page)
     page.set_input_files("#file", _long_name_map(tmp_path))
@@ -4271,12 +4275,12 @@ def test_long_names_are_cut_with_an_ellipsis_in_rows_and_the_line_dialog(fresh_p
     _set_type(page, "tracks")
     page.locator(f"{ROW} .sel-box").nth(0).check()
     page.locator(f"{ROW} .sel-box").nth(1).check()
-    page.click("#bulk-line")
-    lr = page.locator("#mark-dialog .lr-name")
+    page.click("#bulk-icon")
+    lr = page.locator("#mark-dialog .na-name")
     assert lr.count() == 2
-    long_one = page.locator(f'#mark-dialog .lr-name[title="{LONGNAME}"]')
+    long_one = page.locator(f'#mark-dialog .na-name[title="{LONGNAME}"]')
     assert long_one.evaluate("e => e.scrollWidth > e.clientWidth && getComputedStyle(e).textOverflow === 'ellipsis'")
-    assert page.locator("#mark-dialog .line-rows").evaluate("e => e.scrollWidth <= e.clientWidth")
+    assert page.locator("#mark-dialog .na-rows").evaluate("e => e.scrollWidth <= e.clientWidth")
 
 
 def test_the_caution_slot_keeps_every_notes_text_in_line(fresh_page: Page, tmp_path):
@@ -4523,3 +4527,141 @@ def test_a_pointer_drag_move_stays_announced_in_the_status_line(loaded: Page):
     expect(st).to_have_text("Moved 2 items to North Roots.")
     page.wait_for_timeout(700)
     assert st.text_content() == "Moved 2 items to North Roots."
+
+
+# --- Owner feedback 2026-10-24: Fill row, one row per palette, one dialog (UI-36) ----
+
+
+def _one_row(loc) -> bool:
+    """Every swatch of every palette in `loc` sits on one line."""
+    return loc.evaluate("""el => [...el.querySelectorAll('.palette')].every(p =>
+        new Set([...p.children].map(c => Math.round(c.getBoundingClientRect().top))).size <= 1)""")
+
+
+def test_picking_onxs_blue_fill_clears_the_area_caution_and_exports_it(fresh_page: Page):
+    page = fresh_page
+    _wide(page)
+    fx = FX_DIR / "onx_exports"
+    page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    _keep_fills(page)
+    blue = page.evaluate("ONX_DEFAULT_FILL")
+    assert blue == "rgba(74,144,226,0.1)"
+    n0 = page.evaluate("fillLossItems().length")
+    row = page.locator(ROW).first
+    uid = row.get_attribute("data-uid")
+    expect(row.locator(".fill-caution")).to_have_count(1)
+    row.locator(".line-btn").click()
+    pop = page.locator("#mark-pop")
+    expect(pop.locator(".sec-row .label")).to_have_text(["Color", "Style", "Weight", "Fill"])
+    expect(pop.locator(".fill-reset")).to_have_text("Leave as is")
+    expect(pop.locator(".fill-reset")).to_have_attribute("aria-pressed", "true")
+    expect(pop.locator(".swatch-btn")).to_have_count(11)
+    assert _one_row(pop)
+    _shot(page, "fb-9a-single-area-popover")
+    pop.locator(".fill-btn").click()
+    expect(pop.locator(".fill-btn")).to_have_attribute("aria-pressed", "true")
+    expect(pop.locator(".fill-reset")).to_have_attribute("aria-pressed", "false")
+    _shot(page, "fb-9b-single-area-blue-fill-picked")
+    page.click("#pop-apply")
+    assert page.evaluate(f"allItems().find(i => i.uid === {uid!r}).fill") == blue
+    expect(row.locator(".fill-caution")).to_have_count(0)
+    assert page.evaluate("fillLossItems().length") == n0 - 1
+    assert page.evaluate("unexportedChanges()") >= 1
+    # Several areas through the dialog: the rest go blue too, every mark is gone.
+    rows = page.locator(ROW)
+    for k in range(rows.count()):
+        rows.nth(k).locator(".sel-box").check()
+    page.click("#bulk-icon")
+    d = page.locator("#mark-dialog")
+    expect(d.locator(".sec-row .label")).to_have_text(["Color", "Style", "Weight", "Fill"])
+    assert _one_row(d)
+    _shot(page, "fb-9c-several-areas-dialog")
+    d.locator(".fill-btn").click()
+    page.click("#bulk-apply")
+    expect(page.locator(".fill-caution")).to_have_count(0)
+    assert page.evaluate("fillLossItems().length") == 0
+    zf = _export_zip(page)
+    gpx = "".join(zf.read(n).decode() for n in zf.namelist() if n.endswith("_Areas.gpx"))
+    fills = re.findall(r"<onx:fill_color>(.*?)</onx:fill_color>", gpx)
+    assert fills and set(fills) == {blue}
+
+
+def test_leave_as_is_leaves_the_fill_alone(fresh_page: Page):
+    page = fresh_page
+    fx = FX_DIR / "onx_exports"
+    page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    _keep_fills(page)
+    before = page.evaluate("allItems().map(i => i.fill)")
+    row = page.locator(ROW).first
+    row.locator(".line-btn").click()
+    pop = page.locator("#mark-pop")
+    pop.locator(".fill-btn").click()
+    pop.locator(".fill-reset").click()
+    page.click("#pop-apply")
+    assert page.evaluate("allItems().map(i => i.fill)") == before
+
+
+def test_one_dialog_for_lines_and_areas_and_for_waypoints_and_areas(loaded: Page):
+    """UI-36: lines + areas, and waypoints + areas, each get ONE dialog in the
+    popover's row shape; every row starts on "Leave as is" and every palette
+    is one line at 1440x900."""
+    page = loaded
+    _wide(page)
+    lines, areas = _items_of(page, "tracks"), _items_of(page, "shapes")
+    _tick(page, lines + areas)
+    expect(page.locator("#bulk-icon")).to_have_text("Color & style…")
+    page.click("#bulk-icon")
+    d = page.locator("#mark-dialog")
+    expect(d.locator(".sec-row .label")).to_have_text(["Color", "Style", "Weight", "Fill"])
+    expect(d.locator(".reset-chip")).to_have_text(["Leave as is"] * 4)
+    expect(d.locator('.reset-chip[aria-pressed="true"]')).to_have_count(4)
+    assert _one_row(d)
+    _shot(page, "fb-11a-lines-and-areas-dialog")
+    d.locator('.tog[data-weight="6.0"]').click()
+    page.click("#bulk-apply")
+    expect(page.locator("#status")).to_have_text(re.compile(r"^Changed [1-4] items$"))  # only those not thick already
+    assert {page.evaluate(_LINE.format(uid=u))["weight"] for u in lines + areas} == {"6.0"}
+    _clear_selection(page)
+    wps = _items_of(page, "waypoints")
+    _tick(page, wps + areas)
+    expect(page.locator("#bulk-icon")).to_have_text("Icon & color…")
+    page.click("#bulk-icon")
+    expect(d.locator(".sec-row .label")).to_have_text(
+        ["Pin color", "Icon", "Line color", "Style", "Weight", "Fill"])
+    expect(d.locator(".reset-chip")).to_have_text(["Leave as is"] * 6)
+    assert _one_row(d)
+    _shot(page, "fb-11b-waypoints-and-areas-dialog")
+    d.locator('.pop-sec[data-row="line"] .swatch-btn[aria-label="Fuchsia"]').click()
+    d.locator('.tog[data-style="dash"]').click()
+    page.click("#bulk-apply")
+    assert [page.evaluate(_LINE.format(uid=u))["style"] for u in areas] == ["dash"] * len(areas)
+    assert [_color(page, u) for u in areas] == ["rgba(255,0,255,1)"] * len(areas)
+    assert all(_color(page, u) != "rgba(255,0,255,1)" for u in wps)
+
+
+def test_every_palette_is_one_line_in_the_popovers_and_dialogs(loaded: Page):
+    """Owner feedback 2026-10-24: "Leave as is" moved to the label line, so the
+    11 line colours (Fuchsia last) no longer wrap; same in every row."""
+    page = loaded
+    _wide(page)
+    for kind in ("waypoints", "tracks", "shapes"):
+        _set_type(page, kind)
+        page.locator(f"{ROW} .icon-btn, {ROW} .line-btn").first.click()
+        pop = page.locator("#mark-pop")
+        expect(pop).to_be_visible()
+        assert _one_row(pop), kind
+        if kind == "tracks":
+            _shot(page, "fb-10a-line-popover-one-row")
+        page.click("#mark-pop .pop-cancel")
+    _set_type(page, "")
+    _tick(page, _items_of(page, "waypoints") + _items_of(page, "tracks"))
+    page.click("#bulk-icon")
+    d = page.locator("#mark-dialog")
+    assert _one_row(d)
+    fuchsia = d.locator('.pop-sec[data-row="line"] .swatch-btn').last
+    expect(fuchsia).to_have_attribute("aria-label", "Fuchsia")
+    _shot(page, "fb-10b-waypoints-and-lines-dialog")
+    # "Leave as is" is the one wording for "no change", everywhere it appears.
+    assert set(d.locator(".reset-chip").all_inner_texts()) == {"Leave as is"}
