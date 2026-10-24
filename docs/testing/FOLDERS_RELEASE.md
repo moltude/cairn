@@ -804,14 +804,21 @@ Style / Weight / Fill, and each caution mark's own tip. `build_faq_page.py --che
 
 ## Follow-ups
 
-- **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`
-  rebuild their hosts through `innerHTML`, so every edit, move or rename replaces the DOM under
-  the pointer and the focus. Round 2 layered fixes on top of that (`rebuild()` ignoring the
-  blur it causes, `deferRender()` waiting for the button to come up, the popover finding its
-  marker again by focus key). Refactor to keyed, in-place updates of rows, headers and rail
-  entries so a re-render no longer destroys what the user is touching; then retire those
-  workarounds. Not done for this release: the current behaviour is pinned by the e2e tests and
-  the fuzzer, and the refactor touches every render path.
+- **Keyed in-place rendering (review round 3, item 7). Done 2026-10-24 (branch
+  `refactor/keyed-rendering`).** `renderRail` and `renderFolders` no longer rebuild their hosts:
+  the same builders make a fresh twin off screen and `morph()` patches the live node to match
+  (attributes, text, form state, on* handlers), `place()` adds, moves and removes so the order
+  matches. Rows are keyed by item object, sections by group object, rail entries by facet key;
+  a row whose markup is unchanged isn't touched. Retired: `rebuild()`, and the popover
+  re-finding its marker by focus key (the marker is now kept). Kept, with their comments
+  rewritten to the reason that remains: `REBUILDING`, renamed `PATCHING` (moving a focused
+  folder-name field still fires a blur); `refocus` / `fkEl` (the note button and its editor,
+  a folder's name button and its field, share a key by design; a kept node that had to move
+  is refocused); `deferRender()` (a folder rename re-sorts the folders and a row rename a
+  sorted folder, moving the pressed button from under the pointer; a merge offer opened
+  mid-press would take the click). On Bitterroots (177 rows) a single-row edit went from
+  15 ms to 2.4 ms median, a filter keystroke from 13 to 8 ms at p90. Seven e2e tests pin node
+  identity and focus; fuzzer seeds 1-6, 150 actions, waves 1 and 2: 0 FAIL.
 
 - 2026-10-24 (copy cleanup, sticky nav): walkthrough and FAQ lose internal references, placeholders and the "never leaves" claim; new walkthrough intro with footnote; the top bar and the edit search row are sticky and the bottom nav is gone (UI-38); suite 1353+ green with BASE_URL on :8790.
 - 2026-10-24 (last pass before release): the walkthrough's internal stats caption removed; walkthrough and README screenshots retaken without the bottom nav; the FAQ's Privacy section removed at the owner's request. Suite 1357 passed.

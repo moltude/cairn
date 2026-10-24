@@ -4972,3 +4972,161 @@ def test_edit_search_row_and_export_top_bar_stay_put_on_scroll(loaded: Page):
     page.evaluate("window.scrollTo(0, 300)")
     assert page.locator("#topbar").bounding_box()["y"] == 0
     _shot(page, "sticky-export-stage")
+
+
+# --- Keyed in-place rendering (FOLDERS_RELEASE follow-up) --------------------
+# A re-render updates the rows, folder sections and rail entries that are still
+# there instead of replacing them: the node under the pointer and the focus
+# survives an edit, a move, a rename, a sort or a filter. Each test marks live
+# nodes with a JS property (it would not survive a rebuild) and checks that the
+# same nodes are on screen afterwards.
+
+def _mark(loc, tag: str = "keep") -> None:
+    loc.evaluate("(e, t) => { e.__cairnMark = t; }", tag)
+
+
+def _is_marked(loc, tag: str = "keep") -> bool:
+    return loc.evaluate("(e, t) => e.__cairnMark === t", tag)
+
+
+def test_filter_keystrokes_keep_the_rows_and_sections_still_shown(loaded: Page):
+    page = loaded
+    row = _first_row(page, "North Roots")
+    uid = row.get_attribute("data-uid")
+    name = row.locator(".name-in").input_value()
+    _mark(row)
+    _mark(_section(page, "North Roots"))
+    _mark(_rail(page, "North Roots"))
+    page.locator("#filter").click()
+    page.keyboard.type(name[:4])
+    row = page.locator(f'tr[data-uid="{uid}"]')
+    expect(row).to_have_count(1)
+    assert _is_marked(row)
+    assert _is_marked(_section(page, "North Roots"))
+    assert _is_marked(_rail(page, "North Roots"))
+    expect(page.locator("#filter")).to_be_focused()
+    # And back: the rows that were hidden come back, the marked one is still it.
+    for _ in range(4):
+        page.keyboard.press("Backspace")
+    expect(page.locator(ROW)).to_have_count(177)
+    assert _is_marked(page.locator(f'tr[data-uid="{uid}"]'))
+
+
+def test_enter_in_a_row_name_keeps_the_same_field_row_and_rail(loaded: Page):
+    page = loaded
+    row = _first_row(page, "Paddling")
+    uid = row.get_attribute("data-uid")
+    field = row.locator(".name-in")
+    for loc in (row, field, row.locator(".icon-btn, .line-btn"),
+                _section(page, "Paddling"), _rail(page, "Paddling"), page.locator(".new-folder")):
+        _mark(loc)
+    field.click()
+    field.evaluate("e => e.setSelectionRange(e.value.length, e.value.length)")
+    page.keyboard.type(" renamed")
+    page.keyboard.press("Enter")
+    row = page.locator(f'tr[data-uid="{uid}"]')
+    field = row.locator(".name-in")
+    expect(field).to_be_focused()
+    assert field.input_value().endswith(" renamed")
+    for loc in (row, field, row.locator(".icon-btn, .line-btn"),
+                _section(page, "Paddling"), _rail(page, "Paddling"), page.locator(".new-folder")):
+        assert _is_marked(loc)
+    # The aria-labels that carry the name follow it.
+    expect(row.locator(".sel-box")).to_have_attribute("aria-label", "Select " + field.input_value())
+
+
+def test_a_rename_that_reorders_a_sorted_folder_keeps_the_row_and_focus(loaded: Page):
+    page = loaded
+    sec = _section(page, "North Roots")
+    sec.locator(".sort-btn").click()                    # A to Z
+    expect(sec.locator(".sort-btn")).to_have_attribute("data-sort", "asc")
+    row = sec.locator("tbody tr").first
+    uid = row.get_attribute("data-uid")
+    _mark(row)
+    field = row.locator(".name-in")
+    field.click()
+    field.fill("zzzz last now")
+    page.keyboard.press("Enter")
+    row = page.locator(f'tr[data-uid="{uid}"]')
+    expect(sec.locator("tbody tr").last).to_have_attribute("data-uid", uid)
+    assert _is_marked(row)
+    expect(row.locator(".name-in")).to_be_focused()
+
+
+def test_sort_and_collapse_keep_the_section_its_rows_and_the_button(loaded: Page):
+    page = loaded
+    sec = _section(page, "North Roots")
+    rows = sec.locator("tbody tr")
+    uids = rows.evaluate_all("rs => rs.map(r => r.dataset.uid)")
+    rows.evaluate_all("rs => rs.forEach(r => { r.__cairnMark = 'keep'; })")
+    _mark(sec)
+    sec.locator(".sort-btn").click()
+    expect(sec.locator(".sort-btn")).to_be_focused()
+    assert rows.evaluate_all("rs => rs.every(r => r.__cairnMark === 'keep')")
+    assert sorted(rows.evaluate_all("rs => rs.map(r => r.dataset.uid)")) == sorted(uids)
+    sec.locator(".collapse").click()
+    expect(sec.locator(".table-wrap")).to_be_hidden()
+    expect(sec.locator(".collapse")).to_be_focused()
+    assert _is_marked(sec)
+
+
+def test_a_header_rename_keeps_the_section_its_rows_and_the_rail(loaded: Page):
+    page = loaded
+    sec = _section(page, "North Roots")
+    row = sec.locator("tbody tr").first
+    uid = row.get_attribute("data-uid")
+    _mark(sec)
+    _mark(row)
+    _mark(_rail(page, "North Roots"))
+    _mark(_rail(page, "Paddling"))
+    sec.locator(".folder-name").click()
+    page.keyboard.type("High Roots")
+    page.keyboard.press("Enter")
+    sec = _section(page, "High Roots")
+    expect(sec).to_have_count(1)
+    assert _is_marked(sec)
+    assert _is_marked(sec.locator(f'tr[data-uid="{uid}"]'))
+    assert _is_marked(_rail(page, "High Roots"))
+    assert _is_marked(_rail(page, "Paddling"))
+    expect(sec.locator(".folder-name")).to_be_focused()
+    expect(sec).to_have_attribute("aria-label", "High Roots")
+
+
+def test_a_moved_row_is_the_same_node_in_its_new_folder(loaded: Page):
+    page = loaded
+    row = _first_row(page, "Lost Trail Pass")
+    uid = row.get_attribute("data-uid")
+    _mark(row)
+    _mark(_rail(page, "North Roots"))
+    _drag(page, row.locator(".note-btn"), _rail(page, "North Roots"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to North Roots.")
+    moved = _section(page, "North Roots").locator(f'tr[data-uid="{uid}"]')
+    expect(moved).to_have_count(1)
+    assert _is_marked(moved)
+    assert _is_marked(_rail(page, "North Roots"))
+
+
+def test_popover_and_note_edits_keep_the_row_and_its_controls(loaded: Page):
+    page = loaded
+    row = page.locator(ROW, has=page.locator(".icon-btn")).first
+    uid = row.get_attribute("data-uid")
+    mark = row.locator(".icon-btn")
+    _mark(row)
+    _mark(mark)
+    mark.click()
+    pop = page.locator("#mark-pop")
+    expect(pop).to_be_visible()
+    pop.locator(".swatch-btn[aria-pressed=false]").first.click()
+    pop.locator(".pop-apply").click()
+    row = page.locator(f'tr[data-uid="{uid}"]')
+    assert _is_marked(row) and _is_marked(row.locator(".icon-btn"))
+    expect(row.locator(".icon-btn")).to_be_focused()
+    row.locator(".note-btn").click()
+    ta = row.locator(".desc-in")
+    expect(ta).to_be_focused()
+    ta.fill("A new note")
+    row.locator(".note-apply").click()
+    # The editor's Save is gone with the editor: focus lands on the note button.
+    expect(row.locator(".note-btn")).to_be_focused()
+    expect(row.locator(".note-text")).to_have_text("A new note")
+    assert _is_marked(row) and _is_marked(row.locator(".icon-btn"))
