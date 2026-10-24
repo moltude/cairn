@@ -602,8 +602,8 @@ def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
     elif kind == "shapes":
         # The onX line style, weight and fill this area exports with (the area
         # writers' own rule). An onX file's dot / 2.0 / none comes through as is.
-        # fill is shown, not edited: onX's importer ignores it (ONX_ROUND_TRIP.md
-        # #area-fidelity), so offering it as a choice would promise nothing.
+        # fill can be set only to onX's default blue (apply_edits): onX's importer
+        # gives every area that fill (ONX_ROUND_TRIP.md #area-fidelity).
         _c, item["style"], item["weight"], item["fill"] = area_onx_style(feat)
     if not _has_coordinates(kind, feat):
         # The writers skip it (the export counts it as dropped); the UI says so.
@@ -620,10 +620,14 @@ def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
 
 
 def apply_edits(edits_json: str) -> str:
-    """Apply {uid: {icon,color,name,desc,included,confirmed,style,weight}} from the UI.
+    """Apply {uid: {icon,color,name,desc,included,confirmed,style,weight,fill}} from the UI.
 
     style and weight apply to tracks and areas ("solid" | "dash", "4.0" |
     "6.0") and are ignored for waypoints; any other value raises ValueError.
+    fill applies to areas only and takes one value, onX's default
+    (ColorMapper.DEFAULT_AREA_FILL): onX gives every imported area that fill,
+    so it is the only fill worth choosing (owner feedback 2026-10-24, UI-30).
+    Any other fill raises ValueError; it is ignored for waypoints and lines.
     """
     edits = json.loads(edits_json)
     # Validate before touching anything, so a bad edit applies nothing.
@@ -636,6 +640,9 @@ def apply_edits(edits_json: str) -> str:
         if e.get("weight") is not None and str(e["weight"]) not in weights:
             raise ValueError(f"Unknown line weight {e['weight']!r} for {uid}: "
                              f"use one of {', '.join(weights)}.")
+        if e.get("fill") is not None and e["fill"] != ColorMapper.DEFAULT_AREA_FILL:
+            raise ValueError(f"Unsupported area fill {e['fill']!r} for {uid}: "
+                             f"onX keeps only its default, {ColorMapper.DEFAULT_AREA_FILL}.")
     _STATE.setdefault("edited", set()).update(edits.keys())
     _STATE.setdefault("color_edited", set()).update(
         uid for uid, e in edits.items() if e and e.get("color") is not None
@@ -658,6 +665,8 @@ def apply_edits(edits_json: str) -> str:
                     item["style"] = e["style"]
                 if e.get("weight") is not None:
                     item["weight"] = str(e["weight"])
+            if item["kind"] == "shapes" and e.get("fill") is not None:
+                item["fill"] = e["fill"]   # onX's default blue (validated above)
             if "icon" in e and "unknown_icon" in item:
                 item["unknown_icon"] = item["icon"] not in get_all_onx_icons()
             if "icon" in e:
