@@ -796,6 +796,12 @@ itself, stepped over). The fuzzer now checks per-folder sort (the other folders 
 state), folder order after every action, a new folder by key (not "last"), the one dialog's
 Style / Weight / Fill, and each caution mark's own tip. `build_faq_page.py --check`: clean.
 
+- **Site consistency, 2026-10-24.** The FAQ's CalTopo-format table now uses the walkthrough's
+  comparison table styling (`tbl wt-cmp`, small-caps row labels, green Yes / brown No / amber
+  Partly, equal-width format columns via `wt-eq`). Links site-wide moved from blue to the brown
+  accent (`--link` #7A4E25, `--link-hover` #52320F). The FAQ's "On this page" list now uses the
+  kicker style for group headings and ink-coloured question links, underlined on hover/focus.
+
 ## Follow-ups
 
 - **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`

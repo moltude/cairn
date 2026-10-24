@@ -16,18 +16,18 @@ Backcountry's icons, colors and import behavior. Use it with the others at your 
 
 ### What gets lost if I move CalTopo GPX or KML into onX myself?
 
-CalTopo's own export page says its GPX and KML exports lose line and marker styles and folder organization. Real exports of one map in all three formats (the Dark Divide 100 course, October 2026) show the detail:
+CalTopo's own export page says GPX and KML lose line and marker styles and folders. Here's what's actually in each one. This comes from real exports of a single map (the Dark Divide 100 course, October 2026).
 
-| | GeoJSON | KML | GPX |
+| Carried by | GeoJSON | KML | GPX |
 |---|---|---|---|
-| Names and notes (multi-line) | yes | yes | yes |
-| Folders | yes | yes | no (one folder) |
-| Marker icon (CalTopo symbol) | yes | yes | no |
-| Marker color | yes | yes, for built-in symbols; not for a custom icon | no |
-| Line color | yes | yes | yes, as one of Garmin's 16 color names, and not always |
-| Line width | yes | yes | no |
-| Line pattern (dashes, arrows) | yes | no | no |
-| Areas | yes | yes, with fill | none seen |
+| Names and notes | Yes | Yes | Yes |
+| Folders | Yes | Yes | No, just one folder |
+| Marker icon | Yes | Yes | No |
+| Marker color | Yes | Partly, built-in symbols only | No |
+| Line color | Yes | Yes | Partly, one of Garmin's 16 color names |
+| Line width | Yes | Yes | No |
+| Line pattern | Yes | No | No |
+| Areas | Yes | Yes, but onX ignores the fill | No, none seen |
 
 Notes are carried in all three: the Dark Divide export has 21 multi-line notes, and each format has every one of them, word for word. (An older project note said CalTopo's GPX has no descriptions; that was a GPX with no notes in it.)
 

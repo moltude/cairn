@@ -24,7 +24,7 @@
   --paper:#EFE8D8; --rail:#E5DCC6; --card:#F7F2E6; --sheet:#FFFDF7; --sheet-head:#F3ECDC;
   --open-row:#FBF6EA; --hover-row:#F2EBDC; --sel-row:#E9EFDF;
   --ink:#2A241C; --muted:#5C5242; --brown:#7A4E25; --green:#3B6534; --green-dark:#2E5029;
-  --link:#2F6690; --link-hover:#1F4A6B; --rule:#B9A887; --rule-soft:#D8CBAE; --faint:#9A8F7C; --control:#857555;
+  --link:#7A4E25; --link-hover:#52320F; --rule:#B9A887; --rule-soft:#D8CBAE; --faint:#9A8F7C; --control:#857555;
   --warning:#8A3F12; --contour:#D2C29F;
   --serif:"Libre Caslon Text",Georgia,"Times New Roman",serif;
   /* The user's own text (names, notes) in the system face: upright and plain
@@ -478,12 +478,15 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 /* A wide diagram (the FAQ's lead): wider than the text column, centred on it; click opens it full size. */
 .doc-fig{width:min(1200px,calc(100vw - 64px));margin:4px 0 32px;position:relative;left:50%;transform:translateX(-50%)}
 .doc-fig img{display:block;width:100%;height:auto;border:1px solid var(--rule)}
-.doc-toc{background:var(--card);border:1px solid var(--rule);padding:16px 22px 12px;margin:0 0 36px}
-.doc-toc ol{list-style:none;padding:0;margin:8px 0 0}
-.doc-toc ol ol,.doc-toc ul{padding-left:18px;margin:2px 0 8px}
-.doc-toc li{margin:3px 0;line-height:1.4}
-.doc-toc .toc-sec{font-weight:700;color:var(--brown);text-decoration:none}
-.doc-toc ul{list-style:none;padding-left:14px}
+.doc-toc{background:var(--card);border:1px solid var(--rule);padding:14px 22px 10px;margin:0 0 36px}
+.doc-toc ol{list-style:none;padding:0;margin:6px 0 0}
+.doc-toc ul{list-style:none;padding-left:0;margin:2px 0 8px}
+.doc-toc li{margin:1px 0;line-height:1.35}
+/* group headings in the kicker style, questions in ink; underline only on hover/focus */
+.doc-toc .toc-sec{display:inline-block;margin-top:6px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  font-weight:400;color:var(--brown);text-decoration:none}
+.doc-toc ul a{font-size:14px;color:var(--ink);text-decoration:none;text-underline-offset:3px}
+.doc-toc a:hover,.doc-toc a:focus-visible{color:var(--link-hover);text-decoration:underline}
 .faq-sec{margin:0 0 44px;scroll-margin-top:16px}
 .faq-q{padding:20px 0 6px;border-bottom:1px dotted var(--rule);scroll-margin-top:16px}
 .faq-q:last-child{border-bottom:none}
@@ -520,7 +523,11 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 .wt-cmp th{width:34%}
 .wt-ok{color:var(--green);font-weight:700}
 .wt-no{color:var(--warning);font-weight:700}
-.wt-open{border-left:3px solid var(--brown);background:var(--card);padding:4px 18px 8px;margin:16px 0 0;max-width:760px}
+.wt-part{color:#7A5A00;font-weight:700}
+/* equal-width format columns (the FAQ's three-format table); row labels never wrap */
+.wt-eq{table-layout:fixed}.wt-eq th{width:auto}
+.wt-eq thead th:first-child,.wt-eq tbody th{width:24%;white-space:nowrap}
+.wt-open{border-left:3px solid var(--brown);background:var(--card);padding:4px 18px 8px;margin:16px 0 0}
 @media (max-width: 820px){
   .doc{padding:28px 16px 56px}
   .wt-stats{grid-template-columns:repeat(2,minmax(0,1fr))}

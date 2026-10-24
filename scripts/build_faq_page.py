@@ -147,9 +147,16 @@ def parse(md: str):
             head, rule, body = cells(rows[0]), rows[1], [cells(r) for r in rows[2:]]
             if not re.fullmatch(r"[|\s:-]+", rule):
                 raise ValueError("table without header rule")
-            t = ('<div class="tbl-wrap"><table class="tbl"><thead><tr>'
+            def val(c):
+                m = re.match(r"(Yes|No|Partly)\b", c)
+                if not m:
+                    return inline(c)
+                cls = {"Yes": "wt-ok", "No": "wt-no", "Partly": "wt-part"}[m.group(1)]
+                return f'<span class="{cls}">{m.group(1)}</span>' + inline(c[m.end():])
+
+            t = ('<div class="tbl-wrap"><table class="tbl wt-cmp wt-eq"><thead><tr>'
                  + "".join(f"<th>{inline(c)}</th>" for c in head) + "</tr></thead><tbody>"
-                 + "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in r) + "</tr>" for r in body)
+                 + "".join(f'<tr><th scope="row">{inline(r[0])}</th>' + "".join(f"<td>{val(c)}</td>" for c in r[1:]) + "</tr>" for r in body)
                  + "</tbody></table></div>")
             cur_blocks().append(t)
             continue
