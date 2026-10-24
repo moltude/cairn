@@ -1417,7 +1417,7 @@ function applyLayout(res) {
     FILTERS.folder = null;
   }
   if (RENAME && !live.has(RENAME.key)) RENAME = null;
-  DATA.totals.folders = groups.length;
+  DATA.totals.folders = groups.length;   // nothing on screen reads it; the e2e tests do
   return gone;
 }
 
@@ -1695,7 +1695,7 @@ function openMoveTo() {
   if (!uids.length) return;
   closeMenu(); closePop();
   const here = hereKey(uids);
-  MOVE = { uids, ret: $("#more-btn") };
+  MOVE = { uids, ret: $("#more-btn") };   // uids: for scripts/qa/fuzz_ui.py (the buttons close over theirs)
   const p = $("#move-pop");
   p.innerHTML = `<div class="move-h" id="move-h">Move ${plural(uids.length, "item")} to</div>
     <div class="move-list" role="group" aria-labelledby="move-h">${DATA.groups.map(g => {
@@ -1959,7 +1959,7 @@ function renderRunbook() {
     d.innerHTML = `
       <div class="rb-head">
         <h2 class="rb-title">${twin ? `<span class="rb-num">${esc(num)} ·</span>` : ""}<span class="rb-name" title="${esc(e.folder)}">${esc(e.folder)}</span></h2>
-        <button type="button" class="btn rb-dl" data-n="${e.n}" aria-label="${esc(label)}">Download</button>
+        <button type="button" class="btn rb-dl" aria-label="${esc(label)}">Download</button>
       </div>
       <div class="rb-files">${e.files.map(f =>
         `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(fileTwin ? f.path : f.path.split("/").pop())}</span>`).join("")}</div>`;
