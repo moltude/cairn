@@ -297,7 +297,7 @@ function visibleItems(g) {
   return SORT ? sortByName(shown) : shown;
 }
 
-/* Name sort (round 4): one state for every folder, shown in every Name
+/* Name sort: one state for every folder, shown in every Name
    header. View only: DATA.groups (and so the export) keeps the map's order.
    Everything that reads visibleItems -- the rows, shift-click ranges,
    select-all -- follows the sorted order. Natural and case-insensitive, so
@@ -405,7 +405,7 @@ function renderRail() {
     };
     if (key !== null && count === 0) {
       // An empty folder (made with + New folder, or loaded empty) can be
-      // removed: an × beside it, shown on hover and focus (round 4). A
+      // removed: an × beside it, shown on hover and focus. A
       // wrapper, since a button can't hold another button.
       const row = document.createElement("div");
       row.className = "facet-row empty";
@@ -423,7 +423,7 @@ function renderRail() {
   };
   facetBtn("All", "", null, false);
   DATA.groups.forEach(g => facetBtn(g.name, g.items.length, g.key, isUnorganized(g)));
-  // + New folder: a drop target for dragged rows, and a button (round 4):
+  // + New folder: a drop target for dragged rows, and a button:
   // clicked, it moves the ticked rows into a new folder, or with nothing
   // ticked makes an empty one, ready to drop rows on.
   const nf = document.createElement("button");
@@ -598,12 +598,12 @@ const kindWord = k => k === "shapes" ? "Area" : "Line";
 const SUBKIND_WORD = { line: "Line", track: "Track", area: "Area" };
 const rowKindWord = it => SUBKIND_WORD[it.subkind] || kindWord(it.kind);
 const oneLine = s => String(s || "").replace(/\s*\n\s*/g, " ").trim();
-/** A note's preview in the list: its first line that isn't blank (round 4).
+/** A note's preview in the list: its first line that isn't blank.
     The rest shows on hover (the tip below). "Use note as name" still joins
     every line (oneLine). */
 const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boolean) || "";
 
-/* ---------- the hover tip (round 4) ----------
+/* ---------- the hover tip ----------
    One styled popup (#tip) for a row name or note preview that hides text,
    and for a row's caution mark: shown after a short hover or on keyboard
    focus, with line breaks kept, inside the window, selectable and copyable
@@ -634,7 +634,7 @@ function scheduleTip(src, ms, viaKey = false) {
   clearTimeout(TIP.showT);
   // Back on the control whose tip is up: keep it. Any other control leaves a
   // pending hide alone (crossing another row's name on the way out must not
-  // keep this tip up; fuzzer round 4).
+  // keep this tip up).
   if (TIP.src === src && tipShown()) { clearTimeout(TIP.hideT); return; }
   TIP.showT = setTimeout(() => showTip(src, viaKey), ms);
 }
@@ -985,7 +985,7 @@ function updateSel() {
   });
   const sel = selectedItems();
   $("#bulk-line").classList.toggle("hidden", !sel.some(hasLineStyle));
-  // Lines and areas take a colour, not an icon (round 4): say what it does.
+  // Lines and areas take a colour, not an icon: say what it does.
   $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color…";
   closeMenu();
 }
@@ -1182,7 +1182,7 @@ function openBulk() {
   if (!items.length) return;
   const ret = document.activeElement;
   closeMenu(); closePop();
-  // pinColor / lineColor: null leaves each item's own (round 4: a mixed
+  // pinColor / lineColor: null leaves each item's own (a mixed
   // selection picks the two apart, from onX's 10 pin and 11 line colours).
   BULK = { mode: "mark", uids: new Set(items.map(i => i.uid)), pinColor: null, lineColor: null,
            icon: null, q: "", ret };
@@ -1505,7 +1505,7 @@ function moveTo(uids, key) {
   return res;
 }
 
-/** A click (or Enter / Space) on the rail's + New folder (round 4): the
+/** A click (or Enter / Space) on the rail's + New folder: the
     ticked rows go into a new folder, as if dropped there; with nothing
     ticked, an empty folder is made, to drop rows on. Either way its name
     opens for editing in the rail. */
@@ -1910,7 +1910,7 @@ async function doExport() {
     SAVED = savedState();          // this export wrote every change so far
     renderRunbook();
     showStage("done");
-    setStatus("");   // the screen says it: no "Built N folders" up top (round 5)
+    setStatus("");   // the screen says it: no "Built N folders" up top
     window.__cairnExported = true;
   } catch (e) {
     setStatus("Export failed: " + e.message, "err"); console.error(e);
@@ -2102,7 +2102,7 @@ function unexportedChanges() {
   DATA.groups.forEach(g => {
     g.items.forEach(i => { if (SAVED.home.get(i.uid) !== g.key) uids.add(i.uid); });
     if (SAVED.names.has(g.key) && SAVED.names.get(g.key) !== g.name) renamed++;
-    // An empty folder made since then: no item says so (round 4).
+    // An empty folder made since then: no item says so.
     if (!SAVED.names.has(g.key) && !g.items.length) empties++;
   });
   // An empty folder of then that was removed.

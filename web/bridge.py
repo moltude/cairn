@@ -133,10 +133,10 @@ def _safe(name: str) -> str:
     s = re.sub(r"[-\s]+", "_", s)
     raw = s.encode("utf-8")
     if len(raw) <= _SAFE_MAX_BYTES:
-        return s or "Unnamed"          # never cut: exactly main's name ("Trip -" -> "Trip_")
+        return s or "Unnamed"          # not cut: the name as it always was ("Trip -" -> "Trip_")
     # The longest whole-character prefix that fits: "ignore" drops a character
-    # the byte cut split. (One slice, not a char-at-a-time loop.) Only a cut
-    # name loses a trailing "_": the cut may have landed just after one.
+    # the byte cut split. Only a cut name loses a trailing "_": the cut may
+    # have landed just after one.
     s = raw[:_SAFE_MAX_BYTES].decode("utf-8", "ignore")
     return s.rstrip("_") or "Unnamed"
 
@@ -957,8 +957,8 @@ def export_zip() -> bytes:
     # 100+ folders still sorts in order in a file list (010_ before 100_).
     # A folder with no items (made empty with + New folder, or loaded empty)
     # is not part of the export at all: no files, no box, and no number, so
-    # the folders after it aren't numbered around a gap (round 4). A folder
-    # whose items are all excluded still takes its number, as before.
+    # the folders after it aren't numbered around a gap. A folder
+    # whose items are all excluded still takes its number.
     numbered = [g for g in groups if g["items"]]
     width = max(2, len(str(len(numbered))))
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
