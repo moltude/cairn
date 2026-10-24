@@ -3907,3 +3907,106 @@ def test_an_onx_area_whose_fill_onx_resets_gets_a_caution(fresh_page: Page):
 def test_no_caution_on_a_plain_caltopo_map(loaded: Page):
     long_notes = loaded.evaluate("allItems().filter(i => new TextEncoder().encode(i.desc || '').length > 512).length")
     expect(loaded.locator(".caution")).to_have_count(long_notes)
+
+
+# --- 5. Pin colour apart from line colour in the several-items dialog ---------
+
+
+def _items_of(page: Page, kind: str, folder: str = "Lost Trail Pass", n: int = 2) -> list:
+    return page.evaluate(
+        "([f, k, n]) => DATA.groups.find(g => g.name === f).items.filter(i => i.kind === k).slice(0, n).map(i => i.uid)",
+        [folder, kind, n])
+
+
+def _tick(page: Page, uids) -> None:
+    for u in uids:
+        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
+
+
+def _color(page: Page, uid: str) -> str:
+    return page.evaluate("u => allItems().find(i => i.uid === u).color", uid)
+
+
+def test_the_bulk_button_says_color_for_lines_and_areas_only(loaded: Page):
+    page = loaded
+    _wide(page)
+    btn = page.locator("#bulk-icon")
+    lines = _items_of(page, "tracks")
+    _tick(page, lines)
+    expect(btn).to_have_text("Color…")
+    _shot(page, "5a-color-button-lines-only")
+    btn.click()
+    d = page.locator("#mark-dialog")
+    expect(d).to_have_attribute("aria-label", "Change color for 2 items")
+    expect(d.locator(".pop-sec > .label")).to_have_text(["Color"])
+    expect(d.locator(".swatch-btn")).to_have_count(11)
+    page.click("#mark-dialog .bulk-cancel")
+    _clear_selection(page)
+    area = page.evaluate("allItems().find(i => i.kind === 'shapes').uid")
+    _tick(page, [area])
+    expect(btn).to_have_text("Color…")
+    _clear_selection(page)
+    wps = _items_of(page, "waypoints")
+    _tick(page, wps)
+    expect(btn).to_have_text("Icon & color…")
+    _tick(page, lines)                                  # mixed
+    expect(btn).to_have_text("Icon & color…")
+    _clear_selection(page)
+    expect(btn).to_have_text("Icon & color…")
+
+
+def test_a_mixed_selection_picks_pin_and_line_colors_apart(loaded: Page):
+    page = loaded
+    _wide(page)
+    wps, lines = _items_of(page, "waypoints"), _items_of(page, "tracks")
+    before = {u: _color(page, u) for u in wps + lines}
+    _tick(page, wps + lines)
+    page.click("#bulk-icon")
+    d = page.locator("#mark-dialog")
+    expect(d.locator(".pop-sec > .label")).to_have_text(["Pin color", "Line color", "Icon"])
+    pin, line = d.locator('.palette[data-row="pin"]'), d.locator('.palette[data-row="line"]')
+    expect(pin.locator(".swatch-btn")).to_have_count(10)
+    expect(line.locator(".swatch-btn")).to_have_count(11)
+    for row in (pin, line):
+        expect(row.locator(".color-reset")).to_have_text("Leave as is")
+        expect(row.locator(".color-reset")).to_have_attribute("aria-pressed", "true")
+    # Pick a pin colour only: the lines' After marks don't change.
+    pin.locator('.swatch-btn[aria-label="Red"]').click()
+    expect(pin.locator(".color-reset")).to_have_attribute("aria-pressed", "false")
+    expect(line.locator(".color-reset")).to_have_attribute("aria-pressed", "true")
+    _shot(page, "5b-mixed-dialog-pin-and-line")
+    page.click("#bulk-apply")
+    expect(page.locator("#status")).to_have_text("Changed 2 items")
+    assert [_color(page, u) for u in wps] == ["rgba(255,0,0,1)"] * 2
+    assert [_color(page, u) for u in lines] == [before[u] for u in lines]
+    # Now a line colour only (Fuchsia exists only for lines).
+    _tick(page, wps + lines)
+    page.click("#bulk-icon")
+    d.locator('.palette[data-row="line"] .swatch-btn[aria-label="Fuchsia"]').click()
+    page.click("#bulk-apply")
+    assert [_color(page, u) for u in lines] == ["rgba(255,0,255,1)"] * 2
+    assert [_color(page, u) for u in wps] == ["rgba(255,0,0,1)"] * 2
+    # Both at once, then "Leave as is" undoes a pick before saving.
+    _tick(page, wps + lines)
+    page.click("#bulk-icon")
+    d.locator('.palette[data-row="pin"] .swatch-btn[aria-label="Blue"]').click()
+    d.locator('.palette[data-row="line"] .swatch-btn[aria-label="Lime"]').click()
+    d.locator('.palette[data-row="line"] .color-reset').click()
+    expect(d.locator('.palette[data-row="line"] .swatch-btn[aria-pressed="true"]')).to_have_count(0)
+    page.click("#bulk-apply")
+    assert [_color(page, u) for u in wps] == ["rgba(8,122,255,1)"] * 2
+    assert [_color(page, u) for u in lines] == ["rgba(255,0,255,1)"] * 2
+    # The export writes what the list shows.
+    zf = _export_zip(page)
+    tracks = [n for n in zf.namelist() if n.endswith("_Tracks.gpx") and "Lost_Trail_Pass" in n]
+    assert tracks and "<onx:color>rgba(255,0,255,1)</onx:color>" in zf.read(tracks[0]).decode()
+
+
+def test_waypoints_only_dialog_keeps_one_color_row(loaded: Page):
+    page = loaded
+    _tick(page, _items_of(page, "waypoints"))
+    page.click("#bulk-icon")
+    d = page.locator("#mark-dialog")
+    expect(d).to_have_attribute("aria-label", "Change icon and color for 2 items")
+    expect(d.locator(".pop-sec > .label")).to_have_text(["Color", "Icon"])
+    expect(d.locator(".swatch-btn")).to_have_count(10)

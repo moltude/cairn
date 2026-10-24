@@ -948,7 +948,10 @@ function updateSel() {
     el.disabled = n === 0;
     el.title = n === 0 ? "Select rows first" : "";
   });
-  $("#bulk-line").classList.toggle("hidden", !selectedItems().some(hasLineStyle));
+  const sel = selectedItems();
+  $("#bulk-line").classList.toggle("hidden", !sel.some(hasLineStyle));
+  // Lines and areas take a colour, not an icon (round 4): say what it does.
+  $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color…";
   closeMenu();
 }
 
@@ -1144,10 +1147,19 @@ function openBulk() {
   if (!items.length) return;
   const ret = document.activeElement;
   closeMenu(); closePop();
-  BULK = { mode: "mark", uids: new Set(items.map(i => i.uid)), color: null, icon: null, q: "", ret };
+  // pinColor / lineColor: null leaves each item's own (round 4: a mixed
+  // selection picks the two apart, from onX's 10 pin and 11 line colours).
+  BULK = { mode: "mark", uids: new Set(items.map(i => i.uid)), pinColor: null, lineColor: null,
+           icon: null, q: "", ret };
   const hasWp = items.some(i => i.kind === "waypoints");
+  const hasLn = items.some(i => i.kind !== "waypoints");
+  const mixed = hasWp && hasLn;
+  const colorRow = (row, label, colors) => `<div class="pop-sec">
+      <span class="label">${label}</span>
+      <div class="palette" data-row="${row}"><button type="button" class="reset-chip color-reset" data-row="${row}" aria-pressed="true">Leave as is</button>${paletteHTML(colors, null)}</div>
+    </div>`;
   const d = $("#mark-dialog");
-  d.setAttribute("aria-label", `Change icon and color for ${items.length} items`);
+  d.setAttribute("aria-label", `Change ${hasWp ? "icon and color" : "color"} for ${items.length} items`);
   d.innerHTML = `
     <div class="bulk-head">
       <div class="modal-head plain"><h2>Change ${plural(items.length, "item")}</h2>
@@ -1157,13 +1169,11 @@ function openBulk() {
         <div class="na-rows"></div>
       </div>
     </div>
-    <div class="pop-sec">
-      <span class="label">Color</span>
-      <div class="palette"><button type="button" class="reset-chip color-reset" aria-pressed="true">Reset</button>${paletteHTML(paletteFor(items), null)}</div>
-    </div>
+    ${mixed ? colorRow("pin", "Pin color", DATA.colors) + colorRow("line", "Line color", colorList())
+      : colorRow(hasWp ? "pin" : "line", "Color", paletteFor(items))}
     ${hasWp ? `<div class="pop-sec icons">
       <span class="label">Icon</span>
-      <div class="bulk-icon-row"><button type="button" class="reset-chip icon-reset" aria-pressed="true">Reset</button>
+      <div class="bulk-icon-row"><button type="button" class="reset-chip icon-reset" aria-pressed="true">Leave as is</button>
         <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off"></div>
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : ""}
@@ -1171,8 +1181,10 @@ function openBulk() {
       <button type="button" class="btn bulk-cancel">Cancel</button>
       <button type="button" id="bulk-apply" class="btn primary">Save</button>
     </div>`;
-  d.querySelector(".color-reset").onclick = () => { BULK.color = null; drawBulk(); };
-  d.querySelectorAll(".swatch-btn").forEach(b => b.onclick = () => { BULK.color = b.dataset.rgba; drawBulk(); });
+  const key = row => row === "pin" ? "pinColor" : "lineColor";
+  d.querySelectorAll(".color-reset").forEach(c => c.onclick = () => { BULK[key(c.dataset.row)] = null; drawBulk(); });
+  d.querySelectorAll(".palette[data-row] .swatch-btn").forEach(b => b.onclick = () => {
+    BULK[key(b.closest(".palette").dataset.row)] = b.dataset.rgba; drawBulk(); });
   if (hasWp) {
     d.querySelector(".icon-reset").onclick = () => { BULK.icon = null; drawBulk(); };
     const grid = d.querySelector(".icon-grid");
@@ -1194,7 +1206,7 @@ function drawBulk() {
   const hexOf = rgba => (colorOf(rgba) || {}).hex;
   d.querySelector(".na-rows").innerHTML = items.map(it => {
     const isWp = it.kind === "waypoints";
-    const toColor = BULK.color || it.color;
+    const toColor = (isWp ? BULK.pinColor : BULK.lineColor) || it.color;
     const toIcon = isWp ? (BULK.icon || it.icon) : null;
     const nowMark = isWp ? markerSVG(it.icon, it.hex, 22, 28) : lineSVG(it.hex, it.kind, 22, 20, it.style, it.weight);
     const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28) : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, it.style, it.weight);
@@ -1202,21 +1214,25 @@ function drawBulk() {
     return `<span class="na-cell">${nowMark}<span class="na-name">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
       `<span class="na-cell">${afterMark}</span>`;
   }).join("");
-  d.querySelector(".color-reset").setAttribute("aria-pressed", String(!BULK.color));
-  d.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === BULK.color)));
+  d.querySelectorAll(".palette[data-row]").forEach(p => {
+    const v = p.dataset.row === "pin" ? BULK.pinColor : BULK.lineColor;
+    p.querySelector(".color-reset").setAttribute("aria-pressed", String(!v));
+    p.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === v)));
+  });
   const ir = d.querySelector(".icon-reset");
   if (ir) ir.setAttribute("aria-pressed", String(!BULK.icon));
   syncIconGrid(d.querySelector(".icon-grid"), BULK.icon);
 }
 
 function applyBulk() {
-  const { color, icon, uids } = BULK;
+  const { pinColor, lineColor, icon, uids } = BULK;
   const items = allItems().filter(i => uids.has(i.uid));
   closeBulk();
-  if (!color && !icon) return;
+  if (!pinColor && !lineColor && !icon) return;
   let n = 0;
   items.forEach(it => {
     const patch = {};
+    const color = it.kind === "waypoints" ? pinColor : lineColor;
     if (color) patch.color = color;
     if (icon && it.kind === "waypoints") patch.icon = icon;
     if (Object.keys(patch).length) { edit(it, patch, { render: false }); n++; }
