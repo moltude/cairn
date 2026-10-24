@@ -309,8 +309,9 @@ UI-32 and ENG-07 ("Round 2").
 ### Findings, fixes and tests
 Tests are in `tests/web/test_web_app.py` (e2e) unless they start with `bridge:`
 (`tests/test_web_bridge_folders.py`). Every e2e test below was also run against the previous
-`web/app.js`: 27 of the 31 failed, the 4 that passed being the 0 ms-hold cases of F1, which
-never reproduced it.
+`web/app.js` and `web/styles.css`: 27 of the 29 then failed; the two that passed were the
+0 ms-hold F1 cases, which never reproduced it. The R2 and R3 tests below fail on the code
+before their fixes.
 
 | # | Finding | Fix | Test |
 |---|---------|-----|------|
