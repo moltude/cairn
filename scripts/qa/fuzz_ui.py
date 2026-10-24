@@ -251,7 +251,10 @@ class Session:
             raise Violation("empty_folder_left", f"{empties} after {label}")
         # Every empty folder (and only those) has its x in the rail, and shows
         # as a header-only section when no filter hides it.
-        if not s["drag"] and sorted(s["facetX"]) != sorted(g["key"] for g in groups if not g["uids"]):
+        # (A folder whose name is open in the rail is an input there, with no x.)
+        naming = s["rename"]["key"] if s["rename"] and s["rename"]["where"] == "rail" else None
+        if not s["drag"] and sorted(s["facetX"]) != sorted(g["key"] for g in groups
+                                                           if not g["uids"] and g["key"] != naming):
             raise Violation("empty_folder_x", f"x on {s['facetX']} after {label}")
         if s["emptySections"] != s["expectEmpty"]:
             raise Violation("empty_folder_section", f"{s['emptySections']} vs {s['expectEmpty']} after {label}")
@@ -974,7 +977,8 @@ class Session:
         Z to A -> map order, the same in every header. The row invariant
         (rows == visibleItems) checks the order itself."""
         p = self.page
-        btns = p.locator("#folders .sort-btn")
+        # Visible ones only: a collapsed folder's header row is hidden.
+        btns = p.locator("#folders .sort-btn:visible")
         if not btns.count():
             return ("sort", "none"), False
         before = p.evaluate("SORT")

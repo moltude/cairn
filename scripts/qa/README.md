@@ -21,9 +21,12 @@ from the repo root.
 Drives the real Pyodide app in headless Chromium (1440x900) with random actions: ticks, drags
 to folders, to "+ New folder" and to nowhere, Esc mid-drag, renames from a pool of hostile
 names, Move to..., filters, search, collapse, row name / note / icon edits, exclude / include,
-exports. Wave 2 adds human-timed presses that leave a name field, rename-then-drag and
+exports, and (round 4) clicks on + New folder (with and without ticked rows), the × on an
+empty folder, Name-sort toggles and hovers over names, notes and caution marks (the tip must
+show exactly when the preview hides text). Wave 2 adds human-timed presses that leave a name field, rename-then-drag and
 rename-then-export. After every action it checks the invariants (every item exactly once, UI
-layout == bridge layout, no empty folder, rail == folders, visible rows == filters, no stuck
+layout == bridge layout, no empty folder unless it loaded empty or was made empty and never
+filled (round 4), every empty folder has its × and its header-only section, rail == folders, visible rows == filters, no stuck
 drag, overlays in step, no error status, focus kept). Every export is verified: the export
 screen, Download all, and every per-folder zip (12 sampled on 200 folders).
 
