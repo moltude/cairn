@@ -688,6 +688,28 @@ Copy and docs only; no behaviour change. One commit per area.
 `BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1316 passed** (unchanged; only pinned
 strings changed). `build_faq_page.py --check`: clean.
 
+## Final batch (2026-10-24)
+
+- **Start over / new load** now empty `#runbook`, so the hidden export screen no longer keeps the
+  old files' DOM (test: `#runbook` has no children after Start over).
+- **Unorganized subtitle** reads "Not in any folder" for every source (it said "CalTopo" even
+  for onX maps).
+- **Status receipts** (`setStatus(..., "ready")`, e.g. "Moved 2 items to X.") clear themselves
+  after 8 s (`STATUS_LINGER_MS`); errors and "Building..." lines stay until replaced. The element
+  is the same `role=status`, so the announcement is unchanged, and the 1.5 s pin still holds.
+  New test shortens the linger to check both ends.
+- **AGENTS.md** no longer points at a README "Known quirks" section that does not exist; it
+  names the two FAQ entries instead.
+- **README screenshots**: `scripts/make_readme_shots.py` (tracked, modelled on
+  `make_walkthrough_shots.py`) regenerates `docs/screenshots/web-01..07`. Run against the
+  current app all seven came out byte-identical to the committed PNGs.
+
+Final check, on the dev server at :8790:
+`BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1317 passed** (+1: the status-receipt test).
+`scripts/qa/fuzz_ui.py --seeds 1-12 --actions 200`, waves 1 and 2: **24 of 24 sessions ok, 0 FAIL**
+(wave 1 had two sessions with a "harness" count, i.e. a Playwright timeout in the fuzzer itself,
+stepped over; the two waves ran side by side on one server). `build_faq_page.py --check`: clean.
+
 ## Follow-ups
 
 - **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`

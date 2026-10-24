@@ -35,8 +35,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-23 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup): **1316 passed** with the web dev server up; without
-it the `tests/web` tests skip. (The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
+Baseline as of 2026-10-23 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup): **1317 passed** with the web dev server up; without
+it the `tests/web` tests skip. (The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 
