@@ -130,6 +130,12 @@ def test_no_counts_metadata_or_other_sections():
         assert gone not in text, gone
 
 
+def test_no_fill_line_even_for_areas_with_a_non_default_fill():
+    """Round 5 (D2): the owner wants instructions.txt basic; the screen's caution mark covers fills."""
+    p = Path(__file__).parent / "fixtures" / "onx_exports" / "areas-after-edit.kml"
+    assert "fill" not in _text(_export(p)).lower()
+
+
 def test_a_split_file_lists_each_part_with_its_own_items(monkeypatch):
     """A big file splits into numbered parts; each part lists only the items in it."""
     monkeypatch.setattr(bridge, "write_gpx_waypoints_maybe_split",

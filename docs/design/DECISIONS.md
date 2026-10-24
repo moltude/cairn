@@ -868,7 +868,8 @@ sat at the top. Now:
   kind (Waypoints / Lines / Areas), and every item's name as written in that file, indented
   4 spaces a level. An item with no name shows "(no name)". Only two warnings stay, each one
   line under its item: a note onX will cut (its written `<desc>` is over 512 bytes) and an area
-  whose hole is not kept. Totals, dropped items, the account limit and the "Renamed" list (empty
+  whose hole is not kept. No area-fill line (round 5, owner: keep it basic; the row's caution
+  mark covers fills, UI-34). Totals, dropped items, the account limit and the "Renamed" list (empty
   since ENG-06) are not in it; the screen shows the first three.
 
 ### UI-32 — Folders: drag to move, + New folder, rename and merge, Move to…
