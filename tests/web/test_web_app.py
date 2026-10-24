@@ -2489,7 +2489,7 @@ def test_rename_a_folder_in_its_header(loaded: Page):
     # The same name: nothing happens and it isn't a change.
     _section(page, "North Roots").locator(".folder-name").click()
     page.keyboard.press("Enter")
-    assert page.evaluate("RENAMED.size") == 0
+    assert page.evaluate("unexportedChanges()") == 0
 
     # Esc keeps the old name.
     _section(page, "North Roots").locator(".folder-name").click()
@@ -2640,7 +2640,9 @@ def test_an_emptied_folder_disappears_with_its_filter(loaded: Page):
     row = _first_row(page, "Mill Creek Canyon")
     key = page.evaluate("DATA.groups.find(g => g.name === 'Mill Creek Canyon').key")
     _drag(page, row.locator(".note-btn, .icon-btn, .line-btn").first, _rail(page, "Paddling"))
-    expect(page.locator("#status")).to_have_text("Moved 1 item to Paddling.")
+    # H4: the view goes back to All, and the status line says why.
+    expect(page.locator("#status")).to_have_text(
+        "Moved 1 item to Paddling. “Mill Creek Canyon” is empty now, so it was removed.")
     expect(_rail(page, "Mill Creek Canyon")).to_have_count(0)
     assert page.evaluate("FILTERS.folder") is None
     expect(page.locator("#chips")).to_be_hidden()
@@ -2748,7 +2750,7 @@ def test_start_over_counts_moves_and_renames(loaded: Page):
         "You have 3 unexported changes to this map. Starting over discards them.")
     page.click("#confirm-actions button:text-is('Start over')")
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
-    assert page.evaluate("MOVED.size + RENAMED.size") == 0
+    assert page.evaluate("LOADED") is None and page.evaluate("unexportedChanges()") == 0
     assert page.evaluate("window.__cairnLoaded") is False
 
 
@@ -2840,3 +2842,379 @@ def test_a_long_rail_scrolls_while_dragging_to_new_folder(fresh_page: Page, tmp_
     expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
     page.keyboard.press("Enter")
     assert page.evaluate("DATA.groups.length") == 61
+
+
+# ---------------------------------------------------------------------------
+# Folders, round 2 (2026-10-23): code review items and QA / fuzzer findings.
+# Each test names the finding it pins (tests/output/round2-findings.md).
+# ---------------------------------------------------------------------------
+
+
+def _human_press(page: Page, loc, hold: int = 80) -> None:
+    """Press and release like a person: the button is down for `hold` ms."""
+    loc.scroll_into_view_if_needed()
+    b = loc.bounding_box()
+    page.mouse.move(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2)
+    page.mouse.down()
+    page.wait_for_timeout(hold)
+    page.mouse.up()
+    page.wait_for_timeout(50)
+
+
+def _stuck_free(page: Page) -> None:
+    assert page.evaluate("DRAG") is None
+    expect(page.locator("#drag-ghost, .here-now, .drop-over, tr.dragging")).to_have_count(0)
+    expect(page.locator("body")).not_to_have_class(re.compile(r"\bdragging-rows\b"))
+
+
+@pytest.mark.parametrize("how", ["window-blur", "pointercancel"])
+def test_a_drag_the_window_loses_leaves_nothing_held(loaded: Page, how):
+    """Review #1: blur / pointercancel used to leave DRAG cancelled-but-held,
+    waiting for a pointerup that never comes: the next press, text selection,
+    Esc and click were all swallowed."""
+    page = loaded
+    before = _layout(page)
+    _press(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"))
+    _hover_to(page, _rail(page, "North Roots"))
+    expect(page.locator("#drag-ghost")).to_have_count(1)
+    page.evaluate("window.dispatchEvent(new Event('blur'))" if how == "window-blur" else
+                  "document.dispatchEvent(new PointerEvent('pointercancel', {pointerId: DRAG.pointerId, bubbles: true}))")
+    _stuck_free(page)
+    # The release happened elsewhere: what follows is a fresh start.
+    page.mouse.up()
+    assert _layout(page) == before
+    box = _first_row(page, "Paddling").locator(".sel-box")
+    box.click()
+    expect(box).to_be_checked()
+    page.evaluate("document.activeElement.blur()")   # (Esc in a focused checkbox is the field's)
+    page.keyboard.press("Escape")            # the selection's Esc, not swallowed
+    assert page.evaluate("SEL.size") == 0
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), _rail(page, "Blodgett"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to Blodgett.")
+
+
+def test_a_failed_layout_apply_shows_the_bridges_layout(loaded: Page):
+    """Review #2: the bridge moves first; if the UI then fails to apply the
+    answer it must re-sync from the bridge, or export writes a layout the
+    screen never showed."""
+    page = loaded
+    page.evaluate("""() => { const real = applyLayout;
+        window.applyLayout = r => { window.applyLayout = real; throw new Error('boom'); }; }""")
+    uid = _first_row(page, "Lost Trail Pass").get_attribute("data-uid")
+    _drag(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"), _rail(page, "North Roots"))
+    lay = dict(_layout(page))                # asserts UI == bridge
+    assert lay["Lost Trail Pass"] == 30 and lay["North Roots"] == 23
+    expect(_section(page, "North Roots").locator(f'tr[data-uid="{uid}"]')).to_have_count(1)
+    expect(_rail(page, "North Roots").locator(".facet-count")).to_have_text("23")
+    # A bridge call that raises changes nothing, and the screen still agrees.
+    page.evaluate("""() => { const real = pyJSON;
+        window.pyJSON = (src, v) => { window.pyJSON = real; throw new Error('bridge down'); }; }""")
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), _rail(page, "Blodgett"))
+    expect(page.locator("#status")).to_contain_text("Couldn't move")
+    assert dict(_layout(page))["Paddling"] == 5
+
+
+@pytest.mark.parametrize("field", ["folder-name", "row-name"])
+@pytest.mark.parametrize("hold", [0, 20, 80, 150])
+def test_a_click_that_leaves_a_name_field_lands(loaded: Page, field, hold):
+    """F1: leaving a name by pressing a checkbox lost the click: the deferred
+    render rebuilt the list between pointerdown and pointerup."""
+    page = loaded
+    if field == "folder-name":
+        _section(page, "Paddling").locator(".folder-name").click()
+        page.keyboard.type("Boats")
+    else:
+        name = _first_row(page, "Paddling").locator(".name-in")
+        name.click()
+        name.evaluate("e => e.setSelectionRange(e.value.length, e.value.length)")
+        page.keyboard.type(" X")
+    box = _first_row(page, "Blodgett").locator(".sel-box")
+    _human_press(page, box, hold)
+    expect(box).to_be_checked()
+    assert page.evaluate("SEL.size") == 1
+    if field == "folder-name":
+        assert ("Boats", 5) in _layout(page)
+    else:
+        assert any(v.get("name", "").endswith(" X") for v in page.evaluate("Object.values(EDITS)"))
+
+
+def test_a_rail_filter_or_collapse_click_that_leaves_a_folder_name_lands(loaded: Page):
+    page = loaded
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.type("Boats")
+    _human_press(page, _rail(page, "Blodgett"))
+    key = page.evaluate("DATA.groups.find(g => g.name === 'Blodgett').key")
+    assert page.evaluate("FILTERS.folder") == key
+    page.click("#chips .linkbtn")
+    _section(page, "Boats").locator(".folder-name").click()
+    page.keyboard.type("Boats 2")
+    _human_press(page, _section(page, "North Roots").locator(".collapse"))
+    nkey = page.evaluate("DATA.groups.find(g => g.name === 'North Roots').key")
+    assert page.evaluate(f"COLLAPSED.has({json.dumps(nkey)})")
+    assert ("Boats 2", 5) in _layout(page)
+
+
+def test_leaving_a_taken_name_by_clicking_export_offers_the_merge_first(loaded: Page):
+    """F2: the export ran with the old name and the merge offer opened over the
+    export screen; "Move them" then changed a hidden edit screen."""
+    page = loaded
+    _section(page, "North Roots").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("Paddling")
+    page.click("#export")
+    expect(page.locator("#confirm-title")).to_have_text("“Paddling” already exists")
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit")
+    assert page.evaluate("MANIFEST") is None
+    page.click("#confirm-actions button:text-is('Move them')")
+    lay = dict(_layout(page))
+    assert "North Roots" not in lay and lay["Paddling"] == 27
+    _done(page)
+    assert [e["folder"] for e in page.evaluate("MANIFEST")] == [n for n, _ in _layout(page)]
+    expect(page.locator("#confirm")).to_be_hidden()
+
+
+def test_leaving_a_new_folders_taken_name_by_clicking_export_offers_the_merge(loaded: Page):
+    page = loaded
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
+    expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
+    page.keyboard.type("blodgett")
+    page.click("#export")
+    expect(page.locator("#confirm-title")).to_have_text("“Blodgett” already exists")
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit")
+    page.keyboard.press("Escape")
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit")
+
+
+def test_a_dialog_that_opens_after_a_press_stops_the_drag(loaded: Page):
+    """F3: the merge offer could open between pointerdown and the 6px move, and
+    a drag then ran under it."""
+    page = loaded
+    src = _first_row(page, "Lost Trail Pass").locator(".note-btn")
+    src.scroll_into_view_if_needed()
+    b = src.bounding_box()
+    x, y = b["x"] + 20, b["y"] + b["height"] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.evaluate("openConfirm({title: 'T', body: 'B', buttons: [{label: 'OK', initial: true, cancel: true, run: () => closeConfirm()}]})")
+    page.mouse.move(x + 20, y + 20, steps=4)
+    _stuck_free(page)
+    page.mouse.up()
+    page.keyboard.press("Escape")
+    expect(page.locator("#confirm")).to_be_hidden()
+
+
+@pytest.mark.parametrize("front", ["move-to", "merge-offer", "help"])
+def test_ctrl_a_does_nothing_behind_what_is_in_front(loaded: Page, front):
+    """F4: Ctrl+A under Move to…, the merge offer or Help changed the selection
+    behind it (Move to… then said "Move 1 item" for 177 ticked)."""
+    page = loaded
+    _first_row(page, "Paddling").locator(".sel-box").check()
+    if front == "move-to":
+        page.click("#more-btn")
+        page.click("#bulk-move")
+        expect(page.locator("#move-pop")).to_be_visible()
+    elif front == "merge-offer":
+        _section(page, "Blodgett").locator(".folder-name").click()
+        page.keyboard.press("ControlOrMeta+a")
+        page.keyboard.type("Paddling")
+        page.keyboard.press("Enter")
+        expect(page.locator("#confirm")).to_be_visible()
+    else:
+        page.click("#help-link")
+        expect(page.locator("#help")).to_be_visible()
+    page.keyboard.press("ControlOrMeta+a")
+    assert page.evaluate("SEL.size") == 1
+    if front == "move-to":
+        expect(page.locator("#move-h")).to_have_text("Move 1 item to")
+
+
+def test_more_closes_an_open_move_to_list(loaded: Page):
+    """F5: More while Move to… was open opened its menu under the list."""
+    page = loaded
+    _first_row(page, "Paddling").locator(".sel-box").check()
+    page.click("#more-btn")
+    page.click("#bulk-move")
+    expect(page.locator("#move-pop")).to_be_visible()
+    page.click("#more-btn")
+    expect(page.locator("#move-pop")).to_be_hidden()
+    expect(page.locator("#more-menu")).to_be_visible()
+    page.locator("#bulk-exclude").click(timeout=3000)
+    expect(_first_row(page, "Paddling")).to_have_class(re.compile(r"\bexcluded\b"))
+
+
+def test_a_caltopo_folder_named_unorganized_is_an_ordinary_folder(fresh_page: Page, tmp_path):
+    """F6: only the items outside every folder get the loose-items styling."""
+    from tests.hardening_maps import make_map
+    page = fresh_page
+    doc = json.loads(make_map(2, seed=5, names=["Unorganized", "Trips"]))
+    doc["features"].append({"type": "Feature", "id": "loose", "properties": {"title": "Loose", "class": "Marker"},
+                            "geometry": {"type": "Point", "coordinates": [-114, 46]}})
+    f = tmp_path / "twins.json"
+    f.write_text(json.dumps(doc))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    expect(page.locator("#folder-facets .facet-btn.unorg")).to_have_count(1)
+    flags = page.evaluate("DATA.groups.map(g => [g.key, isUnorganized(g)])")
+    assert dict(flags) == {"f0": False, "f1": False, "orphaned_features": True}
+    subs = page.evaluate("[...document.querySelectorAll('#folders .folder-sub')].map(e => e.textContent)")
+    assert subs.count("Not in any CalTopo folder") == 1
+
+
+@pytest.mark.parametrize("key", ["Enter", "Escape"])
+def test_enter_and_escape_in_a_row_name_keep_focus_there(loaded: Page, key):
+    """F7: both blurred the field, dropping focus to the page."""
+    page = loaded
+    row = _first_row(page, "Paddling")
+    uid = row.get_attribute("data-uid")
+    name = row.locator(".name-in")
+    before = name.input_value()
+    name.click()
+    name.evaluate("e => e.setSelectionRange(e.value.length, e.value.length)")
+    page.keyboard.type(" kept")
+    page.keyboard.press(key)
+    field = page.locator(f'tr[data-uid="{uid}"] .name-in')
+    expect(field).to_be_focused()
+    expect(field).to_have_value(before + " kept" if key == "Enter" else before)
+    assert (page.evaluate(f"(EDITS[{json.dumps(uid)}] || {{}}).name") ==
+            (before + " kept" if key == "Enter" else None))
+
+
+def test_cancel_on_a_new_folders_taken_name_reopens_its_name(loaded: Page):
+    """H1: Cancel left a folder called "New folder"; it now returns to naming it."""
+    page = loaded
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
+    page.keyboard.type("Blodgett")
+    page.keyboard.press("Enter")
+    expect(page.locator("#confirm-title")).to_have_text("“Blodgett” already exists")
+    page.keyboard.press("Escape")                         # Cancel
+    inp = page.locator("#folder-facets .folder-name-in")
+    expect(inp).to_be_focused()
+    expect(inp).to_have_value("Blodgett")
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("Kayaks")
+    page.keyboard.press("Enter")
+    assert _layout(page)[-1] == ("Kayaks", 1)
+    # A header rename's Cancel still just keeps the old name.
+    _section(page, "Kayaks").locator(".folder-name").click()
+    page.keyboard.type("Blodgett")
+    page.keyboard.press("Enter")
+    page.keyboard.press("Escape")
+    expect(page.locator(".folder-name-in")).to_have_count(0)
+    assert _layout(page)[-1] == ("Kayaks", 1)
+
+
+def test_an_empty_name_for_a_new_folder_keeps_its_box_open(loaded: Page):
+    """H5: Enter on an empty new-folder name kept "New folder" and closed the box."""
+    page = loaded
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
+    page.keyboard.press("Backspace")
+    page.keyboard.press("Enter")
+    expect(page.locator("#status")).to_have_text("A folder needs a name.")
+    inp = page.locator("#folder-facets .folder-name-in")
+    expect(inp).to_be_focused()
+    expect(inp).to_have_value("New folder")
+    page.keyboard.type("Rafts")
+    page.keyboard.press("Enter")
+    assert _layout(page)[-1] == ("Rafts", 1)
+    # H3: the error doesn't outlive the next success.
+    expect(page.locator("#status")).to_have_text("")
+
+
+def test_long_folder_names_are_cut_with_an_ellipsis_and_titled(loaded: Page):
+    """H2: a 100-character name wrapped badly in the rail, header and export card;
+    a longer paste was cut at 100 without a word."""
+    page = loaded
+    long = "x" * 100
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.insert_text("x" * 150)
+    inp = page.locator(".folder-head .folder-name-in")
+    expect(inp).to_have_value(long)
+    expect(page.locator("#status")).to_have_text("A folder name can be up to 100 characters.")
+    page.keyboard.press("Enter")
+    cut = "e => [e.scrollWidth > e.clientWidth, getComputedStyle(e).textOverflow, e.title]"
+    assert _rail(page, long).locator(".facet-name").evaluate(cut) == [True, "ellipsis", long]
+    assert _section(page, long).locator(".folder-name").evaluate(cut) == [True, "ellipsis", long]
+    head = _section(page, long).locator(".folder-head").bounding_box()
+    sub = _section(page, long).locator(".folder-sub").bounding_box()
+    assert sub["height"] < 24 and sub["y"] < head["y"] + head["height"]   # "5 items" on one line
+    _done(page)
+    card = page.locator("#runbook .rb-step", has=page.locator(".rb-name", has_text=long))
+    assert card.locator(".rb-name").evaluate(cut) == [True, "ellipsis", long]
+    expect(card.locator(".rb-do b").last).to_have_text(long)   # the instruction stays whole
+
+
+def test_stale_status_lines_are_cleared(loaded: Page):
+    """H3: "A folder needs a name." outlived later successes; "Built N folders"
+    stayed after Back; the hidden "Getting ready…" status said so all session."""
+    page = loaded
+    assert page.locator("#drop-wait").text_content() == ""
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.press("Backspace")
+    page.keyboard.press("Enter")
+    expect(page.locator("#status")).to_have_text("A folder needs a name.")
+    _section(page, "Paddling").locator(".folder-name").click()
+    expect(page.locator("#status")).to_have_text("")      # starting a rename clears it
+    page.keyboard.type("Boats")
+    page.keyboard.press("Enter")
+    _done(page)
+    expect(page.locator("#status")).to_contain_text("Built")
+    page.click("#back")
+    expect(page.locator("#status")).to_have_text("")
+
+
+def test_the_drop_target_is_where_the_button_comes_up(loaded: Page):
+    """H6: the hit test at release used the last pointermove's position."""
+    page = loaded
+    _press(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"))
+    _hover_to(page, _rail(page, "North Roots"))
+    b = _rail(page, "Paddling").bounding_box()
+    x, y = b["x"] + b["width"] / 2, b["y"] + b["height"] / 2
+    page.evaluate(f"document.dispatchEvent(new PointerEvent('pointerup', "
+                  f"{{pointerId: DRAG.pointerId, clientX: {x}, clientY: {y}, bubbles: true}}))")
+    page.mouse.move(5, 5)
+    page.mouse.up()
+    expect(page.locator("#status")).to_have_text("Moved 1 item to Paddling.")
+    assert dict(_layout(page))["Paddling"] == 6
+
+
+def test_start_over_counts_changes_against_the_map_as_loaded(loaded: Page):
+    """Review #9: moves back, renames back and merged-away folders used to count."""
+    page = loaded
+    row = _first_row(page, "Paddling")
+    uid = row.get_attribute("data-uid")
+    _drag(page, row.locator(".note-btn"), _rail(page, "Blodgett"))
+    _drag(page, page.locator(f'tr[data-uid="{uid}"] .note-btn'), _rail(page, "Paddling"))
+    for name in ("Boats", "Paddling"):
+        _section(page, "Paddling" if name == "Boats" else "Boats").locator(".folder-name").click()
+        page.keyboard.press("ControlOrMeta+a")
+        page.keyboard.type(name)
+        page.keyboard.press("Enter")
+    assert page.evaluate("unexportedChanges()") == 0
+    page.locator(".newmap").first.click()
+    expect(page.locator("#confirm-body")).to_have_text("This clears the current map.")
+    page.keyboard.press("Escape")
+    # A merge: its 1 item moved, the merged-away folder's name is not counted.
+    _section(page, "Mill Creek Canyon").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("Paddling")
+    page.keyboard.press("Enter")
+    page.click("#confirm-actions button:text-is('Move them')")
+    assert page.evaluate("unexportedChanges()") == 1
+
+
+def test_with_100_or_more_folders_a_folder_zip_is_numbered_with_three_digits(fresh_page: Page, tmp_path):
+    """L1 (and review #10: the download no longer builds Python source)."""
+    page = fresh_page
+    f = tmp_path / "many.json"
+    f.write_text(_many_folders_map(105))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    _done(page)
+    manifest = page.evaluate("MANIFEST")
+    assert manifest[0]["files"][0]["path"].startswith("001_") and manifest[-1]["dir"].startswith("105_")
+    with page.expect_download() as dl:
+        page.locator("#runbook .rb-dl").first.click()
+    assert dl.value.suggested_filename == manifest[0]["dir"] + ".zip"
+    assert zipfile.ZipFile(dl.value.path()).namelist() == [x["path"] for x in manifest[0]["files"]]

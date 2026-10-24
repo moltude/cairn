@@ -23,12 +23,14 @@ let BULK = null;                       // several-items dialog state
 let RENAME = null;                     // {key, draft, where: "head"|"rail"} -- the one folder name being edited
 let DRAG = null;                       // row drag in progress (pointer events)
 let MOVE = null;                       // More ▸ Move to… list state
-const MOVED = new Set();               // uids moved since load (Start over counts them)
-const RENAMED = new Set();             // folder keys renamed since load
+let LOADED = null;                     // {home: uid -> folder key, names: key -> name} as loaded (Start over)
+let PENDING_MERGE = null;              // a taken name, waiting for its deferred render to offer the merge
 const NEW_TARGET = "\u0000new";        // drop key of the rail's "+ New folder"
 
 const $ = s => document.querySelector(s);
 const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; e.className = "status " + cls; };
+/** An error that a later success has made stale ("A folder needs a name."). */
+const clearError = () => { if ($("#status").classList.contains("err")) setStatus(""); };
 
 /* Keyboard focus across re-renders. The rail and the list are rebuilt with
    innerHTML, which drops focus to <body>. Every control they rebuild carries a
@@ -38,10 +40,37 @@ const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; 
    note button and its open editor share one key, so Save/Cancel land back on
    the note button. A key that no longer exists is a silent no-op. */
 const focusedKey = () => document.activeElement?.dataset?.fk || null;
+const fkEl = k => [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k) || null;
 function refocus(k) {
   if (!k || focusedKey() === k) return;
-  const el = [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k);
-  if (el) el.focus({ preventScroll: true });
+  fkEl(k)?.focus({ preventScroll: true });
+}
+
+/* A render that follows leaving a field (Tab, or a click elsewhere) runs on
+   the next task, once focus has landed, so the control being focused isn't
+   rebuilt under it. With a mouse button down it waits for the release: a
+   rebuild between a button's pointerdown and pointerup replaces the button,
+   and the click is lost. Queued from pointerup, it runs after that click. */
+let POINTER_HELD = false, FLUSH_T = null;
+const DEFERRED = [];
+function deferRender(fn) {
+  DEFERRED.push(fn);
+  if (!POINTER_HELD) scheduleFlush();
+}
+function scheduleFlush() {
+  if (FLUSH_T === null && DEFERRED.length) FLUSH_T = setTimeout(flushDeferred);
+}
+/** Run whatever is waiting now (Export and Start over must see its result). */
+function flushDeferred() {
+  clearTimeout(FLUSH_T); FLUSH_T = null;
+  DEFERRED.splice(0).forEach(fn => fn());
+}
+function wirePointerHeld() {
+  document.addEventListener("pointerdown", () => { POINTER_HELD = true; }, true);
+  const up = () => { POINTER_HELD = false; scheduleFlush(); };
+  document.addEventListener("pointerup", up, true);
+  document.addEventListener("pointercancel", up, true);
+  window.addEventListener("blur", up);
 }
 
 /* Modals keep Tab and Shift+Tab inside their card. Computed at keydown time:
@@ -105,7 +134,7 @@ async function boot() {
     // A file chosen or dropped while the engine was still booting waits here.
     if (PENDING_FILES) { const f = PENDING_FILES; PENDING_FILES = null; handleFiles(f); }
   } catch (e) {
-    PENDING_FILES = null; $("#drop-wait").classList.add("hidden");
+    PENDING_FILES = null; showDropWait(false);
     setStatus("Failed: " + e.message, "err");
     window.__cairnError = String(e);
     console.error(e);
@@ -152,10 +181,10 @@ async function handleFiles(files) {
   // arrives first is queued and processed by boot() the moment it is ready.
   if (!window.__cairnReady) {
     PENDING_FILES = files;
-    $("#drop-wait").classList.remove("hidden");
+    showDropWait(true);
     return;
   }
-  $("#drop-wait").classList.add("hidden");
+  showDropWait(false);
   setStatus("Reading " + (files.length === 1 ? files[0].name : `${files.length} files`) + "…");
   try {
     const payload = await Promise.all(files.map(async f => ({ name: f.name, text: await f.text() })));
@@ -167,6 +196,7 @@ async function handleFiles(files) {
     DATA = JSON.parse(raw); EDITS = {}; SEL.clear(); ANCHOR = null;
     resetFilters(); COLLAPSED.clear(); RAIL_FOLDED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
     resetFolderState();
+    LOADED = { home: groupOfUid(true), names: new Map(DATA.groups.map(g => [g.key, g.name])) };
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
     renderSourceNotice(DATA);
@@ -183,6 +213,14 @@ async function handleFiles(files) {
     setStatus("Couldn't read that file — " + humanError(e), "err");
     console.error(e);
   }
+}
+
+/** The "Getting ready…" line is a status region: empty it when hidden, or a
+    screen reader's view of the page says it all session. */
+function showDropWait(on) {
+  const w = $("#drop-wait");
+  w.textContent = on ? "Getting ready…" : "";
+  w.classList.toggle("hidden", !on);
 }
 
 function humanError(e) {
@@ -237,11 +275,10 @@ function resetFilters() {
   syncTypeFacet();
 }
 
-/* The items outside any folder of the file. Names are editable now (UI-32):
-   once that folder is renamed it is an ordinary folder, and a folder the user
-   renames TO "Unorganized" doesn't become this one. */
-const isUnorganized = g => /^(Unorganized|Uncategorized)$/.test(g.name) &&
-  (/(^|:)orphaned_features$/.test(g.key) || !RENAMED.has(g.key));
+/* The items outside any folder of the file. The bridge says which folder that
+   is (by where its items came from, not its name) and clears it on a rename
+   (UI-32): a CalTopo folder called "Unorganized" is an ordinary folder. */
+const isUnorganized = g => !!g.unorganized;
 const iconKey = it => it.needs_attention ? DEFAULT_PIN : it.icon;
 
 function visibleItems(g) {
@@ -331,7 +368,7 @@ function renderRail() {
     const here = key !== null && DRAG && DRAG.active && DRAG.here === key;
     if (key !== null) b.dataset.drop = key;
     if (here) b.classList.add("here-now");
-    b.innerHTML = `<span class="facet-name">${esc(label)}</span><span class="facet-count">${here ? "here now" : count ?? ""}</span>`;
+    b.innerHTML = `<span class="facet-name"${key !== null ? ` title="${esc(label)}"` : ""}>${esc(label)}</span><span class="facet-count">${here ? "here now" : count ?? ""}</span>`;
     b.onclick = () => {
       FILTERS.folder = FILTERS.folder === key && key !== null ? null : key;
       renderRail(); renderFolders();
@@ -435,7 +472,7 @@ function renderFolders() {
       <div class="folder-head">
         <h2>${naming
           ? `<input class="folder-name-in" data-fk="fname|${esc(g.key)}" aria-label="Folder name" maxlength="${FOLDER_NAME_MAX}" autocomplete="off">`
-          : `<button type="button" class="folder-name" data-fk="fname|${esc(g.key)}" title="Rename">${esc(g.name)}</button>`}</h2>
+          : `<button type="button" class="folder-name" data-fk="fname|${esc(g.key)}" title="${esc(g.name)}">${esc(g.name)}</button>`}</h2>
         <span class="folder-sub">${esc(sub)}</span>
         <button type="button" class="collapse" data-fk="collapse|${esc(g.key)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
       </div>
@@ -488,7 +525,7 @@ function row(it) {
   if (SEL.has(it.uid)) tr.classList.add("sel");
   if (!it.included) tr.classList.add("excluded");
   if (POP && POP.uid === it.uid) tr.classList.add("editing");
-  if (DRAG && DRAG.active && DRAG.uids.includes(it.uid)) tr.classList.add("dragging");
+  if (DRAG && DRAG.active && DRAG.uidSet.has(it.uid)) tr.classList.add("dragging");
   const noteOpen = NOTE_EDIT && NOTE_EDIT.uid === it.uid;
   if (noteOpen) tr.classList.add("note-open");
   const cname = colorName(it.color);
@@ -564,29 +601,35 @@ function syncFolderBox(tr) {
  */
 function wireTextField(el, it, key, { required = false } = {}) {
   el.addEventListener("focus", () => { el.dataset.orig = el.value; });
-  el.addEventListener("keydown", e => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      el.value = el.dataset.orig ?? "";   // no diff => no change event => no commit
-      el.blur();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      el.blur();                          // commit
-    }
-  });
-  el.addEventListener("change", () => {
+  const commit = now => {
     const v = el.value;
     if (required && !v.trim()) {
       el.value = el.dataset.orig ?? "";
       setStatus("A name is required — onX can only search by name.", "err");
       return;
     }
-    // `change` fires on blur BEFORE focus lands on the next control; a
-    // synchronous re-render would destroy that control mid-Tab. Update the data
-    // now, re-render on the next task, when focus has arrived and can be kept.
+    if (v === el.dataset.orig) return;
+    el.dataset.orig = v;
     edit(it, { [key]: v }, { render: false });
-    setTimeout(() => DATA && refreshAfterEdit());
+    // Enter keeps focus in the field: render now (refocus finds it again).
+    // `change` fires on blur BEFORE focus lands on the next control; a
+    // synchronous re-render would destroy that control mid-Tab, so leaving
+    // the field renders later (deferRender).
+    if (now) refreshAfterEdit();
+    else deferRender(() => DATA && refreshAfterEdit());
+  };
+  // Enter saves and Esc reverts, both staying in the field (focus never drops
+  // to the page): Esc's restored value means the blur that follows sees no change.
+  el.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      el.value = el.dataset.orig ?? "";
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      commit(true);
+    }
   });
+  el.addEventListener("change", () => commit(false));
 }
 
 /* ---------- notes: inline multi-line editor ---------- */
@@ -658,6 +701,7 @@ function edit(it, patch, { render = true } = {}) {
 }
 
 function refreshAfterEdit() {
+  clearError();
   DATA.totals.attention = DATA.groups.reduce(
     (n, g) => n + g.items.filter(i => i.needs_attention).length, 0);
   DATA.totals.excluded = DATA.groups.reduce(
@@ -892,7 +936,7 @@ function openBulk() {
   d.setAttribute("aria-label", `Change icon and color for ${items.length} items`);
   d.innerHTML = `
     <div class="bulk-head">
-      <div class="modal-head plain"><h2>Change ${items.length} item${items.length === 1 ? "" : "s"}</h2>
+      <div class="modal-head plain"><h2>Change ${plural(items.length, "item")}</h2>
         <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
       <div class="now-after">
         <span class="label">Now</span><span></span><span class="label">After</span>
@@ -964,7 +1008,7 @@ function applyBulk() {
     if (Object.keys(patch).length) { edit(it, patch, { render: false }); n++; }
   });
   refreshAfterEdit();
-  setStatus(`Changed ${n} item${n === 1 ? "" : "s"}`, "ready");
+  setStatus(`Changed ${plural(n, "item")}`, "ready");
 }
 
 /* ---------- several lines or areas: the Line style dialog ---------- */
@@ -1049,14 +1093,15 @@ function closeMenu() {
 const FOLDER_NAME_MAX = 100;
 
 function resetFolderState() {
-  cancelDrag(); closeMove(false);
-  RENAME = null; MOVED.clear(); RENAMED.clear();
+  abandonDrag(); closeMove(false);
+  RENAME = null; PENDING_MERGE = null; LOADED = null;
 }
 
 const groupByKey = key => DATA.groups.find(g => g.key === key) || null;
-function groupOfUid() {
+/** uid -> its folder (or the folder's key, with `keys`). */
+function groupOfUid(keys = false) {
   const m = new Map();
-  DATA.groups.forEach(g => g.items.forEach(i => m.set(i.uid, g)));
+  DATA.groups.forEach(g => g.items.forEach(i => m.set(i.uid, keys ? g.key : g)));
   return m;
 }
 /** The folder every one of these items is already in, or null when they come
@@ -1075,30 +1120,55 @@ function pyJSON(src, vars) {
   return JSON.parse(py.runPython(src));
 }
 
-/** Rebuild DATA.groups from the bridge's layout ({key, name, safe, uids} per
-    folder, in order), reusing the item objects, and forget filters and folds
-    that point at a folder that is gone. */
+/** Rebuild DATA.groups from the bridge's layout ({key, name, safe,
+    unorganized, uids} per folder, in order), reusing the item objects, and
+    forget filters and folds that point at a folder that is gone. Checks
+    everything before changing anything: a throw leaves DATA as it was.
+    Returns the name of the folder the folder filter was on, if it is gone. */
 function applyLayout(res) {
   const byUid = new Map(allItems().map(i => [i.uid, i]));
   const old = new Map(DATA.groups.map(g => [g.key, g]));
-  const groups = res.folders.map(f => {
+  const plan = res.folders.map(f => ({ f, items: f.uids.map(u => {
+    const it = byUid.get(u);
+    if (!it) throw new Error(`Lost track of item ${u}.`);
+    return it;
+  }) }));
+  if (plan.reduce((n, p) => n + p.items.length, 0) !== byUid.size)
+    throw new Error("The folders no longer add up.");
+  const groups = plan.map(({ f, items }) => {
     const g = old.get(f.key) || { key: f.key };
-    g.name = f.name; g.safe = f.safe;
-    g.items = f.uids.map(u => {
-      const it = byUid.get(u);
-      if (!it) throw new Error(`Lost track of item ${u}.`);
-      return it;
-    });
+    g.name = f.name; g.safe = f.safe; g.unorganized = !!f.unorganized; g.items = items;
     return g;
   });
-  if (groups.reduce((n, g) => n + g.items.length, 0) !== byUid.size)
-    throw new Error("The folders no longer add up.");
   DATA.groups = groups;
   const live = new Set(groups.map(g => g.key));
   [...COLLAPSED].forEach(k => { if (!live.has(k)) COLLAPSED.delete(k); });
-  if (FILTERS.folder !== null && !live.has(FILTERS.folder)) FILTERS.folder = null;
+  let gone = null;
+  if (FILTERS.folder !== null && !live.has(FILTERS.folder)) {
+    gone = old.get(FILTERS.folder)?.name ?? null;
+    FILTERS.folder = null;
+  }
   if (RENAME && !live.has(RENAME.key)) RENAME = null;
   DATA.totals.folders = groups.length;
+  return gone;
+}
+
+/** applyLayout(res), or, should that fail, the bridge's own layout: the bridge
+    may already have moved the items, and what the screen shows must be what
+    export writes. Throws only if even that can't be shown. */
+function syncLayout(res) {
+  try { return applyLayout(res); }
+  catch (e) {
+    console.error(e);
+    return applyLayout(JSON.parse(py.runPython("bridge.layout_json()")));
+  }
+}
+
+/** After a failed folder action: show the bridge's layout, whatever it is. */
+function resyncAfterFailure() {
+  try { syncLayout(JSON.parse(py.runPython("bridge.layout_json()"))); }
+  catch (e) { console.error(e); }
+  renderEdit();
 }
 
 /** An open note whose row a move takes off screen (a folder filter, say)
@@ -1112,10 +1182,11 @@ function keepNoteDraft() {
   if (it && v !== (it.desc || "")) edit(it, { desc: v }, { render: false });
 }
 
-/** After a move or merge: count it for Start over, re-render, say what happened. */
-function afterMove(res, uids, before) {
-  const after = groupOfUid();
-  uids.forEach(u => { if (before.get(u)?.key !== after.get(u)?.key) MOVED.add(u); });
+const shortName = s => { const c = [...s]; return c.length > 48 ? c.slice(0, 47).join("").trimEnd() + "…" : s; };
+
+/** After a move or merge: re-render and say what happened, and why the view
+    changed when the folder it was filtered to is gone. */
+function afterMove(res, uids, gone) {
   // The ticks did their job: moved rows are unticked, so the next drag of one
   // of them doesn't drag the whole old selection along. Other ticks stay.
   uids.forEach(u => SEL.delete(u));
@@ -1123,57 +1194,43 @@ function afterMove(res, uids, before) {
   keepNoteDraft();
   refreshAfterEdit();
   const target = groupByKey(res.key);
-  const short = s => { const c = [...s]; return c.length > 48 ? c.slice(0, 47).join("").trimEnd() + "…" : s; };
-  setStatus(`Moved ${plural(res.moved, "item")} to ${res.created ? "a new folder" : target ? short(target.name) : "the folder"}.`, "ready");
+  setStatus(`Moved ${plural(res.moved, "item")} to ${res.created ? "a new folder" : target ? shortName(target.name) : "the folder"}.` +
+    (gone !== null ? ` “${shortName(gone)}” is empty now, so it was removed.` : ""), "ready");
 }
 
-function newFolderName() {
-  const taken = new Set(DATA.groups.map(g => g.name.trim().toLowerCase()));
-  for (let n = 1; ; n++) {
-    const name = n === 1 ? "New folder" : `New folder ${n}`;
-    if (!taken.has(name.toLowerCase())) return name;
-  }
-}
-
-/** Move items into the folder `key`, or into a new folder (NEW_TARGET), whose
-    name is then open for editing in the rail. Returns the bridge's answer. */
+/** Move items into the folder `key`, or into a new folder (NEW_TARGET; the
+    bridge picks its default name), whose name is then open for editing in the
+    rail. Returns the bridge's answer. */
 function moveTo(uids, key) {
   if (!DATA || !uids.length) return null;
   closePop();
-  const before = groupOfUid();
-  let res, name = null;
+  let res, gone;
   try {
     const u = JSON.stringify(uids);
-    if (key === NEW_TARGET) {
-      name = newFolderName();
-      res = pyJSON("bridge.move_items(_cairn_uids, None, _cairn_name)", { _cairn_uids: u, _cairn_name: name });
-      // The bridge compares names casefolded; should that ever disagree with
-      // the check above, keep counting.
-      for (let n = 2; !res.ok && n < 10000; n++) {
-        name = `New folder ${n}`;
-        res = pyJSON("bridge.move_items(_cairn_uids, None, _cairn_name)", { _cairn_uids: u, _cairn_name: name });
-      }
-    } else {
-      res = pyJSON("bridge.move_items(_cairn_uids, _cairn_key)", { _cairn_uids: u, _cairn_key: key });
-    }
+    res = key === NEW_TARGET
+      ? pyJSON("bridge.move_to_new_folder(_cairn_uids)", { _cairn_uids: u })
+      : pyJSON("bridge.move_items(_cairn_uids, _cairn_key)", { _cairn_uids: u, _cairn_key: key });
     if (!res.ok) throw new Error("That folder name is taken.");
-    applyLayout(res);
+    gone = syncLayout(res);
   } catch (e) {
     setStatus("Couldn't move — " + humanError(e), "err"); console.error(e);
+    resyncAfterFailure();
     return null;
   }
   if (res.created) {
     RENAME = { key: res.key, draft: res.folders.find(f => f.key === res.key).name, where: "rail" };
     RAIL_FOLDED.delete("folders");
   }
-  afterMove(res, uids, before);
+  afterMove(res, uids, gone);
   if (res.created) focusRename();
   return res;
 }
 
-function startRename(key, where) {
+function startRename(key, where, draft = null) {
   const g = groupByKey(key); if (!g) return;
-  RENAME = { key, draft: g.name, where };
+  clearError();
+  RENAME = { key, draft: draft ?? g.name, where };
+  if (where === "rail") RAIL_FOLDED.delete("folders");
   where === "head" ? renderFolders() : renderRail();
   focusRename();
 }
@@ -1191,7 +1248,12 @@ function focusRename() {
 function wireFolderName(inp) {
   const key = RENAME.key;
   inp.value = RENAME.draft;
-  inp.addEventListener("input", () => { if (RENAME && RENAME.key === key) RENAME.draft = inp.value; });
+  inp.title = `Up to ${FOLDER_NAME_MAX} characters`;
+  inp.addEventListener("input", () => {
+    if (RENAME && RENAME.key === key) RENAME.draft = inp.value;
+    // maxlength cuts a long paste silently: say so.
+    if (inp.value.length >= FOLDER_NAME_MAX) setStatus(`A folder name can be up to ${FOLDER_NAME_MAX} characters.`, "err");
+  });
   inp.addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); finishRename(key, true); }
     else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finishRename(key, false); }
@@ -1206,33 +1268,49 @@ function finishRename(key, save, { defer = false } = {}) {
   const { draft, where } = RENAME;
   RENAME = null;
   const g = groupByKey(key);
-  let dup = null;
+  let reopen = false, failed = false;
   if (save && g) {
     const name = draft.trim();
-    if (!name) setStatus("A folder needs a name.", "err");
-    else if (name !== g.name) {
+    if (!name) {
+      setStatus("A folder needs a name.", "err");
+      // A new folder's name (Enter on an empty box) stays open for another
+      // try; leaving it keeps the default it has.
+      reopen = where === "rail" && !defer;
+    } else if (name !== g.name) {
+      // The bridge is asked NOW, even when the render waits (deferRender):
+      // Export and Start over then see the new name or the pending offer.
       try {
         const res = pyJSON("bridge.rename_folder(_cairn_key, _cairn_name)", { _cairn_key: key, _cairn_name: name });
-        if (res.ok) { g.name = res.name; g.safe = res.safe; RENAMED.add(key); }
-        else dup = res.duplicate;
+        if (res.ok) { syncLayout(res); clearError(); }
+        else PENDING_MERGE = { key, dup: res.duplicate, where, draft: name };
       } catch (e) {
         setStatus("Couldn't rename — " + humanError(e), "err"); console.error(e);
+        failed = true;
       }
     }
   }
-  // Leaving the field by Tab or a click: render once focus has landed, so the
-  // control being focused isn't rebuilt under it (as wireTextField does).
   const done = () => {
     if (!DATA) return;
+    if (failed) { resyncAfterFailure(); return; }
+    if (reopen) { startRename(key, "rail"); setStatus("A folder needs a name.", "err"); return; }
     // Leaving one name for another folder's: keep the new field's selection.
     const a = document.activeElement;
     const sel = a && a.classList.contains("folder-name-in") ? [a.selectionStart, a.selectionEnd] : null;
     renderEdit();
     const now = document.activeElement;
     if (sel && now && now.classList.contains("folder-name-in")) now.setSelectionRange(...sel);
-    if (dup && g && groupByKey(key)) offerMerge(g, dup, where);
+    offerPendingMerge();
   };
-  defer ? setTimeout(done) : done();
+  defer ? deferRender(done) : done();
+}
+
+/** The merge offer for a taken name, if one is waiting -- only on the edit
+    screen, and only while both folders still exist. */
+function offerPendingMerge() {
+  const m = PENDING_MERGE; PENDING_MERGE = null;
+  if (!m || !DATA || document.body.dataset.stage !== "edit" || CONFIRM) return;
+  const src = groupByKey(m.key), dst = groupByKey(m.dup.key);
+  if (src && dst) offerMerge(src, { key: dst.key, name: dst.name }, m.where, m.draft);
 }
 
 /** Empty a host before re-rendering it. Removing a focused folder-name field
@@ -1244,19 +1322,22 @@ function rebuild(host) {
   try { host.innerHTML = ""; } finally { REBUILDING = false; }
 }
 
-const fkEl = k => [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k) || null;
-
 /** The name is taken: offer to move this folder's items into that one.
-    Cancel (the default) keeps the old name. */
-function offerMerge(src, dup, where) {
+    Cancel (the default) keeps the old name -- except for a folder just made
+    by + New folder, whose name opens again with what was typed, to pick
+    another (its items stay in it either way). */
+function offerMerge(src, dup, where, draft = null) {
   const ret = fkEl(where === "head" ? "fname|" + src.key : "folder|" + src.key);
+  const cancel = where === "rail"
+    ? () => { closeConfirm(false); startRename(src.key, "rail", draft); }
+    : () => closeConfirm();
   openConfirm({
     title: `“${dup.name}” already exists`,
     body: `Move the ${plural(src.items.length, "item")} in “${src.name}” into it?`,
     ret,
     buttons: [
       { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
-      { label: "Cancel", initial: true, cancel: true, run: () => closeConfirm() },
+      { label: "Cancel", initial: true, cancel: true, run: cancel },
     ],
   });
 }
@@ -1265,16 +1346,16 @@ function mergeInto(srcKey, dstKey, where = "head") {
   const src = groupByKey(srcKey);
   if (!src || srcKey === dstKey) return;
   const uids = src.items.map(i => i.uid);
-  const before = groupOfUid();
-  let res;
+  let res, gone;
   try {
     res = pyJSON("bridge.merge_folders(_cairn_key, _cairn_key2)", { _cairn_key: srcKey, _cairn_key2: dstKey });
-    applyLayout(res);
+    gone = syncLayout(res);
   } catch (e) {
     setStatus("Couldn't move — " + humanError(e), "err"); console.error(e);
+    resyncAfterFailure();
     return;
   }
-  afterMove(res, uids, before);
+  afterMove(res, uids, gone);
   const to = (where === "head" && fkEl("fname|" + dstKey)) || fkEl("folder|" + dstKey);
   if (to) to.focus({ preventScroll: true });
 }
@@ -1359,6 +1440,8 @@ function wireRowDrag() {
     DRAG.x = e.clientX; DRAG.y = e.clientY;
     if (!DRAG.active) {
       if (Math.hypot(e.clientX - DRAG.x0, e.clientY - DRAG.y0) < DRAG_START_PX) return;
+      // A dialog that opened after the press (a merge offer) owns the screen.
+      if (CONFIRM || BULK) { DRAG = null; return; }
       startDrag();
     }
     e.preventDefault();
@@ -1369,14 +1452,19 @@ function wireRowDrag() {
     const d = DRAG;
     if (d.active || d.cancelled) swallowClick();
     if (d.active && !d.cancelled) {
+      // Where the button came up, not the last pointermove: the rail may
+      // have auto-scrolled, or the release moved, since then.
+      d.x = e.clientX; d.y = e.clientY;
       hitTest();
       const to = d.over;
       endDrag();
       if (to) moveTo(d.uids, to);
     } else endDrag();
   });
-  document.addEventListener("pointercancel", () => cancelDrag());
-  window.addEventListener("blur", () => cancelDrag());
+  // No pointerup follows these (the release happened in another window, or
+  // the browser took the pointer): drop the drag outright, keep nothing held.
+  document.addEventListener("pointercancel", () => abandonDrag());
+  window.addEventListener("blur", () => abandonDrag());
   // While a press may become a drag, the browser mustn't start selecting text.
   document.addEventListener("selectstart", e => { if (DRAG && (DRAG.active || DRAG.cancelled)) e.preventDefault(); });
   // The click that follows a drag lands on whatever is under the pointer.
@@ -1393,6 +1481,7 @@ function swallowClick() {
 function startDrag() {
   const d = DRAG;
   d.uids = SEL.has(d.uid) ? selectedItems().map(i => i.uid) : [d.uid];
+  d.uidSet = new Set(d.uids);
   d.here = hereKey(d.uids);
   d.active = true;
   // A press in an unfocused name field focused it: leave it without a change.
@@ -1403,7 +1492,7 @@ function startDrag() {
   if (RAIL_FOLDED.has("folders")) { d.unfolded = true; RAIL_FOLDED.delete("folders"); }
   document.body.classList.add("dragging-rows");
   document.querySelectorAll("#folders tbody tr[data-uid]").forEach(tr => {
-    if (d.uids.includes(tr.dataset.uid)) tr.classList.add("dragging");
+    if (d.uidSet.has(tr.dataset.uid)) tr.classList.add("dragging");
   });
   const ghost = document.createElement("div");
   ghost.id = "drag-ghost";
@@ -1465,15 +1554,22 @@ function endDrag() {
   if (DATA) renderRail();
 }
 
-/** Esc (or the window losing focus) mid-drag: put everything back. The press
-    is still held, so DRAG stays (cancelled) until it is released and the
-    click that follows can be swallowed. */
+/** Esc mid-drag: put everything back. The press is still held, so DRAG stays
+    (cancelled) until it is released and the click that follows can be
+    swallowed. */
 function cancelDrag() {
   if (!DRAG || DRAG.cancelled) return;   // a second Esc while still held
   if (!DRAG.active) { DRAG = null; return; }
   const id = DRAG.pointerId;
   endDrag();
   DRAG = { pointerId: id, cancelled: true, active: false };
+}
+
+/** The window lost focus or the browser cancelled the pointer: no pointerup
+    is coming, so nothing may wait for one. A cancelled-but-held DRAG left
+    here blocked the next press, text selection, Esc and a click. */
+function abandonDrag() {
+  if (DRAG) endDrag();
 }
 
 /* ---------- export ---------- */
@@ -1517,7 +1613,7 @@ function renderRunbook() {
     d.className = "rb-step";
     d.innerHTML = `
       <div class="rb-head">
-        <h2 class="rb-title">${esc(e.folder)} <span class="rb-meta">· <span class="rb-count">${plural(e.count, "markup")}</span> · <span class="rb-nfiles">${plural(nf, "file")}</span></span></h2>
+        <h2 class="rb-title"><span class="rb-name" title="${esc(e.folder)}">${esc(e.folder)}</span> <span class="rb-meta">· <span class="rb-count">${plural(e.count, "markup")}</span> · <span class="rb-nfiles">${plural(nf, "file")}</span></span></h2>
         <button type="button" class="btn rb-dl" data-n="${e.n}">Download this folder</button>
       </div>
       <div class="rb-files">${e.files.map(f =>
@@ -1544,10 +1640,13 @@ function downloadBlob(blob, name) {
    bridge.export_folder_zip reads the last export, nothing is exported again. */
 function downloadFolder(e) {
   try {
-    const bytes = py.runPython(`bridge.export_folder_zip(${Number(e.n)})`).toJs();
-    // Named like its directory inside Download all ("02_Trip_1.zip"): two
-    // names can sanitize alike ("A/B", "A_B"), their numbers can't.
-    downloadBlob(new Blob([bytes], { type: "application/zip" }), `${String(e.n).padStart(2, "0")}_${e.safe}.zip`);
+    // The number crosses as a global, like every other argument (pyJSON).
+    py.globals.set("_cairn_n", e.n);
+    const bytes = py.runPython("bridge.export_folder_zip(_cairn_n)").toJs();
+    // Named like its directory inside Download all ("02_Trip_1.zip", or
+    // "002_..." with 100+ folders): two names can sanitize alike, their
+    // numbers can't.
+    downloadBlob(new Blob([bytes], { type: "application/zip" }), py.runPython("bridge.export_folder_zip_name(_cairn_n)"));
   } catch (err) {
     setStatus("Download failed: " + err.message, "err"); console.error(err);
   }
@@ -1642,13 +1741,27 @@ function resetAll() {
   window.__cairnLoaded = false; window.__cairnExported = false;
 }
 
+/** Unexported changes, against the map as loaded (UI-32): each edited or
+    moved item once (an item moved back is not moved), and each loaded folder
+    whose name differs now. A merged-away or new folder's name isn't counted;
+    its items are, as moved. */
+function unexportedChanges() {
+  if (!DATA || !LOADED) return 0;
+  const uids = new Set(Object.keys(EDITS));
+  if (noteIsChanged()) uids.add(NOTE_EDIT.uid);
+  let renamed = 0;
+  DATA.groups.forEach(g => {
+    g.items.forEach(i => { if (LOADED.home.get(i.uid) !== g.key) uids.add(i.uid); });
+    if (LOADED.names.has(g.key) && LOADED.names.get(g.key) !== g.name) renamed++;
+  });
+  return uids.size + renamed;
+}
+
 function requestStartOver() {
   const ret = document.activeElement;
-  // Moves and renames are changes too (UI-32): each moved item once, each
-  // renamed folder once.
-  const uids = new Set([...Object.keys(EDITS), ...MOVED]);
-  if (noteIsChanged()) uids.add(NOTE_EDIT.uid);
-  const n = uids.size + RENAMED.size;
+  flushDeferred();                 // a name just left: its rename, or its merge offer, first
+  if (CONFIRM) return;
+  const n = unexportedChanges();
   openConfirm({
     title: "Start over?",
     body: n
@@ -1664,6 +1777,12 @@ function requestStartOver() {
 
 function requestExport() {
   const ret = document.activeElement;
+  // A folder name left by clicking Export: its rename happened, its render
+  // (and a taken name's merge offer) is waiting. Show it here, on the edit
+  // screen, and don't export the old name.
+  if (RENAME) finishRename(RENAME.key, true);
+  flushDeferred();
+  if (CONFIRM) return;
   if (!NOTE_EDIT) { doExport(); return; }
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
   if (!noteIsChanged()) { closeNote(it, false); doExport(); return; }
@@ -1697,6 +1816,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#clear-sel").onclick = () => { SEL.clear(); ANCHOR = null; renderFolders(); };
   $("#more-btn").onclick = e => {
     e.stopPropagation();
+    closeMove(false); closePop();   // never a menu under the Move to… list
     const open = $("#more-menu").classList.toggle("hidden") === false;
     $("#more-btn").setAttribute("aria-expanded", String(open));
     if (open) $("#more-menu button").focus();
@@ -1705,6 +1825,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const menuAct = (id, fn) => $(id).onclick = () => { closeMenu(); fn(); };
   menuAct("#bulk-move", openMoveTo);
   wireRowDrag();
+  wirePointerHeld();
   menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: oneLine(it.desc) } : {}));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
@@ -1720,7 +1841,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#bulk-icon").onclick = openBulk;
   $("#bulk-line").onclick = openLineBulk;
   $("#export").onclick = requestExport;
-  $("#back").onclick = () => showStage("edit");
+  $("#back").onclick = () => { showStage("edit"); setStatus(""); };
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
   $("#confirm").addEventListener("click", e => { if (e.target === $("#confirm")) cancelConfirm(); });
   $("#download").onclick = () => downloadBlob(ZIP, "onx_ready.zip");
@@ -1758,8 +1879,10 @@ window.addEventListener("DOMContentLoaded", () => {
       if (SEL.size) { SEL.clear(); ANCHOR = null; renderFolders(); }
       return;
     }
+    // Not behind anything in front: a dialog, Move to… or Help.
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && !typing && DATA &&
-        document.body.dataset.stage === "edit" && !BULK && !POP) {
+        document.body.dataset.stage === "edit" && !BULK && !POP && !MOVE && !CONFIRM &&
+        $("#help").classList.contains("hidden")) {
       e.preventDefault();
       setSelectAll(!(SEL.size && SEL.size === selectableItems().length));
     }
