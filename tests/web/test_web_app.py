@@ -3818,3 +3818,92 @@ def test_shift_click_drag_and_move_to_follow_the_sorted_rows(fresh_page: Page):
     page.locator(f"#move-pop .move-opt[data-key]:not([disabled])", has_text=SEGMENTS).click()
     assert u in page.evaluate(f"DATA.groups.find(g => g.name === {SEGMENTS!r}).items.map(i => i.uid)")
     assert set(_sort_states(page)) == {"ascending"}
+
+
+# --- 4. Per-item caution: what won't carry over --------------------------------
+
+
+def _caution(page: Page, uid: str):
+    return page.locator(f'tr[data-uid="{uid}"] .caution')
+
+
+def test_a_note_over_onxs_limit_gets_a_caution_that_goes_when_it_is_shortened(loaded: Page):
+    page = loaded
+    _wide(page)
+    uid = _first_row(page, "Lost Trail Pass").get_attribute("data-uid")
+    expect(_caution(page, uid)).to_have_count(0)
+    _set(page, uid, desc="x" * 600)
+    msg = "onX keeps the first 512 bytes of this note; about 88 characters will be cut."
+    expect(_caution(page, uid)).to_have_attribute("aria-label", msg)
+    _caution(page, uid).hover()
+    expect(_tip(page)).to_have_text(msg)
+    _shot(page, "4a-long-note-caution")
+    # Bytes, not characters: 300 "é" are 600 bytes, of which 256 fit.
+    _set(page, uid, desc="é" * 300)
+    expect(_caution(page, uid)).to_have_attribute(
+        "aria-label", "onX keeps the first 512 bytes of this note; about 44 characters will be cut.")
+    # Exactly 512 bytes: no caution. Shortened in the note editor: gone at once.
+    _set(page, uid, desc="x" * 512)
+    expect(_caution(page, uid)).to_have_count(0)
+    _set(page, uid, desc="x" * 513)
+    expect(_caution(page, uid)).to_have_count(1)
+    page.locator(f'tr[data-uid="{uid}"] .note-btn').click()
+    page.locator(".desc-in").fill("x" * 400)
+    page.click(".note-apply")
+    expect(_caution(page, uid)).to_have_count(0)
+    # Keyboard: the mark is a focus stop with its tip.
+    _set(page, uid, desc="y" * 700)
+    page.wait_for_timeout(350)                         # not right after a click (pointer focus)
+    _caution(page, uid).focus()
+    expect(_tip(page)).to_have_text(
+        "onX keeps the first 512 bytes of this note; about 188 characters will be cut.")
+    page.keyboard.press("Escape")
+    # An excluded row isn't exported: no caution.
+    _set(page, uid, included=False)
+    expect(_caution(page, uid)).to_have_count(0)
+
+
+def test_the_caution_marks_the_same_notes_the_export_lists(fresh_page: Page, tmp_path):
+    from tests.hardening_maps import make_map
+    page = fresh_page
+    f = tmp_path / "notes.json"
+    f.write_text(make_map(3, seed=4, per=(4, 6), long_notes=True))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    marked = page.locator("tr[data-uid]:has(.caution)").evaluate_all(
+        "els => els.map(e => e.querySelector('.name-in').value)")
+    assert marked
+    _done(page)
+    listed = [n for e in page.evaluate("MANIFEST") for n, _bytes in e["long_notes"]]
+    assert sorted(marked) == sorted(listed)
+
+
+def test_an_onx_area_whose_fill_onx_resets_gets_a_caution(fresh_page: Page):
+    page = fresh_page
+    _wide(page)
+    fx = FX_DIR / "onx_exports"
+    page.set_input_files("#file", [str(fx / "areas-after-edit.gpx"), str(fx / "areas-after-edit.kml")])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    _keep_fills(page)
+    msg = "onX will reset this area's fill to its default blue."
+    areas = page.evaluate("allItems().filter(i => i.kind === 'shapes').map(i => [i.uid, i.fill])")
+    assert len(areas) == 4
+    for uid, fill in areas:
+        expect(_caution(page, uid)).to_have_attribute("aria-label", msg)
+    _caution(page, areas[0][0]).hover()
+    expect(_tip(page)).to_have_text(msg)
+    _shot(page, "4b-area-fill-caution")
+    # A transparent ("none") or default fill: no caution.
+    page.evaluate("([u, v]) => { const it = allItems().find(i => i.uid === u); it.fill = v; renderFolders(); }",
+                  [areas[0][0], "rgba(0,0,0,0)"])
+    expect(_caution(page, areas[0][0])).to_have_count(0)
+    page.evaluate("([u, v]) => { const it = allItems().find(i => i.uid === u); it.fill = v; renderFolders(); }",
+                  [areas[1][0], "rgba(74,144,226,0.1)"])
+    expect(_caution(page, areas[1][0])).to_have_count(0)
+    # Waypoints and lines of the same onX map: none.
+    expect(page.locator("tr:has(.icon-btn) .caution")).to_have_count(0)
+
+
+def test_no_caution_on_a_plain_caltopo_map(loaded: Page):
+    long_notes = loaded.evaluate("allItems().filter(i => new TextEncoder().encode(i.desc || '').length > 512).length")
+    expect(loaded.locator(".caution")).to_have_count(long_notes)

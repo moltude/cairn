@@ -692,8 +692,35 @@ function wireTip() {
   window.addEventListener("scroll", e => { if (e.target !== tip && tipShown()) hideTip(); }, true);
   window.addEventListener("resize", hideTip);
 }
-/** What won't carry over to onX for this item, one plain line each (item 4). */
-function cautionText(it) { return null; }
+/* ---------- what won't carry over (round 4) ----------
+   A caution mark beside a row's note, before export, for what onX will
+   change on import: a note over its 512-byte limit (the bridge's
+   ONX_IMPORT_NOTE_LIMIT, the export's long_notes rule) and an onX area whose
+   fill onX will reset (UI-30's rule, except a transparent / none fill). One
+   plain line each; the tip shows them. An excluded row isn't exported, so it
+   has none. Rows re-render after every edit, so the mark follows the note. */
+const NOTE_LIMIT = 512;
+const utf8Len = cp => cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+/** [bytes, characters past the limit] of a note, by UTF-8 bytes. */
+function noteOverflow(desc) {
+  let bytes = 0, kept = 0, total = 0;
+  for (const ch of String(desc || "")) {
+    bytes += utf8Len(ch.codePointAt(0)); total++;
+    if (bytes <= NOTE_LIMIT) kept++;
+  }
+  return [bytes, total - kept];
+}
+const fillAlpha = f => { const m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(f || ""); return m ? parseFloat(m[1]) : 1; };
+function cautionText(it) {
+  if (!it.included) return null;
+  const lines = [];
+  const [bytes, cutN] = noteOverflow(it.desc);
+  if (bytes > NOTE_LIMIT)
+    lines.push(`onX keeps the first ${NOTE_LIMIT} bytes of this note; about ${plural(Math.max(cutN, 1), "character")} will be cut.`);
+  if (fillChanges(it) && fillAlpha(it.fill) > 0)
+    lines.push("onX will reset this area's fill to its default blue.");
+  return lines.length ? lines.join("\n") : null;
+}
 
 function row(it) {
   const tr = document.createElement("tr");
@@ -709,13 +736,14 @@ function row(it) {
   const cname = colorName(it.color);
   const iconLabel = it.needs_attention ? "Default pin" : it.icon;
   const fk = esc(it.uid) + "|";
+  const caution = cautionText(it);
   tr.innerHTML = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
-        <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
+      `<div class="note-cell">${caution ? `<span class="caution" tabindex="0" role="img" data-fk="${fk}caution" aria-label="${esc(caution)}">${UI_ICON.caution}</span>` : ""}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
+        <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
           ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>`
@@ -1962,8 +1990,9 @@ function cancelConfirm() { if (CONFIRM && CONFIRM.cancel) CONFIRM.cancel.run(); 
    an onX id) with any other fill, "none" included, would change, so say so once
    on load and offer to leave them out of the export. */
 const ONX_DEFAULT_FILL = "rgba(74,144,226,0.1)";
+const fillChanges = i => i.kind === "shapes" && !!i.onx_id && !!i.fill && i.fill !== ONX_DEFAULT_FILL;
 function fillLossItems() {
-  return allItems().filter(i => i.kind === "shapes" && i.onx_id && i.fill && i.fill !== ONX_DEFAULT_FILL);
+  return allItems().filter(fillChanges);
 }
 function warnFillLoss() {
   const hit = fillLossItems();
