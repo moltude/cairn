@@ -503,11 +503,10 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 
 /* walkthrough */
 .wt-lede{font-size:18px;line-height:1.55}
-.doc .wt-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:28px 0 8px;padding:0;list-style:none}
+.doc .wt-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:28px 0 48px;padding:0;list-style:none}
 .wt-stats li{background:var(--card);border:1px solid var(--rule);padding:14px 16px;margin:0}
 .wt-stats b{display:block;font-size:34px;line-height:1.1;color:var(--green)}
 .wt-stats span{font-size:13px;color:var(--muted);line-height:1.35;display:block;margin-top:4px}
-.wt-note{font-size:13px;color:var(--muted);font-style:italic;margin:6px 0 40px}
 .wt-step{margin:0 0 56px;scroll-margin-top:72px}
 .wt-foot{scroll-margin-top:72px;margin:0 0 24px}
 .wt-lede sup{font-size:.7em;line-height:0}
