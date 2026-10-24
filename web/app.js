@@ -28,7 +28,18 @@ let PENDING_MERGE = null;              // a taken name, waiting for its deferred
 const NEW_TARGET = "\u0000new";        // drop key of the rail's "+ New folder"
 
 const $ = s => document.querySelector(s);
-const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; e.className = "status " + cls; };
+/* A "ready" line ("Moved 2 items to …") is a receipt, not state: it clears itself
+   after STATUS_LINGER_MS if nothing else has replaced it. Errors and in-progress
+   lines stay until something supersedes them. */
+let STATUS_LINGER_MS = 8000;
+let STATUS_TIMER = null;
+const setStatus = (t, cls = "") => {
+  const e = $("#status"); e.textContent = t; e.className = "status " + cls;
+  clearTimeout(STATUS_TIMER); STATUS_TIMER = null;
+  if (t && cls === "ready") STATUS_TIMER = setTimeout(() => {
+    if (e.textContent === t) { e.textContent = ""; e.className = "status "; }
+  }, STATUS_LINGER_MS);
+};
 /** An error that a later success has made stale ("A folder needs a name."). */
 const clearError = () => { if ($("#status").classList.contains("err")) setStatus(""); };
 

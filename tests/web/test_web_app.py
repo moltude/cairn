@@ -550,6 +550,18 @@ def test_export_screen_back_and_start_over(loaded: Page):
     assert loaded.evaluate("document.querySelector('#runbook').childElementCount") == 0
 
 
+def test_a_ready_status_line_clears_itself_but_keeps_its_announcement_first(loaded: Page):
+    st = loaded.locator("#status")
+    loaded.evaluate("STATUS_LINGER_MS = 2500; setStatus('Moved 1 item to X.', 'ready')")
+    loaded.wait_for_timeout(1700)
+    assert st.text_content() == "Moved 1 item to X."
+    expect(st).to_have_text("", timeout=4000)
+    # An error is not a receipt: it stays.
+    loaded.evaluate("setStatus('Boom', 'err')")
+    loaded.wait_for_timeout(3000)
+    assert st.text_content() == "Boom"
+
+
 # ---------------------------------------------------------------------------
 # Negative: malformed input
 # ---------------------------------------------------------------------------
