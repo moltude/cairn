@@ -125,9 +125,13 @@ _SAFE_MAX_BYTES = 80
 def _safe(name: str) -> str:
     s = re.sub(r"[^\w\s-]", "", (name or "").strip()).strip()
     s = re.sub(r"[-\s]+", "_", s)
+    raw = s.encode("utf-8")
+    if len(raw) <= _SAFE_MAX_BYTES:
+        return s or "Unnamed"          # never cut: exactly main's name ("Trip -" -> "Trip_")
     # The longest whole-character prefix that fits: "ignore" drops a character
-    # the byte cut split. (One slice, not a char-at-a-time loop.)
-    s = s.encode("utf-8")[:_SAFE_MAX_BYTES].decode("utf-8", "ignore")
+    # the byte cut split. (One slice, not a char-at-a-time loop.) Only a cut
+    # name loses a trailing "_": the cut may have landed just after one.
+    s = raw[:_SAFE_MAX_BYTES].decode("utf-8", "ignore")
     return s.rstrip("_") or "Unnamed"
 
 

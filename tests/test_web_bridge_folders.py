@@ -661,9 +661,25 @@ def test_new_folder_takes_the_first_free_default_name_by_the_bridges_rule():
 def _old_safe(name: str) -> str:
     s = re.sub(r"[^\w\s-]", "", (name or "").strip()).strip()
     s = re.sub(r"[-\s]+", "_", s)
+    if len(s.encode("utf-8")) <= bridge._SAFE_MAX_BYTES:
+        return s or "Unnamed"
     while len(s.encode("utf-8")) > bridge._SAFE_MAX_BYTES:
         s = s[:-1]
     return s.rstrip("_") or "Unnamed"
+
+
+def _main_safe(name: str) -> str:
+    """main's _safe, verbatim (before the 80-byte cap)."""
+    s = re.sub(r"[^\w\s-]", "", (name or "").strip()).strip()
+    return re.sub(r"[-\s]+", "_", s) or "Unnamed"
+
+
+@pytest.mark.parametrize("name", ["Trip -", "Trip_", "___", "_", "-", "a - b -", "_x_", "Camp #2 -",
+                                  "Lost Trail #2 & Co.", "Peak 🏔️", "..", "", "x" * 80, "a" * 79 + "_"])
+def test_safe_is_mains_for_a_name_that_was_never_cut(name):
+    """Round 3 #2: the trailing-"_" strip is for a cut name only; every other
+    name gets exactly the file name it got on main ('Trip -' -> 'Trip_')."""
+    assert bridge._safe(name) == _main_safe(name)
 
 
 @pytest.mark.parametrize("name", ["ä" * 200, "x" * 300, "日本語のフォルダ" * 20, "a" * 79 + " b",

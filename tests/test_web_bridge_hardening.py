@@ -99,8 +99,10 @@ def test_renaming_to_a_very_long_name_still_exports():
     _check_export(_export())
 
 
-def test_safe_never_ends_in_the_separator_or_empties():
+def test_a_cut_safe_name_never_ends_in_the_separator_or_empties():
+    # Only a CUT name loses a trailing "_" (round 3 #2): "Trip -" is still "Trip_".
     assert bridge._safe("a" * 79 + " b") == "a" * 79
+    assert bridge._safe("_" * 100) == "Unnamed"
     assert bridge._safe("🏔️") == "Unnamed"
     assert bridge._safe("..") == "Unnamed"
     assert bridge._safe("short name") == "short_name"
