@@ -200,6 +200,7 @@ async function handleFiles(files) {
     resetFilters(); COLLAPSED.clear(); RAIL_FOLDED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
     SORT = null; hideTip();
     resetFolderState();
+    $("#runbook").replaceChildren();
     SAVED = savedState();
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
@@ -2075,6 +2076,7 @@ function noteIsChanged() {
 
 function resetAll() {
   closePop(); closeBulk(); resetFolderState();
+  $("#runbook").replaceChildren();
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
   SORT = null; hideTip();
   resetFilters();

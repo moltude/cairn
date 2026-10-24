@@ -547,6 +547,7 @@ def test_export_screen_back_and_start_over(loaded: Page):
     loaded.click("#confirm .confirm-actions button:text-is('Start over')")
     expect(loaded.locator("body")).to_have_attribute("data-stage", "drop")
     assert loaded.evaluate("DATA === null && ZIP === null")
+    assert loaded.evaluate("document.querySelector('#runbook').childElementCount") == 0
 
 
 # ---------------------------------------------------------------------------
