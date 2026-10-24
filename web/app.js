@@ -369,12 +369,15 @@ function renderEdit() {
 
 function renderRail() {
   const fk = focusedKey();
-  // Type: each kind with its count; "Areas" only when the map has any.
+  // Type: "All", then each kind the map has (Areas, Lines, Waypoints: alphabetical,
+  // fixed in index.html) with its count. A kind with none is hidden, unless it is
+  // the filter in use (so it can be seen and cleared).
   const byKind = { "": 0, waypoints: 0, tracks: 0, shapes: 0 };
   allItems().forEach(i => { byKind[""]++; byKind[i.kind] = (byKind[i.kind] || 0) + 1; });
   document.querySelectorAll("#type-filter [data-kind]").forEach(b => {
     b.querySelector(".facet-count").textContent = byKind[b.dataset.kind] || 0;
-    if (b.dataset.kind === "shapes") b.classList.toggle("hidden", !byKind.shapes && FILTERS.kind !== "shapes");
+    const k = b.dataset.kind;
+    if (k) b.classList.toggle("hidden", !byKind[k] && FILTERS.kind !== k);
   });
   syncTypeFacet();
 
@@ -433,16 +436,16 @@ function renderRail() {
   nf.onclick = newFolderClicked;
   fl.appendChild(nf);
 
-  // Icons present in the map, most common first; "Default pin" last.
+  // Icons present in the map: "Default pin" first (owner, 2026-10-24), then the
+  // icons alphabetically (natural, any case).
   const counts = new Map();
   allItems().filter(i => i.kind === "waypoints").forEach(i => {
     const k = iconKey(i); counts.set(k, (counts.get(k) || 0) + 1);
   });
-  const keys = [...counts.keys()].filter(k => k !== DEFAULT_PIN)
-    .sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b));
-  if (counts.has(DEFAULT_PIN) || FILTERS.attention) keys.push(DEFAULT_PIN);
-  // keep an icon you're filtering on visible even after its last item changed
-  FILTERS.icons.forEach(k => { if (!keys.includes(k)) keys.splice(keys.length - (keys.at(-1) === DEFAULT_PIN), 0, k); });
+  // Keep an icon you're filtering on visible even after its last item changed.
+  const keys = [...new Set([...counts.keys(), ...FILTERS.icons])].filter(k => k !== DEFAULT_PIN)
+    .sort((a, b) => NAME_ORDER.compare(a, b));
+  if (counts.has(DEFAULT_PIN) || FILTERS.attention) keys.unshift(DEFAULT_PIN);
   const il = $("#icon-facets"); il.innerHTML = "";
   keys.forEach(k => {
     const def = k === DEFAULT_PIN;

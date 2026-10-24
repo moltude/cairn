@@ -1375,7 +1375,32 @@ def test_type_filter_lives_in_the_rail_with_counts(loaded: Page):
         .map(b => [b.dataset.kind, b.querySelector('.facet-count').textContent]))""")
     assert counts == {"": "177", "waypoints": "68", "tracks": "92", "shapes": "17"}
     names = loaded.locator("#type-filter .facet-name").all_inner_texts()
-    assert names == ["All", "Waypoints", "Lines", "Areas"]
+    assert names == ["All", "Areas", "Lines", "Waypoints"]   # All, then alphabetical
+
+
+def test_rail_groupings_are_all_first_then_alphabetical(loaded: Page):
+    """Owner feedback 2026-10-24: TYPE is All, then Areas, Lines, Waypoints
+    (only those present); FOLDERS is All, then folder order; ICON is Default
+    pin, then the icons alphabetically."""
+    page = loaded
+    _wide(page)
+    expect(page.locator("#type-filter .facet-btn:visible .facet-name")).to_have_text(
+        ["All", "Areas", "Lines", "Waypoints"])
+    folders = page.locator("#folder-facets .facet-btn .facet-name").all_inner_texts()
+    assert folders[0] == "All" and folders[1:] == [n for n, _ in _layout(page)]
+    icons = page.locator("#icon-facets .facet-name").all_inner_texts()
+    assert icons[0] == "Default pin"
+    assert icons[1:] == page.evaluate("ns => [...ns].sort((a, b) => NAME_ORDER.compare(a, b))", icons[1:])
+    assert icons[1:] == sorted(icons[1:], key=str.casefold)
+    page.locator(".rail").evaluate("e => e.scrollTop = 1e6")
+    _shot(page, "fb-7-rail-groupings")
+
+
+def test_type_lists_only_the_kinds_the_map_has(fresh_page: Page):
+    page = fresh_page
+    page.set_input_files("#file", str(FIXTURE.parent / "bitterroots_subet.gpx"))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    expect(page.locator("#type-filter .facet-btn:visible .facet-name")).to_have_text(["All", "Waypoints"])
 
 
 def test_rail_sections_fold_and_unfold(loaded: Page):

@@ -63,9 +63,10 @@
       <button type="button" class="sec-h" data-fk="sec|type" aria-expanded="true" aria-controls="type-filter"><span class="label">Type</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
       <div id="type-filter" class="facet-list" role="group" aria-label="Filter by type">
         <button type="button" class="facet-btn" data-kind="" data-fk="type|all" aria-pressed="true"><span class="facet-name">All</span><span class="facet-count"></span></button>
-        <button type="button" class="facet-btn" data-kind="waypoints" data-fk="type|waypoints" aria-pressed="false"><span class="facet-name">Waypoints</span><span class="facet-count"></span></button>
-        <button type="button" class="facet-btn" data-kind="tracks" data-fk="type|tracks" aria-pressed="false"><span class="facet-name">Lines</span><span class="facet-count"></span></button>
+        <!-- All first, then alphabetical (owner, 2026-10-24); only the kinds the map has. -->
         <button type="button" class="facet-btn" data-kind="shapes" data-fk="type|shapes" aria-pressed="false"><span class="facet-name">Areas</span><span class="facet-count"></span></button>
+        <button type="button" class="facet-btn" data-kind="tracks" data-fk="type|tracks" aria-pressed="false"><span class="facet-name">Lines</span><span class="facet-count"></span></button>
+        <button type="button" class="facet-btn" data-kind="waypoints" data-fk="type|waypoints" aria-pressed="false"><span class="facet-name">Waypoints</span><span class="facet-count"></span></button>
       </div>
     </section>
     <section class="facet" data-sec="folders">

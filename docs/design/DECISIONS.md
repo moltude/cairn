@@ -791,6 +791,12 @@ Status: decided 2026-10-23 (owner, from the layout mockups; option C chosen).
   icon & color / line popover, the Icon & color… and Line style dialogs, the confirmations and
   Help keep today's sizes (the owner prefers the larger pop-up). The drop and done screens are
   unchanged. At 1440×900 the list shows 18 full rows (was 11).
+- **Order (owner feedback 2026-10-24).** Each section is "All" first, then alphabetical:
+  Type is All, Areas, Lines, Waypoints, listing only the kinds the map has (a kind with none
+  shows only while it is the filter in use); Folders is All, then the folder order (ENG-07: by
+  name, Unorganized last); Icon is *Default pin* pinned at the top, then the icons
+  alphabetically (natural, any case). It was Waypoints / Lines / Areas, and icons most common
+  first with Default pin last.
 - Options not taken (layout canvas): A, every filter in the rail as flat lists that don't fold;
   B, one filter bar over the list with no facet rail. D (the icon popover at the smaller scale)
   was declined: the pop-ups stay at today's size.
