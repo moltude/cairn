@@ -89,8 +89,8 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
     </extensions>
   </wpt>
   <wpt lat="46.311960167261105" lon="-121.73167760978698">
@@ -106,8 +106,8 @@ Restrooms: No
 Cutoff Time: 5:00 PM Friday
 Total Hours to Cutoff: 12 hours</desc>
     <extensions>
-      <onx:icon>Water Source</onx:icon>
-      <onx:color>rgba(0,255,255,1)</onx:color>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
     </extensions>
   </wpt>
   <wpt lat="46.275128617318636" lon="-121.82902291015625">
@@ -122,8 +122,8 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
     </extensions>
   </wpt>
   <wpt lat="46.208771496190735" lon="-121.90199139304161">
@@ -139,8 +139,8 @@ Restrooms: No
 Cutoff Time: 6:00 AM Saturday
 Total Time to Cutoff: 25 hours</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
     </extensions>
   </wpt>
   <wpt lat="46.176200576557456" lon="-121.85981851520539">
@@ -155,8 +155,8 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
     </extensions>
   </wpt>
   <wpt lat="46.20076375064616" lon="-121.77380128339766">
@@ -171,8 +171,8 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
-      <onx:color>rgba(8,122,255,1)</onx:color>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
     </extensions>
   </wpt>
   <wpt lat="46.24177927530343" lon="-121.72971556869985">
@@ -188,8 +188,8 @@ Restrooms: No
 Cutoff Time: 5:00 PM Saturday
 Total Time to Cutoff: 36 hours</desc>
     <extensions>
-      <onx:icon>Summit</onx:icon>
-      <onx:color>rgba(255,0,0,1)</onx:color>
+      <onx:icon>Food Source</onx:icon>
+      <onx:color>rgba(139,69,19,1)</onx:color>
     </extensions>
   </wpt>
 </gpx>

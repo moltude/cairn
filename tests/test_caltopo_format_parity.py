@@ -34,6 +34,9 @@ DD_CUSTOM_ICON_MARKERS = [
     "01 - Cispus Learning Center Start/Finish", "02 - Juniper Ridge AS (Used Twice)",
     "03 - Sunrise AS (Used Twice)", "04 - Dark Creek AS", "05 - Wilderness Crossing AS",
     "06 - Wright Meadow AS", "07 - Lewis River AS", "08 - Quartz Butte AS",
+    # Was equal by chance while its name mapped to Summit (red, like CalTopo's);
+    # since 2026-10-24 "AS" maps it to Food Source like the other aid stations.
+    "09 - Summit Prairie AS",
 ]
 
 

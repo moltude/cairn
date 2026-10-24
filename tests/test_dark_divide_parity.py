@@ -74,6 +74,9 @@ CUSTOM_ICON_MARKERS = {
     "01 - Cispus Learning Center Start/Finish", "02 - Juniper Ridge AS (Used Twice)",
     "03 - Sunrise AS (Used Twice)", "04 - Dark Creek AS", "05 - Wilderness Crossing AS",
     "06 - Wright Meadow AS", "07 - Lewis River AS", "08 - Quartz Butte AS",
+    # Was equal by chance while its name mapped to Summit (red, like CalTopo's);
+    # since 2026-10-24 "AS" maps it to Food Source like the other aid stations.
+    "09 - Summit Prairie AS",
 }
 LINE_10 = "10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS"
 
@@ -121,7 +124,7 @@ def test_gpx_differs_only_where_gpx_lacks_the_data(results):
 def test_kml_export_is_the_geojson_export_but_the_marker_colours(results):
     """What onX is handed from the KML: the same files and bytes as from the
     GeoJSON (folders, line colours, elevations -- CalTopo's 0.0 altitude is not
-    written as sea level), except the 8 custom-icon markers' <onx:color>."""
+    written as sea level), except the 9 custom-icon markers' <onx:color>."""
     out, _, _ = results
     a, b = out / "cairn_output" / "from_geojson", out / "cairn_output" / "from_kml"
     fa = {p.relative_to(a): p.read_text() for p in a.rglob("*") if p.is_file()}
@@ -132,7 +135,7 @@ def test_kml_export_is_the_geojson_export_but_the_marker_colours(results):
     la, lb = fa[changed[0]].splitlines(), fb[changed[0]].splitlines()
     assert len(la) == len(lb)
     diff = [(x, y) for x, y in zip(la, lb) if x != y]
-    assert len(diff) == 8 and all("<onx:color>" in x and "<onx:color>" in y for x, y in diff)
+    assert len(diff) == len(CUSTOM_ICON_MARKERS) and all("<onx:color>" in x and "<onx:color>" in y for x, y in diff)
 
 
 def test_export_reread_matches_review_including_special_character_names(results):

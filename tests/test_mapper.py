@@ -31,7 +31,9 @@ class TestMapIcon:
     def test_summit_keyword(self):
         """Summit keywords matched."""
         assert map_icon("Summit marker", "") == "Summit"
-        assert map_icon("Peak viewpoint", "") == "Summit"
+        assert map_icon("Peak elevation", "") == "Summit"
+        # A tie goes to the later word: a viewpoint on a peak is a viewpoint.
+        assert map_icon("Peak viewpoint", "") == "View"
         assert map_icon("Mt. Hood", "") == "Summit"
 
     def test_hazard_keyword(self):
@@ -302,7 +304,8 @@ class TestKeywordMappingsWithConfig:
         assert map_icon("Base Camp", "", "", config) == "Camp"
         assert map_icon("Sleep spot", "", "", config) == "Camp"
         assert map_icon("Overnight location", "", "", config) == "Camp"
-        assert map_icon("Camping area", "", "", config) == "Camp"
+        # "camping area" is Camp Area's phrase and ends later than "camping".
+        assert map_icon("Camping area", "", "", config) == "Camp Area"
 
     def test_camping_keywords_case_insensitive(self, config):
         """Camping keyword matching is case-insensitive."""

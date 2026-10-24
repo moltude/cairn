@@ -698,6 +698,24 @@ on a duplicate name (the owner wants the merge offered, RenameMerge mockup); re-
 by size after each move; sorting folders in the UI only (two collators could disagree with the
 export's numbers).
 
+### ENG-08 — Icon keywords: the name first, a tie to the later word (2026-10-24)
+Status: decided. The Dark Divide race map's nine aid stations, all named "<place> AS", came out
+as four different icons: Juniper Ridge AS was Food Source (its note spells out "aid station"),
+Dark Creek AS was Water Source, Summit Prairie AS was Summit, the rest the default pin. Pooling
+the name and the note let place words decide, and nothing read "AS".
+
+- The name decides when any keyword matches it; the note is read only when none does.
+- In the name, a tie in matches goes to the icon whose match ends later. Place names end in what
+  the place is: "Mill Creek TH" is a trailhead, "Camp Creek" a creek, "Peak viewpoint" a view.
+- "AS" in capitals, as a whole word in the name, reads as "aid station" (`_TITLE_ABBREVIATIONS`
+  in `cairn/core/icon_resolver.py`). Lower-case "as" doesn't. The review screen shows it as
+  written: Matched "AS" in the name.
+- The "why" text says "in the note" when the note made the match.
+
+Effect on the fixtures: all nine Dark Divide aid stations are Food Source (default pins 6 → 1);
+Bitterroots' "Mill Creek TH?" and "Bass Creek TH" are Trailhead, not Water Source. Symbol
+matches still beat keywords.
+
 ### UI-25 — Line style and weight editing
 Status: decided 2026-10-23 (from the line-style option canvas: 2C, and the Style / Weight
 dialog). Engine support already existed (`apply_edits` `style`, `weight`).

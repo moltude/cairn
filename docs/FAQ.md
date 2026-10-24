@@ -64,7 +64,7 @@ It checks in this order for each waypoint and stops at the first hit:
 
 1. **Your CalTopo symbol, exact match.** For example, `cabin` maps to `Shelter`.
 2. **Your CalTopo symbol, partial match.** The longest mapping key found inside the symbol name wins.
-3. **Keywords in the name and description.** Single-word keywords such as "hut", "camp" or "spring" must match a whole word. Keywords that contain a space, such as "trail head", match anywhere in the text. Each matching keyword scores a point. The highest score wins, and a tie goes to whichever icon comes first in the mapping list. The folder name is never scanned. A known gap: digits stuck to a word stop it matching, so "Camp 2" matches `camp` but "Camp2" doesn't.
+3. **Keywords in the name, then the note.** The note is only read when nothing in the name matches. Single-word keywords such as "hut", "camp" or "spring" must match a whole word. Keywords that contain a space, such as "trail head", match anywhere in the text. "AS" in capitals reads as "aid station". Each matching keyword scores a point and the highest score wins. In the name, a tie goes to the later word, so "Mill Creek TH" is a trailhead and "Camp Creek" is a creek. Any other tie goes to whichever icon comes first in the mapping list. The folder name is never scanned. A known gap: digits stuck to a word stop it matching, so "Camp 2" matches `camp` but "Camp2" doesn't.
 4. **The default pin, `Location`.**
 
 Generic CalTopo symbols (`point`, `marker`, `pin`, `dot`, `circle`) carry no meaning, so Cairn skips steps 1 and 2 for them and goes straight to keywords. A waypoint called "Elk Hut" with a plain `point` symbol still ends up as `Shelter`. A symbol that matches always beats the keywords.

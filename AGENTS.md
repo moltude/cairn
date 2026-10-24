@@ -35,8 +35,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-24 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup, owner feedback 2026-10-24 UI-36..38, public copy cleanup and sticky top bar): **1357 passed** with the web dev server up; without
-it the `tests/web` tests skip. (Copy cleanup and sticky bar took it from 1349. Owner feedback 2026-10-24 added 32; before it 1317. The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
+Baseline as of 2026-10-24 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup, owner feedback 2026-10-24 UI-36..38, public copy cleanup and sticky top bar, keyed in-place rendering, icon keyword ties ENG-08): **1367 passed** with the web dev server up; without
+it the `tests/web` tests skip. (Keyed rendering added 7 identity tests and ENG-08 added 3; before them 1357. Copy cleanup and sticky bar took it from 1349. Owner feedback 2026-10-24 added 32; before it 1317. The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 
@@ -108,7 +108,8 @@ readers via document_adapter.
   `test_page_boots_under_enforced_csp` is the one test that boots without the bypass and is the
   only thing standing between a CSP change and a silently broken production boot. `BASE_URL` in
   the environment points the suite at a live deployment (unreachable explicit URL = failure,
-  not skip).
+  not skip). For production use `BASE_URL=https://cairn-five-blue.vercel.app/`: the
+  quietmarch.to/cairn front (a Cloudflare Worker) answers Python's urllib probe with 403.
 
 ## Known traps
 
@@ -190,6 +191,50 @@ readers via document_adapter.
   needing to know what changed and why had nothing to diff against — no git history, no
   recoverable tool-call trail, only the final file. Commit working prototype code early and often,
   even before it's "done" — an ugly commit history beats an unrecoverable one.
+
+## Style and design
+
+The UI was redesigned with the owner in 2026-10, mockups first. Decisions live in
+`docs/design/DECISIONS.md` (UI-NN / ENG-NN, each with a status and the why). Before changing
+anything visible, read the relevant entry.
+
+**How UI work is done here**
+- Mockups before code. For a new screen, dialog or layout change, show the owner options as an
+  Artifact or design canvas, with real data (Bitterroots, Dark Divide). Build only after they
+  pick one. A small fix inside an existing pattern doesn't need a mockup.
+- One light theme, no dark mode. Desktop only (ENG-02).
+- Before calling UI work done, screenshot every page and state at 1440×900 and compare them side
+  by side: landing, edit, the popover and dialogs, Help, export, FAQ, walkthrough. Fix any drift
+  in nav, links, kickers, headings, panels or spacing. The owner shouldn't have to spot it.
+- Regenerate screenshots after a visible change: `scripts/make_walkthrough_shots.py` and
+  `scripts/make_readme_shots.py` (both take `BASE_URL`). Rebuild the FAQ page from
+  `docs/FAQ.md` with `scripts/build_faq_page.py` (CI-style check: `--check`).
+
+**Look and components** (tokens are `:root` custom properties in `web/styles.css`; reuse them,
+don't add raw colours)
+- Topo field guide. The paper background (`--paper`) has contour lines (`--contour-bg`). Text
+  never sits on the contours: content blocks get a paper panel (`.doc-main`, `.drop-copy`).
+- Type: Libre Caslon (`--serif`) everywhere, except item names and notes, which use the system
+  sans (`--sans`) for legibility. No italics for body text.
+- Colour: ink text; brown links (`--link` #7A4E25, hover `--link-hover`), underlined; green
+  primary buttons (`.btn.primary`); `--warning` for cautions. No blue links or accents.
+- Kicker labels: small caps, letter-spaced, brown (`.kicker`). Used for section labels, the
+  FAQ's group headings and table header cells.
+- Site nav: one sticky top bar on every page, `APP · HELP · FAQ · WALKTHROUGH · GITHUB`, small
+  caps, the current page underlined (UI-38). There is no footer nav. On the edit screen the nav
+  sits at the right of the sticky search row.
+- Tables on doc pages: `.tbl.wt-cmp` (small-caps row labels, green Yes / brown No, `wt-eq` for
+  equal-width columns), shared by the FAQ and the walkthrough.
+- Buttons: `.btn`, `.btn.primary`, `.btn.small`; text actions use `.linkbtn`.
+
+**Words** (user-facing text: app, Help, FAQ, walkthrough, README)
+- Short, direct, casual sentences. Fewer words. Don't repeat a phrase.
+- Common words: Save / Cancel / Clear, "icon", "note", "Unorganized", "Leave as is".
+- Modals and popovers don't narrate what the user sees (UI-26). Use a title and controls.
+- Public pages carry no internal notes: no file paths, script or fixture names, internal dates,
+  TODOs or placeholders. Keep provenance in `docs/`, not on the site.
+- No privacy or "never leaves your computer" claims.
+- Round-tripping onX data is a FAQ how-to, not a headline feature.
 
 ## Scope discipline
 
