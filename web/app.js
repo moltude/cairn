@@ -1905,7 +1905,7 @@ async function doExport() {
     SAVED = savedState();          // this export wrote every change so far
     renderRunbook();
     showStage("done");
-    setStatus(`Built ${plural(MANIFEST.length, "folder")}`, "ready");
+    setStatus("");   // the screen says it: no "Built N folders" up top (round 5)
     window.__cairnExported = true;
   } catch (e) {
     setStatus("Export failed: " + e.message, "err"); console.error(e);

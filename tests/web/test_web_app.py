@@ -3183,7 +3183,7 @@ def test_stale_status_lines_are_cleared(loaded: Page):
     page.keyboard.type("Boats")
     page.keyboard.press("Enter")
     _done(page)
-    expect(page.locator("#status")).to_contain_text("Built")
+    expect(page.locator("#status")).to_have_text("")      # round 5: no "Built N folders" on the export screen
     page.click("#back")
     expect(page.locator("#status")).to_have_text("")
 
