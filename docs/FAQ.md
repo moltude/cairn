@@ -119,7 +119,7 @@ The reason for doing this before import: onX's own bulk tools are limited. In th
 ### What do the marks in the list mean?
 
 - **Default pin** under a marker: Cairn found no icon for it (see above).
-- **A caution mark** before a note: onX won't keep something as is. The note is over onX's 512-byte limit and will be cut, onX will reset this area's fill to its default blue, or the item has no coordinates and won't export. Hover it, or tab to it, for the details.
+- **A caution mark** before a note: onX won't keep something as is. The note is over onX's 512-byte import limit (onX imports only the first 512 bytes of a note) and will be cut, onX will reset this area's fill to its default blue, or the item has no coordinates and won't export. Hover it, or tab to it, for the details.
 - **A name or note cut short:** hover it, or tab to it, to read all of it. The tip keeps the note's line breaks, and you can select text in it. Esc closes it.
 - **The arrow in a Name header** sorts by name: A–Z, then Z–A, then back to map order. One click sorts every folder, and numbers sort naturally ("Camp 2" before "Camp 10"). Sorting changes only the view, never the export.
 

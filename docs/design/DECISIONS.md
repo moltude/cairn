@@ -1005,7 +1005,10 @@ Status: decided 2026-10-23 (owner, round 4).
 - Before export, a small caution triangle sits just before a row's note when onX will change
   something on import, with one plain line each in its popup (UI-33, hover or focus; its
   `aria-label` says the same):
-  - "Cut at 512 bytes (about N characters lost)." (round 5 wording; the export screen says "N notes are over onX's 512-byte limit and will be cut: “names”.") The bytes
+  - "onX imports only the first 512 bytes of a note. About N characters will be cut."
+    (owner feedback 2026-10-24: say that onX imports no more than 512 bytes; it was "Cut at 512
+    bytes (about N characters lost)."; the export screen says "1 note is over onX's 512-byte
+    import limit and will be cut: “name”." / "N notes are over …: “names”.") The bytes
     are measured on the note as written to the GPX (line endings made "\n", trimmed: the
     measure instructions.txt uses), so the mark and the file agree.
   - "onX will reset this area's fill to its default blue." UI-30's rule (an onX area, from an

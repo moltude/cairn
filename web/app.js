@@ -752,7 +752,7 @@ function cautionText(it) {
   const lines = [];
   const [bytes, cutN] = noteOverflow(it.desc);
   if (bytes > NOTE_LIMIT)
-    lines.push(`Cut at ${NOTE_LIMIT} bytes (about ${plural(Math.max(cutN, 1), "character")} lost).`);
+    lines.push(`onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`);
   if (fillChanges(it))
     lines.push("onX will reset this area's fill to its default blue.");
   return lines.length ? lines.join("\n") : null;
@@ -1941,7 +1941,7 @@ function renderRunbook() {
   host.innerHTML =
     (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? " wasn't" : "s weren't"} exported: ${S.dropped === 1 ? "it has" : "they have"} no coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
-    (S.long_notes ? `<div class="note warn">${S.long_notes === 1 ? "1 note is" : `${S.long_notes} notes are`} over onX's ${S.note_limit}-byte limit and will be cut: ${esc(longNoteNames())}.</div>` : "") +
+    (S.long_notes ? `<div class="note warn">${S.long_notes === 1 ? "1 note is" : `${S.long_notes} notes are`} over onX's ${S.note_limit}-byte import limit and will be cut: ${esc(longNoteNames())}.</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   // Two folders may share a name ("Camp" twice, from the file), or two names
   // sanitize alike ("A B", "A_B"): only then does a box show its number, and
