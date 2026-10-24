@@ -323,7 +323,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .modal-head.plain{padding:12px 0 0;border:none;background:var(--sheet-head)}
 .now-after{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:6px 10px;align-items:center}
 .na-rows{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:6px 10px;
-  align-items:center;max-height:min(236px,25vh);overflow-y:auto}
+  align-items:center;max-height:min(120px,25vh);overflow-y:auto}
 .na-cell{display:flex;align-items:center;gap:8px;min-width:0}
 .na-cell svg{flex:none}
 .na-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

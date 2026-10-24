@@ -4170,3 +4170,15 @@ def test_the_sort_button_keeps_no_pill_once_the_pointer_has_left(loaded: Page):
     assert set(bg) == {"rgba(0, 0, 0, 0)"}, bg
     btn.hover()
     assert btn.evaluate("e => getComputedStyle(e).backgroundColor") != "rgba(0, 0, 0, 0)"
+
+
+def test_icon_color_dialog_caps_its_now_after_list(loaded: Page):
+    page = loaded
+    _wide(page)
+    boxes = page.locator(f"{ROW} .sel-box")
+    for i in range(10):
+        boxes.nth(i).check()
+    page.click("#bulk-icon")
+    na = page.locator("#mark-dialog .na-rows")
+    assert na.evaluate("e => e.clientHeight") <= 120
+    assert na.evaluate("e => e.scrollHeight > e.clientHeight")
