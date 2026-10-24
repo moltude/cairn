@@ -630,7 +630,7 @@ function tipText(src, viaKey = false) {
   const tr = src.closest("tr[data-uid]");
   const it = tr && allItems().find(i => i.uid === tr.dataset.uid);
   if (!it) return null;
-  if (src.classList.contains("caution")) return cautionText(it);
+  if (src.classList.contains("caution")) return src.getAttribute("aria-label");   // each mark its own
   if (src.classList.contains("name-in")) {
     // Not while typing in it (the field shows what is typed), unless it was
     // just reached by keyboard.
@@ -756,17 +756,23 @@ function noteOverflow(desc) {
   return [bytes, total - kept];
 }
 const fillAlpha = f => { const m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(f || ""); return m ? parseFloat(m[1]) : 1; };
-function cautionText(it) {
+/** The mark beside the note: a note onX will cut, or an item that won't export. */
+function noteCaution(it) {
   if (!it.included) return null;
   if (it.no_coords) return "Won't export: it has no coordinates.";
-  const lines = [];
   const [bytes, cutN] = noteOverflow(it.desc);
-  if (bytes > NOTE_LIMIT)
-    lines.push(`onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`);
-  if (fillChanges(it))
-    lines.push("onX will reset this area's fill to its default blue.");
-  return lines.length ? lines.join("\n") : null;
+  return bytes > NOTE_LIMIT
+    ? `onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
 }
+/** The mark at the far right of an area's Icon cell, after "Area" (owner
+    feedback 2026-10-24): onX will reset its fill. Not for an item that won't
+    export (its one mark says so). */
+function fillCaution(it) {
+  return it.included && !it.no_coords && fillChanges(it) ? "onX will reset this area's fill to its default blue." : null;
+}
+const cautionMark = (fk, text, cls = "") =>
+  `<span class="caution${cls}" tabindex="0" role="img" data-fk="${fk}" aria-label="${esc(text)}">${UI_ICON.caution}</span>`;
 
 function row(it) {
   const tr = document.createElement("tr");
@@ -782,13 +788,14 @@ function row(it) {
   const cname = colorName(it.color);
   const iconLabel = it.needs_attention ? "Default pin" : it.icon;
   const fk = esc(it.uid) + "|";
-  const caution = cautionText(it);
+  const caution = noteCaution(it);
+  const fillMark = fillCaution(it);
   tr.innerHTML = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<div class="note-cell">${caution ? `<span class="caution" tabindex="0" role="img" data-fk="${fk}caution" aria-label="${esc(caution)}">${UI_ICON.caution}</span>` : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
+      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
         <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
@@ -796,7 +803,7 @@ function row(it) {
           // An icon an onX file named that isn't in onX's list (Phase 2 flags
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
-      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
+      : `<div class="icon-cell"><button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>${fillMark ? cautionMark(`${fk}fillcaution`, fillMark, " fill-caution") : ""}</div>`}</td>`;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {

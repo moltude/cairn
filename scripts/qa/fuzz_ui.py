@@ -1042,7 +1042,7 @@ class Session:
           let want = null;
           if (!el) return {gone: true};
           if (el.classList.contains('name-in')) want = el !== document.activeElement && cutw(el) ? el.value : null;
-          else if (el.classList.contains('caution')) want = cautionText(it);
+          else if (el.classList.contains('caution')) want = el.classList.contains('fill-caution') ? fillCaution(it) : noteCaution(it);
           else want = desc && (desc !== firstLine(desc) || cutw(el.querySelector('.note-text'))) ? desc : null;
           const r = tip.getBoundingClientRect();
           return {want, shown: !tip.classList.contains('hidden'), text: tip.textContent,

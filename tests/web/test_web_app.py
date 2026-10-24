@@ -4087,9 +4087,31 @@ def test_an_onx_area_whose_fill_onx_resets_gets_a_caution(fresh_page: Page):
     assert len(areas) == 4
     for uid, fill in areas:
         expect(_caution(page, uid)).to_have_attribute("aria-label", msg)
+        # Owner feedback 2026-10-24: in the Icon cell, after "Area", at its far
+        # right; nothing beside the note.
+        row = page.locator(f'tr[data-uid="{uid}"]')
+        expect(row.locator("td.iconcol .caution.fill-caution")).to_have_count(1)
+        expect(row.locator("td.notecol .caution")).to_have_count(0)
+        geo = row.evaluate("""tr => { const td = tr.querySelector('td.iconcol').getBoundingClientRect();
+            const m = tr.querySelector('.fill-caution').getBoundingClientRect();
+            const b = tr.querySelector('.line-btn').getBoundingClientRect();
+            return {gap: td.right - m.right, after: m.left >= b.right, mid: Math.abs((m.top + m.bottom) - (b.top + b.bottom)) / 2}; }""")
+        assert geo["after"] and geo["gap"] <= 20 and geo["mid"] <= 2, geo
     _caution(page, areas[0][0]).hover()
     expect(_tip(page)).to_have_text(msg)
     _shot(page, "4b-area-fill-caution")
+    _shot(page, "fb-8-area-fill-caution-in-icon-cell")
+    # A long note on the same area: its own mark beside the note, each with its own tip.
+    _set(page, areas[2][0], desc="x" * 600)
+    row = page.locator(f'tr[data-uid="{areas[2][0]}"]')
+    expect(row.locator(".caution")).to_have_count(2)
+    expect(row.locator("td.notecol .caution")).to_have_attribute("aria-label", re.compile(r"^onX imports only the first 512 bytes"))
+    page.mouse.move(5, 5)
+    row.locator("td.notecol .caution").hover()
+    expect(_tip(page)).to_have_text(re.compile(r"^onX imports only the first 512 bytes"))
+    page.mouse.move(5, 5)
+    row.locator(".fill-caution").hover()
+    expect(_tip(page)).to_have_text(msg)
     # A transparent ("none") or default fill: no caution.
     page.evaluate("([u, v]) => { const it = allItems().find(i => i.uid === u); it.fill = v; renderFolders(); }",
                   [areas[0][0], "rgba(0,0,0,0)"])

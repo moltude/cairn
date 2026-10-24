@@ -566,6 +566,11 @@ body.dragging-rows .facet-x{opacity:0;pointer-events:none}
   color:var(--warning);border-radius:2px;cursor:help}
 .caution:hover{background:var(--rail)}
 .edit th.note-th{padding-left:40px}
+/* An area's fill caution sits at the far right of its Icon cell, after "Area"
+   (owner feedback 2026-10-24); the note's own caution stays beside the note. */
+.icon-cell{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+.icon-cell .line-btn{min-width:0}
+.icon-cell .fill-caution{margin-right:4px}
 /* Name sort: the header is a button with up/down arrows. */
 .sort-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:2px 4px;margin:-2px -4px;
   font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;border-radius:2px}
