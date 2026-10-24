@@ -914,9 +914,10 @@ reorder folders, no item in two folders, no empty folder made up front.
   "Unorganized"; renamed, they are an ordinary folder, and renamed back, the loose items again.
   The merge offer for renaming another folder to "Unorganized" keeps its plain wording: the
   loose items export as an onX folder called Unorganized, so "Move them into it" is what happens.
-- **Start over** counts changes against the map as loaded: each edited or moved item once (moved
-  back is not moved) and each loaded folder whose name differs now. A merged-away or new
-  folder's name isn't counted; its items are.
+- **Start over** counts changes since the last export (or, before any, since load): each item
+  edited or moved since then once (moved back is not moved) and each folder of then whose name
+  differs now. A merged-away or new folder's name isn't counted; its items are. Right after an
+  export it says "This clears the current map." (round 3).
 - **Export** follows the bridge (names, numbering, per-folder zips). A per-folder download is now
   named after its `NN_` directory (`02_A_B.zip`, `002_A_B.zip` with 100+ folders), since "A/B"
   and "A_B" sanitize alike.

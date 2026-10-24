@@ -23,7 +23,7 @@ let BULK = null;                       // several-items dialog state
 let RENAME = null;                     // {key, draft, where: "head"|"rail", declined?} -- the one folder name being edited
 let DRAG = null;                       // row drag in progress (pointer events)
 let MOVE = null;                       // More ▸ Move to… list state
-let LOADED = null;                     // {home: uid -> folder key, names: key -> name} as loaded (Start over)
+let SAVED = null;                      // {home, names, edits} as loaded or at the last export (Start over)
 let PENDING_MERGE = null;              // a taken name, waiting for its deferred render to offer the merge
 const NEW_TARGET = "\u0000new";        // drop key of the rail's "+ New folder"
 
@@ -196,7 +196,7 @@ async function handleFiles(files) {
     DATA = JSON.parse(raw); EDITS = {}; SEL.clear(); ANCHOR = null;
     resetFilters(); COLLAPSED.clear(); RAIL_FOLDED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
     resetFolderState();
-    LOADED = { home: groupOfUid(true), names: new Map(DATA.groups.map(g => [g.key, g.name])) };
+    SAVED = savedState();
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
     renderSourceNotice(DATA);
@@ -1102,7 +1102,7 @@ const FOLDER_NAME_MAX = 100;
 
 function resetFolderState() {
   abandonDrag(); closeMove(false);
-  RENAME = null; PENDING_MERGE = null; LOADED = null;
+  RENAME = null; PENDING_MERGE = null; SAVED = null;
 }
 
 const groupByKey = key => DATA.groups.find(g => g.key === key) || null;
@@ -1597,6 +1597,7 @@ async function doExport() {
     const bytes = py.runPython("bridge.export_zip()").toJs();
     ZIP = new Blob([bytes], { type: "application/zip" });
     MANIFEST = JSON.parse(py.runPython("import json; json.dumps(bridge._STATE['manifest'])"));
+    SAVED = savedState();          // this export wrote every change so far
     renderRunbook();
     showStage("done");
     setStatus(`Built ${plural(MANIFEST.length, "folder")}`, "ready");
@@ -1752,18 +1753,26 @@ function resetAll() {
   window.__cairnLoaded = false; window.__cairnExported = false;
 }
 
-/** Unexported changes, against the map as loaded (UI-32): each edited or
-    moved item once (an item moved back is not moved), and each loaded folder
-    whose name differs now. A merged-away or new folder's name isn't counted;
-    its items are, as moved. */
+/** What Start over compares with: each item's folder, each folder's name and
+    each item's edits, as loaded or as the last export wrote them. The edits
+    are kept as JSON (edit() changes EDITS' objects in place). */
+function savedState() {
+  return { home: groupOfUid(true), names: new Map(DATA.groups.map(g => [g.key, g.name])),
+           edits: new Map(Object.entries(EDITS).map(([uid, e]) => [uid, JSON.stringify(e)])) };
+}
+
+/** Unexported changes, since the last export or (none yet) since load
+    (UI-32): each item edited or moved since then once (an item moved back is
+    not moved), and each folder of then whose name differs now. A merged-away
+    or new folder's name isn't counted; its items are, as moved. */
 function unexportedChanges() {
-  if (!DATA || !LOADED) return 0;
-  const uids = new Set(Object.keys(EDITS));
+  if (!DATA || !SAVED) return 0;
+  const uids = new Set(Object.keys(EDITS).filter(u => SAVED.edits.get(u) !== JSON.stringify(EDITS[u])));
   if (noteIsChanged()) uids.add(NOTE_EDIT.uid);
   let renamed = 0;
   DATA.groups.forEach(g => {
-    g.items.forEach(i => { if (LOADED.home.get(i.uid) !== g.key) uids.add(i.uid); });
-    if (LOADED.names.has(g.key) && LOADED.names.get(g.key) !== g.name) renamed++;
+    g.items.forEach(i => { if (SAVED.home.get(i.uid) !== g.key) uids.add(i.uid); });
+    if (SAVED.names.has(g.key) && SAVED.names.get(g.key) !== g.name) renamed++;
   });
   return uids.size + renamed;
 }

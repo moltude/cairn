@@ -2750,7 +2750,7 @@ def test_start_over_counts_moves_and_renames(loaded: Page):
         "You have 3 unexported changes to this map. Starting over discards them.")
     page.click("#confirm-actions button:text-is('Start over')")
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
-    assert page.evaluate("LOADED") is None and page.evaluate("unexportedChanges()") == 0
+    assert page.evaluate("SAVED") is None and page.evaluate("unexportedChanges()") == 0
     assert page.evaluate("window.__cairnLoaded") is False
 
 
@@ -3296,3 +3296,43 @@ def test_a_short_folder_name_is_never_cut_in_its_header(fresh_page: Page, tmp_pa
         page.keyboard.type(name)
         page.keyboard.press("Enter")
         _header_uncut(page, name)
+
+
+# ---------------------------------------------------------------------------
+# Round 3 (final review) fixes
+# ---------------------------------------------------------------------------
+
+
+def test_start_over_counts_only_changes_since_the_last_export(loaded: Page):
+    """Round 3 #1: Start over compared with the map as loaded, so right after a
+    successful export it still warned about every change that export wrote."""
+    page = loaded
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), _rail(page, "Blodgett"))
+    name = _first_row(page, "Lost Trail Pass").locator(".name-in")
+    name.fill("Renamed once")
+    name.dispatch_event("change")
+    _section(page, "North Roots").locator(".folder-name").click()
+    page.keyboard.type("South Roots")
+    page.keyboard.press("Enter")
+    assert page.evaluate("unexportedChanges()") == 3
+    _done(page)
+    page.click("#back")
+    assert page.evaluate("unexportedChanges()") == 0
+    page.locator(".newmap").first.click()
+    expect(page.locator("#confirm-body")).to_have_text("This clears the current map.")
+    page.keyboard.press("Escape")
+    # After the export: a new move, a second edit of the same item, a rename.
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), _rail(page, "Blodgett"))
+    assert page.evaluate("unexportedChanges()") == 1
+    name = _first_row(page, "Lost Trail Pass").locator(".name-in")
+    name.fill("Renamed twice")
+    name.dispatch_event("change")
+    assert page.evaluate("unexportedChanges()") == 2
+    _section(page, "South Roots").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("North Roots")
+    page.keyboard.press("Enter")
+    assert page.evaluate("unexportedChanges()") == 3
+    page.locator(".newmap").first.click()
+    expect(page.locator("#confirm-body")).to_have_text(
+        "You have 3 unexported changes to this map. Starting over discards them.")
