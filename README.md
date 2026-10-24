@@ -22,43 +22,44 @@ for how it's deployed.
 
 ### A walkthrough
 
-A real transformation, start to finish — a 100k trail race's aid stations, mile splits and
-course lines exported from CalTopo as GeoJSON (KML and GPX work too).
+A real map, start to finish: the Dark Divide 100 trail race's aid stations and course lines,
+exported from CalTopo as GeoJSON (KML and GPX work too).
 
-**1. Drop the file.** Nothing uploads anywhere; this all runs in your browser.
+**1. Drop the file.** Nothing uploads anywhere; it all runs in your browser.
 
-<img src="./docs/screenshots/web-01-drop.png" alt="Cairn's drop-zone screen, prompting for a CalTopo export" width="800">
+<img src="./docs/screenshots/web-01-drop.png" alt="Cairn's landing page, with a drop zone for a CalTopo or onX export" width="800">
 
-**2. Review what came in.** 49 markups across aid stations, mile markers and the course lines,
-each already given a best-guess onX icon and color.
+**2. Review what came in.** 21 markups in 3 folders: 9 aid stations and 12 course lines, each
+with a best-guess onX icon and color.
 
-<img src="./docs/screenshots/web-02-loaded.png" alt="The loaded Olympic Mtn 100k map, showing folders, waypoints, icons and colors" width="800">
+<img src="./docs/screenshots/web-02-loaded.png" alt="The loaded Dark Divide 100 map: folders and filters on the left, lines and aid stations with their icons on the right" width="800">
 
-**3. Filter to what needs a human decision.** 37 waypoints — mostly generic mile markers —
-fell back to onX's default pin because nothing in CalTopo matched. That's often fine (a mile
-split doesn't need its own icon), but it's a one-click way to see exactly what's still
-unresolved.
+**3. Filter to what needs a decision.** 6 aid stations fell back to onX's default pin because
+nothing in CalTopo matched. Tick **Default pin** in the Icon list to see just those.
 
-<img src="./docs/screenshots/web-03-needs-icon-filter.png" alt="The list filtered to 'Needs an icon', showing the 37 waypoints using onX's default pin" width="800">
+<img src="./docs/screenshots/web-03-default-pin-filter.png" alt="The list filtered to Default pin, showing 6 aid stations" width="800">
 
-**4. Select the ones worth fixing.** Here, three mile-marker waypoints.
+**4. Select them.** Here, all six.
 
-<img src="./docs/screenshots/web-04-selected-rows.png" alt="Three mile-marker waypoints selected via checkboxes" width="800">
+<img src="./docs/screenshots/web-04-selected-rows.png" alt="Six aid-station waypoints ticked" width="800">
 
-**5. Set an icon on all of them at once.** No editing one waypoint at a time.
+**5. Set one icon on all of them.** No editing one waypoint at a time.
 
-<img src="./docs/screenshots/web-05-bulk-icon-picker.png" alt="The bulk icon picker, open to set an icon on 3 selected items" width="800">
+<img src="./docs/screenshots/web-05-bulk-icon-picker.png" alt="The Change 6 items dialog, setting Food Source on every selected aid station" width="800">
 
-The attention count drops from 37 to 34 — exactly the 3 waypoints just fixed.
+The default-pin count drops from 6 to 0.
 
-<img src="./docs/screenshots/web-06-after-bulk-edit.png" alt="The map after the bulk edit, attention count reduced from 37 to 34" width="800">
+<img src="./docs/screenshots/web-06-after-bulk-edit.png" alt="The map after the bulk edit: the aid stations show Food Source and Default pin reads 0" width="800">
 
-**6. Export, and get import instructions, not just a pile of files.** onX creates one folder per
-import and names it with a timestamp — never from the filename — so Cairn gives you one box per
-folder with its files and a Download button, and the zip carries `instructions.txt`: plain text
-naming each folder to rename, its files, and every waypoint, line and area in each.
+You can also sort items into folders: drag rows onto a folder or onto **+ New folder**, rename a
+folder by clicking its name, or use **More → Move to…**.
 
-<img src="./docs/screenshots/web-07-runbook.png" alt="The generated import runbook, listing the files to import together and the folder name to use" width="800">
+**6. Export, and get import instructions with the files.** onX creates one folder per import and
+names it with a date and time, never from the file name. So Cairn gives you one box per folder,
+with its files and a Download button, plus **Download all**. The zip carries `instructions.txt`:
+plain text naming each folder to rename, its files, and every waypoint, line and area in each.
+
+<img src="./docs/screenshots/web-07-export.png" alt="The export screen: Download all, then one box per folder with its files and a Download button" width="800">
 
 ### Why?
 
@@ -79,10 +80,11 @@ I built Cairn to make migration between systems easier without losing the custom
 ### What Cairn does
 
 - 1:1 mapping: Cairn does not decide what you should import or filter anything out. It maps what you give it into what it exports.
-- Preview + batch updates: Cairn lets you preview and batch-update waypoint metadata before you generate the GPX you'll import. [[2]](#ref-2) [[3]](#ref-3)
+- Review and bulk edit: set icons, colors and line styles on many items at once, and fix names and notes, before you export. [[2]](#ref-2) [[3]](#ref-3)
+- Folders: move items between folders, and make, rename or merge folders. Each folder becomes one onX folder.
 - Works around import constraints: onX documents import constraints and common failure modes. Cairn aims to make those constraints easier to live with. [[1]](#ref-1) [[5]](#ref-5)
   - It automatically splits exports into GPX files under the documented size cap.
-  - It writes waypoints and tracks or routes into separate GPX files so they can be imported separately.
+  - It writes each folder's waypoints, tracks and areas to separate GPX files, imported together as one onX folder.
 
 ### Icon, Symbol and Color Mapping
 
@@ -101,17 +103,14 @@ Color is a key filtering property in onX's "My Content" feature. When importing 
 
 onX only allows specific colors and icon terms to be used.
 
-See the color reference table below for the allowed onX colors. If the data you want to import provides color information, Cairn will convert it to the closest onX color. If no color is provided then onX will use the default blue.
+See the color reference table below for the allowed onX colors. If the data you want to import has a color, Cairn converts it to the closest onX color. If it has none, Cairn uses the icon's usual color, or Blue.
 
-For icons and symbols, onX accepts a set of ~40 icons but CalTopo exports a much larger set. Even when the icons are visually identical the text labels used may not match and the icon doesn't transfer. When the icon does not match in onX the default <img src="./docs/screenshots/onx-logo.png" alt="Alt text" height=15px> will be used.
+For icons and symbols, onX accepts a set of 95 icons but CalTopo exports a much larger set. Even when the icons are visually identical the text labels used may not match and the icon doesn't transfer. When the icon does not match in onX the default <img src="./docs/screenshots/onx-logo.png" alt="Alt text" height=15px> will be used.
 
 Cairn maintains a default mapping of common CalTopo --> onX icons. When it can't map one, the web
-app marks that waypoint amber and falls back to onX's default pin — filter to **"Needs an icon"**
-to see just those, then set an icon on them (individually or in bulk) before you export. Nothing
-is silently dropped; it's just flagged for a quick human decision.
-
-*(Prefer to pre-map symbols permanently instead of fixing them per-export? See
-["Custom icon mappings"](#custom-icon-mappings-command-line) under Command line.)*
+app marks that waypoint **Default pin** and falls back to onX's default pin. Tick **Default pin**
+in the Icon list to see just those, then set an icon on them (one at a time or in bulk) before you
+export. Nothing is dropped; it's flagged for a quick human decision.
 
 #### Color reference
 
