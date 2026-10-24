@@ -373,15 +373,34 @@ function renderRail() {
       FILTERS.folder = FILTERS.folder === key && key !== null ? null : key;
       renderRail(); renderFolders();
     };
+    if (key !== null && count === 0) {
+      // An empty folder (made with + New folder, or loaded empty) can be
+      // removed: an × beside it, shown on hover and focus (round 4). A
+      // wrapper, since a button can't hold another button.
+      const row = document.createElement("div");
+      row.className = "facet-row empty";
+      const x = document.createElement("button");
+      x.type = "button"; x.className = "facet-x"; x.dataset.fk = "remove|" + key;
+      x.setAttribute("aria-label", `Remove empty folder ${label}`);
+      x.title = "Remove empty folder";
+      x.innerHTML = UI_ICON.close;
+      x.onclick = e => { e.stopPropagation(); removeEmptyFolder(key); };
+      row.append(b, x);
+      fl.appendChild(row);
+      return;
+    }
     fl.appendChild(b);
   };
   facetBtn("All", "", null, false);
   DATA.groups.forEach(g => facetBtn(g.name, g.items.length, g.key, isUnorganized(g)));
-  // The drop target for a new folder. Not a button: folders are only ever
-  // made by moving items into them (no empty folders up front).
-  const nf = document.createElement("div");
-  nf.className = "new-folder"; nf.textContent = "+ New folder";
+  // + New folder: a drop target for dragged rows, and a button (round 4):
+  // clicked, it moves the ticked rows into a new folder, or with nothing
+  // ticked makes an empty one, ready to drop rows on.
+  const nf = document.createElement("button");
+  nf.type = "button"; nf.className = "new-folder"; nf.textContent = "+ New folder";
+  nf.dataset.fk = "newfolder";
   nf.dataset.drop = NEW_TARGET;   // set as a property: an HTML parser turns the NUL into U+FFFD
+  nf.onclick = newFolderClicked;
   fl.appendChild(nf);
 
   // Icons present in the map, most common first; "Default pin" last.
@@ -459,7 +478,10 @@ function renderFolders() {
   const host = $("#folders"); rebuild(host);
   DATA.groups.forEach(g => {
     const items = visibleItems(g);
-    if (!items.length) return;
+    if (!items.length) {
+      if (!g.items.length && showsEmptyFolders(g)) host.appendChild(emptyFolderSection(g));
+      return;
+    }
     const el = document.createElement("section");
     el.className = "folder";
     el.setAttribute("aria-label", g.name);
@@ -504,6 +526,25 @@ function renderFolders() {
     host.innerHTML = `<div class="note">Nothing matches these filters.</div>`;
   updateSel();
   refocus(fk);
+}
+
+/** An empty folder shows as a header only (so it can be renamed there), when
+    no search, type or icon filter would hide it anyway. */
+const showsEmptyFolders = g => !FILTERS.q && !FILTERS.kind && !FILTERS.icons.size && !FILTERS.attention &&
+  (FILTERS.folder === null || FILTERS.folder === g.key);
+function emptyFolderSection(g) {
+  const el = document.createElement("section");
+  el.className = "folder empty-folder";
+  el.setAttribute("aria-label", g.name);
+  const naming = RENAME && RENAME.where === "head" && RENAME.key === g.key;
+  el.innerHTML = `<div class="folder-head">
+      <h2>${naming
+        ? `<input class="folder-name-in" data-fk="fname|${esc(g.key)}" aria-label="Folder name" maxlength="${FOLDER_NAME_MAX}" autocomplete="off">`
+        : `<button type="button" class="folder-name" data-fk="fname|${esc(g.key)}" title="${esc(g.name)}">${esc(g.name)}</button>`}</h2>
+      <span class="folder-sub">Empty</span></div>`;
+  if (naming) wireFolderName(el.querySelector(".folder-name-in"));
+  else el.querySelector(".folder-name").onclick = () => startRename(g.key, "head");
+  return el;
 }
 
 const colorList = () => DATA.line_colors || DATA.colors;
@@ -1234,6 +1275,53 @@ function moveTo(uids, key) {
   return res;
 }
 
+/** A click (or Enter / Space) on the rail's + New folder (round 4): the
+    ticked rows go into a new folder, as if dropped there; with nothing
+    ticked, an empty folder is made, to drop rows on. Either way its name
+    opens for editing in the rail. */
+function newFolderClicked() {
+  if (!DATA) return;
+  const uids = selectedItems().map(i => i.uid);
+  if (uids.length) { moveTo(uids, NEW_TARGET); return; }
+  closePop();
+  let res;
+  try {
+    res = pyJSON("bridge.create_folder()", {});
+    if (!res.ok) throw new Error("That folder name is taken.");
+    syncLayout(res);
+  } catch (e) {
+    setStatus("Couldn't make a folder — " + humanError(e), "err"); console.error(e);
+    resyncAfterFailure();
+    return;
+  }
+  RENAME = { key: res.key, draft: res.folders.find(f => f.key === res.key).name, where: "rail" };
+  RAIL_FOLDED.delete("folders");
+  refreshAfterEdit();
+  setStatus("Made an empty folder.", "ready");
+  focusRename();
+}
+
+/** The × beside an empty folder in the rail. Focus goes to the next entry
+    (the folder below, else + New folder): the × itself is gone. */
+function removeEmptyFolder(key) {
+  const g = groupByKey(key);
+  if (!g || g.items.length) return;
+  const i = DATA.groups.indexOf(g);
+  const next = DATA.groups[i + 1] ? "folder|" + DATA.groups[i + 1].key : "newfolder";
+  let res;
+  try {
+    res = pyJSON("bridge.remove_empty_folder(_cairn_key)", { _cairn_key: key });
+    syncLayout(res);
+  } catch (e) {
+    setStatus("Couldn't remove — " + humanError(e), "err"); console.error(e);
+    resyncAfterFailure();
+    return;
+  }
+  refreshAfterEdit();
+  setStatus(`Removed the empty folder “${shortName(g.name)}”.`, "ready");
+  fkEl(next)?.focus({ preventScroll: true });
+}
+
 function startRename(key, where, draft = null, declined = null) {
   const g = groupByKey(key); if (!g) return;
   clearError();
@@ -1348,6 +1436,12 @@ function rebuild(host) {
     another (its items stay in it either way). */
 function offerMerge(src, dup, where, draft = null) {
   const ret = fkEl(where === "head" ? "fname|" + src.key : "folder|" + src.key);
+  if (!src.items.length) {
+    // An empty folder has nothing to move: "Move the 0 items" would offer
+    // nothing. Say the name is taken; the folder keeps the name it has.
+    setStatus(`“${shortName(dup.name)}” already exists.`, "err");
+    return;
+  }
   const cancel = where === "rail"
     ? () => { closeConfirm(false); startRename(src.key, "rail", draft, draft); }
     : () => closeConfirm();
@@ -1774,6 +1868,7 @@ function resetAll() {
     are kept as JSON (edit() changes EDITS' objects in place). */
 function savedState() {
   return { home: groupOfUid(true), names: new Map(DATA.groups.map(g => [g.key, g.name])),
+           empty: new Set(DATA.groups.filter(g => !g.items.length).map(g => g.key)),
            edits: new Map(Object.entries(EDITS).map(([uid, e]) => [uid, JSON.stringify(e)])) };
 }
 
@@ -1785,12 +1880,16 @@ function unexportedChanges() {
   if (!DATA || !SAVED) return 0;
   const uids = new Set(Object.keys(EDITS).filter(u => SAVED.edits.get(u) !== JSON.stringify(EDITS[u])));
   if (noteIsChanged()) uids.add(NOTE_EDIT.uid);
-  let renamed = 0;
+  let renamed = 0, empties = 0;
   DATA.groups.forEach(g => {
     g.items.forEach(i => { if (SAVED.home.get(i.uid) !== g.key) uids.add(i.uid); });
     if (SAVED.names.has(g.key) && SAVED.names.get(g.key) !== g.name) renamed++;
+    // An empty folder made since then: no item says so (round 4).
+    if (!SAVED.names.has(g.key) && !g.items.length) empties++;
   });
-  return uids.size + renamed;
+  // An empty folder of then that was removed.
+  SAVED.empty.forEach(k => { if (!groupByKey(k)) empties++; });
+  return uids.size + renamed + empties;
 }
 
 function requestStartOver() {

@@ -114,7 +114,11 @@ SNAP_JS = r"""
      name: (e.querySelector('.facet-name') || {}).textContent ?? null,
      input: e.querySelector('input') ? e.querySelector('input').value : null,
      count: (e.querySelector('.facet-count') || {}).textContent ?? null}));
-  out.sections = [...document.querySelectorAll('#folders section.folder')].map(s => ({
+  // Round 4: an empty folder shows as a header only (section.empty-folder).
+  out.emptySections = [...document.querySelectorAll('#folders section.folder.empty-folder')].map(s => s.getAttribute('aria-label'));
+  out.expectEmpty = DATA.groups.filter(g => !g.items.length && showsEmptyFolders(g)).map(g => g.name);
+  out.facetX = [...document.querySelectorAll('#folder-facets .facet-x')].map(x => x.dataset.fk.slice(7));
+  out.sections = [...document.querySelectorAll('#folders section.folder:not(.empty-folder)')].map(s => ({
      label: s.getAttribute('aria-label'),
      head: (s.querySelector('.folder-name') || {}).textContent ?? null,
      headInput: !!s.querySelector('.folder-name-in'),
@@ -168,6 +172,11 @@ class Session:
         self.total = len(s["items"])
         self.all_uids = set(s["items"])
         self.empty_at_load = {g["key"] for g in s["groups"] if not g["uids"]}
+        # Round 4: folders made empty with a click on + New folder may stay
+        # empty until something is moved in. A key first seen empty was made so
+        # (a move can't make a new empty folder); once filled, the usual rule.
+        self.seen_keys = {g["key"] for g in s["groups"]}
+        self.created_empty = set()
         self.dup_names_at_load = self._dups(s)
         # onX fill warning on load: answer it like a user would.
         if s["confirm"]:
@@ -228,10 +237,24 @@ class Session:
         safes = {f["key"]: f["safe"] for f in b}
         if any(g["safe"] != safes[g["key"]] for g in groups):
             raise Violation("safe_name_stale", f"after {label}")
-        # 3. no empty folder unless it loaded empty
-        empties = [g["key"] for g in groups if not g["uids"] and g["key"] not in self.empty_at_load]
+        # 3. no empty folder unless it loaded empty or was made empty (round 4)
+        #    and has had nothing in it since
+        for g in groups:
+            if g["key"] not in self.seen_keys and not g["uids"]:
+                self.created_empty.add(g["key"])
+            if g["uids"]:
+                self.created_empty.discard(g["key"]); self.empty_at_load.discard(g["key"])
+        self.seen_keys |= {g["key"] for g in groups}
+        allowed = self.empty_at_load | self.created_empty
+        empties = [g["key"] for g in groups if not g["uids"] and g["key"] not in allowed]
         if empties:
             raise Violation("empty_folder_left", f"{empties} after {label}")
+        # Every empty folder (and only those) has its x in the rail, and shows
+        # as a header-only section when no filter hides it.
+        if not s["drag"] and sorted(s["facetX"]) != sorted(g["key"] for g in groups if not g["uids"]):
+            raise Violation("empty_folder_x", f"x on {s['facetX']} after {label}")
+        if s["emptySections"] != s["expectEmpty"]:
+            raise Violation("empty_folder_section", f"{s['emptySections']} vs {s['expectEmpty']} after {label}")
         # 4. totals and duplicate names
         if s["totals_folders"] != len(groups):
             raise Violation("totals_folders_stale", f"{s['totals_folders']} vs {len(groups)} after {label}")
@@ -882,6 +905,70 @@ class Session:
         b = c.nth(rng.randrange(c.count())); b.scroll_into_view_if_needed(); b.click(); self.settle()
         return ("include_chip",), False
 
+    # ---- round 4 actions
+    def a_click_new_folder(self, rng, s):
+        """Click (or Enter / Space on) + New folder: the ticked rows go into a
+        new folder, or with none ticked an empty one is made. Then name it."""
+        p = self.page
+        if rng.random() < 0.4:
+            uids = self.visible_uids()
+            for u in rng.sample(uids, min(len(uids), rng.randint(1, 3))):
+                box = p.locator(f'tr[data-uid="{u}"] .sel-box'); box.scroll_into_view_if_needed(); box.click()
+            self.settle()
+        before = self.snap()
+        nf = p.locator("#folder-facets .new-folder")
+        how = rng.choice(["click", "click", "Enter", "Space"])
+        if how == "click":
+            if not self.human_press(nf, rng.choice([0, 60])):
+                return ("click_new_folder", "covered"), False
+        else:
+            nf.evaluate("e => e.scrollIntoView({block: 'center'})")
+            nf.focus(); p.keyboard.press("Enter" if how == "Enter" else " ")
+        self.settle()
+        st = self.snap()
+        sel = len(before["sel"])
+        if st["confirm"]:   # a name left by this click was taken: its offer came first
+            return ("click_new_folder", how, sel, "confirm:" + self.answer_confirm(rng)), False
+        if len(st["groups"]) <= len(before["groups"]) - 0 and not sel:
+            raise Violation("new_folder_click_lost", f"{how}: {len(before['groups'])} -> {len(st['groups'])} folders")
+        named = None
+        if st.get("rename") and st["rename"]["where"] == "rail":
+            if not sel and st["groups"][-1]["uids"]:
+                raise Violation("new_folder_not_empty", f"{st['groups'][-1]}")
+            name = self.name_pool(rng, st)
+            if rng.random() < 0.85:
+                self.type_into_focused(rng, name)
+            fin = self.finish_field(rng)
+            named = (name, fin)
+            if self.snap()["confirm"]:
+                named += ("confirm:" + self.answer_confirm(rng),)
+        elif not st["rename"]:
+            raise Violation("new_folder_not_named", f"{how} with {sel} ticked: no name box opened")
+        return ("click_new_folder", how, sel, named), named is not None and named[1] != "click-away"
+
+    def a_remove_empty_folder(self, rng, s):
+        """The x beside an empty folder in the rail, by mouse or keyboard."""
+        p = self.page
+        xs = p.locator("#folder-facets .facet-x")
+        if not xs.count():
+            return ("remove_empty", "none"), False
+        i = rng.randrange(xs.count())
+        key = xs.nth(i).get_attribute("data-fk")[7:]
+        kb = rng.random() < 0.4
+        if kb:
+            xs.nth(i).evaluate("e => e.scrollIntoView({block: 'center'})")
+            xs.nth(i).focus(); p.keyboard.press("Enter")
+        else:
+            row = xs.nth(i).locator("xpath=..")
+            if not self.mouse_to(row):
+                return ("remove_empty", "nobox"), False
+            if not self.human_press(xs.nth(i), rng.choice([0, 60])):
+                return ("remove_empty", "covered"), False
+        self.settle()
+        if key in {g["key"] for g in self.snap()["groups"]}:
+            raise Violation("empty_folder_not_removed", f"{key} still there after its x ({'key' if kb else 'mouse'})")
+        return ("remove_empty", key, "kb" if kb else "mouse"), kb
+
     def a_export(self, rng, s):
         return self.export_and_verify(rng, s), False
 
@@ -924,7 +1011,9 @@ class Session:
         man, groups, boxes = info["manifest"], info["groups"], info["boxes"]
         # expected boxes: folders with any included item, at their position
         exp = []
-        for n, g in enumerate(groups, 1):
+        # Round 4: a folder with no items takes no number.
+        numbered = [g for g in groups if g["items"]]
+        for n, g in enumerate(numbered, 1):
             inc = [i for i in g["items"] if i["included"]]
             if inc:
                 exp.append((n, g, inc))
@@ -968,7 +1057,7 @@ class Session:
         seen_total = 0
         for e, (n, g, inc) in zip(man, exp):
             # L1: NN_ is 2 digits, or 3+ once there are 100+ folders.
-            width = max(2, len(str(len(groups))))
+            width = max(2, len(str(len(numbered))))
             prefix = f"{n:0{width}d}_{g['safe']}/"
             if e.get("dir") != prefix[:-1]:
                 raise Violation("zip_dir", f"{e.get('dir')} vs {prefix[:-1]}")
@@ -1016,7 +1105,7 @@ class Session:
             with p.expect_download(timeout=20000) as dl:
                 btns.nth(i).click()
             d = dl.value
-            want_name = f"{e['n']:0{max(2, len(str(len(groups))))}d}_{e['safe']}.zip"
+            want_name = f"{e['n']:0{max(2, len(str(len([g for g in groups if g['items']]))))}d}_{e['safe']}.zip"
             if d.suggested_filename != want_name:
                 raise Violation("folder_zip_name", f"{d.suggested_filename!r} vs {want_name!r}")
             z = zipfile.ZipFile(io.BytesIO(Path(d.path()).read_bytes()))
@@ -1035,6 +1124,8 @@ WEIGHTS = {
     "move_to": 9, "filter_type": 3, "filter_folder": 5, "search": 4, "clear_filters": 4,
     "collapse": 4, "edit_name": 3, "edit_note": 3, "edit_mark": 3, "edit_line_bulk": 1,
     "bulk_icon": 1, "exclude": 5, "include_chip": 2, "export": 2,
+    # Round 4: + New folder clicked, the x on an empty folder.
+    "click_new_folder": 5, "remove_empty_folder": 3,
 }
 # Second wave: the human-timing / interleaving actions (--wave 2).
 WEIGHTS2 = dict(WEIGHTS, leave_field_by_click=6, rename_then_drag=3, rename_then_export=2)

@@ -91,7 +91,8 @@ def _check_export(zf: zipfile.ZipFile) -> None:
     NN_<safe>/, hold exactly its included items, and the runbook says so."""
     manifest = bridge._STATE["manifest"]
     runbook = zf.read("RUNBOOK.md").decode()
-    by_n = {n: g for n, g in enumerate(_groups(), 1)}
+    # A folder with no items takes no number (round 4: + New folder can make one).
+    by_n = {n: g for n, g in enumerate([g for g in _groups() if g["items"]], 1)}
     listed = set()
     for e in manifest:
         g = by_n[e["n"]]
@@ -112,11 +113,13 @@ def _check_export(zf: zipfile.ZipFile) -> None:
             assert any(e["n"] == n for e in manifest), g["name"]
 
 
-def _check_invariants(all_uids: set) -> None:
+def _check_invariants(all_uids: set, empty_ok: set = frozenset()) -> None:
+    """empty_ok: keys of folders made empty with create_folder and not filled
+    since (round 4); every other folder has items."""
     seen = [i["uid"] for g in _groups() for i in g["items"]]
     assert len(seen) == len(set(seen)), "an item is in two folders"
     assert set(seen) == all_uids, "an item was lost or invented"
-    assert all(g["items"] for g in _groups()), "an empty folder survived"
+    assert all(g["items"] or g["key"] in empty_ok for g in _groups()), "an empty folder survived"
     names = [g["name"].strip().casefold() for g in _groups()]
     assert len(names) == len(set(names)), "two folders share a name"
     assert all(g["name"] == g["name"].strip() and g["name"] for g in _groups())
@@ -533,11 +536,33 @@ NAMES = ["Camps", "camps ", "Water", "Lines", "Unorganized", "North Roots", "Tri
 def _random_session(rng: random.Random, paths) -> None:
     data = _load(paths)
     all_uids = {i["uid"] for g in data["groups"] for i in g["items"]}
+    empty_ok = set()   # made empty by create_folder and never filled since
     for _ in range(40):
-        op = rng.choice(["move", "move", "new", "rename", "merge", "exclude"])
+        op = rng.choice(["move", "move", "new", "rename", "merge", "exclude", "create", "remove_empty"])
         groups = _groups()
         uids = sorted(all_uids)
-        if op == "move":
+        if op == "create":
+            name = rng.choice([None, None, *NAMES])
+            before = _layout()
+            res = json.loads(bridge.create_folder(name))
+            if res["ok"]:
+                assert res["created"] and res["moved"] == 0 and _groups()[-1]["items"] == []
+                empty_ok.add(res["key"])
+            else:
+                assert _layout() == before
+        elif op == "remove_empty":
+            empties = [g for g in groups if not g["items"]]
+            if empties:
+                g = rng.choice(empties)
+                res = json.loads(bridge.remove_empty_folder(g["key"]))
+                assert res["removed"] == [g["key"]] and g["key"] not in {x["key"] for x in _groups()}
+            elif groups:
+                g = rng.choice(groups)
+                before = _layout()
+                with pytest.raises(ValueError):
+                    bridge.remove_empty_folder(g["key"])
+                assert _layout() == before
+        elif op == "move":
             picks = rng.sample(uids, rng.randint(1, min(12, len(uids))))
             res = _move(picks, rng.choice(groups)["key"])
             assert res["ok"]
@@ -567,7 +592,10 @@ def _random_session(rng: random.Random, paths) -> None:
         elif op == "exclude":
             u = rng.choice(uids)
             bridge.apply_edits(json.dumps({u: {"included": not _item(u)["included"]}}))
-        _check_invariants(all_uids)
+        # Once filled, a created folder follows the usual rule (emptied -> gone).
+        empty_ok -= {g["key"] for g in _groups() if g["items"]}
+        empty_ok &= {g["key"] for g in _groups()}
+        _check_invariants(all_uids, empty_ok)
     zf = _export()
     _check_export(zf)
     included = sum(1 for g in _groups() for i in g["items"] if i["included"])
@@ -831,3 +859,127 @@ def test_folder_moves_leave_the_loaded_document_alone():
     now = bridge.doc_folders()
     assert list(now) == [g["key"] for g in _groups()] and mill not in now
     assert now[_key("Boats")]["name"] == "Boats" and now[_key("South Roots")]["name"] == "South Roots"
+
+
+# --- round 4 (2026-10-23): + New folder clicked, an empty folder up front ----------
+
+
+def _create(name=None) -> dict:
+    return json.loads(bridge.create_folder(name))
+
+
+def test_create_folder_makes_an_empty_folder_at_the_end_with_the_default_name():
+    _load(BITTERROOTS)
+    before = _layout()
+    res = _create()
+    assert res["ok"] and res["created"] and res["moved"] == 0 and res["removed"] == []
+    assert res["key"].startswith("new:")
+    assert res["folders"][-1] == {"key": res["key"], "name": "New folder", "safe": "New_folder",
+                                  "unorganized": False, "uids": []}
+    assert _layout()[:-1] == before and len(_groups()) == 11
+    # The next one takes the next free default name; a given name is trimmed.
+    assert _create()["folders"][-1]["name"] == "New folder 2"
+    assert _create("  Camps  ")["folders"][-1]["name"] == "Camps"
+    assert bridge.default_folder_name() == "New folder 3"
+
+
+def test_create_folder_with_a_taken_name_is_reported_and_changes_nothing():
+    _load(BITTERROOTS)
+    before = _layout()
+    res = _create("north roots")
+    assert res == {"ok": False, "name": "north roots",
+                   "duplicate": {"key": _key("North Roots"), "name": "North Roots", "count": 22}}
+    assert _layout() == before
+
+
+@pytest.mark.parametrize("name", ["", "   ", "\n\t"])
+def test_create_folder_with_an_empty_name_raises(name):
+    _load(BITTERROOTS)
+    before = _layout()
+    with pytest.raises(ValueError, match="needs a name"):
+        bridge.create_folder(name)
+    assert _layout() == before
+
+
+def test_an_empty_folder_stays_through_other_moves_until_it_is_filled_and_emptied():
+    _load(BITTERROOTS)
+    key = _create("Later")["key"]
+    _move(_uids("Paddling")[:2], _key("Blodgett"))
+    merged = json.loads(bridge.merge_folders(_key("Mill Creek Canyon"), _key("Paddling")))
+    assert key not in merged["removed"] and _group("Later")["items"] == []
+    # Filled, it is an ordinary folder: the move that empties it removes it.
+    u = _uids("Paddling")[0]
+    _move([u], key)
+    assert _uids("Later") == [u]
+    res = _move([u], _key("Paddling"))
+    assert res["removed"] == [key] and "Later" not in [g["name"] for g in _groups()]
+
+
+def test_an_empty_folder_can_be_renamed_and_merged_away():
+    _load(BITTERROOTS)
+    key = _create()["key"]
+    assert json.loads(bridge.rename_folder(key, "Camps"))["name"] == "Camps"
+    assert json.loads(bridge.rename_folder(key, "Paddling"))["duplicate"]["key"] == _key("Paddling")
+    res = json.loads(bridge.merge_folders(key, _key("Paddling")))
+    assert res["removed"] == [key] and res["moved"] == 0 and len(_groups()) == 10
+
+
+def test_remove_empty_folder_removes_only_an_empty_folder():
+    _load(BITTERROOTS)
+    key = _create()["key"]
+    res = json.loads(bridge.remove_empty_folder(key))
+    assert res == {"ok": True, "removed": [key], "folders": res["folders"]}
+    assert [f["key"] for f in res["folders"]] == [g["key"] for g in _groups()] and len(_groups()) == 10
+    before = _layout()
+    with pytest.raises(ValueError, match="isn’t empty"):
+        bridge.remove_empty_folder(_key("Paddling"))
+    with pytest.raises(ValueError, match="no folder"):
+        bridge.remove_empty_folder(key)          # already gone
+    with pytest.raises(ValueError, match="no folder"):
+        bridge.remove_empty_folder("nope")
+    assert _layout() == before
+
+
+def test_remove_empty_folder_also_removes_a_folder_that_loaded_empty():
+    data = _load_text(make_map(4, seed=9, empty=1))
+    (empty,) = [g["key"] for g in data["groups"] if not g["items"]]
+    res = json.loads(bridge.remove_empty_folder(empty))
+    assert res["removed"] == [empty] and len(res["folders"]) == len(data["groups"]) - 1
+
+
+def test_an_empty_folder_is_left_out_of_the_export_and_takes_no_number():
+    """No files, no manifest entry (so no box), no runbook step, and the
+    folders after it are numbered as if it weren't there."""
+    _load(BITTERROOTS)
+    plain = _members(_export())
+    a = _create("Empty A")["key"]
+    _move(_uids("Mill Creek Canyon"), name="Mill 2")        # a filled folder after it
+    _create("Empty B")
+    zf = _export()
+    names = zf.namelist()
+    assert "10_Mill_2/Mill_2_Waypoints.gpx" in names, names
+    assert not [n for n in names if "Empty" in n or n.startswith(("11_", "12_"))]
+    man = bridge._STATE["manifest"]
+    assert [e["n"] for e in man] == list(range(1, 11)) and man[-1]["folder"] == "Mill 2"
+    runbook = zf.read("RUNBOOK.md").decode()
+    assert "Empty A" not in runbook and "Empty B" not in runbook
+    assert "**10 folders · 177 markups · 10 imports**" in runbook
+    _check_export(zf)
+    # The other folders' files are exactly as without the empty ones (only
+    # Mill Creek Canyon's own files moved to "Mill 2").
+    mine = _members(zf)
+    for n, b in plain.items():
+        if n != "RUNBOOK.md" and not n.startswith("10_"):
+            assert mine[n] == b, n
+    assert a in {g["key"] for g in _groups()}            # export removes nothing
+
+
+def test_only_empty_folders_do_not_widen_or_break_the_export():
+    _load(BITTERROOTS)
+    for _ in range(95):
+        _create()
+    zf = _export()
+    assert len(bridge._STATE["manifest"]) == 10
+    # 105 folders, 95 of them empty: still two-digit numbers (L1 counts numbered folders).
+    assert all(re.match(r"\d\d_", n) for n in zf.namelist() if n != "RUNBOOK.md")
+    _check_export(zf)

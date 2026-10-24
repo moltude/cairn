@@ -662,8 +662,9 @@ def apply_edits(edits_json: str) -> str:
 # membership and order: an item's dict (with every edit, its exclusion and its
 # pinned style) and its feature travel with it unchanged.
 #
-# Rules: an item is in exactly one folder; a folder left with no items is
-# removed; folder names are trimmed and must be non-empty; two folders may not
+# Rules: an item is in exactly one folder; a folder a move or merge leaves
+# with no items is removed (one made empty by create_folder, or loaded empty,
+# stays until then, or until remove_empty_folder); folder names are trimmed and must be non-empty; two folders may not
 # share a name compared trimmed and case-insensitively (a clash is REPORTED,
 # never merged silently); new folders go at the end; moving an item to the
 # folder it is in does nothing; an unknown uid or key raises ValueError and
@@ -837,6 +838,39 @@ def move_to_new_folder(uids_json: str) -> str:
     return move_items(uids_json, None, default_folder_name())
 
 
+def create_folder(name: str | None = None) -> str:
+    """An EMPTY new folder, at the end: a click on + New folder with nothing
+    ticked (round 4). `name` defaults to default_folder_name(). Returns
+    move_items' success JSON with "created": true and "moved": 0, or the
+    duplicate report when the name is taken (nothing changed). An empty name
+    raises ValueError.
+
+    The folder stays, with no items, until items are moved in; like any
+    folder, one that a later move empties is removed then. Export skips a
+    folder with no items (no files, no number)."""
+    name = default_folder_name() if name is None else _folder_name_of(name)
+    dup = _name_taken(name)
+    if dup:
+        return json.dumps(_duplicate(name, dup))
+    key = _new_folder_key()
+    _STATE["groups"].append({"key": key, "name": name, "safe": _safe(name),
+                             "unorganized": False, "items": []})
+    return json.dumps({"ok": True, "key": key, "created": True, "moved": 0,
+                       "removed": [], "folders": _layout()})
+
+
+def remove_empty_folder(key: str) -> str:
+    """Remove a folder that has no items (one made empty with create_folder,
+    or one that loaded empty). Returns {"ok": true, "removed": [key],
+    "folders": layout}. An unknown key, or a folder that still has items,
+    raises ValueError and changes nothing: items are never dropped this way."""
+    g = _folder(key)
+    if g["items"]:
+        raise ValueError(f"“{g['name']}” isn’t empty, so it can’t be removed.")
+    _STATE["groups"] = [x for x in _STATE["groups"] if x is not g]
+    return json.dumps({"ok": True, "removed": [key], "folders": _layout()})
+
+
 def merge_folders(source_key: str, target_key: str) -> str:
     """Move every item of source into target and remove source. target keeps
     its name and place. Returns move_items' success JSON (source_key == target_key
@@ -908,9 +942,14 @@ def export_zip() -> bytes:
     unlisted_dropped = 0  # dropped items in folders that produced no file at all
     # NN_ is two digits, or as many as the largest number needs, so a map of
     # 100+ folders still sorts in order in a file list (010_ before 100_).
-    width = max(2, len(str(len(groups))))
+    # A folder with no items (made empty with + New folder, or loaded empty)
+    # is not part of the export at all: no files, no box, and no number, so
+    # the folders after it aren't numbered around a gap (round 4). A folder
+    # whose items are all excluded still takes its number, as before.
+    numbered = [g for g in groups if g["items"]]
+    width = max(2, len(str(len(numbered))))
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for n, g in enumerate(groups, 1):
+        for n, g in enumerate(numbered, 1):
             safe = g["safe"]
             dirname = f"{n:0{width}d}_{safe}"
             d = out / dirname

@@ -537,8 +537,22 @@ tbody tr.dragging{background:#E9E3D2;opacity:.45}
 .facet-btn.drop-over,.new-folder.drop-over{background:#E3EAD8;border:2px dashed var(--green);padding:2px 8px 2px 9px;
   color:#22381C;font-weight:700}
 .facet-btn.drop-over .facet-count{color:var(--green)}
-.new-folder{margin-top:6px;padding:4px 10px;min-height:26px;box-sizing:border-box;border:1px dashed #A99A7C;color:var(--muted)}
+.new-folder{margin-top:6px;padding:4px 10px;min-height:26px;box-sizing:border-box;border:1px dashed #A99A7C;color:var(--muted);
+  background:transparent;text-align:left;width:100%;cursor:pointer}
+.new-folder:hover{background:rgba(247,242,230,.6);color:var(--ink);border-color:var(--brown)}
 .new-folder.drop-over{padding:3px 9px}
+/* An empty folder (round 4): its × shows on hover or focus, over the count. */
+.facet-row{position:relative;display:flex;flex-direction:column}
+.facet-row .facet-btn{padding-right:30px}
+.facet-x{position:absolute;right:3px;top:50%;transform:translateY(-50%);width:22px;height:22px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;background:none;border:none;border-radius:2px;
+  color:var(--muted);cursor:pointer;opacity:0}
+.facet-x svg{width:11px;height:11px}
+.facet-row:hover .facet-x,.facet-row:focus-within .facet-x{opacity:1}
+.facet-x:hover{color:var(--ink);background:var(--card)}
+.facet-x:focus-visible{opacity:1}
+body.dragging-rows .facet-x{opacity:0;pointer-events:none}
+.folder.empty-folder .folder-head{border-bottom:none}
 .facet-btn.naming{align-items:center;padding:2px 5px;background:var(--sheet);border:1px solid var(--brown)}
 .facet-btn.naming .folder-name-in{font:inherit;font-weight:700;color:var(--ink);flex:1 1 auto;min-width:0;
   border:none;background:transparent;padding:2px 4px;outline:none}

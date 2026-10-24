@@ -3403,3 +3403,183 @@ def test_export_boxes_of_folders_with_the_same_name_show_their_numbers(fresh_pag
     with page.expect_download() as dl:
         boxes.nth(0).locator(".rb-dl").click()
     assert dl.value.suggested_filename == manifest[0]["dir"] + ".zip"
+
+
+# ---------------------------------------------------------------------------
+# Round 4: edit-screen follow-ups (docs/testing/FOLDERS_RELEASE.md "Round 4")
+# ---------------------------------------------------------------------------
+
+FOLLOWUPS = Path(__file__).resolve().parents[1] / "output" / "followups"
+
+
+def _shot(page: Page, name: str) -> None:
+    """A 1440x900 screenshot for the owner (tests/output is local scratch)."""
+    FOLLOWUPS.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=str(FOLLOWUPS / f"{name}.png"))
+
+
+def _wide(page: Page) -> None:
+    page.set_viewport_size({"width": 1440, "height": 900})
+
+
+# --- 1. + New folder is a button; an empty folder up front -------------------
+
+
+def test_clicking_new_folder_with_nothing_ticked_makes_an_empty_folder(loaded: Page):
+    page = loaded
+    _wide(page)
+    before = _layout(page)
+    nf = page.locator("#folder-facets .new-folder")
+    expect(nf).to_have_js_property("tagName", "BUTTON")
+    nf.click()
+    inp = page.locator("#folder-facets .folder-name-in")
+    expect(inp).to_be_focused()
+    expect(inp).to_have_value("New folder")
+    expect(page.locator("#status")).to_have_text("Made an empty folder.")
+    page.keyboard.type("Water")
+    page.keyboard.press("Enter")
+    lay = _layout(page)
+    assert lay[:-1] == before and lay[-1] == ("Water", 0)
+    # In the rail with count 0; in the list as a header only, renamable there.
+    expect(_rail(page, "Water").locator(".facet-count")).to_have_text("0")
+    sec = page.locator("section.folder.empty-folder")
+    expect(sec).to_have_count(1)
+    expect(sec.locator(".folder-name")).to_have_text("Water")
+    expect(sec.locator(".folder-sub")).to_have_text("Empty")
+    expect(sec.locator("tbody tr")).to_have_count(0)
+    sec.scroll_into_view_if_needed()
+    _shot(page, "1a-empty-folder-made")
+    # It is a drop target like any other.
+    row = _first_row(page, "Paddling")
+    uid = row.get_attribute("data-uid")
+    _drag(page, row.locator(".note-btn"), _rail(page, "Water"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to Water.")
+    assert dict(_layout(page))["Water"] == 1
+    expect(page.locator("section.folder.empty-folder")).to_have_count(0)
+    # Emptied again by a move, it goes, as before.
+    _drag(page, page.locator(f'tr[data-uid="{uid}"] .note-btn'), _rail(page, "Paddling"))
+    assert "Water" not in dict(_layout(page))
+
+
+def test_new_folder_responds_to_enter_and_space(loaded: Page):
+    page = loaded
+    nf = page.locator("#folder-facets .new-folder")
+    nf.focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
+    page.keyboard.press("Escape")                     # keeps the default
+    assert _layout(page)[-1] == ("New folder", 0)
+    page.locator("#folder-facets .new-folder").focus()
+    page.keyboard.press(" ")
+    expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder 2")
+    page.keyboard.press("Enter")
+    assert [n for n, c in _layout(page)[-2:]] == ["New folder", "New folder 2"]
+
+
+def test_clicking_new_folder_with_rows_ticked_moves_them_into_it(loaded: Page):
+    page = loaded
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    uids = [rows.nth(i).get_attribute("data-uid") for i in (0, 3)]
+    for u in uids:
+        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
+    page.locator("#folder-facets .new-folder").click()
+    expect(page.locator("#status")).to_have_text("Moved 2 items to a new folder.")
+    expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
+    page.keyboard.type("Picked")
+    page.keyboard.press("Enter")
+    lay = _layout(page)
+    assert lay[-1] == ("Picked", 2) and dict(lay)["Lost Trail Pass"] == 29
+    assert page.evaluate("SEL.size") == 0
+    # A drop on + New folder is still a drop, not also a click (no second folder).
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
+    page.keyboard.press("Enter")
+    assert [n for n, _ in _layout(page)].count("New folder") == 1
+    assert len(_layout(page)) == 12
+
+
+def test_an_empty_folder_can_be_removed_with_its_x(loaded: Page):
+    page = loaded
+    _wide(page)
+    page.locator("#folder-facets .new-folder").click()
+    page.keyboard.press("Enter")
+    row = page.locator("#folder-facets .facet-row.empty")
+    expect(row).to_have_count(1)
+    x = row.locator(".facet-x")
+    expect(x).to_have_attribute("aria-label", "Remove empty folder New folder")
+    # Shown on hover or focus within the entry (Enter left focus on it).
+    expect(x).to_have_css("opacity", "1")
+    page.locator("#filter").focus()
+    page.mouse.move(900, 600)
+    expect(x).to_have_css("opacity", "0")
+    row.hover()
+    expect(x).to_have_css("opacity", "1")
+    _shot(page, "1b-remove-empty-folder")
+    # Folders with items have no ×.
+    expect(page.locator("#folder-facets .facet-x")).to_have_count(1)
+    # Keyboard: Tab from the entry reaches the ×; Enter removes; focus lands
+    # on + New folder (the next entry).
+    _rail(page, "New folder").focus()
+    page.keyboard.press("Tab")
+    expect(x).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(page.locator("#status")).to_have_text("Removed the empty folder “New folder”.")
+    expect(page.locator("#folder-facets .new-folder")).to_be_focused()
+    assert len(_layout(page)) == 10
+    expect(page.locator("section.folder.empty-folder")).to_have_count(0)
+    # A removed folder filter goes back to All.
+    page.locator("#folder-facets .new-folder").click()
+    page.keyboard.press("Enter")
+    _rail(page, "New folder").click()
+    assert page.evaluate("FILTERS.folder") is not None
+    expect(page.locator("section.folder")).to_have_count(1)    # just the empty header
+    page.locator("#folder-facets .facet-x").click()
+    assert page.evaluate("FILTERS.folder") is None
+    expect(page.locator("section.folder")).to_have_count(10)
+
+
+def test_an_empty_folder_is_not_exported_and_numbers_close_up(loaded: Page):
+    page = loaded
+    page.locator("#folder-facets .new-folder").click()
+    page.keyboard.type("Nothing yet")
+    page.keyboard.press("Enter")
+    _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
+    page.keyboard.type("Boat")
+    page.keyboard.press("Enter")
+    zf = _export_zip(page)
+    manifest = page.evaluate("MANIFEST")
+    assert [e["folder"] for e in manifest][-1] == "Boat" and len(manifest) == 11
+    assert manifest[-1]["dir"] == "11_Boat"
+    assert not [n for n in zf.namelist() if "Nothing" in n]
+    boxes = page.locator("#runbook .rb-step .rb-name")
+    expect(boxes).to_have_count(11)
+    assert "Nothing yet" not in boxes.all_inner_texts()
+    # Start over after the export: no change left to count.
+    page.click("#back")
+    assert page.evaluate("unexportedChanges()") == 0
+
+
+def test_start_over_counts_a_new_empty_folder_and_a_removed_one(loaded: Page):
+    page = loaded
+    page.locator("#folder-facets .new-folder").click()
+    page.keyboard.press("Enter")
+    assert page.evaluate("unexportedChanges()") == 1
+    page.locator("#folder-facets .facet-x").click()
+    assert page.evaluate("unexportedChanges()") == 0
+
+
+def test_an_empty_folders_taken_name_is_refused_without_a_merge_offer(loaded: Page):
+    page = loaded
+    page.locator("#folder-facets .new-folder").click()
+    page.keyboard.type("paddling")
+    page.keyboard.press("Enter")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator("#status")).to_have_text("“Paddling” already exists.")
+    assert _layout(page)[-1] == ("New folder", 0)
+    # The same from its header.
+    page.locator("section.folder.empty-folder .folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("Blodgett")
+    page.keyboard.press("Enter")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator("#status")).to_have_text("“Blodgett” already exists.")
+    assert _layout(page)[-1] == ("New folder", 0)
