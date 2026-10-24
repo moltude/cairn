@@ -462,7 +462,7 @@ is updated.
   comparison on a fresh clone. `.gitignore` ignores round-trip runs' instructions.txt.
 - **FAQ diagram:** `docs/faq/how-cairn-works.html` is the owner's Main edit made
   self-contained (the app's woff2 fonts by relative path, one SVG for all lines), rendered at 2x
-  (3200×1800, 138 KB WebP) to `web/faq/how-cairn-works.webp` by `scripts/make_faq_diagram.py`.
+  (3200×1800, 138 KB WebP) to `web/images/how-cairn-works.webp` (moved out of web/faq/ so it cannot shadow the /faq clean URL) by `scripts/make_faq_diagram.py`.
   Fixed: the GeoJSON arrow (its box had been resized onto the vertical line, so it pointed
   nowhere), and the new "Any other GeoJSON, KML or GPX" input now joins Cairn by one elbow
   (`M264 813 H986 V625`) with an arrowhead into the middle of the card's bottom edge. Tidied: that

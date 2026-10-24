@@ -1,4 +1,4 @@
-"""Render docs/faq/how-cairn-works.html to web/faq/how-cairn-works.webp, the
+"""Render docs/faq/how-cairn-works.html to web/images/how-cairn-works.webp, the
 FAQ's "How Cairn bridges CalTopo and onX" diagram, at 2x.
 
     uv run --with pillow python scripts/make_faq_diagram.py
@@ -12,7 +12,7 @@ from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "docs/faq/how-cairn-works.html"
-OUT = ROOT / "web/faq/how-cairn-works.webp"
+OUT = ROOT / "web/images/how-cairn-works.webp"
 W, H = 1600, 900
 
 
