@@ -197,18 +197,6 @@ A side effect: every file Cairn writes is now GPX, so nothing warns any more tha
 - **Import without a paid plan.** Importing requires onX Premium or Elite.
 - **Get icons, waypoint colors or folders out of a CalTopo GPX.** The GPX doesn't have them. You can still add icons and colors in Cairn before you export, and they go into the files Cairn writes. Folders come from the GeoJSON or KML.
 
-## Privacy
-
-### Where does my map data go?
-
-It stays in your browser. Cairn runs entirely client-side: the conversion is Python running in the page through Pyodide. Your file is read in the page, the zip is built in the browser and downloaded from there, and no code path uploads your map.
-
-The page loads only a few things:
-- Its own files: the page, its scripts, the Python bridge, the Cairn engine package, its config and its fonts.
-- The Pyodide runtime and its `pyyaml` package, from one pinned folder on `cdn.jsdelivr.net`.
-
-The site's Content Security Policy only lets the page's scripts load code from, or connect to, its own origin and that one jsdelivr folder. The host (Vercel, possibly behind a Cloudflare proxy that passes the same security headers through) and jsdelivr see ordinary request metadata, such as your IP and that you loaded the page, but never your file.
-
 ## Round trip
 
 ### Round-tripping onX data (batch edits)
