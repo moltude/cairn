@@ -1116,3 +1116,29 @@ split in UI-25 ("Several lines": a separate **Line style…** button and dialog)
   other fill colours (onX ignores them); a section header per kind in a mixed dialog (the row
   labels say it: Pin color, Line color).
 
+### UI-37 — Browser Back and Forward; a leave-site prompt
+Status: decided 2026-10-24 (owner-approved, feedback item 14).
+
+- Each stage is a browser history entry (History API, `pushState` / `popstate`, no inline JS):
+  the drop screen's entry is replaced in at boot, loading a map pushes **edit**, exporting
+  pushes **done**. The entries are always drop, edit, done, in that order.
+- **Back from done** → edit, nothing lost, no prompt (the export screen's own Back does the
+  same and steps history with it).
+- **Back from edit** with unexported changes (`unexportedChanges()`, Start over's count) → the
+  in-page confirm (the Start over component): **"Leave this map?"** / "Changes will be lost."
+  / **[Stay]** **[Leave]**. Stay is the default and Esc; it steps history forward again so the
+  map's entry is current. Leave clears the map as Start over does and shows the drop screen.
+  With no changes, Back goes straight to the drop screen (the map is cleared: the drop screen
+  holds no map).
+- **Back from drop** leaves the site, as any page. Start over steps history back to the drop
+  entry, so it is the same there.
+- **Forward** only to a stage that is still valid: edit needs a loaded map, done an export with
+  no change since. Otherwise history steps back to where the screen is and nothing changes.
+- The app's buttons stay synchronous; the `popstate` their own history steps cause is ignored
+  (`HIST_SKIP`). A `popstate` with no Cairn state (a hash link such as `#help`) is ignored.
+- **beforeunload:** a listener is added only while there are unexported changes (after any
+  edit, move, rename or a note draft) and removed once there are none (export, Start over,
+  Leave), so reload, closing the tab or leaving the site shows the browser's own prompt only
+  then.
+- Help says it in one line ("Good to know").
+

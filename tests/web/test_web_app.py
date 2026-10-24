@@ -4696,3 +4696,141 @@ def test_every_palette_is_one_line_in_the_popovers_and_dialogs(loaded: Page):
     _shot(page, "fb-10b-waypoints-and-lines-dialog")
     # "Leave as is" is the one wording for "no change", everywhere it appears.
     assert set(d.locator(".reset-chip").all_inner_texts()) == {"Leave as is"}
+
+
+# --- UI-37: browser Back and Forward, and the leave-site prompt (2026-10-24) ---------
+
+
+def _stage(page: Page) -> str:
+    return page.get_attribute("body", "data-stage")
+
+
+def _rename_first_row(page: Page, name: str = "Renamed here") -> None:
+    box = page.locator(f"{ROW} .name-in").first
+    box.click()
+    box.fill(name)
+    box.press("Enter")
+    expect(page.locator(f"{ROW} .name-in").first).to_have_value(name)
+
+
+def test_back_from_edit_with_no_changes_goes_to_drop_and_forward_does_nothing(loaded: Page):
+    page = loaded
+    assert _stage(page) == "edit"
+    page.go_back()
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    expect(page.locator("#confirm")).to_be_hidden()
+    assert page.evaluate("DATA === null")
+    # The map is gone, so Forward has no edit screen to go to.
+    page.go_forward()
+    page.wait_for_timeout(300)
+    assert _stage(page) == "drop"
+    expect(page.locator("#confirm")).to_be_hidden()
+
+
+def test_back_from_edit_with_changes_asks_stay_or_leave(loaded: Page):
+    page = loaded
+    _wide(page)
+    _rename_first_row(page)
+    assert page.evaluate("unexportedChanges()") == 1
+    page.go_back()
+    c = page.locator("#confirm")
+    expect(c).to_be_visible()
+    expect(page.locator("#confirm-title")).to_have_text("Leave this map?")
+    expect(page.locator("#confirm-body")).to_have_text("Changes will be lost.")
+    expect(page.locator("#confirm-actions button")).to_have_text(["Stay", "Leave"])
+    expect(page.locator("#confirm-actions button", has_text="Stay")).to_be_focused()   # the default
+    _shot(page, "fb-14-leave-this-map")
+    # Esc is Stay: still on the map, the change kept, and Back asks again.
+    page.keyboard.press("Escape")
+    expect(c).to_be_hidden()
+    assert _stage(page) == "edit" and page.evaluate("unexportedChanges()") == 1
+    page.wait_for_timeout(200)
+    page.go_back()
+    expect(c).to_be_visible()
+    page.click("#confirm-actions button:text-is('Stay')")
+    expect(c).to_be_hidden()
+    assert _stage(page) == "edit"
+    expect(page.locator(f"{ROW} .name-in").first).to_have_value("Renamed here")
+    page.wait_for_timeout(200)
+    # Leave: the drop screen, the map cleared as by Start over.
+    page.go_back()
+    page.click("#confirm-actions button:text-is('Leave')")
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    assert page.evaluate("DATA === null && Object.keys(EDITS).length === 0")
+    page.go_forward()
+    page.wait_for_timeout(300)
+    assert _stage(page) == "drop"
+
+
+def test_back_from_done_returns_to_edit_and_forward_to_a_current_export(loaded: Page):
+    page = loaded
+    _rename_first_row(page)
+    _done(page)
+    page.go_back()
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator(f"{ROW} .name-in").first).to_have_value("Renamed here")   # nothing lost
+    page.go_forward()
+    expect(page.locator("body")).to_have_attribute("data-stage", "done")
+    # The app's Back button and the browser's agree.
+    page.click("#back")
+    assert _stage(page) == "edit"
+    page.go_forward()
+    expect(page.locator("body")).to_have_attribute("data-stage", "done")
+    page.go_back()
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit")
+    # A change since the export: that export is stale, Forward stays on the map.
+    _rename_first_row(page, "Changed again")
+    page.go_forward()
+    page.wait_for_timeout(300)
+    assert _stage(page) == "edit"
+    # Back from the map now asks (one unexported change).
+    page.go_back()
+    expect(page.locator("#confirm-title")).to_have_text("Leave this map?")
+    page.click("#confirm-actions button:text-is('Stay')")
+    assert _stage(page) == "edit"
+
+
+def test_back_from_drop_after_start_over_leaves_the_site(loaded: Page):
+    page = loaded
+    _done(page)
+    page.locator("#done-stage .newmap").click()
+    page.click("#confirm .confirm-actions button:text-is('Start over')")
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    page.wait_for_timeout(300)
+    page.go_back()
+    page.wait_for_load_state()
+    assert "index.html" not in page.url, page.url
+
+
+def test_the_browser_prompts_before_unload_only_with_unexported_changes(context):
+    def open_loaded():
+        page = context.new_page()
+        page.goto(f"{BASE_URL}/index.html")
+        page.wait_for_function("window.__cairnReady === true", timeout=60000)
+        page.set_input_files("#file", str(FIXTURE))
+        page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+        return page
+
+    page = open_loaded()
+    seen = []
+    page.on("dialog", lambda d: (seen.append(d.type), d.dismiss()))
+    page.locator(f"{ROW} .sel-box").first.click()           # a gesture, but no change
+    with page.expect_event("close", timeout=5000):
+        page.close(run_before_unload=True)
+    assert seen == [] and page.is_closed()
+
+    page = open_loaded()
+    seen = []
+    page.on("dialog", lambda d: (seen.append(d.type), d.dismiss()))
+    _rename_first_row(page)
+    page.close(run_before_unload=True)
+    page.wait_for_timeout(500)
+    assert seen == ["beforeunload"]
+    assert not page.is_closed()                              # dismissed: the tab stays
+    # Exported: no more prompt.
+    _done(page)
+    seen.clear()
+    with page.expect_event("close", timeout=5000):
+        page.close(run_before_unload=True)
+    assert seen == [] and page.is_closed()

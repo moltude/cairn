@@ -164,6 +164,77 @@ function showStage(name) {
   const slot = name === "edit" ? $("#status-rail") : $("#status-top");
   if ($("#status").parentNode !== slot) slot.appendChild($("#status"));
   window.scrollTo(0, 0);
+  syncUnloadGuard();
+}
+
+/* ---------- browser Back and Forward (UI-37) ----------
+   Each stage is a history entry: drop (replaced in at boot), edit (pushed on
+   load), done (pushed on export), so the entries are always drop, edit, done
+   in that order and a stage's depth is its index. The app's own buttons stay
+   synchronous: Back (done -> edit) and Start over move the screen at once and
+   step history to match, ignoring the popstate that causes (HIST_SKIP).
+   popstate (the browser's Back / Forward):
+   - done -> edit: nothing lost, no prompt;
+   - edit -> drop: with unexported changes, "Leave this map?" [Stay] [Leave];
+     Stay steps forward again, Leave clears the map like Start over; with
+     none, straight to drop;
+   - Forward only to a stage that is still valid (edit: a loaded map; done: an
+     export that is current, no change since); otherwise history steps back to
+     where the screen is and nothing changes.
+   A popstate with no state of ours (a hash link, "#help") is left alone. */
+const STAGE_DEPTH = { drop: 0, edit: 1, done: 2 };
+let HIST_SKIP = 0;                     // popstates our own history.go() will fire
+function pushStage(name) {
+  showStage(name);
+  history.pushState({ cairn: name }, "");
+}
+/** Step history by n entries without reacting to the popstate it fires. */
+function stepHistory(n) {
+  if (!n) return;
+  HIST_SKIP++;
+  history.go(n);
+}
+const stageValid = name => name === "drop" || (name === "edit" && !!DATA) ||
+  (name === "done" && !!DATA && !!ZIP && unexportedChanges() === 0);
+function onPopState(e) {
+  if (HIST_SKIP) { HIST_SKIP--; return; }
+  const want = e.state && e.state.cairn;
+  const now = document.body.dataset.stage;
+  if (!want || !(want in STAGE_DEPTH) || want === now) return;
+  if (!stageValid(want)) { stepHistory(STAGE_DEPTH[now] - STAGE_DEPTH[want]); return; }
+  if (want === "drop") return leaveMap(now);
+  // done -> edit (Back), or edit -> done (Forward to a current export).
+  closePop(); closeBulk(); closeMove(false); hideTip();
+  if (CONFIRM) closeConfirm(false);
+  showStage(want);
+  setStatus("");
+}
+/** Back to the drop screen from `from` (history is already there). */
+function leaveMap(from) {
+  flushDeferred();
+  if (CONFIRM) closeConfirm(false);
+  const n = unexportedChanges();
+  if (!n) { resetAll({ history: false }); return; }
+  openConfirm({
+    title: "Leave this map?",
+    body: "Changes will be lost.",
+    buttons: [
+      { label: "Stay", initial: true, cancel: true, run: () => {
+          closeConfirm(); stepHistory(STAGE_DEPTH[from]); } },
+      { label: "Leave", cls: "danger", run: () => { closeConfirm(false); resetAll({ history: false }); } },
+    ],
+  });
+}
+/* The browser's own "Leave site?" prompt on reload, tab close or leaving the
+   site, only while there are unexported changes: the listener is added then
+   and removed otherwise. */
+const onBeforeUnload = e => { e.preventDefault(); e.returnValue = ""; };
+let UNLOAD_ON = false;
+function syncUnloadGuard() {
+  const on = typeof unexportedChanges === "function" && unexportedChanges() > 0;
+  if (on === UNLOAD_ON) return;
+  UNLOAD_ON = on;
+  (on ? addEventListener : removeEventListener)("beforeunload", onBeforeUnload);
 }
 
 /* ---------- file intake ---------- */
@@ -216,7 +287,7 @@ async function handleFiles(files) {
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
     renderEdit();
-    showStage("edit");
+    pushStage("edit");
     setStatus("");   // the screen says it; the status line is for messages (moves, errors)
     window.__cairnLoaded = true;
     warnFillLoss();
@@ -564,6 +635,7 @@ function renderFolders() {
     host.innerHTML = `<div class="note">Nothing matches these filters.</div>`;
   updateSel();
   refocus(fk);
+  syncUnloadGuard();               // every edit, move and rename redraws the list
 }
 
 /** An empty folder shows as a header only (so it can be renamed there), when
@@ -927,7 +999,7 @@ function closeNote(it, apply) {
 
 function wireNoteEditor(tr, it) {
   const ta = tr.querySelector(".desc-in");
-  ta.addEventListener("input", () => { NOTE_EDIT.draft = ta.value; });
+  ta.addEventListener("input", () => { NOTE_EDIT.draft = ta.value; syncUnloadGuard(); });
   ta.addEventListener("keydown", e => {
     if (e.key === "Escape") {
       e.preventDefault(); e.stopPropagation();
@@ -1930,7 +2002,7 @@ async function doExport() {
     MANIFEST = JSON.parse(py.runPython("import json; json.dumps(bridge._STATE['manifest'])"));
     SAVED = savedState();          // this export wrote every change so far
     renderRunbook();
-    showStage("done");
+    pushStage("done");
     setStatus("");   // the screen says it: no "Built N folders" up top
     window.__cairnExported = true;
   } catch (e) {
@@ -2093,7 +2165,10 @@ function noteIsChanged() {
   return !!it && NOTE_EDIT.draft !== (it.desc || "");
 }
 
-function resetAll() {
+function resetAll({ history: stepBack = true } = {}) {
+  // Start over steps history back to the drop entry, so Back from there
+  // leaves the site; a Leave from the browser's Back is already there.
+  const depth = STAGE_DEPTH[document.body.dataset.stage] || 0;
   closePop(); closeBulk(); resetFolderState();
   $("#runbook").replaceChildren();
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
@@ -2103,6 +2178,7 @@ function resetAll() {
   showStage("drop");
   setStatus("");
   window.__cairnLoaded = false; window.__cairnExported = false;
+  if (stepBack) stepHistory(-depth);
 }
 
 /** What Start over compares with: each item's folder, each folder's name and
@@ -2218,7 +2294,10 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#mark-pop").addEventListener("click", e => e.stopPropagation());
   $("#bulk-icon").onclick = openBulk;
   $("#export").onclick = requestExport;
-  $("#back").onclick = () => { showStage("edit"); setStatus(""); };
+  // Back (done -> edit) is the browser's Back too: history steps with it.
+  $("#back").onclick = () => { showStage("edit"); setStatus(""); stepHistory(-1); };
+  history.replaceState({ cairn: "drop" }, "");
+  addEventListener("popstate", onPopState);
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
   $("#confirm").addEventListener("click", e => { if (e.target === $("#confirm")) cancelConfirm(); });
   $("#download").onclick = () => downloadBlob(ZIP, "onx_ready.zip");
