@@ -4181,3 +4181,20 @@ def test_icon_color_dialog_caps_its_now_after_list(loaded: Page):
     na = page.locator("#mark-dialog .na-rows")
     assert na.evaluate("e => e.clientHeight") <= 120
     assert na.evaluate("e => e.scrollHeight > e.clientHeight")
+
+
+def test_a_pasted_folder_name_over_100_characters_says_it_was_cut(loaded: Page):
+    page = loaded
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    # A paste whose text only the paste event carries (beforeinput has none).
+    page.evaluate("""() => { const i = document.querySelector('.folder-head .folder-name-in');
+        const dt = new DataTransfer(); dt.setData('text/plain', 'y'.repeat(150));
+        i.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }""")
+    expect(page.locator("#status")).to_have_text("A folder name can be up to 100 characters.")
+    # And a real paste, through the clipboard.
+    page.evaluate("document.querySelector('.folder-head .folder-name-in').select()")
+    page.evaluate("setStatus('')")
+    page.keyboard.insert_text("z" * 150)
+    expect(page.locator(".folder-head .folder-name-in")).to_have_value("z" * 100)
+    expect(page.locator("#status")).to_have_text("A folder name can be up to 100 characters.")

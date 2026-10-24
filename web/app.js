@@ -1551,12 +1551,16 @@ function wireFolderName(inp) {
   // actually cut something (not at exactly 100, not when deleting in a longer
   // name loaded from the file), and take it back once the name is under again.
   const tooLong = `A folder name can be up to ${FOLDER_NAME_MAX} characters.`;
-  inp.addEventListener("beforeinput", e => {
-    if (!e.inputType.startsWith("insert")) return;
-    const added = e.data ?? e.dataTransfer?.getData("text/plain") ?? "";
+  const checkAdded = added => {
     const kept = inp.value.length - (inp.selectionEnd - inp.selectionStart);
     if (kept + added.length > FOLDER_NAME_MAX) setStatus(tooLong, "err");
+  };
+  inp.addEventListener("beforeinput", e => {
+    if (!e.inputType.startsWith("insert")) return;
+    checkAdded(e.data ?? e.dataTransfer?.getData("text/plain") ?? "");
   });
+  // Some browsers give a paste no text in beforeinput: read it from the paste itself.
+  inp.addEventListener("paste", e => checkAdded((e.clipboardData?.getData("text/plain") ?? "").replace(/[\r\n]+/g, " ")));
   inp.addEventListener("input", () => {
     if (RENAME && RENAME.key === key) RENAME.draft = inp.value;
     if (inp.value.length < FOLDER_NAME_MAX && $("#status").textContent === tooLong) setStatus("");
