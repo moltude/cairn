@@ -529,7 +529,7 @@ def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path)
     warns = host.locator(".note.warn")
     expect(warns).to_have_count(3)
     expect(warns.nth(0)).to_contain_text("1 item wasn't exported: it has no coordinates.")
-    expect(warns.nth(1)).to_contain_text("1 note is over onX's 512-byte import limit and will be cut: “Long”.")
+    expect(warns.nth(1)).to_have_text("Item 'Long' is over the length limit and will be truncated by onX.")
     expect(warns.nth(2)).to_contain_text("onX accounts hold at most 3,000 markups; this map has 3,002.")
     # Every warning comes before the first folder box.
     order = host.locator(":scope > *").evaluate_all("els => els.map(e => e.className)")
@@ -4050,6 +4050,29 @@ def test_the_caution_marks_the_same_notes_the_export_lists(fresh_page: Page, tmp
     _done(page)
     listed = [n for e in page.evaluate("MANIFEST") for n, _bytes in e["long_notes"]]
     assert sorted(marked) == sorted(listed)
+    # Several: "Items 'a', 'b' are over …" (owner's wording, 2026-10-24), up to 8 names.
+    assert len(listed) >= 2
+    quoted = [f"'{n}'" for n in listed]
+    shown = ", ".join(quoted) if len(quoted) <= 8 else f"{', '.join(quoted[:8])} and {len(quoted) - 8} more"
+    expect(page.locator("#runbook .note.warn", has_text="length limit")).to_have_text(
+        f"Items {shown} are over the length limit and will be truncated by onX.")
+    _wide(page)
+    _shot(page, "fb-12-export-long-notes-warning")
+
+
+def test_the_long_note_warning_names_eight_then_says_how_many_more(fresh_page: Page, tmp_path):
+    page = fresh_page
+    feats = [{"type": "Feature", "id": f"w{k}", "geometry": {"type": "Point", "coordinates": [-114 + k / 1e3, 45.0]},
+              "properties": {"class": "Marker", "title": f"temp {k}", "description": "x" * 600}}
+             for k in range(1, 12)]
+    f = tmp_path / "many.json"
+    f.write_text(json.dumps({"type": "FeatureCollection", "features": feats}), encoding="utf-8")
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    _done(page)
+    names = ", ".join(f"'temp {k}'" for k in range(1, 9))
+    expect(page.locator("#runbook .note.warn")).to_have_text(
+        f"Items {names} and 3 more are over the length limit and will be truncated by onX.")
 
 
 def test_an_onx_area_whose_fill_onx_resets_gets_a_caution(fresh_page: Page):

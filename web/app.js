@@ -1932,13 +1932,16 @@ async function doExport() {
   }
 }
 
-/** The items whose notes onX will cut, by name as written: up to
-    LONG_NOTES_SHOWN, then "and N more". */
+/** The export screen's long-note warning (owner's wording, 2026-10-24): the
+    items whose notes onX will cut, by name as written in straight single
+    quotes, up to LONG_NOTES_SHOWN, then "and N more". */
 const LONG_NOTES_SHOWN = 8;
-function longNoteNames() {
-  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `“${n || "(no name)"}”`));
+function longNoteWarning() {
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `'${n || "(no name)"}'`));
   const n = LONG_NOTES_SHOWN;
-  return names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
+  const list = names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
+  return names.length === 1 ? `Item ${list} is over the length limit and will be truncated by onX.`
+    : `Items ${list} are over the length limit and will be truncated by onX.`;
 }
 
 function renderRunbook() {
@@ -1952,7 +1955,7 @@ function renderRunbook() {
   host.innerHTML =
     (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? " wasn't" : "s weren't"} exported: ${S.dropped === 1 ? "it has" : "they have"} no coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
-    (S.long_notes ? `<div class="note warn">${S.long_notes === 1 ? "1 note is" : `${S.long_notes} notes are`} over onX's ${S.note_limit}-byte import limit and will be cut: ${esc(longNoteNames())}.</div>` : "") +
+    (S.long_notes ? `<div class="note warn">${esc(longNoteWarning())}</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   // Two folders may share a name ("Camp" twice, from the file), or two names
   // sanitize alike ("A B", "A_B"): only then does a box show its number, and

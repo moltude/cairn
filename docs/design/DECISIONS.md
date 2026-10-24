@@ -1026,8 +1026,10 @@ Status: decided 2026-10-23 (owner, round 4).
   `aria-label` says the same):
   - "onX imports only the first 512 bytes of a note. About N characters will be cut."
     (owner feedback 2026-10-24: say that onX imports no more than 512 bytes; it was "Cut at 512
-    bytes (about N characters lost)."; the export screen says "1 note is over onX's 512-byte
-    import limit and will be cut: “name”." / "N notes are over …: “names”.") The bytes
+    bytes (about N characters lost)."). The export screen says, in the owner's words
+    (2026-10-24), "Item 'temp' is over the length limit and will be truncated by onX." / "Items
+    'temp', 'example 2', 'example 3' are over the length limit and will be truncated by onX."
+    (straight single quotes; up to 8 names, then "and N more"). The bytes
     are measured on the note as written to the GPX (line endings made "\n", trimmed: the
     measure instructions.txt uses), so the mark and the file agree.
   - "onX will reset this area's fill to its default blue." UI-30's rule (an onX area, from an
