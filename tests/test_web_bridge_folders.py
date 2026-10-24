@@ -33,6 +33,17 @@ CALTOPO_KML = [FX / "caltopo-random" / "onx-test-random.kml"]
 MIXED = BITTERROOTS + ONX_PAIR
 
 
+def _doc_folders() -> dict:
+    """The folders as they are now, in doc.folders' shape ({key: {"name",
+    "waypoints", "tracks", "shapes"}}, in order), derived from the groups:
+    doc.folders itself stays as parsed (ENG-07)."""
+    features = bridge._STATE["features"]
+    return {g["key"]: {"name": g["name"],
+                       **{kind: [features[i["uid"]] for i in g["items"] if i["kind"] == kind]
+                          for kind in ("waypoints", "tracks", "shapes")}}
+            for g in bridge._STATE["groups"]}
+
+
 def _load(paths) -> dict:
     files = [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in paths]
     return json.loads(bridge.load_files(json.dumps(files)))
@@ -128,7 +139,7 @@ def _check_invariants(all_uids: set, empty_ok: set = frozenset()) -> None:
     assert all(g["name"] == g["name"].strip() and g["name"] for g in _groups())
     order = {"waypoints": 0, "tracks": 1, "shapes": 2}
     feats = bridge._STATE["features"]
-    folders = bridge.doc_folders()
+    folders = _doc_folders()
     assert list(folders) == [g["key"] for g in _groups()]
     for g in _groups():
         kinds = [order[i["kind"]] for i in g["items"]]
@@ -292,7 +303,7 @@ def test_moving_a_folders_last_item_removes_the_folder_and_renumbers_export():
     res = _move(_uids("Mill Creek Canyon"), _key("Blodgett"))
     assert res["removed"] == [mill]
     assert mill not in {g["key"] for g in _groups()}
-    assert mill not in bridge.doc_folders()
+    assert mill not in _doc_folders()
     assert mill not in {f["key"] for f in res["folders"]}
     with pytest.raises(ValueError):
         bridge.rename_folder(mill, "Back")
@@ -319,7 +330,7 @@ def test_a_folder_empty_at_load_survives_other_moves():
     assert res["removed"] == [] and "Empty" in [g["name"] for g in _groups()]
     res = _move(_uids("A"), _key("B"))
     assert res["removed"] == ["fa"] and [g["name"] for g in _groups()] == ["B", "Empty"]
-    assert set(bridge.doc_folders()) == {"fb", "fe"}
+    assert set(_doc_folders()) == {"fb", "fe"}
 
 
 def test_emptying_a_middle_folder_closes_the_gap_in_numbering():
@@ -632,7 +643,7 @@ def test_merging_an_empty_folder_removes_it():
     res = json.loads(bridge.merge_folders("fe", "fa"))
     assert res["removed"] == ["fe"] and res["moved"] == 0
     assert [f["name"] for f in res["folders"]] == ["A"]
-    assert set(bridge.doc_folders()) == {"fa"}
+    assert set(_doc_folders()) == {"fa"}
 
 
 # --- round 2 (2026-10-23): review and QA findings --------------------------------
@@ -814,7 +825,7 @@ def test_instructions_show_a_markdown_looking_folder_name_as_is(name):
 def test_folder_moves_leave_the_loaded_document_alone():
     """Round 3 #8: _sync_doc copied every move into doc.folders, a second record
     of membership next to the groups. The document stays as parsed; the current
-    folders are derived from the groups on demand (doc_folders)."""
+    folders are derived from the groups on demand (_doc_folders)."""
     _load(BITTERROOTS)
     doc = bridge._STATE["doc"]
     before = {k: {kind: list(f.get(kind) or []) for kind in ("waypoints", "tracks", "shapes")}
@@ -826,7 +837,7 @@ def test_folder_moves_leave_the_loaded_document_alone():
     bridge.rename_folder(_key("North Roots"), "South Roots")
     assert {k: f.get("name") for k, f in doc.folders.items()} == names
     assert {k: {kind: list(f.get(kind) or []) for kind in before[k]} for k, f in doc.folders.items()} == before
-    now = bridge.doc_folders()
+    now = _doc_folders()
     assert list(now) == [g["key"] for g in _groups()] and mill not in now
     assert now[_key("Boats")]["name"] == "Boats" and now[_key("South Roots")]["name"] == "South Roots"
 

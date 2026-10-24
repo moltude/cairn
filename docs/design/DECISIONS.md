@@ -597,8 +597,7 @@ pointed every edit and exclusion at the wrong feature. Now:
 - `_STATE["features"]` maps uid → the ParsedFeature the writers read. The groups (in order, and
   each group's `items` in order) are the only record of where an item is; `export_zip` iterates
   them and reaches each feature by uid. `doc.folders` stays as parsed (the folders as loaded);
-  `doc_folders()` derives the current folders from the groups for code that inspects them, and
-  export reads neither (round 3: the copy kept in step by every move was a second record).
+  the tests derive the current folders from the groups (`_doc_folders`), and export reads neither (round 3: the copy kept in step by every move was a second record).
 - A map with no moves or renames exports byte for byte as before (Bitterroots sha pin). The
   pinned load-JSON hash in that test is compared after rebuilding the old uid strings, the only
   change to that baseline check.

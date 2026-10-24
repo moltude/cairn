@@ -80,7 +80,8 @@ def _manifest(count, expected=None):
     return [{"n": 1, "folder": "Big", "dir": "01_Big", "count": count,
              "expected": count if expected is None else expected,
              "dropped": max(0, (expected or count) - count),
-             "files": [{"path": "01_Big/Big_Waypoints.gpx", "count": count, "kml": False}]}]
+             "files": [{"path": "01_Big/Big_Waypoints.gpx", "count": count, "kml": False,
+                        "kind": "waypoints", "items": []}]}]
 
 
 def _render_runbook_js() -> str:

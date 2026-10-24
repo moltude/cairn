@@ -47,7 +47,6 @@ def test_it_replaces_the_runbook_and_is_the_last_member():
     zf = _export()
     assert zf.namelist()[-1] == "instructions.txt"
     assert not [n for n in zf.namelist() if n.endswith(".md")]
-    assert bridge._STATE["instructions"] == _text(zf)
 
 
 def test_every_line_ends_in_crlf_and_the_text_is_utf8():
@@ -170,11 +169,3 @@ def test_twin_folder_names_are_told_apart_by_their_zip_folder():
     zf = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
     rename = [ln for ln in _text(zf).split("\r\n") if ln.endswith("/    rename to: Camp")]
     assert len(rename) == 2 and rename[0] != rename[1]
-
-
-def test_a_manifest_without_item_lists_still_builds():
-    """Older callers (and hand-made manifests in tests) have no per-file items:
-    the file is listed without them."""
-    text = bridge.build_instructions([{"n": 1, "folder": "Solo", "dir": "01_Solo",
-                                       "files": [{"path": "01_Solo/Solo_Waypoints.gpx", "count": 1}]}])
-    assert text.endswith("01_Solo/    rename to: Solo\r\n    Solo_Waypoints.gpx\r\n")

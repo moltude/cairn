@@ -98,9 +98,12 @@ LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 # "features" maps each uid to the ParsedFeature the writers read; "groups" (in
 # order, and each group's "items" in order) is the ONLY record of which folder
 # an item is in and where it sits. export_zip reads nothing else. doc.folders
-# stays as parsed (the folders as loaded); doc_folders() gives the current ones.
+# stays as parsed (the folders as loaded).
 _STATE: dict = {"doc": None, "groups": [], "features": {}, "config": None,
                 "edited": set(), "color_edited": set(), "next_folder": 1, "loose": set()}
+
+# What export_zip leaves in _STATE for the export screen and export_folder_zip.
+_EXPORT_KEYS = ("manifest", "unlisted_dropped", "zip")
 
 # Path the UI writes the user's cairn_config.yaml to before loading a document.
 CONFIG_PATH = Path("/cairn_config.yaml")
@@ -143,9 +146,14 @@ def _safe(name: str) -> str:
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]+")
 
 
+def _one_line(text: str) -> str:
+    """Control characters (a run of them) become one space."""
+    return _CONTROL.sub(" ", text)
+
+
 def _clean_name(name) -> str:
     """A folder name as stored: control characters become one space, trimmed."""
-    return _CONTROL.sub(" ", name).strip() if isinstance(name, str) else ""
+    return _one_line(name).strip() if isinstance(name, str) else ""
 
 
 def _hex_for(rgba: str) -> str:
@@ -438,7 +446,7 @@ def load_files(files_json: str) -> str:
                   loose={g["key"] for g in groups if g["unorganized"]})
     # The last export belonged to the previous map: forget it, or
     # export_folder_zip(n) would hand out that map's files for this one.
-    for k in ("manifest", "unlisted_dropped", "instructions", "zip"):
+    for k in _EXPORT_KEYS:
         _STATE.pop(k, None)
 
     filename = files[0].get("name") or ""
@@ -679,14 +687,16 @@ def apply_edits(edits_json: str) -> str:
 #
 # Rules: an item is in exactly one folder; a folder a move or merge leaves
 # with no items is removed (one made empty by create_folder, or loaded empty,
-# stays until then, or until remove_empty_folder); folder names are trimmed and must be non-empty; two folders may not
-# share a name compared trimmed and case-insensitively (a clash is REPORTED,
-# never merged silently); new folders go at the end; moving an item to the
-# folder it is in does nothing; an unknown uid or key raises ValueError and
-# changes nothing. Folder order is never re-sorted after load, so export's NN_
-# numbers are the folders' current positions.
+# stays until then, or until remove_empty_folder); folder names are trimmed
+# and must be non-empty; two folders may not share a name compared trimmed
+# and case-insensitively (a clash is REPORTED, never merged silently); new
+# folders go at the end; moving an item to the folder it is in does nothing;
+# an unknown uid or key raises ValueError and changes nothing. Folder order is
+# never re-sorted after load, so export's NN_ numbers are the folders' current
+# positions.
 
 _KIND_ORDER = {"waypoints": 0, "tracks": 1, "shapes": 2}
+DEFAULT_FOLDER_NAME = "New folder"
 
 
 def _folder(key: str) -> dict:
@@ -711,9 +721,17 @@ def _name_taken(name: str, except_key: str | None = None) -> dict | None:
                  if g["key"] != except_key and g["name"].strip().casefold() == want), None)
 
 
-def _duplicate(name: str, dup: dict) -> dict:
-    return {"ok": False, "name": name,
-            "duplicate": {"key": dup["key"], "name": dup["name"], "count": len(dup["items"])}}
+def _duplicate(name: str, dup: dict) -> str:
+    """The report for a name another folder has: nothing was changed."""
+    return json.dumps({"ok": False, "name": name,
+                       "duplicate": {"key": dup["key"], "name": dup["name"],
+                                     "count": len(dup["items"])}})
+
+
+def _done(key: str, created: bool = False, moved: int = 0, removed=()) -> str:
+    """move_items' success JSON, which create_folder and merge_folders share."""
+    return json.dumps({"ok": True, "key": key, "created": created, "moved": moved,
+                       "removed": list(removed), "folders": _layout()})
 
 
 def _layout() -> list:
@@ -730,25 +748,17 @@ def layout_json() -> str:
     return json.dumps({"folders": _layout()})
 
 
-def doc_folders() -> dict:
-    """The folders as they are now, in doc.folders' shape ({key: {"name",
-    "waypoints", "tracks", "shapes"}}, in order), derived from the groups: for
-    code that inspects the document. doc.folders itself stays as parsed; the
-    groups are the one record of membership (ENG-07)."""
-    features = _STATE["features"]
-    return {g["key"]: {"name": g["name"],
-                       **{kind: [features[i["uid"]] for i in g["items"] if i["kind"] == kind]
-                          for kind in _KIND_ORDER}}
-            for g in _STATE["groups"]}
-
-
-def _new_folder_key() -> str:
+def _new_folder(name: str) -> dict:
+    """A new, empty folder at the end, under a key no folder has had."""
     taken = {g["key"] for g in _STATE["groups"]} | set(_STATE["doc"].folders)
     while True:
         key = f"new:{_STATE['next_folder']}"
         _STATE["next_folder"] += 1
         if key not in taken:
-            return key
+            break
+    g = {"key": key, "name": name, "safe": _safe(name), "unorganized": False, "items": []}
+    _STATE["groups"].append(g)
+    return g
 
 
 def _move(items: list, target: dict) -> list:
@@ -785,7 +795,7 @@ def rename_folder(key: str, name: str) -> str:
     name = _folder_name_of(name)
     dup = _name_taken(name, except_key=key)
     if dup:
-        return json.dumps(_duplicate(name, dup))
+        return _duplicate(name, dup)
     g["name"], g["safe"] = name, _safe(name)
     # The loose items stay styled as such only under their own name: renamed,
     # they are an ordinary folder (renamed back, the loose items again). "Own
@@ -823,27 +833,21 @@ def move_items(uids_json: str, target_key: str | None = None, new_name: str | No
         name = _folder_name_of(new_name)
         dup = _name_taken(name)
         if dup:
-            return json.dumps(_duplicate(name, dup))
-        target, created = {"key": _new_folder_key(), "name": name, "safe": _safe(name),
-                           "unorganized": False, "items": []}, True
+            return _duplicate(name, dup)
+        target = _new_folder(name)
     else:
-        target, created = _folder(target_key), False
+        target = _folder(target_key)
     items = [i for g in _STATE["groups"] if g is not target
              for i in g["items"] if i["uid"] in want]
-    removed = []
-    if created:
-        _STATE["groups"].append(target)
-    if items:
-        removed = _move(items, target)
-    return json.dumps({"ok": True, "key": target["key"], "created": created,
-                       "moved": len(items), "removed": removed, "folders": _layout()})
+    removed = _move(items, target) if items else []
+    return _done(target["key"], new_name is not None, len(items), removed)
 
 
 def default_folder_name() -> str:
     """The first free one of "New folder", "New folder 2", ... (free by the
     same trimmed, case-insensitive rule every folder name follows)."""
     n = 1
-    while _name_taken(name := "New folder" if n == 1 else f"New folder {n}"):
+    while _name_taken(name := DEFAULT_FOLDER_NAME if n == 1 else f"{DEFAULT_FOLDER_NAME} {n}"):
         n += 1
     return name
 
@@ -855,7 +859,7 @@ def move_to_new_folder(uids_json: str) -> str:
 
 def create_folder(name: str | None = None) -> str:
     """An EMPTY new folder, at the end: a click on + New folder with nothing
-    ticked (round 4). `name` defaults to default_folder_name(). Returns
+    ticked. `name` defaults to default_folder_name(). Returns
     move_items' success JSON with "created": true and "moved": 0, or the
     duplicate report when the name is taken (nothing changed). An empty name
     raises ValueError.
@@ -866,12 +870,8 @@ def create_folder(name: str | None = None) -> str:
     name = default_folder_name() if name is None else _folder_name_of(name)
     dup = _name_taken(name)
     if dup:
-        return json.dumps(_duplicate(name, dup))
-    key = _new_folder_key()
-    _STATE["groups"].append({"key": key, "name": name, "safe": _safe(name),
-                             "unorganized": False, "items": []})
-    return json.dumps({"ok": True, "key": key, "created": True, "moved": 0,
-                       "removed": [], "folders": _layout()})
+        return _duplicate(name, dup)
+    return _done(_new_folder(name)["key"], created=True)
 
 
 def remove_empty_folder(key: str) -> str:
@@ -892,8 +892,7 @@ def merge_folders(source_key: str, target_key: str) -> str:
     moves nothing). Unknown keys raise ValueError."""
     source, target = _folder(source_key), _folder(target_key)
     if source is target:
-        return json.dumps({"ok": True, "key": target_key, "created": False, "moved": 0,
-                           "removed": [], "folders": _layout()})
+        return _done(target_key)
     items = list(source["items"])
     removed = _move(items, target) if items else []
     # A merged folder always goes, even one that was empty (loaded empty, or
@@ -902,8 +901,7 @@ def merge_folders(source_key: str, target_key: str) -> str:
     if any(g is source for g in _STATE["groups"]):
         _STATE["groups"] = [g for g in _STATE["groups"] if g is not source]
         removed.append(source_key)
-    return json.dumps({"ok": True, "key": target_key, "created": False, "moved": len(items),
-                       "removed": removed, "folders": _layout()})
+    return _done(target_key, moved=len(items), removed=removed)
 
 
 def export_zip() -> bytes:
@@ -1052,7 +1050,6 @@ def export_zip() -> bytes:
 
     _STATE["manifest"] = manifest
     _STATE["unlisted_dropped"] = unlisted_dropped
-    _STATE["instructions"] = instructions
     # The zip itself, so export_folder_zip can hand out one folder's files
     # without exporting again (and without re-reading /tmp/out, where a
     # previous export's files may linger). Not a second copy of every file.
@@ -1170,7 +1167,7 @@ def _written_items(data: bytes, kind: str) -> list:
 
 def _plain(text) -> str:
     """A name on one line of instructions.txt, as it is typed into onX."""
-    return _CONTROL.sub(" ", str(text or "")) or "(no name)"
+    return _one_line(str(text or "")) or "(no name)"
 
 
 def build_instructions(manifest) -> str:
@@ -1204,14 +1201,11 @@ def build_instructions(manifest) -> str:
         L += ["", f"{e['dir']}/    rename to: {_plain(e['folder'])}"]
         for f in e["files"]:
             L.append("    " + f["path"].split("/")[-1])
-            items = f.get("items")
-            if items is None:
-                continue
-            L.append("        " + _KIND_LABEL.get(f.get("kind"), "Items"))
-            for name, _ in items:
+            L.append("        " + _KIND_LABEL[f["kind"]])
+            for name, _ in f["items"]:
                 L.append("            " + _plain(name))
                 if name in long_notes:
                     L.append("                " + note_cut)
-                if f.get("kind") == "shapes" and name in holes:
+                if f["kind"] == "shapes" and name in holes:
                     L.append("                (its hole is not kept: an onX area has one outline)")
     return _EOL.join(L) + _EOL
