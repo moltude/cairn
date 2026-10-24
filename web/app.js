@@ -1363,6 +1363,9 @@ function resetFolderState() {
 }
 
 const groupByKey = key => DATA.groups.find(g => g.key === key) || null;
+/** Two folder names are the same name when these match: trimmed, any case
+    (the bridge's _name_taken rule, which decides). */
+const nameKey = s => s.trim().toLowerCase();
 /** uid -> the key of the folder it is in. */
 function homeOf() {
   const m = new Map();
@@ -1594,7 +1597,7 @@ function finishRename(key, save, { defer = false } = {}) {
   let reopen = false, failed = false;
   // Left unchanged after Cancel on its merge offer: keep the name it has,
   // don't ask again (or Cancel, reopen, leave, ask... would never end).
-  if (declined && draft.trim().toLowerCase() === declined.toLowerCase()) save = false;
+  if (declined && nameKey(draft) === nameKey(declined)) save = false;
   if (save && g) {
     const name = draft.trim();
     if (!name) {
@@ -1943,9 +1946,9 @@ function renderRunbook() {
   // sanitize alike ("A B", "A_B"): only then does a box show its number, and
   // its file chips their NN_ folder, as its download is named.
   const tally = f => MANIFEST.reduce((m, e) => m.set(f(e), (m.get(f(e)) || 0) + 1), new Map());
-  const byName = tally(e => e.folder.trim().toLowerCase()), bySafe = tally(e => e.safe.toLowerCase());
+  const byName = tally(e => nameKey(e.folder)), bySafe = tally(e => e.safe.toLowerCase());
   MANIFEST.forEach(e => {
-    const twin = byName.get(e.folder.trim().toLowerCase()) > 1;
+    const twin = byName.get(nameKey(e.folder)) > 1;
     const fileTwin = bySafe.get(e.safe.toLowerCase()) > 1;
     const num = e.dir.split("_")[0];
     // The visible label is just "Download"; its accessible name says which
