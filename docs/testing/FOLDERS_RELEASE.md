@@ -297,3 +297,88 @@ match the mockups apart from the rail's existing Type and Icon sections and the 
 - [ ] Drag ticked rows to a folder, and to + New folder, in a real browser (mouse and trackpad).
 - [ ] The decisions listed under UI-32: drag from an unfocused name, moved rows unticked, rename
       in the header vs naming a new folder in the rail, the rail unfolding during a drag.
+
+## Round 2 fixes (2026-10-23)
+
+Inputs (gitignored, `tests/output/`): `round2-findings.md` (F1–F7 from the scripted fuzzer,
+H1–H6 from a human-style QA pass, L1), `code-review-round1.md` (red-team review items 1–10),
+`qa-round2-human.md` with its `r2-*.png` screenshots, and `qa-fuzz/` (`fuzz_ui.py`, repro
+probes `probes/probe1..9.py`, run records, generated maps). Design changes are in DECISIONS.md
+UI-32 and ENG-07 ("Round 2").
+
+### Findings, fixes and tests
+Tests are in `tests/web/test_web_app.py` (e2e) unless they start with `bridge:`
+(`tests/test_web_bridge_folders.py`). Every e2e test below was also run against the previous
+`web/app.js`: 27 of the 31 failed, the 4 that passed being the 0 ms-hold cases of F1, which
+never reproduced it.
+
+| # | Finding | Fix | Test |
+|---|---------|-----|------|
+| CR1 | Window blur / pointercancel mid-drag left DRAG cancelled-but-held, waiting for a pointerup that never came: the next press, text selection, Esc and click were swallowed. | `abandonDrag()`: blur and pointercancel drop the drag outright; only Esc keeps the held state (its release still comes). | `test_a_drag_the_window_loses_leaves_nothing_held[window-blur, pointercancel]` |
+| CR2 | `move_items` / `merge_folders` change the bridge before `applyLayout` validates; a throw left the screen on the old folders while export wrote the moved ones. | `applyLayout` checks everything before changing anything; `syncLayout` falls back to `bridge.layout_json()`; any failed folder action re-syncs from it and re-renders. | `test_a_failed_layout_apply_shows_the_bridges_layout` |
+| CR3 | `_safe` cut one character at a time (O(L²)). | One UTF-8 byte slice, `decode("utf-8", "ignore")`: same result. | bridge: `test_safe_cuts_by_bytes_in_one_step_with_the_same_result` (8 names, against the old loop), `test_safe_of_a_huge_name_is_fast` |
+| CR4 | RUNBOOK.md put a raw folder name in a code span: a backtick or newline broke "Rename it to:". | Control characters become a space on load and rename; code spans are fenced with one more backtick than the longest run (item names in the lists too). | bridge: `test_runbook_rename_line_shows_a_name_with_backticks_exactly` (4), `test_control_characters_in_folder_names_become_one_space` |
+| CR5 | `d.uids.includes` per row while dragging (rows × dragged). | `d.uidSet` (a Set). | existing `test_drag_several_ticked_rows_moves_them_all` (3 rows dimmed) |
+| CR6 | `_STATE["blobs"]` kept a second full copy of the export. | The zip is kept; `export_folder_zip` copies members out of it. | bridge: `test_folder_zip_is_read_from_the_kept_zip_not_a_second_copy` |
+| CR7 | The UI picked "New folder N" and retried `move_items` up to 10,000 times. | `bridge.default_folder_name()` / `move_to_new_folder()`, by the bridge's casefold rule. | bridge: `test_new_folder_takes_the_first_free_default_name_by_the_bridges_rule` |
+| CR8 | `isUnorganized` was a name regex + key regex + a JS "renamed" set. | Bridge flag `unorganized` per group / layout entry, by origin; cleared by a rename, set again by renaming back. | bridge: `test_the_loose_items_are_flagged_by_where_they_came_from_not_by_name`, `test_renaming_the_loose_items_clears_the_flag_and_renaming_back_restores_it` |
+| CR9 | Start over's count (renamed set + moved set) was never cleaned: a move back, a rename back, a merged-away folder all still counted. | `unexportedChanges()` compares with the map as loaded (`LOADED`): items not in their loaded folder, loaded folders with another name, edits. | `test_start_over_counts_changes_against_the_map_as_loaded`; existing Start over tests |
+| CR10 | `fkEl` duplicated `refocus`'s lookup; `plural` barely used; `downloadFolder` built Python source; `DATA.totals.folders` "written, never read". | `refocus` uses `fkEl`; `plural` in the bulk dialog and its status; the folder number crosses as a global and the file name comes from `bridge.export_folder_zip_name`. `DATA.totals.folders` stays: the load JSON's totals carry it and tests and the fuzzer read it, so keeping it current is the honest option. | L1 test below (download path); existing tests |
+| F1 | A click that leaves a folder or row name field was lost at normal click speed (≥20 ms press): the deferred render rebuilt the list between pointerdown and pointerup. | `deferRender()`: the render after leaving a field waits until the button comes up and runs after its click. The bridge rename itself still happens at once. | `test_a_click_that_leaves_a_name_field_lands` (folder / row name × 0, 20, 80, 150 ms), `test_a_rail_filter_or_collapse_click_that_leaves_a_folder_name_lands`; probes 1–3 |
+| F2 | Rename to a taken name, then Export: the export ran with the old name, then the merge offer opened over the export screen and "Move them" changed a hidden edit screen. | Export and Start over flush the waiting render first; a merge offer then opens on the edit screen and nothing is exported. An offer is never shown off the edit screen. | `test_leaving_a_taken_name_by_clicking_export_offers_the_merge_first`, `test_leaving_a_new_folders_taken_name_by_clicking_export_offers_the_merge`; probe 4 |
+| F3 | A row drag could start under the merge dialog (it opened between pointerdown and the 6 px move). | No drag starts while a dialog is open. (With F1 the offer no longer opens mid-press: the drag now finishes first and the offer follows.) | `test_a_dialog_that_opens_after_a_press_stops_the_drag`; probe 3 |
+| F4 | Ctrl+A under Move to…, the merge dialog or Help changed the selection behind it. | Ctrl+A only with none of them in front. | `test_ctrl_a_does_nothing_behind_what_is_in_front[move-to, merge-offer, help]`; probes 4, 6 |
+| F5 | More while Move to… was open opened its menu under the list. | More closes Move to… (and the popover) first. | `test_more_closes_an_open_move_to_list`; probe 8 |
+| F6 | A real CalTopo folder named "Unorganized" was styled as the loose items. | The bridge flag (CR8). | `test_a_caltopo_folder_named_unorganized_is_an_ordinary_folder`; probe 5 |
+| F7 | Enter / Esc in a row name dropped focus to the page. | Enter saves in place and Esc reverts in place; focus stays in the field. | `test_enter_and_escape_in_a_row_name_keep_focus_there[Enter, Escape]`; probe 6; the fuzzer now checks focus after Enter and Esc too |
+| H1 | Cancel on a just-created folder's taken name left a folder called "New folder". | Cancel reopens the rail name with what was typed. Leaving it with that same name keeps "New folder" without asking again (the first fuzzer re-run found the re-offer loop: Cancel, reopen, leave, offer…). A header rename's Cancel is unchanged. | `test_cancel_on_a_new_folders_taken_name_reopens_its_name` |
+| H2 | Names over 100 characters were cut silently; long names wrapped badly in the rail, header and export card. | Ellipsis plus a `title` with the whole name in all three; the count and "N items" never wrap. The 100-character `maxlength` stays; reaching it says "A folder name can be up to 100 characters." The export box's "Rename it to" step shows the name whole. | `test_long_folder_names_are_cut_with_an_ellipsis_and_titled` |
+| H3 | Stale status: "A folder needs a name." outlived later successes; "Built N folders" after Back; the hidden "Getting ready…" status kept its text all session. | Any later edit, rename or move clears an error; Back clears the line; "Getting ready…" is emptied when hidden. | `test_stale_status_lines_are_cleared`, and the end of `test_an_empty_name_for_a_new_folder_keeps_its_box_open` |
+| H4 | Emptying the filtered folder reset the view to All silently. | Kept (the folder is gone), and the status says why: "Moved 1 item to Paddling. “Mill Creek Canyon” is empty now, so it was removed." | `test_an_emptied_folder_disappears_with_its_filter` (updated) |
+| H5 | (a) a renamed Unorganized loses its caption; (b) renaming another folder to "Unorganized" gives a plain merge prompt; (c) an empty name on create made "New folder" and closed the box. | (a) as designed (UI-32), and renaming back restores it (CR8). (b) kept: the loose items export as an onX folder called Unorganized, so "Move them into it" is what happens (UI-26: no extra explanation). (c) Enter on an empty new-folder name keeps the box open with the message; leaving it keeps the default. | (c) `test_an_empty_name_for_a_new_folder_keeps_its_box_open` |
+| H6 | (Unreproduced) a drop landed on the folder below the target during rail auto-scroll with a search active. | The hit test runs at the pointerup's own position, not the last pointermove's; and with F1 no deferred render can rebuild the rail mid-drag any more. | `test_the_drop_target_is_where_the_button_comes_up` |
+| L1 | With 100+ folders `100_` sorted before `11_`. | `NN_` is as wide as the folder count needs from 100 folders on; unchanged below (Bitterroots pin). Manifest entries name their `dir`. | bridge: `test_with_100_or_more_folders_the_number_is_three_digits`; e2e `test_with_100_or_more_folders_a_folder_zip_is_numbered_with_three_digits` |
+
+Found while fixing (by the fuzzer re-run, and by the owner testing live):
+
+| # | Finding | Fix | Test |
+|---|---------|-----|------|
+| R1 | (H1's own) Cancel on a new folder's taken name reopened the name box; leaving it unchanged re-offered the merge, and Cancel reopened it again: Export never ran. | Leaving it with the declined name keeps the folder's default name, no second offer. | `test_cancel_on_a_new_folders_taken_name_reopens_its_name` (extended) |
+| R2 | (F1's own) The render that waits for a click can run after that click opened the icon popover; it replaced the row, and closing the popover then dropped focus to the page. | The popover finds its marker again by its focus key. | `test_a_popover_opened_by_the_click_that_left_a_name_returns_focus_to_its_marker` |
+| R3 | (H2's own; owner, live) A new folder "Crew" showed "Cr…" in its table header. Every header lost its last 7px: the name button's `margin-left:-7px` makes its h2 7px narrower than the button, and the H2 change gave the button `max-width:100%`. | The button is sized by flex shrink (no max-width), so it is only cut when the header is really out of room. Screenshot `tests/output/r2-crew-header.png` (gitignored). | `test_a_short_folder_name_is_never_cut_in_its_header` (Dark Divide; "Crew" with 3 items named in the rail under the Lines filter; header renames to 1–5 characters; every loaded header: scrollWidth <= clientWidth) |
+
+Two items from PR-C's "Open" list are closed by these: long names (H2) and the `applyLayout`
+failure leaving UI and bridge apart (CR2).
+
+### Automated
+`BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1229 passed** (1179 + 50: 19 bridge tests,
+31 e2e test cases).
+
+### Fuzzer re-run
+`tests/output/qa-fuzz/fuzz_ui.py` with no `--known` step-overs (round 1 stepped over
+`click_lost_after_field`, `move_list_stale`, `drag_under_modal` and `dialog_over_export`), 250
+actions a session, the invariants checked after every action and every export verified (screen,
+Download all, every per-folder zip, 12 sampled on 200 folders). Harness changes: the `NN_`
+width and the manifest's `dir` (L1); focus checked after Enter and Esc in a row name, not only
+Tab (F7); `human_press` centres its target and skips a covered one (it could press a low rail
+entry through the rail's sticky footer and report a lost click: 2 false positives in pass 1,
+and very likely some of round 1's `click_lost_after_field` count too).
+
+| Pass | Sessions (waves 1 + 2) | Result |
+|------|------------------------|--------|
+| 1 | 24 (12 + 12, 4 per map) | 19 clean; 3 × `export_did_not_finish` (R1), 2 × `click_lost_after_field` (harness, above) |
+| 2 | 24, after R1 | 22 clean; 2 × `focus_lost_to_body` (R2) |
+| 3 | 24, after R2 | **24 clean**: 6,024 actions, 6,048 invariant checks, 211 verified exports, 0 failures (5 harness timeouts, stepped over as in round 1) |
+| 4 | 6 (one per map), after R3 | 6 clean |
+
+Every failing session of passes 1 and 2 replays clean (`--replay`) after its fix. Maps:
+Bitterroots, hostile (34 nasty names, 3 empty), twins (case / safe-name twins, a CalTopo
+folder called "Unorganized", a 150-character name), big200 (200 folders), and the onX areas and
+three-round-trips pairs. Records: `tests/output/qa-fuzz/runs/w{1,2}_seed0{4,5,6}*_r2*.json`,
+logs `tests/output/qa-fuzz/r2/`, report `tests/output/qa-fuzz/REPORT.md` (all gitignored).
+
+### Open
+- H5 (b): renaming a folder to "Unorganized" keeps the plain merge wording (reason above).
+- Leaving a folder name by pressing a control still saves the rename at once; only the redraw
+  waits for the release. A press that becomes a drag therefore drags with the new name already
+  in the bridge, and a taken name's offer appears after the drop (F3 note).

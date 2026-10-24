@@ -626,10 +626,32 @@ is still waypoints, then lines, then areas. Unknown uids or keys, an empty list 
 targets raise ValueError and change nothing. "Unorganized" is a folder like any other: it can
 be renamed, emptied (and so removed) and moved into.
 
+**Round 2 (2026-10-23).**
+- Each group (and each layout entry) carries `unorganized`: true only for the items outside every
+  folder of the file (the reader's `orphaned_features`, or a nameless folder), decided at load by
+  where they came from, never by name, so a real CalTopo folder called "Unorganized" is ordinary.
+  `rename_folder` clears it, and renaming those loose items back to "Unorganized" sets it again.
+- `rename_folder` success also returns `unorganized` and `folders` (the layout), so the UI
+  rebuilds from it like after a move. `layout_json()` returns `{"folders": layout}`: the UI
+  re-syncs from it whenever applying an answer fails.
+- `default_folder_name()` is the first free one of "New folder", "New folder 2", … by the same
+  trimmed, casefolded rule; `move_to_new_folder(uids_json)` is `move_items` into it. The UI no
+  longer picks the name and retries.
+- Folder names lose control characters (newline, tab, NUL, …: each run becomes one space) on load
+  and on rename. RUNBOOK.md's code spans are fenced with one more backtick than the longest run in
+  the text, so "Rename it to:" shows a name with backticks exactly.
+- `_safe` cuts to 80 UTF-8 bytes in one slice (the old char-at-a-time loop was quadratic); the
+  result is the same.
+
 **Export numbering and the runbook.** Folders are sorted by size once, at load, and never
 re-sorted: a drag must not reshuffle the rail. Export's `NN_` prefix and the runbook's step
 number are each folder's current position (1-based) at export time, so removing a folder
-closes the gap and a new folder is numbered last. The runbook's heading and "Rename it to:"
+closes the gap and a new folder is numbered last. `NN_` is two digits, or as many as the folder
+count needs from 100 folders on (`001_` … `120_`), so a file list still sorts in order; maps
+under 100 folders are unchanged (Bitterroots pin). Each manifest entry names its directory
+(`dir`). The last export keeps the zip itself (not a second copy of every file);
+`export_folder_zip(n)` copies that folder's members out of it, and `export_folder_zip_name(n)`
+is `<dir>.zip`. The runbook's heading and "Rename it to:"
 line use the current display name. As before, a folder whose items are all excluded still
 takes a number but writes no files and gets no runbook step.
 
@@ -842,38 +864,60 @@ reorder folders, no item in two folders, no empty folder made up front.
   typing in (there a press-and-drag selects text). It does start from a name you haven't clicked
   into: the row's name is the obvious thing to grab, and the field is left unchanged. The click
   that ends a drag is swallowed. If the Folders section is folded, a drag opens it and folds it
-  again after.
+  again after. The drop target is the one under the pointer where the button comes up. If the
+  window loses focus or the browser cancels the pointer mid-drag, the drag is simply gone (no
+  release will come, so nothing waits for one); a dialog that opens after the press stops a
+  drag from starting.
 - **Long rails.** The rail scrolls on its own, so with many folders "+ New folder" can be below
   its fold: holding the pointer near the rail's top edge, or near or over its footer, scrolls it,
   faster the deeper in.
-- **+ New folder** takes the first free name of "New folder", "New folder 2", … and opens it for
-  naming in the rail with the text selected: type, then Enter or click away to keep; Esc keeps the
-  default. It is a drop target only, not a button.
+- **+ New folder** takes the first free name of "New folder", "New folder 2", … (the bridge
+  picks it) and opens it for naming in the rail with the text selected: type, then Enter or click
+  away to keep; Esc keeps the default. Enter on an empty name says "A folder needs a name." and
+  keeps the box open (leaving it keeps the default). A taken name opens the merge offer below;
+  its Cancel returns to the name box with what was typed, to pick another; leaving the box with
+  that same name keeps the folder's default name and doesn't ask again. It is a drop target
+  only, not a button.
 - **Rename:** click a folder's name in its table header (the one primary control; the rail entry
   stays the folder filter). Enter or leaving the field saves, Esc cancels, an empty name is
   refused with "A folder needs a name." and the old one kept, the same name does nothing, another
   case of its own name is a rename. A name another folder has (compared trimmed, any case) opens
   **"“X” already exists" / "Move the N items in “Y” into it?" [Move them] [Cancel]**; Cancel is the
   default (and Esc) and keeps the old name; Move them merges Y into X, which keeps its name and
-  place. New-folder naming happens in the rail because the new folder's rows may not be on screen
+  place. Leaving a name by clicking elsewhere saves it at once; the screen redraws only after
+  that click has landed (redrawing between press and release ate the click). Clicking Export or
+  Start over with a taken name just left shows the merge offer on the edit screen instead. New-folder naming happens in the rail because the new folder's rows may not be on screen
   (a folder filter); renaming happens in the header.
+- **Long names** (up to 100 characters can be typed; reaching that says "A folder name can be up
+  to 100 characters.") are cut with an ellipsis in the rail, the folder header and the export box,
+  with the whole name as a tooltip. The export box's "Rename it to" step always shows it whole.
 - **More ▸ Move to…** is first in More. It opens "Move N items to": every folder with its count
   (the count tells apart folders a file named alike, "Camp" and "camp"), the current one greyed
   "· here now", and "+ New folder…" (then the same rail naming). Arrow keys (skipping "here now"),
   Home/End and Enter pick; Esc closes and returns focus to More. After a pick the moved rows are
-  unticked, so More is off and focus goes to the destination's rail entry.
+  unticked, so More is off and focus goes to the destination's rail entry. Pressing More again
+  closes the list. Ctrl+A does nothing while Move to…, a dialog or Help is in front.
 - **Selection after a move:** moved rows are unticked; other ticks stay. Keeping the ticks meant
   the next drag of one moved row dragged the whole old selection out again (found in testing),
   and the mockup shows no selection bar after a move.
-- **State kept in step:** DATA.groups is rebuilt from the bridge's layout after every move or
-  merge, keeping the item objects (and so every edit and exclusion); rail counts, DATA.totals,
-  a folder filter or collapsed fold naming a removed folder are cleared. An open note whose row
-  a move takes off screen saves its draft rather than losing it. A folder renamed from
-  "Unorganized" is an ordinary folder (no italics), and one renamed to it doesn't become the
-  loose items.
-- **Start over** counts each moved item and each renamed folder as an unexported change.
+- **State kept in step:** DATA.groups is rebuilt from the bridge's layout after every move,
+  rename or merge, keeping the item objects (and so every edit and exclusion); rail counts,
+  DATA.totals, a folder filter or collapsed fold naming a removed folder are cleared. If applying
+  an answer fails, the UI shows the bridge's own layout (`layout_json`), so the screen is always
+  what export writes. When the folder the view is filtered to empties, the view goes back to All
+  and the status line says why: "Moved 1 item to Paddling. “Mill Creek Canyon” is empty now, so
+  it was removed." An open note whose row a move takes off screen saves its draft rather than
+  losing it. The italics and "Not in any CalTopo folder" go with the bridge's `unorganized`
+  flag (ENG-07): the loose items only, not a CalTopo folder that happens to be called
+  "Unorganized"; renamed, they are an ordinary folder, and renamed back, the loose items again.
+  The merge offer for renaming another folder to "Unorganized" keeps its plain wording: the
+  loose items export as an onX folder called Unorganized, so "Move them into it" is what happens.
+- **Start over** counts changes against the map as loaded: each edited or moved item once (moved
+  back is not moved) and each loaded folder whose name differs now. A merged-away or new
+  folder's name isn't counted; its items are.
 - **Export** follows the bridge (names, numbering, per-folder zips). A per-folder download is now
-  named after its `NN_` directory (`02_A_B.zip`), since "A/B" and "A_B" sanitize alike.
+  named after its `NN_` directory (`02_A_B.zip`, `002_A_B.zip` with 100+ folders), since "A/B"
+  and "A_B" sanitize alike.
 
 Options not taken: HTML5 drag and drop (above); renaming from the rail entry (it is the filter);
 keeping the selection after a move; a click on "+ New folder" making an empty folder.
