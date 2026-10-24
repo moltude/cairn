@@ -4924,4 +4924,4 @@ def test_walkthrough_sample_loads_in_cairn(fresh_page: Page, name: str):
     expect(fresh_page.locator("#status")).not_to_have_class(re.compile(r"\berr\b"))
     totals = fresh_page.evaluate("DATA.totals")
     print(name, totals)
-    assert 150 <= totals["items"] <= 400, totals
+    assert totals["items"] == 177, totals  # what the walkthrough says
