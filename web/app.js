@@ -754,7 +754,7 @@ function row(it) {
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<div class="note-cell">${caution ? `<span class="caution" tabindex="0" role="img" data-fk="${fk}caution" aria-label="${esc(caution)}">${UI_ICON.caution}</span>` : ""}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
+      `<div class="note-cell">${caution ? `<span class="caution" tabindex="0" role="img" data-fk="${fk}caution" aria-label="${esc(caution)}">${UI_ICON.caution}</span>` : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
         <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
@@ -1290,7 +1290,7 @@ function drawLineBulk() {
   const d = $("#mark-dialog");
   const lines = allItems().filter(i => BULK.uids.has(i.uid));
   d.querySelector(".line-rows").innerHTML = lines.map(it =>
-    `<span class="lr-name">${esc(it.name || "Untitled")}</span>` +
+    `<span class="lr-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span>` +
     `<span class="lr-line">${lineStripSVG(it.hex, BULK.style || it.style, BULK.weight || it.weight)}</span>`).join("");
   syncLineOpts(d, BULK.style, BULK.weight);
 }

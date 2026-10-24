@@ -4058,3 +4058,51 @@ def test_waypoints_only_dialog_keeps_one_color_row(loaded: Page):
     expect(d).to_have_attribute("aria-label", "Change icon and color for 2 items")
     expect(d.locator(".pop-sec > .label")).to_have_text(["Color", "Icon"])
     expect(d.locator(".swatch-btn")).to_have_count(10)
+
+
+# --- Round 5: design QA ------------------------------------------------------
+
+LONGNAME = "Z" * 140
+
+
+def _long_name_map(tmp_path) -> str:
+    from tests.hardening_maps import _folder, _line, _pt
+    feats = [_folder("f0", "Stuff"), _pt(1, "f0", title=LONGNAME), _pt(2, "f0", title="Short"),
+             _line(3, "f0"), _line(4, "f0")]
+    feats[3]["properties"]["title"] = LONGNAME
+    f = tmp_path / "long.json"
+    f.write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
+    return str(f)
+
+
+def test_long_names_are_cut_with_an_ellipsis_in_rows_and_the_line_dialog(fresh_page: Page, tmp_path):
+    page = fresh_page
+    _wide(page)
+    page.set_input_files("#file", _long_name_map(tmp_path))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    name = page.locator(f'{ROW} .name-in[value="{LONGNAME}"]').first
+    assert name.evaluate("e => getComputedStyle(e).textOverflow") == "ellipsis"
+    assert name.evaluate("e => e.scrollWidth > e.clientWidth")
+    _set_type(page, "tracks")
+    page.locator(f"{ROW} .sel-box").nth(0).check()
+    page.locator(f"{ROW} .sel-box").nth(1).check()
+    page.click("#bulk-line")
+    lr = page.locator("#mark-dialog .lr-name")
+    assert lr.count() == 2
+    long_one = page.locator(f'#mark-dialog .lr-name[title="{LONGNAME}"]')
+    assert long_one.evaluate("e => e.scrollWidth > e.clientWidth && getComputedStyle(e).textOverflow === 'ellipsis'")
+    assert page.locator("#mark-dialog .line-rows").evaluate("e => e.scrollWidth <= e.clientWidth")
+
+
+def test_the_caution_slot_keeps_every_notes_text_in_line(fresh_page: Page, tmp_path):
+    page = fresh_page
+    _wide(page)
+    f = tmp_path / "c.json"
+    from tests.hardening_maps import _folder, _pt
+    feats = [_folder("f0", "S"), _pt(1, "f0", desc="x" * 600), _pt(2, "f0", desc="short")]
+    f.write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    assert page.locator(".caution").count() == 1
+    xs = page.locator(f"{ROW} .note-text").evaluate_all("els => els.map(e => Math.round(e.getBoundingClientRect().x))")
+    assert len(xs) == 2 and xs[0] == xs[1]

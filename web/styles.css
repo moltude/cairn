@@ -214,6 +214,7 @@ tbody tr.note-open{background:var(--open-row)}
 tbody tr.editing{background:var(--open-row);box-shadow:inset 3px 0 0 var(--brown)}
 .name-in{width:100%;background:transparent;border:1px solid transparent;border-radius:2px;
   padding:4px 8px;min-height:34px;display:block}
+.name-in{text-overflow:ellipsis}
 .name-in:hover{border-color:var(--rule)}
 .name-in:focus{border-color:var(--brown);background:var(--sheet);outline:none}
 .note-btn{text-align:left;width:100%;background:none;border:none;padding:0;min-height:34px;
@@ -283,7 +284,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .tog:hover{border-color:var(--brown)}
 .tog[aria-pressed=true]{background:var(--sel-row);border:2px solid var(--green);padding:0 9px}
 .line-rows{display:grid;grid-template-columns:minmax(0,1fr) 160px;gap:8px 14px;align-items:center;margin-top:10px}
-.lr-name{overflow-wrap:anywhere}
+.lr-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lr-line svg{display:block}
 .swatch-btn[aria-pressed=true]{outline:2px solid var(--ink);outline-offset:2px}
 .swatch-btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
@@ -561,6 +562,8 @@ body.dragging-rows .facet-x{opacity:0;pointer-events:none}
   color:var(--warning);border-radius:2px;cursor:help}
 .caution:hover{background:var(--rail)}
 tr.excluded .caution{display:none}
+.caution-slot{flex:none;width:22px;height:22px}
+tr.excluded .caution-slot{display:none}
 /* Name sort (round 4): the header is a button with up/down arrows. */
 .sort-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:2px 4px;margin:-2px -4px;
   font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;border-radius:2px}
