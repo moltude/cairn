@@ -3069,7 +3069,7 @@ def test_a_caltopo_folder_named_unorganized_is_an_ordinary_folder(fresh_page: Pa
     flags = page.evaluate("DATA.groups.map(g => [g.key, isUnorganized(g)])")
     assert dict(flags) == {"f0": False, "f1": False, "orphaned_features": True}
     subs = page.evaluate("[...document.querySelectorAll('#folders .folder-sub')].map(e => e.textContent)")
-    assert subs.count("Not in any CalTopo folder") == 1
+    assert subs.count("Not in any folder") == 1
 
 
 @pytest.mark.parametrize("key", ["Enter", "Escape"])

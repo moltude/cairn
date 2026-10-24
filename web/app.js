@@ -518,7 +518,7 @@ function renderFolders() {
     el.className = "folder";
     el.setAttribute("aria-label", g.name);
     const collapsed = COLLAPSED.has(g.key);
-    const sub = isUnorganized(g) ? "Not in any CalTopo folder"
+    const sub = isUnorganized(g) ? "Not in any folder"
       : items.length === g.items.length ? `${g.items.length} item${g.items.length === 1 ? "" : "s"}`
       : `${items.length} of ${g.items.length} shown`;
     el.innerHTML = `
