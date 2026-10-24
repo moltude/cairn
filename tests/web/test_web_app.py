@@ -4106,3 +4106,25 @@ def test_the_caution_slot_keeps_every_notes_text_in_line(fresh_page: Page, tmp_p
     assert page.locator(".caution").count() == 1
     xs = page.locator(f"{ROW} .note-text").evaluate_all("els => els.map(e => Math.round(e.getBoundingClientRect().x))")
     assert len(xs) == 2 and xs[0] == xs[1]
+
+
+def test_a_tall_note_tip_ends_on_a_whole_line_and_says_there_is_more(loaded: Page):
+    page = loaded
+    _wide(page)
+    uid = _first_row(page, "Lost Trail Pass").get_attribute("data-uid")
+    _set(page, uid, desc="\n".join(f"Line {i}: lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem" for i in range(40)))
+    note = page.locator(f'tr[data-uid="{uid}"] .note-btn')
+    note.hover()
+    expect(_tip(page)).to_be_visible()
+    expect(_tip(page)).to_have_class(re.compile(r"\bscrolls\b"))
+    left = _tip(page).evaluate("""e => { const lh = parseFloat(getComputedStyle(e).lineHeight);
+        const n = (e.clientHeight - 16) / lh; return Math.abs(n - Math.round(n)) * lh }""")
+    assert left < 1
+    assert _tip(page).evaluate("e => getComputedStyle(e, '::after').content").endswith('scroll for more"')
+    # A short one has no hint.
+    _set(page, uid, desc="a\nb")
+    page.mouse.move(0, 0)
+    expect(_tip(page)).to_be_hidden()
+    page.locator(f'tr[data-uid="{uid}"] .note-btn').hover()
+    expect(_tip(page)).to_be_visible()
+    assert "scrolls" not in (_tip(page).get_attribute("class") or "")

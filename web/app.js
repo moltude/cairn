@@ -635,6 +635,15 @@ function showTip(src, viaKey = false) {
   const tip = $("#tip");
   tip.textContent = text;
   tip.classList.remove("hidden");
+  // Longer than fits: end on a whole line (never half of one) and say there is more.
+  tip.style.maxHeight = "";
+  const scrolls = tip.scrollHeight > tip.clientHeight + 1;
+  tip.classList.toggle("scrolls", scrolls);
+  if (scrolls) {
+    const lh = parseFloat(getComputedStyle(tip).lineHeight), pad = tip.offsetHeight - tip.clientHeight + 16;
+    const room = Math.min(320, window.innerHeight - 16) - pad;
+    tip.style.maxHeight = `${Math.max(1, Math.floor(room / lh)) * lh + pad}px`;
+  }
   TIP.src = src;
   src.setAttribute("aria-describedby", "tip");
   // Below the control, else above it; never over it (that would block the
