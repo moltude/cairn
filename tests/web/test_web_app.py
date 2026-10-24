@@ -4157,3 +4157,16 @@ def test_the_rails_last_row_clears_the_footer_when_scrolled_to_the_end(loaded: P
     gap = page.evaluate("""document.querySelector('.rail-foot').getBoundingClientRect().top
         - [...document.querySelectorAll('#icon-facets .icon-facet')].pop().getBoundingClientRect().bottom""")
     assert gap >= 0, gap
+
+
+def test_the_sort_button_keeps_no_pill_once_the_pointer_has_left(loaded: Page):
+    page = loaded
+    _wide(page)
+    btn = page.locator(".sort-btn").first
+    btn.click()
+    page.mouse.move(5, 5)
+    page.wait_for_timeout(150)
+    bg = page.evaluate("""() => [...document.querySelectorAll('.sort-btn')].map(b => getComputedStyle(b).backgroundColor)""")
+    assert set(bg) == {"rgba(0, 0, 0, 0)"}, bg
+    btn.hover()
+    assert btn.evaluate("e => getComputedStyle(e).backgroundColor") != "rgba(0, 0, 0, 0)"

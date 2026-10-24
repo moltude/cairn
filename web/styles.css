@@ -568,7 +568,8 @@ tr.excluded .caution-slot{display:none}
 /* Name sort (round 4): the header is a button with up/down arrows. */
 .sort-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:2px 4px;margin:-2px -4px;
   font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;border-radius:2px}
-.sort-btn:hover{color:var(--ink);background:var(--rail)}
+.sort-btn:hover,.sort-btn:focus-visible{color:var(--ink);background:var(--rail)}
+.sort-btn:focus:not(:hover):not(:focus-visible){background:none}
 .sort-btn[data-sort=asc],.sort-btn[data-sort=desc]{color:var(--ink)}
 .sort-icon{flex:none}
 /* The hover tip (round 4): a row's whole name or note, line breaks kept. */
