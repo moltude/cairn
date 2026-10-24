@@ -50,7 +50,7 @@ set_out(os.environ.get("CAIRN_QA_OUT") or ROOT / "archive/qa-fuzz")
 sys.path.insert(0, str(ROOT / "tests"))
 from hardening_maps import make_map  # noqa: E402
 
-BASE = os.environ.get("BASE_URL", "http://127.0.0.1:8790/").rstrip("/") + "/"
+BASE = os.environ.get("BASE_URL", "http://127.0.0.1:8765/").rstrip("/") + "/"
 FX = ROOT / "tests/fixtures"
 
 

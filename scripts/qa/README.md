@@ -13,7 +13,8 @@ uv run playwright install chromium        # once per machine
 uv run python web/serve.py                # dev server; or point BASE_URL at another one
 ```
 
-Both tools read `BASE_URL` (default `http://127.0.0.1:8790/`) and run from the repo root.
+Both tools read `BASE_URL` (default `http://127.0.0.1:8765/`, where `web/serve.py` listens) and run
+from the repo root.
 
 ## fuzz_ui.py
 

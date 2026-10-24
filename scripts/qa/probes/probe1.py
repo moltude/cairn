@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[3]
-BASE = os.environ.get("BASE_URL", "http://127.0.0.1:8790/").rstrip("/") + "/"
+BASE = os.environ.get("BASE_URL", "http://127.0.0.1:8765/").rstrip("/") + "/"
 FIX = ROOT / "tests/fixtures/bitterroots/Bitterroots__Complete_.json"
 
 def boot(ctx, files=(FIX,)):
