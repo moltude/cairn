@@ -814,3 +814,12 @@ Style / Weight / Fill, and each caution mark's own tip. `build_faq_page.py --che
   the fuzzer, and the refactor touches every render path.
 
 - 2026-10-24 (copy cleanup, sticky nav): walkthrough and FAQ lose internal references, placeholders and the "never leaves" claim; new walkthrough intro with footnote; the top bar and the edit search row are sticky and the bottom nav is gone (UI-38); suite 1353+ green with BASE_URL on :8790.
+- 2026-10-24 (last pass before release): the walkthrough's internal stats caption removed; walkthrough and README screenshots retaken without the bottom nav; the FAQ's Privacy section removed at the owner's request. Suite 1357 passed.
+
+## Shipped
+
+Merged to main as PR #44 on 2026-10-24 (merge commit `7638eac`); #43 closed as folded in. All
+CI checks green. Live at quietmarch.to/cairn: the app, `/faq`, `/walkthrough`, the sample
+downloads (`Content-Disposition: attachment`) and the FAQ diagram all return 200, and the 231
+web e2e tests pass against the production origin (`BASE_URL=https://cairn-five-blue.vercel.app/`;
+the quietmarch.to front answers Python's urllib with 403, so the suite can't probe it directly).

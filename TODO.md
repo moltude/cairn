@@ -119,14 +119,13 @@
 
 Feature backlog from the 2026-10-21 redesign review (`docs/design/DECISIONS.md`, round 4):
 
-* **Multi-line notes editor.** Note cell is a one-line `<input>`; Enter commits, so no line
-  breaks can be typed and long notes are truncated. Proposed: click to expand into a textarea
-  (UI-13). Needs the engine newline fix above first.
+* ~~**Multi-line notes editor.**~~ Done: a note opens in a textarea; line breaks are kept and
+  exported (UI-13).
 * **Bulk rename and bulk note edit** (UI-17). "More" today only offers use-note-as-name and
   exclude/include. Add Rename… (prefix/suffix, find/replace, with preview) and Change note….
-* **Filter / select by onX icon** (F14). Today's filters are search, type, and "needs an icon".
-  Mocked as an "onX icon" facet in the sidebar.
-* **Folder facets with "All folders" + clear** (F1) — part of the B-layout rebuild.
+* ~~**Filter / select by onX icon** (F14).~~ Done: the rail's Icon section (UI-28).
+* ~~**Folder facets with "All folders" + clear** (F1).~~ Done, and folders can now be made,
+  renamed, merged and filled by drag or Move to… (UI-32, shipped 2026-10-24 in PR #44).
 * **Merge several CalTopo maps into one export** (UI-12). "Load another map" currently resets;
   users read it as "add". Engine has dedup/merge code (`core/merge.py`, `core/dedup.py`) not
   wired into the web app yet.
