@@ -812,7 +812,7 @@ function syncIconGrid(grid, selected) {
 function openPop(it, anchor) {
   closeMenu(); closeBulk();
   POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor,
-          style: it.style, weight: it.weight };
+          fk: anchor.dataset.fk, style: it.style, weight: it.weight };
   const isWp = it.kind === "waypoints";
   const isLine = it.kind === "tracks";
   const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
@@ -862,6 +862,14 @@ function openPop(it, anchor) {
 }
 
 function popItem() { return POP && allItems().find(i => i.uid === POP.uid); }
+/** The marker the popover belongs to. A re-render while it is open (one that
+    waited for the click that opened it, say) replaces the row: find the new
+    marker by its focus key. */
+function popAnchor() {
+  if (!POP) return null;
+  if (!POP.anchor.isConnected) POP.anchor = fkEl(POP.fk) || POP.anchor;
+  return POP.anchor.isConnected ? POP.anchor : null;
+}
 
 function drawPop() {
   const it = popItem(); if (!it) return;
@@ -916,7 +924,7 @@ function applyPop() {
 
 function closePop() {
   if (!POP) return;
-  const anchor = POP.anchor;
+  const anchor = popAnchor();
   POP = null;
   $("#mark-pop").classList.add("hidden");
   $("#mark-pop").innerHTML = "";
@@ -1854,7 +1862,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (POP && !$("#mark-pop").contains(e.target)) closePop();
     if (MOVE && !$("#move-pop").contains(e.target)) closeMove(false);
   });
-  window.addEventListener("resize", () => { if (POP && POP.anchor.isConnected) placePop(POP.anchor); });
+  window.addEventListener("resize", () => { const a = popAnchor(); if (a) placePop(a); });
   document.addEventListener("keydown", e => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ""));
     if (e.key === "Tab") {

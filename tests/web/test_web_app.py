@@ -3230,3 +3230,20 @@ def test_with_100_or_more_folders_a_folder_zip_is_numbered_with_three_digits(fre
         page.locator("#runbook .rb-dl").first.click()
     assert dl.value.suggested_filename == manifest[0]["dir"] + ".zip"
     assert zipfile.ZipFile(dl.value.path()).namelist() == [x["path"] for x in manifest[0]["files"]]
+
+
+def test_a_popover_opened_by_the_click_that_left_a_name_returns_focus_to_its_marker(loaded: Page):
+    """Fuzzer re-run (round 2): the render that waits for that click replaced
+    the row under the open popover; closing it then dropped focus to the page."""
+    page = loaded
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.type("Boats")
+    row = _first_row(page, "Blodgett")
+    uid = row.get_attribute("data-uid")
+    _human_press(page, row.locator(".icon-btn, .line-btn"))
+    expect(page.locator("#mark-pop")).to_be_visible()
+    assert ("Boats", 5) in _layout(page)           # the render ran under the popover
+    page.locator("#mark-pop .swatch-btn").nth(2).click()
+    page.click("#pop-apply")
+    expect(page.locator("#mark-pop")).to_be_hidden()
+    expect(page.locator(f'tr[data-uid="{uid}"] .icon-btn, tr[data-uid="{uid}"] .line-btn')).to_be_focused()
