@@ -24,6 +24,13 @@
 <header id="topbar" class="topbar">
   <div class="wordmark"><span class="cairn-mark" data-ui-icon="cairn"></span><span>Cairn</span></div>
   <span id="status-top" class="status-slot"><span id="status" class="status" role="status"></span></span>
+  <nav class="site-nav" aria-label="Site">
+    <a href="./" aria-current="page">App</a> &middot;
+    <button type="button" class="linkbtn help-open">Help</button> &middot;
+    <a href="faq.html" target="_blank" rel="noopener">FAQ</a> &middot;
+    <a href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a> &middot;
+    <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </nav>
 </header>
 
 <!-- 1. DROP -->
@@ -90,6 +97,15 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5C5242" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg>
         <input id="filter" type="search" placeholder="Name or note" aria-label="Search" autocomplete="off">
       </label>
+      <!-- The edit stage has no top bar (the rail carries the wordmark): the
+           site nav sits at the right of the search row. -->
+      <nav class="site-nav" aria-label="Site">
+        <a href="./" aria-current="page">App</a> &middot;
+        <button type="button" class="linkbtn help-open">Help</button> &middot;
+        <a href="faq.html" target="_blank" rel="noopener">FAQ</a> &middot;
+        <a href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a> &middot;
+        <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
     </div>
 
     <div id="chips" class="chips hidden"></div>
@@ -237,11 +253,14 @@
   </div>
 </div></div>
 
-<footer class="site-foot" aria-label="Site links">
-  <button id="help-link" type="button" class="linkbtn">Help</button> &middot;
-  <a href="faq.html" target="_blank" rel="noopener">FAQ</a> &middot;
-  <a href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a> &middot;
-  <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
+<footer class="site-foot">
+  <nav class="site-nav" aria-label="Site links">
+    <a href="./" aria-current="page">App</a> &middot;
+    <button type="button" id="help-link" class="linkbtn help-open">Help</button> &middot;
+    <a href="faq.html" target="_blank" rel="noopener">FAQ</a> &middot;
+    <a href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a> &middot;
+    <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </nav>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.29.5/full/pyodide.js"

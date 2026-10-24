@@ -160,6 +160,23 @@ def parse(md: str):
     return title, lead, sections
 
 
+# The shared site nav (owner feedback 2026-10-24, UI-38): the same five links,
+# in the same order and markup, at the top and the bottom of every page.
+# web/index.html and web/walkthrough.html carry the identical markup by hand
+# (no JS includes: the CSP allows no inline script, and the doc pages have none);
+# tests/web/test_web_app.py checks the three pages agree.
+def site_nav(current: str, label: str) -> str:
+    def cur(name):
+        return ' aria-current="page"' if name == current else ""
+    return (f'<nav class="site-nav" aria-label="{label}">\n'
+            f'    <a href="./"{cur("app")}>App</a> &middot;\n'
+            f'    <a href="./#help">Help</a> &middot;\n'
+            f'    <a href="faq.html"{cur("faq")}>FAQ</a> &middot;\n'
+            f'    <a href="walkthrough.html"{cur("walkthrough")}>Walkthrough</a> &middot;\n'
+            f'    <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>\n'
+            f'  </nav>')
+
+
 def render(md: str) -> str:
     title, lead, sections = parse(md)
     used: set = set()
@@ -197,27 +214,18 @@ def render(md: str) -> str:
 <body class="docpage">
 <header class="topbar">
   <a class="wordmark wordmark-link" href="./"><span class="cairn-mark">{CAIRN_MARK}</span><span>Cairn</span></a>
-  <nav class="topnav" aria-label="Help pages">
-    <a href="./">Back to the app</a>
-    <a href="faq.html" aria-current="page">FAQ</a>
-    <a href="walkthrough.html">Walkthrough</a>
-  </nav>
+  {site_nav("faq", "Site")}
 </header>
 <div class="doc doc-faq">
   <main class="doc-main">
-    <span class="kicker">Help</span>
-    <h1>{inline(title)}</h1>
+    <h1 class="sr-only">{inline(title)}</h1>
     {"".join(lead)}
     <nav class="doc-toc" aria-label="On this page"><span class="label">On this page</span>{toc_html}</nav>
     {"".join(body)}
-    <p class="doc-foot"><a href="./">Back to the app</a> &middot; <a href="walkthrough.html">See the walkthrough</a></p>
   </main>
 </div>
-<footer class="site-foot" aria-label="Site links">
-  <a href="./#help">Help</a> &middot;
-  <a href="faq.html" aria-current="page">FAQ</a> &middot;
-  <a href="walkthrough.html">Walkthrough</a> &middot;
-  <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
+<footer class="site-foot">
+  {site_nav("faq", "Site links")}
 </footer>
 </body>
 </html>

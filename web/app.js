@@ -2283,7 +2283,8 @@ window.addEventListener("DOMContentLoaded", () => {
   menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: oneLine(it.desc) } : {}));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
-  $("#help-link").onclick = openHelp;
+  // Every nav's Help (top bar, search row, footer) opens the dialog here.
+  document.querySelectorAll(".help-open").forEach(b => b.onclick = openHelp);
   // faq.html / walkthrough.html link here as "./#help".
   if (location.hash === "#help") openHelp();
   $("#help-close").onclick = closeHelp;

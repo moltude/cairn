@@ -214,31 +214,70 @@ def test_no_loading_or_version_text_after_boot(fresh_page: Page):
     assert fresh_page.is_enabled("#pick")
 
 
-FOOTER_LINKS = ["Help", "FAQ", "Walkthrough", "GitHub"]
+NAV_LINKS = ["App", "Help", "FAQ", "Walkthrough", "GitHub"]
+NAV_CURRENT = {"index.html": "App", "faq.html": "FAQ", "walkthrough.html": "Walkthrough"}
+
+
+def _navs(page: Page) -> list:
+    """Each site nav on the page: its labels, targets and which is current."""
+    return page.locator("nav.site-nav").evaluate_all("""ns => ns.map(n => ({
+        top: !n.closest('footer'),
+        labels: [...n.querySelectorAll('a, button')].map(e => e.textContent.trim()),
+        hrefs: [...n.querySelectorAll('a, button')].map(e => e.getAttribute('href')),
+        current: [...n.querySelectorAll('[aria-current=page]')].map(e => e.textContent.trim())}))""")
 
 
 @pytest.mark.parametrize("path", ["index.html", "faq.html", "walkthrough.html"])
-def test_footer_has_the_four_links_on_every_page(context, path):
+def test_one_site_nav_at_the_top_and_the_bottom_of_every_page(context, path):
+    """Owner feedback 2026-10-24 (UI-38): App · Help · FAQ · Walkthrough ·
+    GitHub, the same at the top and the bottom of every page, the current page
+    marked; no "Back to the app" or other inline duplicates."""
     page = context.new_page()
     page.goto(f"{BASE_URL}/{path}")
-    foot = page.locator("footer.site-foot")
-    expect(foot).to_have_count(1)
-    labels = foot.locator("a, button").evaluate_all("els => els.map(e => e.textContent.trim())")
-    assert labels == FOOTER_LINKS
-    assert "·" in foot.inner_text()
-    assert foot.locator("a[href='https://github.com/moltude/cairn']").count() == 1
+    navs = _navs(page)
+    assert [n["top"] for n in navs].count(False) == 1          # the footer's
+    assert any(n["top"] for n in navs)
+    for n in navs:
+        assert n["labels"] == NAV_LINKS, n
+        assert n["current"] == [NAV_CURRENT[path]], n
+        assert n["hrefs"][0] == "./" and n["hrefs"][2:] == ["faq.html", "walkthrough.html",
+                                                           "https://github.com/moltude/cairn"]
+    assert "·" in page.locator("footer.site-foot").inner_text()
+    body = page.locator("body").inner_text().lower()
+    assert "back to the app" not in body and "read the faq" not in body and "see the walkthrough" not in body
+    assert page.locator(".topnav, .doc-foot").count() == 0
+    page.close()
+
+
+@pytest.mark.parametrize("path", ["faq.html", "walkthrough.html"])
+def test_doc_pages_have_no_head_text_and_sit_on_a_paper_panel(context, path):
+    """Owner feedback 2026-10-24: no "HELP" kicker or big title on the doc
+    pages (the h1 stays for screen readers only); the content sits on the
+    landing page's paper panel, so no contour line runs behind the text."""
+    page = context.new_page()
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(f"{BASE_URL}/{path}")
+    assert page.locator(".doc-main > .kicker").count() == 0
+    h1 = page.locator("h1")
+    expect(h1).to_have_count(1)
+    assert h1.evaluate("e => e.getBoundingClientRect().width <= 1")      # visually hidden
+    panel = page.evaluate("""() => { const m = getComputedStyle(document.querySelector('.doc-main'));
+        return {bg: m.backgroundColor, shadow: m.boxShadow}; }""")
+    paper = page.evaluate("getComputedStyle(document.body).backgroundColor")
+    assert panel["bg"] == paper and "18px" in panel["shadow"], panel
     page.close()
 
 
 @pytest.mark.parametrize("path", ["index.html", "faq.html", "walkthrough.html"])
-def test_footer_links_use_the_small_caps_kicker_style(context, path):
-    """Owner feedback 2026-10-24: the footer links look like the "EXPORT"
-    kicker (uppercase, letter-spaced, small, brown), not underlined body links;
-    hover and keyboard focus still underline them."""
+def test_nav_links_use_the_small_caps_kicker_style(context, path):
+    """The nav looks like the "EXPORT" kicker (uppercase, letter-spaced,
+    small, brown), not underlined body links; the current page is underlined,
+    and hover and keyboard focus underline the others."""
     page = context.new_page()
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(f"{BASE_URL}/{path}")
-    links = page.locator("footer.site-foot a, footer.site-foot button")
+    links = page.locator("nav.site-nav a:visible, nav.site-nav button:visible")
+    assert links.count() == 10
     kicker = page.evaluate("""() => { const k = document.createElement('span'); k.className = 'kicker';
         document.body.appendChild(k); const c = getComputedStyle(k);
         const r = {color: c.color, tt: c.textTransform}; k.remove(); return r; }""")
@@ -246,29 +285,53 @@ def test_footer_links_use_the_small_caps_kicker_style(context, path):
         st = links.nth(k).evaluate("""e => { const c = getComputedStyle(e);
             return {tt: c.textTransform, ls: parseFloat(c.letterSpacing), fs: parseFloat(c.fontSize),
                     deco: c.textDecorationLine, color: c.color}; }""")
-        assert st["tt"] == "uppercase" and st["ls"] > 1 and st["fs"] <= 12 and st["deco"] == "none", st
         current = links.nth(k).get_attribute("aria-current") == "page"
-        assert current or st["color"] == kicker["color"], st
-    first = links.first
-    first.hover()
-    assert first.evaluate("e => getComputedStyle(e).textDecorationLine") == "underline"
+        assert st["tt"] == "uppercase" and st["ls"] > 1 and st["fs"] <= 12 and st["color"] == kicker["color"], st
+        assert st["deco"] == ("underline" if current else "none"), st
+    other = links.nth(1)                                   # Help: never the current page
+    other.hover()
+    assert other.evaluate("e => getComputedStyle(e).textDecorationLine") == "underline"
     page.mouse.move(1, 1)
-    links.nth(1).focus()
-    page.keyboard.press("Shift+Tab"); page.keyboard.press("Tab")      # keyboard focus (focus-visible)
-    assert links.nth(1).evaluate("e => getComputedStyle(e).textDecorationLine") == "underline"
+    links.nth(2).focus()
+    page.keyboard.press("Shift+Tab")                                   # keyboard focus (focus-visible)
+    assert other.evaluate("e => getComputedStyle(e).textDecorationLine") == "underline"
+    _shot(page, f"fb-15-nav-{path.split('.')[0]}-top")
     page.locator("footer.site-foot").scroll_into_view_if_needed()
-    _shot(page, f"fb-13-footer-{path.split('.')[0]}")
+    _shot(page, f"fb-15-nav-{path.split('.')[0]}-bottom")
     page.close()
+
+
+def test_every_help_in_the_app_opens_the_help_dialog(loaded: Page):
+    page = loaded
+    _wide(page)
+    # The edit stage has no top bar: its nav sits at the right of the search row.
+    top = page.locator(".toolbar nav.site-nav")
+    expect(top).to_be_visible()
+    expect(page.locator("#topbar")).to_be_hidden()
+    _shot(page, "fb-15-nav-edit-stage")
+    for btn in (top.locator(".help-open"), page.locator("#help-link")):
+        btn.click()
+        expect(page.locator("#help")).to_be_visible()
+        page.click("#help-close")
+        expect(page.locator("#help")).to_be_hidden()
 
 
 def test_footer_help_opens_help_from_the_app(fresh_page: Page):
     expect(fresh_page.locator("#help")).to_be_hidden()
     fresh_page.click("footer.site-foot >> text=Help")
     expect(fresh_page.locator("#help")).to_be_visible()
+    fresh_page.click("#help-close")
+    fresh_page.click("#topbar >> text=Help")
+    expect(fresh_page.locator("#help")).to_be_visible()
 
 
-def test_old_help_links_are_gone_from_the_app_chrome(fresh_page: Page):
-    assert fresh_page.locator("#topbar a, #topbar button, .rail-head a, .rail-head button").count() == 0
+def test_the_app_chrome_has_only_the_site_nav(fresh_page: Page):
+    """The old Help / FAQ / Walkthrough links in the top bar and the rail are
+    gone; the top bar carries the site nav and nothing else clickable."""
+    extra = fresh_page.locator("#topbar a:not(.site-nav *), #topbar button:not(.site-nav *), "
+                               ".rail-head a, .rail-head button")
+    assert extra.count() == 0
+    assert fresh_page.locator("#topbar nav.site-nav").count() == 1
 
 
 @pytest.mark.parametrize("path", ["faq.html", "walkthrough.html"])
