@@ -3247,3 +3247,52 @@ def test_a_popover_opened_by_the_click_that_left_a_name_returns_focus_to_its_mar
     page.click("#pop-apply")
     expect(page.locator("#mark-pop")).to_be_hidden()
     expect(page.locator(f'tr[data-uid="{uid}"] .icon-btn, tr[data-uid="{uid}"] .line-btn')).to_be_focused()
+
+
+DARK_DIVIDE = FIXTURE.parent.parent / "dark_divide_100" / "caltopo" / "2027_Dark_Divide_100_Mile_Endurance_Run.json"
+_UNCUT = "e => [e.scrollWidth <= e.clientWidth, e.scrollWidth, e.clientWidth, e.textContent]"
+
+
+def _header_uncut(page: Page, name: str) -> None:
+    btn = _section(page, name).locator(".folder-name")
+    expect(btn).to_have_text(name)
+    fits, sw, cw, text = btn.evaluate(_UNCUT)
+    assert fits, f"header {text!r} is cut: scrollWidth {sw} > clientWidth {cw}"
+
+
+def test_a_short_folder_name_is_never_cut_in_its_header(fresh_page: Page, tmp_path):
+    """Owner, live (round 2): a new folder "Crew" with 3 items showed "Cr…" in
+    its table header. Every header was clipped by 7px: the name button's -7px
+    margin made its h2 that much narrower, and max-width:100% then cut it."""
+    page = fresh_page
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.set_input_files("#file", str(DARK_DIVIDE))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=60000)
+    for name in page.evaluate("DATA.groups.map(g => g.name)"):
+        if _section(page, name).count():
+            btn = _section(page, name).locator(".folder-name")
+            if btn.evaluate("e => [...e.textContent].length") <= 40:
+                _header_uncut(page, name)
+    # A new folder named in the rail, with 3 items, made while the type filter is Lines.
+    _set_type(page, "tracks")
+    rows = page.locator("#folders tbody tr")
+    uids = [rows.nth(i).get_attribute("data-uid") for i in range(3)]
+    for u in uids:
+        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
+    _drag(page, page.locator(f'tr[data-uid="{uids[0]}"] .line-btn'), page.locator(".new-folder"))
+    expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
+    page.keyboard.type("Crew")
+    page.keyboard.press("Enter")
+    expect(_rail(page, "Crew").locator(".facet-count")).to_have_text("3")
+    _header_uncut(page, "Crew")
+    assert _section(page, "Crew").locator(".folder-name").evaluate(
+        "e => getComputedStyle(e).textOverflow") == "ellipsis"   # still cut when it must be
+    _set_type(page, "")
+    _header_uncut(page, "Crew")
+    # Renamed in the header, to 1-5 characters and back to a longer name.
+    for name in ("C", "Cr", "Cre", "Crew", "Crews", "Crew members"):
+        _section(page, page.evaluate("DATA.groups.at(-1).name")).locator(".folder-name").click()
+        page.keyboard.press("ControlOrMeta+a")
+        page.keyboard.type(name)
+        page.keyboard.press("Enter")
+        _header_uncut(page, name)
