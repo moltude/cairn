@@ -617,6 +617,44 @@ commit each; every fix has a regression test.
 ### Fuzzer
 `--seeds 1-6 --actions 150 --wave 1`: **6 of 6 clean**, 906 actions, 0 harness timeouts.
 
+## Cleanup (2026-10-23)
+
+A code-only pass over `main...HEAD`; no behaviour change (the Bitterroots export pin and every
+test pass unchanged apart from the one test removed below).
+
+- **bridge.py:** `_new_folder` builds a new folder for both `create_folder` and
+  `move_items(new_name=…)`; `_done` is the success JSON that `move_items`, `create_folder` and
+  `merge_folders` share; `"New folder"` is `DEFAULT_FOLDER_NAME`; `_one_line` is the single
+  control-character rule behind `_clean_name` and `_plain`.
+- **Test-only code moved out of production:** `doc_folders()` is now `_doc_folders()` in
+  `tests/test_web_bridge_folders.py`; `_STATE["instructions"]` (read by one assertion that
+  compared it with the zip) is gone; `build_instructions` no longer accepts a manifest without
+  per-file `kind` / `items` (only hand-made test manifests lacked them), so
+  `test_a_manifest_without_item_lists_still_builds` is removed: **baseline 1316** (1317 − 1).
+- **app.js:** one `folderAction` (call, show the layout, or say why not and re-sync) for move,
+  + New folder, the × and merge; `folderTitleHTML` / `wireFolderTitle` / `folderNameInput` /
+  `naming()` for the three places a folder name is shown or edited; `openNewFolderName`;
+  `homeOf` replaces `groupOfUid(keys)`; `abandonDrag` (an alias of `endDrag`) is gone;
+  `focusFk`, `leftInWindow` and `nameKey` (the same-name rule; the bridge's `_name_taken`
+  decides) name repeated idioms. The export box's unread `data-n` is gone.
+- **Constants:** `NOTE_LIMIT` and `ONX_DEFAULT_FILL` are read from the bridge at boot
+  (`ONX_IMPORT_NOTE_LIMIT`, `ColorMapper.DEFAULT_AREA_FILL`) instead of being written again in
+  JS; the tip reads its height cap from the `.tip` rule; tip delays, the rail auto-scroll band,
+  the status-line name length and the long-note list length are named.
+- **styles.css:** dead `tr.excluded .caution`, `.facet-x:focus-visible` and the here-now italic
+  removed; `.name-in`'s split rule merged; `--faint` for the twice-used `#9A8F7C`; the sort
+  arrows' colours moved from JS to CSS.
+- **Comments:** "(round N)" narration removed from code; the why kept.
+
+Not touched: the keyed in-place rendering follow-up (below); the stale names `runbook_summary`,
+`renderRunbook`, `#runbook` (7 test files and the e2e suite use them); `DATA.totals.folders` and
+`MOVE.uids`, read only by the e2e tests and the fuzzer (kept, each marked by a one-line
+comment); pluralisation in code that predates this branch (`plural()` adds a thousands
+separator, so converting it would change "1234 items").
+
+`BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1316 passed**. Fuzzer `--seeds 1-6
+--actions 150`: **6 of 6 clean**, 0 harness timeouts.
+
 ## Follow-ups
 
 - **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`
