@@ -13,6 +13,7 @@ import json
 import re
 import struct
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from cairn.core.config import get_all_onx_icons, load_config
@@ -137,7 +138,7 @@ def _safe(name: str) -> str:
 
 
 # Control characters (newlines, tabs, NUL, ...) in a folder name: a name is one
-# line everywhere it is shown, and it goes into RUNBOOK.md's "Rename it to:".
+# line everywhere it is shown, and it goes into instructions.txt's "rename to:".
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]+")
 
 
@@ -368,8 +369,8 @@ def load_files(files_json: str) -> str:
         # The filename is load-bearing, not cosmetic: a CalTopo export with no
         # folder features, a CalTopo GPX and every onX file are named after
         # the file's stem. Writing to a fixed /tmp/in.json made every such map
-        # produce a folder called "in" -- including in the runbook's "rename
-        # it to" line. Several files get a directory each, so two files with
+        # produce a folder called "in" -- including in instructions.txt's
+        # "rename to:" line. Several files get a directory each, so two files with
         # the same stem can't overwrite each other.
         stem = _safe(Path(filename).stem) or "Map"
         base = Path(f"/tmp/cairn_in/{n}") if multi else Path("/tmp")
@@ -436,7 +437,7 @@ def load_files(files_json: str) -> str:
                   loose={g["key"] for g in groups if g["unorganized"]})
     # The last export belonged to the previous map: forget it, or
     # export_folder_zip(n) would hand out that map's files for this one.
-    for k in ("manifest", "unlisted_dropped", "runbook", "zip"):
+    for k in ("manifest", "unlisted_dropped", "instructions", "zip"):
         _STATE.pop(k, None)
 
     filename = files[0].get("name") or ""
@@ -483,7 +484,7 @@ def _group(fkey, okey, fdata, origin, resolver, cfg, catalog, features) -> dict:
     """
     # doc.folders is keyed by CalTopo's folder UUID, not its name. The
     # display name is inside the folder dict. Using the key here put raw
-    # UUIDs in the runbook's "rename it to:" instruction.
+    # UUIDs in instructions.txt's "rename to:" line.
     fname = _clean_name(fdata.get("name") or "")
     # The items outside any folder of the file. Flagged here, by where they
     # came from, never by name: a real CalTopo folder may be called
@@ -934,12 +935,12 @@ def export_zip() -> bytes:
                 for p, size, cnt in write_gpx_waypoints_maybe_split(
                     wps, d / f"{safe}_Waypoints.gpx", g["name"], config=cfg
                 ):
-                    files.append((p, cnt))
+                    files.append((p, "waypoints", cnt))
             if trks:
                 for p, size, cnt in write_gpx_tracks_maybe_split(
                     trks, d / f"{safe}_Tracks.gpx", g["name"]
                 ):
-                    files.append((p, cnt))
+                    files.append((p, "tracks", cnt))
             if shapes:
                 shapes = sorted(shapes, key=lambda f: natural_sort_key(f.title or ""))
                 # GPX <rte type=Area>, not KML: onX ignores area styling in KML
@@ -952,18 +953,20 @@ def export_zip() -> bytes:
                 for p, size, cnt in write_gpx_areas_maybe_split(
                     shapes, d / f"{safe}_Areas.gpx", g["name"]
                 ):
-                    files.append((p, cnt))
+                    files.append((p, "shapes", cnt))
 
             entry = {"n": n, "folder": g["name"], "safe": safe, "dir": dirname,
                      "files": [], "count": 0}
-            for p, cnt in files:
+            for p, kind, cnt in files:
                 if not cnt:
                     # Every item of this kind was unusable: an empty file would
                     # be an import step that imports nothing.
                     continue
                 rel = f"{dirname}/{p.name}"
-                zf.writestr(rel, p.read_bytes())
-                entry["files"].append({"path": rel, "count": cnt, "kml": p.suffix == ".kml"})
+                data = p.read_bytes()
+                zf.writestr(rel, data)
+                entry["files"].append({"path": rel, "count": cnt, "kml": p.suffix == ".kml",
+                                       "kind": kind, "items": _written_items(data, kind)})
                 entry["count"] += cnt
             entry["expected"] = len(wps) + len(trks) + len(shapes)
             entry["excluded"] = sum(
@@ -979,23 +982,24 @@ def export_zip() -> bytes:
             entry["holes"] = get_areas_without_holes()
             # onX keeps the first 512 UTF-8 bytes of an imported note (2026-10-22),
             # so the test is on bytes: an accented letter, dash or emoji is 2-4.
+            # Measured on the <desc> as WRITTEN (what onX actually cuts), under
+            # the name as written, so instructions.txt can mark the very item.
             entry["long_notes"] = [
-                [i["name"], len((i.get("desc") or "").encode("utf-8"))]
-                for i in g["items"]
-                if i.get("included", True)
-                and len((i.get("desc") or "").encode("utf-8")) > ONX_IMPORT_NOTE_LIMIT
+                [name, nbytes]
+                for f in entry["files"] for name, nbytes in f["items"]
+                if nbytes > ONX_IMPORT_NOTE_LIMIT
             ]
             if entry["files"]:
                 manifest.append(entry)
             else:
                 unlisted_dropped += entry["dropped"]
 
-        runbook = build_runbook(manifest, unlisted_dropped=unlisted_dropped)
-        zf.writestr("RUNBOOK.md", runbook)
+        instructions = build_instructions(manifest)
+        zf.writestr(INSTRUCTIONS_NAME, instructions.encode("utf-8"))
 
     _STATE["manifest"] = manifest
     _STATE["unlisted_dropped"] = unlisted_dropped
-    _STATE["runbook"] = runbook
+    _STATE["instructions"] = instructions
     # The zip itself, so export_folder_zip can hand out one folder's files
     # without exporting again (and without re-reading /tmp/out, where a
     # previous export's files may linger). Not a second copy of every file.
@@ -1042,7 +1046,7 @@ def _copy_members(data: bytes, paths) -> bytes:
 def export_folder_zip(n: int) -> bytes:
     """A .zip of ONE folder from the last export_zip: that folder's NN_Name/
     directory with the same files, byte for byte (copied compressed, not
-    recompressed), and nothing else (no RUNBOOK.md). `n` is the folder's number
+    recompressed), and nothing else (no instructions.txt). `n` is the folder's number
     on screen (manifest "n"), which is not a list index: folders that wrote no
     file are skipped but keep a number. Its download name is the manifest
     entry's "dir" plus ".zip": two names can sanitize alike, their numbers can't.
@@ -1055,8 +1059,8 @@ def export_folder_zip(n: int) -> bytes:
 
 
 def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
-    """The numbers BOTH runbooks report (RUNBOOK.md and the on-screen one in
-    web/app.js renderRunbook), computed once so they cannot disagree."""
+    """The numbers the export screen's warnings report (web/app.js
+    renderRunbook), from the same manifest instructions.txt is built from."""
     written = sum(e["count"] for e in manifest)
     expected = sum(e.get("expected", e["count"]) for e in manifest) + unlisted_dropped
     dropped = sum(e.get("dropped", 0) for e in manifest) + unlisted_dropped
@@ -1079,129 +1083,80 @@ def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
 
 
 def runbook_summary_json() -> str:
-    """runbook_summary for the last export, for the on-screen runbook."""
+    """runbook_summary for the last export, for the export screen."""
     return json.dumps(
         runbook_summary(_STATE.get("manifest") or [], _STATE.get("unlisted_dropped", 0))
     )
 
 
-def _n(count: int, word: str) -> str:
-    """'1 file', '3 files', '1,200 markups'."""
-    return f"{count:,} {word}{'' if count == 1 else 's'}"
+# The plain-text guide at the top of Download all (UI-31). Plain text, not
+# Markdown: it is opened in Notepad or TextEdit, where # and ** are noise.
+INSTRUCTIONS_NAME = "instructions.txt"
+# CRLF: Windows' own line ending, so every Notepad shows the lines (versions
+# before Windows 10 1809 show an LF-only file as one long line); TextEdit and
+# every other editor read CRLF too. The repo's attributes file marks the
+# committed copies -text so they are never converted.
+_EOL = "\r\n"
+_KIND_LABEL = {"waypoints": "Waypoints", "tracks": "Lines", "shapes": "Areas"}
+_GPX = "{http://www.topografix.com/GPX/1/1}"
+_KIND_TAG = {"waypoints": "wpt", "tracks": "trk", "shapes": "rte"}
 
 
-def _code(text) -> str:
-    """`text` as a Markdown code span that shows it exactly: on one line, fenced
-    by one more backtick than its longest run of them (CommonMark), padded
-    when it starts or ends with one."""
-    text = _CONTROL.sub(" ", str(text or ""))
-    run = max((len(m) for m in re.findall(r"`+", text)), default=0)
-    fence = "`" * (run + 1)
-    pad = " " if text.startswith("`") or text.endswith("`") else ""
-    return f"{fence}{pad}{text}{pad}{fence}"
+def _written_items(data: bytes, kind: str) -> list:
+    """[[name, note bytes]] for each item of one file Cairn just wrote, in
+    file order, as onX will see it: the name as written and the UTF-8 size of
+    its <desc>. Cairn's own output, so no guard_input: it has no DTD."""
+    root = ET.fromstring(data)
+    return [
+        [el.findtext(_GPX + "name") or "", len((el.findtext(_GPX + "desc") or "").encode("utf-8"))]
+        for el in root.iter(_GPX + _KIND_TAG[kind])
+    ]
 
 
-# What can turn a name into Markdown mid-line: emphasis, code, links, HTML,
-# entities, strikethrough, and the backslash itself.
-_MD_SPECIAL = re.compile(r"([\\`*_\[\]<>&~])")
+def _plain(text) -> str:
+    """A name on one line of instructions.txt, as it is typed into onX."""
+    return _CONTROL.sub(" ", str(text or "")) or "(no name)"
 
 
-def _md(text) -> str:
-    """`text` as plain Markdown text that shows it exactly (CommonMark backslash
-    escapes), for a folder name in a heading or after an item: the same name
-    "Rename it to:" shows in its code span. A plain name is unchanged."""
-    return _MD_SPECIAL.sub(r"\\\1", _CONTROL.sub(" ", str(text or "")))
-
-
-def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
-    """The artifact that was missing: how to actually get this INTO onX.
+def build_instructions(manifest) -> str:
+    """instructions.txt: how to get this INTO onX, and what is in each folder.
 
     onX creates one folder per import BATCH, and a batch accepts several files
-    at once. The folder is named "Import <timestamp>" -- never from the file --
-    so the user must rename it. That is why this document has to exist.
+    at once. The folder is named with the date and time -- never from the
+    file -- so the user must rename it. That is why this file has to exist.
+
+    The general steps once, then each folder (its zip folder and the name to
+    type), each file, the kind of item in it, and each item's name. Only the
+    two warnings that belong to one item are written, under it: a note onX
+    will cut, an area hole onX can't keep. Totals, dropped items and the
+    account limit are on the export screen.
     """
-    s = runbook_summary(manifest, unlisted_dropped)
-    total_items = s["written"]
-    kml_batches = s["kml_batches"]
-    nf = len(manifest)
     L = [
-        "# Import checklist",
+        "How to import these files into onX",
         "",
-        f"**{_n(nf, 'folder')} · {_n(total_items, 'markup')} · {_n(nf, 'import')}**",
-        "",
-        # The same intro line as the export screen (web/app.js renderRunbook).
-        "Import each folder into onX's **Web Map** (webmap.onxmaps.com), one at a time. "
-        "Importing needs onX **Premium or Elite**."
-        + (f" {kml_batches} of these folders contain KML, which the phone app cannot import." if kml_batches else ""),
-        "",
+        "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
+        "In onX, choose Import and add all of that folder's files together.",
+        'Tick "Import map data to a new folder".',
+        "onX names the new folder with a date and time stamp.",
+        "Rename it to the name shown for that folder below.",
+        "Importing needs onX Premium or Elite.",
     ]
-    if s["dropped"]:
-        L += [
-            f"> **{s['dropped']} item(s) could not be exported** because they have no usable",
-            f"> coordinates. {total_items} of {s['expected']} were written.",
-            "",
-        ]
-    if s["over_limit"]:
-        # The 3,000 limit is an ACCOUNT ceiling: splitting into more files or imports
-        # does not help, so the only advice that works is to send fewer.
-        L += [
-            f"> **Warning:** onX accounts hold at most {s['limit']:,} markups; this map has",
-            f"> {s['markups']:,}. Remove or exclude some before importing.",
-            "",
-        ]
+    note_cut = (f"(onX keeps only the first {ONX_IMPORT_NOTE_LIMIT} bytes of this note, "
+                f"about {ONX_IMPORT_NOTE_LIMIT} characters)")
     for e in manifest:
-        # The same three steps as each folder box on the export screen.
-        nfiles = len(e["files"])
-        flist = ", ".join(f["path"].split("/")[-1] for f in e["files"])
-        add = "add this file" if nfiles == 1 else f"add these {nfiles} files together"
-        L += [
-            f"### {e['n']}. {_md(e['folder'])}  ({_n(e['count'], 'markup')} · {_n(nfiles, 'file')})",
-            "",
-            f"1. In onX, choose **Import** and {add}: **{flist}**",
-            "2. Tick **Import map data to a new folder**.",
-            f"3. onX names the folder by date. **Rename it to:** {_code(e['folder'])}",
-            "",
-        ]
-    renamed = [(e["folder"], o, nw) for e in manifest for o, nw in e.get("renamed", ())]
-    if renamed:
-        L += [
-            "### Renamed for onX",
-            "",
-            "These names had `! @ # $ % ^ * &` removed. Search onX for the new name.",
-            "",
-        ]
-        L += [f"- {_code(o)} → {_code(nw)}  ({_md(folder)})" for folder, o, nw in renamed]
-        L += [""]
-    holes = [(e["folder"], name) for e in manifest for name in e.get("holes", ())]
-    if holes:
-        L += [
-            "### Holes not kept in onX",
-            "",
-            "onX areas have one outline, so these areas were exported without their holes.",
-            "",
-        ]
-        L += [f"- {_code(name)}  ({_md(folder)})" for folder, name in holes]
-        L += [""]
-    long_notes = [(e["folder"], n, c) for e in manifest for n, c in e.get("long_notes", ())]
-    if long_notes:
-        L += [
-            f"### Notes longer than onX keeps on import ({ONX_IMPORT_NOTE_LIMIT} bytes)",
-            "",
-            f"onX keeps the first {ONX_IMPORT_NOTE_LIMIT} bytes of an imported note -- about "
-            f"{ONX_IMPORT_NOTE_LIMIT} characters of plain English; accented letters, dashes and "
-            "emoji take 2-4 bytes each. Shorten these, or paste the rest into onX after import. "
-            "(One earlier 3,000+ character note from an onX export was dropped outright, "
-            "for a reason we have not found.)",
-            "",
-        ]
-        L += [f"- {_code(n)}: {c} bytes  ({_md(folder)})" for folder, n, c in long_notes]
-        L += [""]
-    L += [
-        "---",
-        "",
-        f"When finished, My Content should show **{_n(nf, 'folder')}** "
-        f"and **{_n(total_items, 'markup')}**.",
-        "",
-        "If a folder is missing items, delete that folder and redo just its step.",
-    ]
-    return "\n".join(L)
+        long_notes = {name for name, _ in e.get("long_notes", ())}
+        holes = set(e.get("holes", ()))
+        L += ["", f"{e['dir']}/    rename to: {_plain(e['folder'])}"]
+        for f in e["files"]:
+            L.append("    " + f["path"].split("/")[-1])
+            items = f.get("items")
+            if items is None:
+                continue
+            L.append("        " + _KIND_LABEL.get(f.get("kind"), "Items"))
+            for name, _ in items:
+                L.append("            " + _plain(name))
+                if name in long_notes:
+                    L.append("                " + note_cut)
+                if f.get("kind") == "shapes" and name in holes:
+                    L.append("                (its hole is not kept: an onX area has one outline)")
+    return _EOL.join(L) + _EOL

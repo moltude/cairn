@@ -94,7 +94,8 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     stripped them. Both are put back before hashing, so nothing else may move.
     Re-pinned for ENG-05: the 6 *_Areas.kml members are now *_Areas.gpx (onX Area
     routes) and RUNBOOK.md lists those names and no KML warning; see the
-    baseline's notes. Lines also carry their onX style and weight for the line-style
+    baseline's notes. Since round 4 the guide is instructions.txt (plain text,
+    every item by name), pinned in the baseline in RUNBOOK.md's place. Lines also carry their onX style and weight for the line-style
     editor (2026-10-23); those two keys are taken off before hashing, and the export
     is unchanged by them."""
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
@@ -353,7 +354,7 @@ def _reread(zip_bytes: bytes, tmp_path: Path) -> MapDocument:
     back = MapDocument()
     zf = _zip(zip_bytes)
     for name in zf.namelist():
-        if name.endswith(".md"):
+        if name == "instructions.txt":
             continue
         path = tmp_path / Path(name).name
         path.write_bytes(zf.read(name))

@@ -2,7 +2,7 @@
 
 bridge.export_folder_zip(n) hands out one folder of the LAST export_zip: the
 same NN_Name/ path and the same bytes, nothing else. Download all's layout is
-unchanged (one NN_Name/ subfolder per folder, then RUNBOOK.md).
+unchanged (one NN_Name/ subfolder per folder, then instructions.txt).
 """
 
 from __future__ import annotations
@@ -32,11 +32,11 @@ def _bitterroots() -> zipfile.ZipFile:
     return _zip(bridge.export_zip())
 
 
-def test_download_all_layout_is_one_numbered_subfolder_per_folder_then_the_runbook():
+def test_download_all_layout_is_one_numbered_subfolder_per_folder_then_the_instructions():
     zf = _bitterroots()
     manifest = bridge._STATE["manifest"]
     names = zf.namelist()
-    assert names[-1] == "RUNBOOK.md"
+    assert names[-1] == "instructions.txt"
     want = [f["path"] for e in manifest for f in e["files"]]
     assert names[:-1] == want
     # NN_ prefixes in screen order, every file inside its folder's directory.
@@ -55,11 +55,11 @@ def test_each_folder_zip_holds_exactly_its_files_byte_identical_to_download_all(
         one = _zip(bridge.export_folder_zip(e["n"]))
         assert one.testzip() is None
         assert one.namelist() == [f["path"] for f in e["files"]]
-        assert "RUNBOOK.md" not in one.namelist()
+        assert "instructions.txt" not in one.namelist()
         for name in one.namelist():
             assert one.read(name) == full.read(name), name
         seen += one.namelist()
-    # Together the folder zips are Download all minus RUNBOOK.md.
+    # Together the folder zips are Download all minus instructions.txt.
     assert seen == full.namelist()[:-1]
 
 
@@ -96,27 +96,6 @@ def test_folder_numbers_are_the_screen_numbers_not_list_positions(tmp_path):
     assert e["safe"] == "onx_dialect"
     with pytest.raises(ValueError, match="No exported folder 2"):
         bridge.export_folder_zip(2)
-
-
-def _one(files: int, count: int) -> list:
-    return [{"n": 1, "folder": "Solo", "count": count, "expected": count, "dropped": 0,
-             "files": [{"path": f"01_Solo/Solo_{k}.gpx", "count": 1, "kml": False}
-                       for k in ("Waypoints", "Tracks", "Areas")[:files]]}]
-
-
-def test_runbook_wording_is_singular_for_one_and_matches_the_screen():
-    one = bridge.build_runbook(_one(1, 1))
-    assert "**1 folder · 1 markup · 1 import**" in one
-    assert "### 1. Solo  (1 markup · 1 file)" in one
-    assert "1. In onX, choose **Import** and add this file: **Solo_Waypoints.gpx**" in one
-    assert "2. Tick **Import map data to a new folder**." in one
-    assert "3. onX names the folder by date. **Rename it to:** `Solo`" in one
-    assert "My Content should show **1 folder** and **1 markup**." in one
-    assert "together" not in one and "- [ ]" not in one
-    three = bridge.build_runbook(_one(3, 31))
-    assert "### 1. Solo  (31 markups · 3 files)" in three
-    assert "add these 3 files together: **Solo_Waypoints.gpx, Solo_Tracks.gpx, Solo_Areas.gpx**" in three
-    assert "Import each folder into onX's **Web Map** (webmap.onxmaps.com), one at a time." in three
 
 
 def _raw(z: zipfile.ZipFile, data: bytes, name: str) -> bytes:

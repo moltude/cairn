@@ -88,9 +88,9 @@ def _members(zf: zipfile.ZipFile) -> dict:
 
 def _check_export(zf: zipfile.ZipFile) -> None:
     """Each manifest entry is the folder at its position, its files sit under
-    NN_<safe>/, hold exactly its included items, and the runbook says so."""
+    NN_<safe>/, hold exactly its included items, and instructions.txt says so."""
     manifest = bridge._STATE["manifest"]
-    runbook = zf.read("RUNBOOK.md").decode()
+    lines = zf.read("instructions.txt").decode("utf-8").split("\r\n")
     by_n = {n: g for n, g in enumerate(_groups(), 1)}
     listed = set()
     for e in manifest:
@@ -101,12 +101,15 @@ def _check_export(zf: zipfile.ZipFile) -> None:
         prefix = f"{e['n']:02d}_{g['safe']}/"
         assert e["files"] and all(f["path"].startswith(prefix) for f in e["files"])
         assert sum(_markups(zf.read(f["path"]).decode()) for f in e["files"]) == e["count"]
-        # The runbook heading as PR-B (UI-31) words it: counts with one/many.
-        assert f"### {e['n']}. {bridge._md(g['name'])}  ({bridge._n(e['count'], 'markup')} · {bridge._n(len(e['files']), 'file')})" in runbook
-        assert f"**Rename it to:** {bridge._code(g['name'])}" in runbook
+        # instructions.txt (round 4): the zip folder and the name to type, then
+        # each file and every item written to it, by name.
+        at = lines.index(f"{e['dir']}/    rename to: {g['name']}")
+        for f in e["files"]:
+            assert len(f["items"]) == f["count"]
+            assert "    " + f["path"].split("/")[-1] in lines[at:]
         listed.update(f["path"] for f in e["files"])
     # Nothing else in the zip, and no folder with an included item left unlisted.
-    assert set(zf.namelist()) == listed | {"RUNBOOK.md"}
+    assert set(zf.namelist()) == listed | {"instructions.txt"}
     for n, g in by_n.items():
         if any(i.get("included", True) for i in g["items"]):
             assert any(e["n"] == n for e in manifest), g["name"]
@@ -389,8 +392,9 @@ def test_moving_everything_into_one_folder():
     assert entry["n"] == 1 and entry["count"] == 177 == len(all_uids)
     assert sorted(zf.namelist()) == ["01_Paddling/Paddling_Areas.gpx",
                                      "01_Paddling/Paddling_Tracks.gpx",
-                                     "01_Paddling/Paddling_Waypoints.gpx", "RUNBOOK.md"]
-    assert "**1 folder · 177 markups · 1 import**" in zf.read("RUNBOOK.md").decode()
+                                     "01_Paddling/Paddling_Waypoints.gpx", "instructions.txt"]
+    text = zf.read("instructions.txt").decode("utf-8")
+    assert text.count("rename to:") == 1 and "01_Paddling/    rename to: Paddling\r\n" in text
     _check_export(zf)
 
 
@@ -709,43 +713,31 @@ def test_safe_of_a_huge_name_is_fast():
     assert time.perf_counter() - t < 0.5
 
 
-def _rename_to_line(runbook: str, n: int) -> str:
-    block = runbook.split(f"### {n}. ", 1)[1]
-    return re.search(r"\*\*Rename it to:\*\* (.*)", block).group(1)
-
-
-def _code_span_text(span: str) -> str:
-    """Read a CommonMark code span back (the fence is the leading run of backticks)."""
-    fence = re.match(r"`+", span).group(0)
-    assert span.endswith(fence) and "\n" not in span
-    inner = span[len(fence):-len(fence)]
-    # Inside, no run of backticks exactly as long as the fence (it would close it).
-    assert all(len(r) != len(fence) for r in re.findall(r"`+", inner))
-    if len(inner) > 1 and inner.startswith(" ") and inner.endswith(" ") and inner.strip():
-        inner = inner[1:-1]
-    return inner
+def _rename_to(text: str, n: int) -> str:
+    """The name instructions.txt says to type for folder n."""
+    return re.search(rf"^0*{n}_[^\r\n]*/    rename to: ([^\r\n]*)\r?$", text, re.M).group(1)
 
 
 @pytest.mark.parametrize("name", ["Trip `A`", "`tick", "a``b```c", "plain"])
-def test_runbook_rename_line_shows_a_name_with_backticks_exactly(name):
-    """Review #4: the 'Rename it to:' code span must survive backticks in the name."""
+def test_instructions_rename_line_shows_a_name_with_backticks_exactly(name):
+    """Review #4, plain text since round 4: the name to type is the name, as is."""
     _load(BITTERROOTS)
     bridge.rename_folder(_key("Paddling"), name)
     n = [g["name"] for g in _groups()].index(name) + 1
-    runbook = _export().read("RUNBOOK.md").decode()
-    assert _code_span_text(_rename_to_line(runbook, n)) == name
+    text = _export().read("instructions.txt").decode("utf-8")
+    assert _rename_to(text, n) == name
 
 
 def test_control_characters_in_folder_names_become_one_space():
-    """Review #4: a newline in a name broke the runbook's heading and code span."""
+    """Review #4: a newline in a name broke the guide's lines."""
     data = _load_text(make_map(2, seed=7, names=["new\nline", "tab\there\r\n"]))
     names = {g["name"] for g in data["groups"]}
     assert "new line" in names and "tab here" in names
     key = data["groups"][0]["key"]
     res = json.loads(bridge.rename_folder(key, "two\nlines\x00here "))
     assert res["name"] == "two lines here"
-    runbook = _export().read("RUNBOOK.md").decode()
-    assert "### 1. two lines here  (" in runbook
+    text = _export().read("instructions.txt").decode("utf-8")
+    assert _rename_to(text, 1) == "two lines here"
     with pytest.raises(ValueError):
         bridge.rename_folder(key, "\n\t\r")
 
@@ -778,39 +770,17 @@ def test_with_100_or_more_folders_the_number_is_three_digits():
     assert all(re.match(r"\d{2}_", d) and not re.match(r"\d{3}", d) for d in dirs)
 
 
-_MD_SPECIAL = set("\\`*_[]<>&~")
-
-
-def _md_text(s: str) -> str:
-    """Read back text written with backslash escapes (CommonMark): every
-    special character must be escaped, and an escape shows its character."""
-    out, i = [], 0
-    while i < len(s):
-        if s[i] == "\\" and i + 1 < len(s) and s[i + 1] in _MD_SPECIAL:
-            out.append(s[i + 1]); i += 2
-            continue
-        assert s[i] not in _MD_SPECIAL, f"unescaped {s[i]!r} in {s!r}"
-        out.append(s[i]); i += 1
-    return "".join(out)
-
-
 @pytest.mark.parametrize("name", ["*Camp* _x_", "[a](b) <i>x</i>", "A&amp;B ~~s~~", "back\\slash `t`",
                                   "Trip #1 / A&B", "plain"])
-def test_runbook_shows_a_folder_name_the_same_on_every_line(name):
-    """Round 3 #6: only "Rename it to" was escaped; the heading and the
-    "(folder)" after each renamed item, hole and long note were raw Markdown,
-    so "*Camp*" read as an italic Camp there."""
+def test_instructions_show_a_markdown_looking_folder_name_as_is(name):
+    """Round 3 #6 escaped Markdown so "*Camp*" didn't read as an italic Camp;
+    instructions.txt (round 4) is plain text, so the name is written as is,
+    once, on its folder's line, with nothing escaped."""
     _load_text(make_map(1, seed=11, names=[name], per=(4, 4), long_notes=True))
-    g = next(g for g in _groups() if not g["unorganized"])
-    # An item whose name onX can't take (renamed) and an area with holes.
-    g["items"][0]["name"] = "Bad! @name"
-    rb = _export().read("RUNBOOK.md").decode()
-    head = re.search(r"^### 1\. (.*)  \(\d+ markups? · \d+ files?\)$", rb, re.M).group(1)
-    assert _md_text(head) == name
-    assert _code_span_text(_rename_to_line(rb, 1)) == name
-    suffixes = re.findall(r"^- .*  \((.*)\)$", rb, re.M)
-    assert suffixes and len(suffixes) >= 2
-    assert all(_md_text(x) == name for x in suffixes)
+    n = next(n for n, g in enumerate(_groups(), 1) if not g["unorganized"])
+    text = _export().read("instructions.txt").decode("utf-8")
+    assert _rename_to(text, n) == name
+    assert "\\" not in text.replace(name, "")
 
 
 def test_folder_moves_leave_the_loaded_document_alone():

@@ -408,7 +408,7 @@ def test_export_produces_a_readable_zip_of_gpx_with_areas_as_gpx(loaded: Page):
     # Areas are onX Area routes in GPX (ENG-05): onX ignores KML area colours.
     assert any(n.endswith("_Areas.gpx") for n in names)
     assert not [n for n in names if n.endswith(".kml")]
-    assert "RUNBOOK.md" in names
+    assert names[-1] == "instructions.txt"
     # Every member must actually be readable/valid (CRC checks out).
     assert zf.testzip() is None
 
@@ -418,20 +418,24 @@ def test_export_produces_a_readable_zip_of_gpx_with_areas_as_gpx(loaded: Page):
 # ---------------------------------------------------------------------------
 
 
-def test_runbook_names_each_folder_and_has_no_kml_warning(loaded: Page):
+def test_instructions_name_each_folder_and_have_no_kml_warning(loaded: Page):
     zip_bytes = export_zip_bytes(loaded)
     manifest = loaded.evaluate("MANIFEST")
     zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
-    runbook = zf.read("RUNBOOK.md").decode()
+    text = zf.read("instructions.txt").decode("utf-8")
+    lines = text.split("\r\n")
 
     for entry in manifest:
-        heading = f"### {entry['n']}. {entry['folder']}"
-        assert heading in runbook, f"missing runbook heading: {heading!r}"
+        line = f"{entry['dir']}/    rename to: {entry['folder']}"
+        assert line in lines, f"missing folder line: {line!r}"
+        for f in entry["files"]:
+            assert "    " + f["path"].split("/")[-1] in lines
+    assert "**" not in text and "#" not in text.split("\r\n\r\n", 1)[0]
 
     # Areas no longer go out as KML (ENG-05), so nothing triggers the
-    # Web-Map-only KML warning, in RUNBOOK.md or on screen.
+    # Web-Map-only KML warning, in instructions.txt or on screen.
     assert not any(f["kml"] for e in manifest for f in e["files"])
-    assert "KML" not in runbook
+    assert "KML" not in text
     assert "KML" not in loaded.locator("#runbook").inner_text()
 
 
@@ -445,7 +449,7 @@ def _done(page: Page) -> None:
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
 
 
-def test_export_screen_is_one_box_per_folder_with_three_steps(loaded: Page):
+def test_export_screen_is_one_box_per_folder_name_download_and_files(loaded: Page):
     _done(loaded)
     manifest = loaded.evaluate("MANIFEST")
     done = loaded.locator("#done-stage")
@@ -456,26 +460,24 @@ def test_export_screen_is_one_box_per_folder_with_three_steps(loaded: Page):
     expect(loaded.locator("#download")).to_have_text("Download all")
     expect(done.locator(".done-hint")).to_have_text("One zip, one folder inside it per onX folder")
     expect(done.locator(".rb-intro")).to_have_text(
-        "Import each folder into onX's Web Map, one at a time. Importing needs onX Premium or Elite.")
+        "Import each folder into onX's Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.")
     boxes = done.locator(".rb-step")
     expect(boxes).to_have_count(len(manifest))
-    expect(done.locator(".rb-dl")).to_have_text(["Download this folder"] * len(manifest))
+    # Round 4 (owner's ExportScreen mockup): each box is the folder name as its
+    # heading, a Download button and the file chips. No counts, no steps.
+    expect(done.locator(".rb-dl")).to_have_text(["Download"] * len(manifest))
     for i, e in enumerate(manifest):
-        box, nf = boxes.nth(i), len(e["files"])
-        files = f"{nf} file" + ("" if nf == 1 else "s")
-        marks = f"{e['count']} markup" + ("" if e["count"] == 1 else "s")
-        expect(box.locator("h2")).to_have_text(f"{e['folder']} · {marks} · {files}")
+        box = boxes.nth(i)
+        expect(box.locator("h2")).to_have_text(e["folder"])
+        expect(box.locator(".rb-dl")).to_have_attribute("aria-label", f"Download {e['folder']}")
+        expect(box.get_by_role("button", name=f"Download {e['folder']}", exact=True)).to_have_count(1)
         expect(box.locator(".rb-file")).to_have_text([f["path"].split("/")[-1] for f in e["files"]])
-        add = "add this file." if nf == 1 else f"add these {nf} files together."
-        expect(box.locator(".rb-do li")).to_have_text([
-            f"In onX, choose Import and {add}",
-            "Tick Import map data to a new folder.",
-            f"onX names the folder by date. Rename it to {e['folder']}.",
-        ])
+        expect(box.locator(":scope > *")).to_have_count(2)        # the head and the chips
+        expect(box.locator("ol, li")).to_have_count(0)
     # Bitterroots has both kinds: Paddling writes one file, Unorganized three.
     assert {len(e["files"]) for e in manifest} >= {1, 3}
-    expect(done).not_to_contain_text("Import all")
-    expect(done).not_to_contain_text("1 files")
+    for gone in ("markup", "Rename it to", "Import map data", "Download this folder", "Import all"):
+        expect(done).not_to_contain_text(gone)
 
 
 def test_download_all_and_each_folder_download(loaded: Page):
@@ -485,8 +487,8 @@ def test_download_all_and_each_folder_download(loaded: Page):
         loaded.click("#download")
     assert dl.value.suggested_filename == "onx_ready.zip"
     full = zipfile.ZipFile(dl.value.path())
-    # Download all's layout is unchanged: NN_Name/ per folder in screen order, then RUNBOOK.md.
-    assert full.namelist() == [f["path"] for e in manifest for f in e["files"]] + ["RUNBOOK.md"]
+    # Download all's layout: NN_Name/ per folder in screen order, then instructions.txt.
+    assert full.namelist() == [f["path"] for e in manifest for f in e["files"]] + ["instructions.txt"]
     btns = loaded.locator(".rb-dl")
     for i, e in enumerate(manifest):
         # Chromium drops an 11th download started within half a second of the
@@ -532,7 +534,8 @@ def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path)
     # Every warning comes before the first folder box.
     order = host.locator(":scope > *").evaluate_all("els => els.map(e => e.className)")
     assert order[:3] == ["note warn"] * 3 and order[3:] == ["rb-step"]
-    expect(host.locator(".rb-step h2")).to_have_text("Big · 3,001 markups · 2 files")
+    expect(host.locator(".rb-step h2")).to_have_text("Big")
+    expect(warns.nth(1)).to_contain_text("instructions.txt marks it.")
 
 
 def test_export_screen_back_and_start_over(loaded: Page):
@@ -1950,7 +1953,8 @@ def test_pyodide_preloads_are_used_not_fetched_twice(browser):
 def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
     """renderRunbook reads bridge.runbook_summary_json, so the on-screen
     runbook reports a polygon with no usable coordinates as dropped -- the
-    same numbers RUNBOOK.md gives -- instead of silently counting it."""
+    same summary instructions.txt's manifest gives -- instead of silently
+    counting it. (instructions.txt lists only what was written.)"""
     square = [[-114.0, 45.0], [-114.1, 45.0], [-114.1, 45.1], [-114.0, 45.0]]
     doc = {"type": "FeatureCollection", "features": [
         {"type": "Feature", "id": "f1", "geometry": None,
@@ -1965,7 +1969,7 @@ def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
     fresh_page.set_input_files("#file", str(path))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
     zf = zipfile.ZipFile(io.BytesIO(export_zip_bytes(fresh_page)))
-    assert "**1 item(s) could not be exported**" in zf.read("RUNBOOK.md").decode()
+    assert "Broken" not in zf.read("instructions.txt").decode("utf-8")
     text = fresh_page.locator("#runbook").inner_text()
     assert "1 item could not be exported" in text
     assert "1 of 2 were written" in text
@@ -2056,10 +2060,8 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     page.click("#export")
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator(".rb-step")).to_have_count(1)
-    expect(page.locator(".rb-count")).to_have_text("8 markups")
-    expect(page.locator(".rb-step h2")).to_have_text("onx dialect · 8 markups · 3 files")
-    expect(page.locator(".rb-do li").first).to_have_text(
-        "In onX, choose Import and add these 3 files together.")
+    expect(page.locator(".rb-step h2")).to_have_text("onx dialect")
+    expect(page.locator(".rb-file")).to_have_count(3)
     expect(page.locator("#done-stage input")).to_have_count(0)
     with page.expect_download() as dl:
         page.click("#download")
@@ -2068,14 +2070,14 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
         "01_onx_dialect/onx_dialect_Areas.gpx",
         "01_onx_dialect/onx_dialect_Tracks.gpx",
         "01_onx_dialect/onx_dialect_Waypoints.gpx",
-        "RUNBOOK.md",
+        "instructions.txt",
     ]
-    # Download this folder, under the enforced CSP: the same three files, no runbook.
+    # Download, under the enforced CSP: the same three files, no instructions.
     with page.expect_download() as dl1:
         page.click(".rb-dl")
     assert dl1.value.suggested_filename == "01_onx_dialect.zip"
     one = zipfile.ZipFile(dl1.value.path())
-    assert sorted(one.namelist()) == sorted(n for n in zf.namelist() if n != "RUNBOOK.md")
+    assert sorted(one.namelist()) == sorted(n for n in zf.namelist() if n != "instructions.txt")
     assert all(one.read(n) == zf.read(n) for n in one.namelist())
     wpts = zf.read("01_onx_dialect/onx_dialect_Waypoints.gpx").decode()
     # The writer sorts by name (Camp & water, Main Wall, Slide obs).
@@ -2083,10 +2085,11 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     assert zf.read("01_onx_dialect/onx_dialect_Tracks.gpx").decode().count("<trk>") == 2
     areas = zf.read("01_onx_dialect/onx_dialect_Areas.gpx").decode()
     assert areas.count("<rte>") == 3 and areas.count("<type>Area</type>") == 3
-    runbook = zf.read("RUNBOOK.md").decode()
-    assert "Rename it to:** `onx dialect`" in runbook
-    # The KML's holed polygon can't be an onX area with its hole: reported.
-    assert "### Holes not kept in onX" in runbook and "- `Hunt unit`  (onx dialect)" in runbook
+    lines = zf.read("instructions.txt").decode("utf-8").split("\r\n")
+    assert "01_onx_dialect/    rename to: onx dialect" in lines
+    # The KML's holed polygon can't be an onX area with its hole: marked under it.
+    at = lines.index("            Hunt unit")
+    assert lines[at + 1] == "                (its hole is not kept: an onX area has one outline)"
 
 
 def test_caltopo_gpx_shows_the_geojson_notice(csp_page: Page):
@@ -2713,10 +2716,10 @@ def test_export_after_moves_and_renames(loaded: Page):
     assert [e["folder"] for e in manifest] == [n for n, _ in lay]
     assert [e["count"] for e in manifest] == [c for _, c in lay]
     assert manifest[-1]["folder"] == "Ski lines" and manifest[-1]["count"] == 4
-    expect(boxes.last.locator("h2")).to_have_text("Ski lines · 4 markups · 1 file")
-    expect(boxes.last.locator(".rb-do li").last).to_have_text("onX names the folder by date. Rename it to Ski lines.")
+    expect(boxes.last.locator("h2")).to_have_text("Ski lines")
+    expect(boxes.last.locator(".rb-file")).to_have_count(1)
     big = boxes.filter(has_text="Blodgett / Big Creek")
-    expect(big.locator(".rb-do li").last).to_contain_text("Rename it to Blodgett / Big Creek.")
+    expect(big.locator(".rb-dl")).to_have_attribute("aria-label", "Download Blodgett / Big Creek")
     for i, e in enumerate(manifest):
         page.wait_for_timeout(300)
         with page.expect_download() as dl:
@@ -3153,7 +3156,7 @@ def test_long_folder_names_are_cut_with_an_ellipsis_and_titled(loaded: Page):
     _done(page)
     card = page.locator("#runbook .rb-step", has=page.locator(".rb-name", has_text=long))
     assert card.locator(".rb-name").evaluate(cut) == [True, "ellipsis", long]
-    expect(card.locator(".rb-do b").last).to_have_text(long)   # the instruction stays whole
+    expect(card.locator(".rb-dl")).to_have_attribute("aria-label", f"Download {long}")   # whole
 
 
 def test_stale_status_lines_are_cleared(loaded: Page):
@@ -3394,8 +3397,11 @@ def test_export_boxes_of_folders_with_the_same_name_show_their_numbers(fresh_pag
         expect(box.locator(".rb-name")).to_have_text(e["folder"])
         if twin:
             expect(box.locator(".rb-num")).to_have_text(f"{num} ·")
+            # Round 4: the button's accessible name carries the number too.
+            expect(box.locator(".rb-dl")).to_have_attribute("aria-label", f"Download {num} · {e['folder']}")
         else:
             expect(box.locator(".rb-num")).to_have_count(0)
+            expect(box.locator(".rb-dl")).to_have_attribute("aria-label", f"Download {e['folder']}")
         expect(box.locator(".rb-file")).to_have_text(
             [f["path"] if file_twin else f["path"].split("/")[-1] for f in e["files"]])
     assert page.locator("#runbook .rb-num").count() == 2

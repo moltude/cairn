@@ -1,0 +1,4 @@
+# instructions.txt is written with CRLF line endings (web/bridge.py _EOL, for
+# Windows Notepad). The committed copies are compared byte for byte by the
+# parity tests, so git must never convert them.
+tests/fixtures/**/instructions.txt -text
