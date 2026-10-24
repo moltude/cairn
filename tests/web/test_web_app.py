@@ -4897,3 +4897,31 @@ def test_the_browser_prompts_before_unload_only_with_unexported_changes(context)
     with page.expect_event("close", timeout=5000):
         page.close(run_before_unload=True)
     assert seen == [] and page.is_closed()
+
+
+# ---------------------------------------------------------------------------
+# Walkthrough sample files (web/samples/): served by the site, and they load
+# ---------------------------------------------------------------------------
+
+SAMPLES = ["Bitterroots.json", "Bitterroots.gpx", "Bitterroots.kml"]
+
+
+def test_walkthrough_sample_links_are_served_downloads():
+    import re as _re
+    import urllib.request
+    page = urllib.request.urlopen(f"{BASE_URL}/walkthrough.html", timeout=10).read().decode()
+    links = _re.findall(r'<a href="(samples/[^"]+)" download>', page)
+    assert sorted(links) == sorted(f"samples/{n}" for n in SAMPLES)
+    for link in links:
+        with urllib.request.urlopen(f"{BASE_URL}/{link}", timeout=10) as r:
+            assert r.status == 200 and len(r.read()) > 100_000, link
+
+
+@pytest.mark.parametrize("name", SAMPLES)
+def test_walkthrough_sample_loads_in_cairn(fresh_page: Page, name: str):
+    fresh_page.set_input_files("#file", str(Path(__file__).resolve().parents[2] / "web" / "samples" / name))
+    fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=60000)
+    expect(fresh_page.locator("#status")).not_to_have_class(re.compile(r"\berr\b"))
+    totals = fresh_page.evaluate("DATA.totals")
+    print(name, totals)
+    assert 150 <= totals["items"] <= 400, totals

@@ -29,6 +29,12 @@
     <p class="wt-lede">This page follows one real map, the Bitterroots sample from Cairn's tests, from a CalTopo
       export to onX-ready files. Every screenshot is the real app. The map has
       <strong>177 markups in 10 folders</strong>: 68 waypoints, 92 lines and 17 areas.</p>
+    <p class="wt-try">Try it yourself: download the
+      <a href="samples/Bitterroots.json" download>GeoJSON</a>,
+      <a href="samples/Bitterroots.gpx" download>GPX</a> or
+      <a href="samples/Bitterroots.kml" download>KML</a> of this map and drop one on the app.
+      It's <a href="https://caltopo.com/m/1KLNT" target="_blank" rel="noopener noreferrer">live on CalTopo</a>.
+      Map by Nate Bender of <a href="https://www.tenpeaksbeforelunch.com/" target="_blank" rel="noopener noreferrer">Ten Peaks Before Lunch</a>.</p>
 
     <ul class="wt-stats" aria-label="The map in numbers">
       <li><b>68</b><span>waypoints that a plain CalTopo GPX or KML export would hand to onX with no icon</span></li>
@@ -36,9 +42,7 @@
       <li><b>25</b><span>fall back to the default pin and are flagged for you to review</span></li>
       <li><b>10</b><span>CalTopo folders, each its own numbered import</span></li>
     </ul>
-    <p class="wt-note">Computed by loading the fixture in the real app and reading its data
-      (<code>scripts/make_walkthrough_shots.py</code>). "Would arrive with no icon" is the project's documented
-      behavior of CalTopo's GPX and KML export, not something measured on this specific map in onX.</p>
+    <p class="wt-note">Numbers from loading this map in Cairn (<code>scripts/make_walkthrough_shots.py</code>). "No icon" is CalTopo's documented GPX and KML behavior, not measured in onX.</p>
 
     <section class="wt-step" id="before">
       <span class="step-tag">Before</span>
@@ -47,13 +51,13 @@
         styles and folder organization. The one CalTopo export that keeps everything, GeoJSON, is the one onX can't open.
         Cairn reads all three, so you can start from any of them (GeoJSON keeps the most). A CalTopo GPX carries names,
         coordinates, notes and Garmin line-color names, and nothing onX can use for icons or folders.</p>
-      <div class="tbl-wrap"><table class="tbl wt-cmp">
+      <div class="tbl-wrap"><table class="tbl wt-cmp wt-eq">
         <thead><tr><th>Carried by</th><th>CalTopo GPX / KML</th><th>CalTopo GeoJSON, through Cairn</th></tr></thead>
         <tbody>
           <tr><th>Names and coordinates</th><td><span class="wt-ok">Yes</span></td><td><span class="wt-ok">Yes</span></td></tr>
           <tr><th>Marker icons</th><td><span class="wt-no">No</span></td><td><span class="wt-ok">Mapped to onX's 95 icons</span></td></tr>
           <tr><th>Colors</th><td><span class="wt-no">No</span></td><td><span class="wt-ok">Snapped to onX's palette</span></td></tr>
-          <tr><th>Folders</th><td><span class="wt-no">No</span></td><td><span class="wt-ok">One numbered import each, plus the names to rename them to</span></td></tr>
+          <tr><th>Folders</th><td><span class="wt-no">No</span></td><td><span class="wt-ok">One import each, with its name</span></td></tr>
           <tr><th>Notes</th><td><span class="wt-ok">Yes, in CalTopo's GPX and KML alike</span></td><td><span class="wt-ok">Written to the description field</span></td></tr>
         </tbody></table></div>
       <div class="wt-pair">

@@ -501,7 +501,8 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 .doc table.tbl tr,.doc table.tbl tbody tr{display:table-row}
 
 /* walkthrough */
-.wt-lede{font-size:18px;line-height:1.55;max-width:760px}
+.wt-lede{font-size:18px;line-height:1.55}
+.wt-try{margin:10px 0 0}
 .doc .wt-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:28px 0 8px;padding:0;list-style:none}
 .wt-stats li{background:var(--card);border:1px solid var(--rule);padding:14px 16px;margin:0}
 .wt-stats b{display:block;font-size:34px;line-height:1.1;color:var(--green)}
@@ -510,7 +511,6 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 .wt-step{margin:0 0 56px;scroll-margin-top:16px}
 .wt-step .step-tag{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--brown)}
 .wt-step h2{border-bottom:none;padding-bottom:0;margin:2px 0 8px;font-size:28px}
-.wt-step p{max-width:760px}
 .wt-fig{margin:18px 0 0;background:var(--sheet);border:1px solid var(--rule);box-shadow:var(--shadow)}
 .wt-fig img{display:block;width:100%;height:auto}
 .wt-fig figcaption{padding:10px 16px;font-size:14px;color:var(--muted);border-top:1px solid var(--rule-soft);font-style:italic}
