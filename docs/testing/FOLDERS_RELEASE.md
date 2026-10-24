@@ -146,7 +146,7 @@ Download all and every Download this folder, unzipped each: every folder zip hel
 Screenshots were taken locally (`bitterroots.png`, `bitterroots_end.png`, `bitterroots_full.png`,
 `one_folder.png`, `onx_pair.png`, `warnings.png`); they are local-only, not tracked, and not
 evidence anyone else can open. They matched the mockup apart from the page's contour background
-(UI-20). The tracked record of this screen is `web/walkthrough/06-export.webp` (below) and the
+(UI-20). The tracked record of this screen is `web/walkthrough/06-export.webp` (below; `08-export.webp` since "Docs and copy") and the
 e2e tests.
 
 `web/walkthrough/06-export.webp` is replaced with the new Bitterroots export screen (from
@@ -655,6 +655,39 @@ separator, so converting it would change "1234 items").
 `BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1316 passed**. Fuzzer `--seeds 1-6
 --actions 150`: **6 of 6 clean**, 0 harness timeouts.
 
+## Docs and copy (2026-10-24)
+
+Copy and docs only; no behaviour change. One commit per area.
+
+- **App copy** (`web/index.html`, `web/app.js`): Help rewritten in shorter sentences and now
+  covers sort, hover for the whole text, caution marks and the per-folder Download. Also
+  tightened: Start over's body ("This discards N unexported changes."), the dropped-items
+  warning ("N items weren't exported: they have no coordinates."), the export hint ("One zip
+  with every folder and instructions.txt"), the Include tooltip, the name-required status and
+  the default-pin "why" ("You chose the default pin."). Owner-approved strings unchanged. The
+  e2e pins of those strings follow.
+- **FAQ** (`docs/FAQ.md`, `web/faq.html` regenerated): new "Can I change the folders in
+  Cairn?" and "What do the marks in the list mean?"; bulk edit, the export screen and folder
+  numbering brought up to date; the four-step import list folded into one paragraph; README
+  asides and "no real onX line export inspected" (there are, in `tests/fixtures/onx_real/`)
+  removed.
+- **Walkthrough**: all six shots retaken (Bitterroots, 1440×900, WebP q82) by
+  `scripts/make_walkthrough_shots.py`, which now takes `BASE_URL` and `SHOTS_PNG`. New step
+  "Sort items into folders" (`06-folders-drag.webp`, `07-folders-named.webp`); the export shot
+  is `08-export.webp`.
+- **README**: the seven screenshots retaken on `tests/fixtures/dark_divide_100` (1440×900 PNG,
+  from a local script); `web-03-needs-icon-filter.png` → `web-03-default-pin-filter.png`,
+  `web-07-runbook.png` → `web-07-export.png`. Stale facts fixed: ~40 → 95 icons, "Needs an
+  icon"/amber → Default pin, a colourless waypoint's colour, the link to the deleted
+  command-line section.
+- **web/README.md**: "What it does" and the numbers table describe the current screens (the
+  stats card and the runbook's "N markups" are gone).
+- Footer links (Help, FAQ, Walkthrough, GitHub) checked on index, faq and walkthrough: same
+  four, every local link and image loads; GitHub's URL is the same on all three (not fetched).
+
+`BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1316 passed** (unchanged; only pinned
+strings changed). `build_faq_page.py --check`: clean.
+
 ## Follow-ups
 
 - **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`
@@ -665,4 +698,3 @@ separator, so converting it would change "1234 items").
   entries so a re-render no longer destroys what the user is touching; then retire those
   workarounds. Not done for this release: the current behaviour is pinned by the e2e tests and
   the fuzzer, and the refactor touches every render path.
-- `docs/screenshots/web-07-runbook.png` in README.md still shows the old export screen (PR-B).
