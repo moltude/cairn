@@ -9,7 +9,7 @@ engine it runs in the browser via Pyodide. The typer CLI (`cairn/cli.py`, `cairn
 legacy prompt-toolkit UI (`cairn/ui/`) and the Textual TUI (`cairn/tui/`) were deleted — their
 last state is git tag `cli-final`. Do not reintroduce a terminal interface or a typer/rich/
 textual dependency. The human-facing doc is `README.md` — what/why,
-icon/color mapping tables, known quirks (`TECH_DETAIILS.md` was merged into it 2026-08-30).
+icon/color mapping tables (`TECH_DETAIILS.md` was merged into it 2026-08-30); onX quirks are in `docs/FAQ.md`.
 
 ## Environment: read this first
 
@@ -137,7 +137,8 @@ readers via document_adapter.
   on every machine turns the logging back on for everyone.
 - The onX format is not fully standard: the same linework exports as `<trk>` or `<rte>`; areas
   usually only survive as KML polygons; onX reorders items after import. See
-  `README.md`'s "Known quirks" section.
+  `docs/FAQ.md` ("Why do my CalTopo lines show up as onX Tracks, not Lines?" and "Why are areas
+  in a GPX file, not KML?").
 - **The CSP allows jsdelivr only under the pinned Pyodide folder** (`web/vercel.json`,
   e.g. `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/`). A Pyodide bump must change the version
   in `web/index.html` (plus its SRI hash), `web/app.js` `indexURL`, and `web/vercel.json` together;
