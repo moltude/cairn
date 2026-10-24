@@ -651,9 +651,10 @@ closes the gap and a new folder is numbered last. `NN_` is two digits, or as man
 count needs from 100 folders on (`001_` … `120_`), so a file list still sorts in order; maps
 under 100 folders are unchanged (Bitterroots pin). Each manifest entry names its directory
 (`dir`). The last export keeps the zip itself (not a second copy of every file);
-`export_folder_zip(n)` copies that folder's members out of it, and `export_folder_zip_name(n)`
-is `<dir>.zip`. The runbook's heading and "Rename it to:"
-line use the current display name. As before, a folder whose items are all excluded still
+`export_folder_zip(n)` copies that folder's members out of it as stored (compressed bytes,
+not recompressed), and the page names the download `<dir>.zip` from the manifest. The runbook's
+heading and "Rename it to:" line use the current display name, shown exactly (backslash escapes
+in the heading and "(folder)" notes, a code span in "Rename it to:"). As before, a folder whose items are all excluded still
 takes a number but writes no files and gets no runbook step.
 
 **File names for a renamed folder.** `safe` is recomputed with the existing `_safe()` (strip

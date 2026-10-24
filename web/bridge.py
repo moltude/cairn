@@ -11,6 +11,7 @@ from __future__ import annotations
 import io
 import json
 import re
+import struct
 import zipfile
 from pathlib import Path
 
@@ -1002,29 +1003,55 @@ def export_zip() -> bytes:
     return _STATE["zip"]
 
 
+def _manifest_entry(n) -> dict:
+    """The last export's manifest entry numbered `n` (its number on screen)."""
+    entry = next((e for e in _STATE.get("manifest") or [] if e["n"] == int(n)), None)
+    if entry is None:
+        raise ValueError(f"No exported folder {n}. Export again.")
+    return entry
+
+
+def _copy_members(data: bytes, paths) -> bytes:
+    """A zip of `paths` from the zip `data`, each member's compressed bytes
+    copied as they are: nothing is inflated or deflated again. zipfile has no
+    raw copy, so the headers are written here from the members' own ZipInfo
+    (CRC, sizes, method, date); a folder zip is far below the zip64 limits."""
+    out, central = io.BytesIO(), []
+    with zipfile.ZipFile(io.BytesIO(data)) as src:
+        for path in paths:
+            zi = src.getinfo(path)
+            # The stored bytes follow the local header (30 bytes, name, extra).
+            nlen, xlen = struct.unpack_from("<HH", data, zi.header_offset + 26)
+            start = zi.header_offset + 30 + nlen + xlen
+            raw = data[start:start + zi.compress_size]
+            name = zi.filename.encode("utf-8")
+            flags = 0 if zi.filename.isascii() else 0x800   # 0x800: the name is UTF-8
+            y, mo, d, h, mi, sec = zi.date_time
+            dtime, ddate = (h << 11) | (mi << 5) | (sec // 2), ((y - 1980) << 9) | (mo << 5) | d
+            fields = (zi.compress_type, dtime, ddate, zi.CRC, zi.compress_size, zi.file_size, len(name))
+            offset = out.tell()
+            out.write(struct.pack("<IHH" "HHHIIIHH", 0x04034B50, 20, flags, *fields, 0) + name + raw)
+            central.append(struct.pack("<IHHH" "HHHIIIHHHHHII", 0x02014B50, (zi.create_system << 8) | 20,
+                                       20, flags, *fields, 0, 0, 0, 0, zi.external_attr, offset) + name)
+    cd_at, cd = out.tell(), b"".join(central)
+    out.write(cd + struct.pack("<IHHHHIIH", 0x06054B50, 0, 0, len(central), len(central),
+                               len(cd), cd_at, 0))
+    return out.getvalue()
+
+
 def export_folder_zip(n: int) -> bytes:
     """A .zip of ONE folder from the last export_zip: that folder's NN_Name/
-    directory with the same files, byte for byte, and nothing else (no
-    RUNBOOK.md). `n` is the folder's number on screen (manifest "n"), which is
-    not a list index: folders that wrote no file are skipped but keep a number."""
-    entry = next((e for e in _STATE.get("manifest") or [] if e["n"] == int(n)), None)
-    if entry is None:
-        raise ValueError(f"No exported folder {n}. Export again.")
-    buf = io.BytesIO()
-    with zipfile.ZipFile(io.BytesIO(_STATE["zip"])) as src, \
-            zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for f in entry["files"]:
-            zf.writestr(f["path"], src.read(f["path"]))
-    return buf.getvalue()
+    directory with the same files, byte for byte (copied compressed, not
+    recompressed), and nothing else (no RUNBOOK.md). `n` is the folder's number
+    on screen (manifest "n"), which is not a list index: folders that wrote no
+    file are skipped but keep a number. Its download name is the manifest
+    entry's "dir" plus ".zip": two names can sanitize alike, their numbers can't.
 
-
-def export_folder_zip_name(n: int) -> str:
-    """The file name for export_folder_zip(n): its directory's name plus .zip
-    ("02_Trip_1.zip"); two names can sanitize alike, their numbers can't."""
-    entry = next((e for e in _STATE.get("manifest") or [] if e["n"] == int(n)), None)
-    if entry is None:
-        raise ValueError(f"No exported folder {n}. Export again.")
-    return entry["dir"] + ".zip"
+    Download all's Blob in the page and _STATE["zip"] here are one copy on each
+    side: keeping only the Blob would need a zip reader in JS, keeping only this
+    one a multi-MB copy across on every Download all."""
+    paths = [f["path"] for f in _manifest_entry(n)["files"]]
+    return _copy_members(_STATE["zip"], paths)
 
 
 def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:

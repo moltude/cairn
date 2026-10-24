@@ -117,3 +117,50 @@ def test_runbook_wording_is_singular_for_one_and_matches_the_screen():
     assert "### 1. Solo  (31 markups · 3 files)" in three
     assert "add these 3 files together: **Solo_Waypoints.gpx, Solo_Tracks.gpx, Solo_Areas.gpx**" in three
     assert "Import each folder into onX's **Web Map** (webmap.onxmaps.com), one at a time." in three
+
+
+def _raw(z: zipfile.ZipFile, data: bytes, name: str) -> bytes:
+    """A member's stored (compressed) bytes, read from its local header."""
+    import struct
+    zi = z.getinfo(name)
+    nlen, xlen = struct.unpack_from("<HH", data, zi.header_offset + 26)
+    start = zi.header_offset + 30 + nlen + xlen
+    return data[start:start + zi.compress_size]
+
+
+def test_a_folder_zip_copies_its_members_without_recompressing(monkeypatch):
+    """Round 3 #9: export_folder_zip inflated each member of the kept zip and
+    deflated it again. It copies the compressed bytes as they are (no zlib
+    at all), with the same CRC, sizes, method and date."""
+    import zlib
+    _bitterroots()
+    full_bytes = bridge._STATE["zip"]
+    full = _zip(full_bytes)
+
+    def boom(*a, **k):
+        raise AssertionError("zlib used")
+    monkeypatch.setattr(zlib, "compressobj", boom)
+    monkeypatch.setattr(zlib, "decompressobj", boom)
+    outs = {e["n"]: bytes(bridge.export_folder_zip(e["n"])) for e in bridge._STATE["manifest"]}
+    monkeypatch.undo()
+    for e in bridge._STATE["manifest"]:
+        one = _zip(outs[e["n"]])
+        assert one.testzip() is None
+        assert one.namelist() == [f["path"] for f in e["files"]]
+        for name in one.namelist():
+            a, b = one.getinfo(name), full.getinfo(name)
+            assert (a.CRC, a.compress_size, a.file_size, a.compress_type, a.date_time) == \
+                   (b.CRC, b.compress_size, b.file_size, b.compress_type, b.date_time)
+            assert _raw(one, outs[e["n"]], name) == _raw(full, full_bytes, name)
+            assert one.read(name) == full.read(name)
+
+
+def test_a_non_ascii_folder_name_survives_the_raw_copy():
+    bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
+    key = next(g["key"] for g in bridge._STATE["groups"] if g["name"] == "Paddling")
+    bridge.rename_folder(key, "Kanu Zürich 日本")
+    full = _zip(bridge.export_zip())
+    e = next(e for e in bridge._STATE["manifest"] if e["folder"] == "Kanu Zürich 日本")
+    one = _zip(bridge.export_folder_zip(e["n"]))
+    assert one.namelist() == [f["path"] for f in e["files"]] and "Zürich" in one.namelist()[0]
+    assert all(one.read(n) == full.read(n) for n in one.namelist())

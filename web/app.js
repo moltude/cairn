@@ -1654,10 +1654,10 @@ function downloadFolder(e) {
     // The number crosses as a global, like every other argument (pyJSON).
     py.globals.set("_cairn_n", e.n);
     const bytes = py.runPython("bridge.export_folder_zip(_cairn_n)").toJs();
-    // Named like its directory inside Download all ("02_Trip_1.zip", or
-    // "002_..." with 100+ folders): two names can sanitize alike, their
-    // numbers can't.
-    downloadBlob(new Blob([bytes], { type: "application/zip" }), py.runPython("bridge.export_folder_zip_name(_cairn_n)"));
+    // Named like its directory inside Download all (the manifest's "dir":
+    // "02_Trip_1.zip", or "002_..." with 100+ folders): two names can
+    // sanitize alike, their numbers can't.
+    downloadBlob(new Blob([bytes], { type: "application/zip" }), e.dir + ".zip");
   } catch (err) {
     setStatus("Download failed: " + err.message, "err"); console.error(err);
   }

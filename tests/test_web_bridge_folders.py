@@ -759,7 +759,7 @@ def test_folder_zip_is_read_from_the_kept_zip_not_a_second_copy():
         fz = zipfile.ZipFile(io.BytesIO(bridge.export_folder_zip(e["n"])))
         assert fz.namelist() == [f["path"] for f in e["files"]]
         assert all(fz.read(p) == allz.read(p) for p in fz.namelist())
-        assert bridge.export_folder_zip_name(e["n"]) == f"{e['n']:02d}_{e['safe']}.zip" == e["dir"] + ".zip"
+        assert f"{e['n']:02d}_{e['safe']}" == e["dir"]
 
 
 def test_with_100_or_more_folders_the_number_is_three_digits():
@@ -771,7 +771,7 @@ def test_with_100_or_more_folders_the_number_is_three_digits():
     assert all(re.match(r"\d{3}_", d) for d in dirs)
     assert [int(d[:3]) for d in dirs] == list(range(1, len(dirs) + 1))   # sorts in order
     e = bridge._STATE["manifest"][0]
-    assert e["dir"].startswith("001_") and bridge.export_folder_zip_name(1) == e["dir"] + ".zip"
+    assert e["dir"].startswith("001_")
     _load_text(make_map(98, seed=9, names=[f"F{i}" for i in range(98)], per=(1, 1)))
     assert len(_groups()) <= 99
     dirs = {n.split("/")[0] for n in _export().namelist() if "/" in n}
