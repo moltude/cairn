@@ -776,8 +776,10 @@ def rename_folder(key: str, name: str) -> str:
         return json.dumps(_duplicate(name, dup))
     g["name"], g["safe"] = name, _safe(name)
     # The loose items stay styled as such only under their own name: renamed,
-    # they are an ordinary folder (renamed back, the loose items again).
-    g["unorganized"] = key in _STATE["loose"] and name == UNORGANIZED_FOLDER_NAME
+    # they are an ordinary folder (renamed back, the loose items again). "Own
+    # name" by the folder-name rule: "unorganized" is the same name.
+    g["unorganized"] = (key in _STATE["loose"]
+                        and name.casefold() == UNORGANIZED_FOLDER_NAME.casefold())
     _sync_doc([key])
     return json.dumps({"ok": True, "key": key, "name": name, "safe": g["safe"],
                        "unorganized": g["unorganized"], "folders": _layout()})

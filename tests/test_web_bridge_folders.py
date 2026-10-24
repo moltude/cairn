@@ -644,6 +644,18 @@ def test_renaming_the_loose_items_clears_the_flag_and_renaming_back_restores_it(
     assert [f["unorganized"] for f in res["folders"] if f["key"] == res["key"]] == [False]
 
 
+@pytest.mark.parametrize("name", ["unorganized", "UNORGANIZED", "UnOrganized"])
+def test_a_case_only_rename_of_the_loose_items_keeps_their_flag(name):
+    """Round 3 #4: renaming "Unorganized" to "unorganized" is the same name by
+    the folder-name rule (casefold), so the loose items stay the loose items."""
+    _load(BITTERROOTS)
+    key = _key("Unorganized")
+    res = json.loads(bridge.rename_folder(key, name))
+    assert res["ok"] and res["name"] == name and res["unorganized"] is True
+    assert _group(name)["unorganized"] is True
+    assert [f["unorganized"] for f in res["folders"] if f["key"] == key] == [True]
+
+
 def test_new_folder_takes_the_first_free_default_name_by_the_bridges_rule():
     """Review #7: the default name is picked by the bridge (casefolded, trimmed),
     not by the UI retrying move_items."""
