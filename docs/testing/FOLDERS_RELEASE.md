@@ -420,6 +420,94 @@ Result: **24 of 24 clean**: 6,024 actions, 6,048 invariant checks, 200 verified 
 in the fuzzer itself, stepped over as in rounds 1 and 2). Logs and run records are local-only
 (`archive/qa-fuzz/`).
 
+## Round 4: export screen v2 + instructions.txt (2026-10-23)
+
+Input: the owner's edits of two mockups (local-only copies, not tracked): ExportScreen and Main
+(the FAQ's "How Cairn bridges CalTopo and onX" diagram). Branch `feat/export-instructions`, off
+`feat/folders-release`; it touches only the export screen, the guide builder in
+`web/bridge.py`, the FAQ and their tests (the edit screen is another branch's). DECISIONS UI-31
+is updated.
+
+### What changed
+- **Export screen** (`web/index.html`, `web/app.js renderRunbook`, `web/styles.css`): the intro
+  is the owner's line with the comma splice made a semicolon: "Import each folder into onX's
+  Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX
+  Premium or Elite." Each box is only the folder name (no "· N markups · N files"), a
+  **Download** button (was "Download this folder"; `aria-label` "Download <folder>", with the
+  "NN ·" number for a same-named twin) and the file chips. The three numbered steps are gone.
+  Kept: the header, the warnings, the footer links, the round-3 twin numbering and the
+  per-folder zip.
+- **instructions.txt replaces RUNBOOK.md** in Download all (still the last member):
+  `bridge.build_instructions(manifest)` (was `build_runbook`). Plain text, no Markdown, UTF-8
+  without a BOM, CRLF. Five short lines of general steps at the top, then per folder
+  `NN_Name/    rename to: <folder>`, each file, its kind (Waypoints / Lines / Areas) and every
+  item's name, indented 4 spaces a level. Names come from the written GPX itself
+  (`_written_items`, read back in `export_zip`): split parts list only their own items, and a
+  name is exactly what onX will show. Each manifest file entry gains `kind` and `items`
+  (`[name, note bytes]`).
+- **Warnings in the file:** only the two that belong to one item, one line under it:
+  "(onX keeps only the first 512 bytes of this note, about 512 characters)" and "(its hole is
+  not kept: an onX area has one outline)". Dropped, totals, the account limit, KML and the
+  always-empty "Renamed" list are left out (the screen shows dropped, long-note and account
+  warnings). `long_notes` is now measured on the written `<desc>`, under the written name, so
+  the screen count and the marked lines agree.
+- `runbook_summary` / `runbook_summary_json` keep their names (the screen's numbers); `_md`,
+  `_code` and `_n` (Markdown helpers) are gone.
+- **Fixtures:** the Bitterroots export pin re-pinned with a note (instructions.txt in
+  RUNBOOK.md's place; every GPX member and the load JSON checked unchanged byte for byte);
+  `cairn_output/from_*/` of dark_divide_100 and caltopo-random regenerated with their parity
+  scripts (six RUNBOOK.md become instructions.txt; PARITY.md unchanged); `.gitattributes`
+  marks `tests/fixtures/**/instructions.txt` `-text` because this checkout has
+  `core.autocrlf=input`, which would turn the committed CRLF into LF and break the byte
+  comparison on a fresh clone. `.gitignore` ignores round-trip runs' instructions.txt.
+- **FAQ diagram:** `docs/faq/how-cairn-works.html` is the owner's Main edit made
+  self-contained (the app's woff2 fonts by relative path, one SVG for all lines), rendered at 2x
+  (3200×1800, 138 KB WebP) to `web/faq/how-cairn-works.webp` by `scripts/make_faq_diagram.py`.
+  Fixed: the GeoJSON arrow (its box had been resized onto the vertical line, so it pointed
+  nowhere), and the new "Any other GeoJSON, KML or GPX" input now joins Cairn by one elbow
+  (`M264 813 H986 V625`) with an arrowhead into the middle of the card's bottom edge. Tidied: that
+  box aligned with the CalTopo box (left 64, width 200), the onX card centred on its arrow.
+  `docs/FAQ.md` shows it under the title with alt text carrying the same facts;
+  `scripts/build_faq_page.py` gained an image line (sized from the file header, linked to the
+  full image), and `.doc-fig` lets it run up to 1200px wide, centred on the column. The CSP's
+  `img-src 'self' data:` already allows it.
+- **Text:** FAQ, README, web/README, Help, walkthrough and the long-note warning now say
+  instructions.txt; `web/walkthrough/06-export.webp` is retaken from the new screen (only that
+  one: the others show the edit screen, which another branch is changing).
+- **Tooling:** `scripts/onx_roundtrip.py`, its harness test and `scripts/qa/fuzz_ui.py` (box
+  label instead of count / steps; every folder line checked in instructions.txt).
+
+### Automated
+- New `tests/test_export_instructions.py` (9): last member and no `.md`; CRLF only, no BOM;
+  no Markdown (no line starting `#`, `-`, `*`, `>`, a backtick, `|` or `N. `; no `**`, `- [ ]`,
+  `---`); general steps once; the whole Bitterroots tree rebuilt from indentation alone matches
+  the manifest and every GPX `<name>` (177 items); no counts or old sections; a split file's
+  parts each list their own items; twin names told apart by zip folder; a manifest without
+  item lists still builds.
+- Bridge tests moved to the file: holes and long notes are the line under the item, names with
+  backticks or Markdown look-alikes are written as is, control characters can't break a line.
+- e2e: the box is heading + Download + chips (no `ol`), Download's accessible names (also for
+  twins), the intro line, Download all ends in instructions.txt, the onX pair's hole line.
+- `BASE_URL=http://127.0.0.1:8791/ uv run pytest`: **1265 passed** (1258 − 2 runbook tests
+  folded away + 9 new).
+- Fuzzer smoke run with the new checks: `fuzz_ui.py --seeds 1-2 --actions 80 --wave 1`, 2 of
+  2 clean (10 verified exports).
+
+### Manual (headless Chromium 1440×900)
+Bitterroots export screen and the FAQ page screenshotted (local-only) and looked at: boxes
+match the mockup; the diagram reads cleanly at 1200px, and the FAQ page has no horizontal scroll
+at 1280px.
+
+### Decisions
+- Intro: only the comma splice fixed (semicolon); "datetime stamp" kept as the owner wrote it.
+- CRLF: Notepad has read LF since Windows 10 1809, but CRLF is what Notepad itself writes and is
+  safe on every version; nothing reads the file but a person.
+- Unnamed items show "(no name)".
+
+### Open
+- `docs/screenshots/web-07-runbook.png` (README) still shows the PR-B screen; the
+  `docs/design/mockups/project/Main.dc.html` mockup is the pre-edit diagram.
+
 ## Follow-ups
 
 - **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`
