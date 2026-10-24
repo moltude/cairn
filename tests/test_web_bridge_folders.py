@@ -102,8 +102,8 @@ def _check_export(zf: zipfile.ZipFile) -> None:
         assert e["files"] and all(f["path"].startswith(prefix) for f in e["files"])
         assert sum(_markups(zf.read(f["path"]).decode()) for f in e["files"]) == e["count"]
         # The runbook heading as PR-B (UI-31) words it: counts with one/many.
-        assert f"### {e['n']}. {g['name']}  ({bridge._n(e['count'], 'markup')} · {bridge._n(len(e['files']), 'file')})" in runbook
-        assert f"**Rename it to:** `{g['name']}`" in runbook
+        assert f"### {e['n']}. {bridge._md(g['name'])}  ({bridge._n(e['count'], 'markup')} · {bridge._n(len(e['files']), 'file')})" in runbook
+        assert f"**Rename it to:** {bridge._code(g['name'])}" in runbook
         listed.update(f["path"] for f in e["files"])
     # Nothing else in the zip, and no folder with an included item left unlisted.
     assert set(zf.namelist()) == listed | {"RUNBOOK.md"}
@@ -776,3 +776,38 @@ def test_with_100_or_more_folders_the_number_is_three_digits():
     assert len(_groups()) <= 99
     dirs = {n.split("/")[0] for n in _export().namelist() if "/" in n}
     assert all(re.match(r"\d{2}_", d) and not re.match(r"\d{3}", d) for d in dirs)
+
+
+_MD_SPECIAL = set("\\`*_[]<>&~")
+
+
+def _md_text(s: str) -> str:
+    """Read back text written with backslash escapes (CommonMark): every
+    special character must be escaped, and an escape shows its character."""
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s) and s[i + 1] in _MD_SPECIAL:
+            out.append(s[i + 1]); i += 2
+            continue
+        assert s[i] not in _MD_SPECIAL, f"unescaped {s[i]!r} in {s!r}"
+        out.append(s[i]); i += 1
+    return "".join(out)
+
+
+@pytest.mark.parametrize("name", ["*Camp* _x_", "[a](b) <i>x</i>", "A&amp;B ~~s~~", "back\\slash `t`",
+                                  "Trip #1 / A&B", "plain"])
+def test_runbook_shows_a_folder_name_the_same_on_every_line(name):
+    """Round 3 #6: only "Rename it to" was escaped; the heading and the
+    "(folder)" after each renamed item, hole and long note were raw Markdown,
+    so "*Camp*" read as an italic Camp there."""
+    _load_text(make_map(1, seed=11, names=[name], per=(4, 4), long_notes=True))
+    g = next(g for g in _groups() if not g["unorganized"])
+    # An item whose name onX can't take (renamed) and an area with holes.
+    g["items"][0]["name"] = "Bad! @name"
+    rb = _export().read("RUNBOOK.md").decode()
+    head = re.search(r"^### 1\. (.*)  \(\d+ markups? · \d+ files?\)$", rb, re.M).group(1)
+    assert _md_text(head) == name
+    assert _code_span_text(_rename_to_line(rb, 1)) == name
+    suffixes = re.findall(r"^- .*  \((.*)\)$", rb, re.M)
+    assert suffixes and len(suffixes) >= 2
+    assert all(_md_text(x) == name for x in suffixes)

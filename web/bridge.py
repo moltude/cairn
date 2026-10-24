@@ -1081,6 +1081,18 @@ def _code(text) -> str:
     return f"{fence}{pad}{text}{pad}{fence}"
 
 
+# What can turn a name into Markdown mid-line: emphasis, code, links, HTML,
+# entities, strikethrough, and the backslash itself.
+_MD_SPECIAL = re.compile(r"([\\`*_\[\]<>&~])")
+
+
+def _md(text) -> str:
+    """`text` as plain Markdown text that shows it exactly (CommonMark backslash
+    escapes), for a folder name in a heading or after an item: the same name
+    "Rename it to:" shows in its code span. A plain name is unchanged."""
+    return _MD_SPECIAL.sub(r"\\\1", _CONTROL.sub(" ", str(text or "")))
+
+
 def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
     """The artifact that was missing: how to actually get this INTO onX.
 
@@ -1123,7 +1135,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
         flist = ", ".join(f["path"].split("/")[-1] for f in e["files"])
         add = "add this file" if nfiles == 1 else f"add these {nfiles} files together"
         L += [
-            f"### {e['n']}. {e['folder']}  ({_n(e['count'], 'markup')} · {_n(nfiles, 'file')})",
+            f"### {e['n']}. {_md(e['folder'])}  ({_n(e['count'], 'markup')} · {_n(nfiles, 'file')})",
             "",
             f"1. In onX, choose **Import** and {add}: **{flist}**",
             "2. Tick **Import map data to a new folder**.",
@@ -1138,7 +1150,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "These names had `! @ # $ % ^ * &` removed. Search onX for the new name.",
             "",
         ]
-        L += [f"- {_code(o)} → {_code(nw)}  ({folder})" for folder, o, nw in renamed]
+        L += [f"- {_code(o)} → {_code(nw)}  ({_md(folder)})" for folder, o, nw in renamed]
         L += [""]
     holes = [(e["folder"], name) for e in manifest for name in e.get("holes", ())]
     if holes:
@@ -1148,7 +1160,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "onX areas have one outline, so these areas were exported without their holes.",
             "",
         ]
-        L += [f"- {_code(name)}  ({folder})" for folder, name in holes]
+        L += [f"- {_code(name)}  ({_md(folder)})" for folder, name in holes]
         L += [""]
     long_notes = [(e["folder"], n, c) for e in manifest for n, c in e.get("long_notes", ())]
     if long_notes:
@@ -1162,7 +1174,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "for a reason we have not found.)",
             "",
         ]
-        L += [f"- {_code(n)}: {c} bytes  ({folder})" for folder, n, c in long_notes]
+        L += [f"- {_code(n)}: {c} bytes  ({_md(folder)})" for folder, n, c in long_notes]
         L += [""]
     L += [
         "---",
