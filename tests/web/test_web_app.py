@@ -3645,6 +3645,22 @@ def test_a_notes_preview_is_its_first_line_and_hover_shows_all_of_it(loaded: Pag
     expect(_tip(page)).to_be_hidden()
 
 
+def test_leaving_across_another_rows_name_still_hides_the_tip(loaded: Page):
+    """Fuzzer, round 4: leaving a note's tip by crossing another row's name
+    (one with no tip of its own) cancelled the hide, and the tip stayed up."""
+    page = loaded
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    uid = rows.nth(1).get_attribute("data-uid")
+    _set(page, uid, desc=LONG_NOTE)
+    page.locator(f'tr[data-uid="{uid}"] .note-btn').hover()
+    expect(_tip(page)).to_be_visible()
+    name = rows.nth(0).locator(".name-in").bounding_box()
+    page.mouse.move(name["x"] + 20, name["y"] + name["height"] / 2, steps=3)
+    page.mouse.move(120, 60, steps=3)
+    page.wait_for_timeout(700)
+    expect(_tip(page)).to_be_hidden()
+
+
 def test_a_short_note_or_name_shows_no_tip(loaded: Page):
     page = loaded
     row = _first_row(page, "Paddling")

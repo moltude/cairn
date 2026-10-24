@@ -617,8 +617,11 @@ function tipText(src, viaKey = false) {
   return desc !== firstLine(desc) || cut(src.querySelector(".note-text")) ? desc : null;
 }
 function scheduleTip(src, ms, viaKey = false) {
-  clearTimeout(TIP.showT); clearTimeout(TIP.hideT);
-  if (TIP.src === src && tipShown()) return;
+  clearTimeout(TIP.showT);
+  // Back on the control whose tip is up: keep it. Any other control leaves a
+  // pending hide alone (crossing another row's name on the way out must not
+  // keep this tip up; fuzzer round 4).
+  if (TIP.src === src && tipShown()) { clearTimeout(TIP.hideT); return; }
   TIP.showT = setTimeout(() => showTip(src, viaKey), ms);
 }
 const tipShown = () => !$("#tip").classList.contains("hidden");
@@ -644,8 +647,11 @@ function showTip(src, viaKey = false) {
   if (top + h > vh - 8) top = r.top - h - 6 >= 8 ? r.top - h - 6 : Math.max(8, vh - h - 8);
   tip.style.left = `${left}px`; tip.style.top = `${top}px`;
 }
-function hideTip() {
-  clearTimeout(TIP.showT); clearTimeout(TIP.hideT);
+/** keepPending: a delayed hide takes down the tip that is up, but not a
+    show that is waiting for another control the pointer has moved onto. */
+function hideTip(keepPending = false) {
+  if (!keepPending) clearTimeout(TIP.showT);
+  clearTimeout(TIP.hideT);
   TIP.over = false;
   if (TIP.src) { TIP.src.removeAttribute("aria-describedby"); TIP.src = null; }
   const tip = $("#tip");
@@ -653,9 +659,10 @@ function hideTip() {
 }
 /** Leaving the control or the tip: a short grace, so the pointer can cross
     from one to the other (to select the text). */
-function laterHideTip() {
-  clearTimeout(TIP.showT); clearTimeout(TIP.hideT);
-  TIP.hideT = setTimeout(() => { if (!TIP.over) hideTip(); }, 200);
+function laterHideTip(cancelShow = true) {
+  if (cancelShow) clearTimeout(TIP.showT);
+  clearTimeout(TIP.hideT);
+  TIP.hideT = setTimeout(() => { if (!TIP.over) hideTip(true); }, 200);
 }
 function wireTip() {
   const host = $("#folders"), tip = $("#tip");
@@ -677,7 +684,7 @@ function wireTip() {
   // Typing in a name it describes: the field shows the text now.
   host.addEventListener("input", e => { if (TIP.src && TIP.src === e.target) hideTip(); });
   tip.addEventListener("pointerenter", () => { TIP.over = true; clearTimeout(TIP.hideT); });
-  tip.addEventListener("pointerleave", () => { TIP.over = false; laterHideTip(); });
+  tip.addEventListener("pointerleave", () => { TIP.over = false; laterHideTip(false); });
   document.addEventListener("pointerdown", e => {
     LAST_POINTER = Date.now();
     if (!tip.contains(e.target)) hideTip();
