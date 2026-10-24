@@ -223,10 +223,41 @@ def test_footer_has_the_four_links_on_every_page(context, path):
     page.goto(f"{BASE_URL}/{path}")
     foot = page.locator("footer.site-foot")
     expect(foot).to_have_count(1)
-    labels = foot.locator("a, button").all_inner_texts()
+    labels = foot.locator("a, button").evaluate_all("els => els.map(e => e.textContent.trim())")
     assert labels == FOOTER_LINKS
     assert "·" in foot.inner_text()
     assert foot.locator("a[href='https://github.com/moltude/cairn']").count() == 1
+    page.close()
+
+
+@pytest.mark.parametrize("path", ["index.html", "faq.html", "walkthrough.html"])
+def test_footer_links_use_the_small_caps_kicker_style(context, path):
+    """Owner feedback 2026-10-24: the footer links look like the "EXPORT"
+    kicker (uppercase, letter-spaced, small, brown), not underlined body links;
+    hover and keyboard focus still underline them."""
+    page = context.new_page()
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(f"{BASE_URL}/{path}")
+    links = page.locator("footer.site-foot a, footer.site-foot button")
+    kicker = page.evaluate("""() => { const k = document.createElement('span'); k.className = 'kicker';
+        document.body.appendChild(k); const c = getComputedStyle(k);
+        const r = {color: c.color, tt: c.textTransform}; k.remove(); return r; }""")
+    for k in range(links.count()):
+        st = links.nth(k).evaluate("""e => { const c = getComputedStyle(e);
+            return {tt: c.textTransform, ls: parseFloat(c.letterSpacing), fs: parseFloat(c.fontSize),
+                    deco: c.textDecorationLine, color: c.color}; }""")
+        assert st["tt"] == "uppercase" and st["ls"] > 1 and st["fs"] <= 12 and st["deco"] == "none", st
+        current = links.nth(k).get_attribute("aria-current") == "page"
+        assert current or st["color"] == kicker["color"], st
+    first = links.first
+    first.hover()
+    assert first.evaluate("e => getComputedStyle(e).textDecorationLine") == "underline"
+    page.mouse.move(1, 1)
+    links.nth(1).focus()
+    page.keyboard.press("Shift+Tab"); page.keyboard.press("Tab")      # keyboard focus (focus-visible)
+    assert links.nth(1).evaluate("e => getComputedStyle(e).textDecorationLine") == "underline"
+    page.locator("footer.site-foot").scroll_into_view_if_needed()
+    _shot(page, f"fb-13-footer-{path.split('.')[0]}")
     page.close()
 
 

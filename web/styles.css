@@ -531,8 +531,13 @@ a.linkbtn{display:inline-flex;align-items:center;text-decoration:underline}
 
 /* ---------- page footer (every page) ---------- */
 .site-foot{padding:24px 32px;text-align:center;font-size:12px;color:var(--muted)}
-.site-foot a,.site-foot .linkbtn{font-size:12px;padding:0;min-height:0;color:var(--link)}
-.site-foot a:hover,.site-foot .linkbtn:hover{color:var(--link-hover)}
+/* Footer links in the kicker style ("EXPORT"): small, letter-spaced capitals in
+   brown (owner feedback 2026-10-24); still links: underlined on hover and focus. */
+.site-foot a,.site-foot .linkbtn{font-size:11px;letter-spacing:.16em;text-transform:uppercase;padding:0;min-height:0;
+  color:var(--brown);text-decoration:none;text-underline-offset:3px;font-family:inherit}
+.site-foot a:hover,.site-foot .linkbtn:hover,.site-foot a:focus-visible,.site-foot .linkbtn:focus-visible{
+  color:var(--brown);text-decoration:underline}
+.site-foot a[aria-current=page]{color:var(--ink)}
 .drop-wait{font-size:14px;font-style:italic;color:var(--muted)}
 
 /* ---------- folders: drag rows to the rail, Move to… (UI-32) ---------- */
