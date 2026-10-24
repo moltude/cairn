@@ -574,6 +574,8 @@ tr.excluded .caution-slot{display:none}
 .sort-btn:focus:not(:hover):not(:focus-visible){background:none}
 .sort-btn[data-sort=asc],.sort-btn[data-sort=desc]{color:var(--ink)}
 .sort-icon{flex:none}
+.sort-icon path{fill:var(--rule)}
+.sort-icon path.on{fill:currentColor}
 /* The hover tip (round 4): a row's whole name or note, line breaks kept. */
 .tip{position:fixed;z-index:55;max-width:min(480px,calc(100vw - 16px));max-height:min(320px,calc(100vh - 16px));
   overflow-y:auto;box-sizing:border-box;padding:8px 12px;background:var(--sheet);color:var(--ink);

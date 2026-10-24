@@ -128,6 +128,8 @@ async function boot() {
     py.FS.writeFile("/bridge.py", bridge);
     if (cfg !== null) py.FS.writeFile("/cairn_config.yaml", cfg);
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
+    NOTE_LIMIT = py.runPython("bridge.ONX_IMPORT_NOTE_LIMIT");
+    ONX_DEFAULT_FILL = py.runPython("bridge.ColorMapper.DEFAULT_AREA_FILL");
     window.__cairnReady = true;
     // The same signal as a DOM attribute, for tests that run under the
     // enforced CSP, where Playwright can't evaluate window.__cairnReady.
@@ -307,12 +309,11 @@ function sortByName(items) {
   // Array.prototype.sort is stable: equal names keep the map's order.
   return [...items].sort((a, b) => dir * NAME_ORDER.compare(a.name.trim(), b.name.trim()));
 }
-/** Up and down arrows; the one in use is dark, both are faint in map order. */
+/** Up and down arrows; the one in use is dark (.on), both are faint in map order. */
 function sortIcon(s) {
-  const on = "currentColor", off = "#B9A887";
   return `<svg class="sort-icon" width="8" height="12" viewBox="0 0 8 12" aria-hidden="true">` +
-    `<path d="M4 0.5 7.5 4.5H0.5Z" fill="${s === "asc" ? on : off}"/>` +
-    `<path d="M4 11.5 0.5 7.5H7.5Z" fill="${s === "desc" ? on : off}"/></svg>`;
+    `<path d="M4 0.5 7.5 4.5H0.5Z"${s === "asc" ? ` class="on"` : ""}/>` +
+    `<path d="M4 11.5 0.5 7.5H7.5Z"${s === "desc" ? ` class="on"` : ""}/></svg>`;
 }
 const SORT_NEXT = { null: "asc", asc: "desc", desc: null };
 const ARIA_SORT = { null: "none", asc: "ascending", desc: "descending" };
@@ -609,6 +610,9 @@ const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boole
    (the pointer may move onto it), and gone on Esc. Not the native `title`:
    it drops line breaks on some platforms and can't be styled. */
 const TIP_SRC = ".name-in, .note-btn, .caution";
+const TIP_HOVER_MS = 450, TIP_FOCUS_MS = 150;   // how long a hover / keyboard focus waits for the tip
+const TIP_GRACE_MS = 200;      // leaving the control or the tip: time to cross from one to the other
+const PRESS_FOCUS_MS = 300;    // focus this soon after a press came from the pointer, not the keyboard
 const TIP = { src: null, showT: null, hideT: null, over: false };
 let LAST_POINTER = 0;   // when the last press happened: focus right after it isn't keyboard focus
 const cut = el => !!el && el.scrollWidth > el.clientWidth + 1;
@@ -651,7 +655,7 @@ function showTip(src, viaKey = false) {
   tip.classList.toggle("scrolls", scrolls);
   if (scrolls) {
     const lh = parseFloat(getComputedStyle(tip).lineHeight), pad = tip.offsetHeight - tip.clientHeight + 16;
-    const room = Math.min(320, window.innerHeight - 16) - pad;
+    const room = parseFloat(getComputedStyle(tip).maxHeight) - pad;   // styles.css .tip max-height
     tip.style.maxHeight = `${Math.max(1, Math.floor(room / lh)) * lh + pad}px`;
   }
   TIP.src = src;
@@ -681,14 +685,14 @@ function hideTip(keepPending = false) {
 function laterHideTip(cancelShow = true) {
   if (cancelShow) clearTimeout(TIP.showT);
   clearTimeout(TIP.hideT);
-  TIP.hideT = setTimeout(() => { if (!TIP.over) hideTip(true); }, 200);
+  TIP.hideT = setTimeout(() => { if (!TIP.over) hideTip(true); }, TIP_GRACE_MS);
 }
 function wireTip() {
   const host = $("#folders"), tip = $("#tip");
   host.addEventListener("pointerover", e => {
     if (e.pointerType === "touch" || DRAG) return;
     const src = e.target.closest(TIP_SRC);
-    if (src) scheduleTip(src, 450);
+    if (src) scheduleTip(src, TIP_HOVER_MS);
   });
   host.addEventListener("pointerout", e => {
     const src = e.target.closest(TIP_SRC);
@@ -697,7 +701,7 @@ function wireTip() {
   });
   host.addEventListener("focusin", e => {
     const src = e.target.closest(TIP_SRC);
-    if (src && Date.now() - LAST_POINTER > 300) scheduleTip(src, 150, true);   // keyboard focus
+    if (src && Date.now() - LAST_POINTER > PRESS_FOCUS_MS) scheduleTip(src, TIP_FOCUS_MS, true);   // keyboard focus
   });
   host.addEventListener("focusout", e => { if (TIP.src && TIP.src.contains(e.target)) hideTip(); });
   // Typing in a name it describes: the field shows the text now.
@@ -718,14 +722,14 @@ function wireTip() {
   window.addEventListener("scroll", e => { if (e.target !== tip && tipShown()) hideTip(); }, true);
   window.addEventListener("resize", hideTip);
 }
-/* ---------- what won't carry over (round 4) ----------
+/* ---------- what won't carry over ----------
    A caution mark beside a row's note, before export, for what onX will
-   change on import: a note over its 512-byte limit (the bridge's
-   ONX_IMPORT_NOTE_LIMIT, the export's long_notes rule) and an onX area whose
-   fill onX will reset (UI-30's rule, except a transparent / none fill). One
-   plain line each; the tip shows them. An excluded row isn't exported, so it
-   has none. Rows re-render after every edit, so the mark follows the note. */
-const NOTE_LIMIT = 512;
+   change on import: a note over its byte limit (the export's long_notes rule)
+   and an onX area whose fill onX will reset (UI-30's rule, except a
+   transparent / none fill). One plain line each; the tip shows them. An
+   excluded row isn't exported, so it has none. Rows re-render after every
+   edit, so the mark follows the note. */
+let NOTE_LIMIT = null;                 // bridge.ONX_IMPORT_NOTE_LIMIT (512), read at boot
 const utf8Len = cp => cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
 /** [bytes, characters past the limit] of a note, by UTF-8 bytes, measured
     on the note as the export writes it to the GPX <desc> (line endings made
@@ -1465,7 +1469,9 @@ function keepNoteDraft() {
   if (it && v !== (it.desc || "")) edit(it, { desc: v }, { render: false });
 }
 
-const shortName = s => { const c = [...s]; return c.length > 48 ? c.slice(0, 47).join("").trimEnd() + "…" : s; };
+/** A folder name in a status line: at most SHORT_NAME characters. */
+const SHORT_NAME = 48;
+const shortName = s => { const c = [...s]; return c.length > SHORT_NAME ? c.slice(0, SHORT_NAME - 1).join("").trimEnd() + "…" : s; };
 
 /** After a move or merge: re-render and say what happened, and why the view
     changed when the folder it was filtered to is gone. */
@@ -1742,6 +1748,7 @@ function closeMove(focusRet) {
    checkbox, an open note, or a field you are already typing in (that press
    selects text). Drop on a folder in the rail, or "+ New folder". */
 const DRAG_START_PX = 6;
+const SCROLL_EDGE_PX = 36, SCROLL_MAX_PX = 48;   // the rail's auto-scroll band, and its top speed per frame
 let SWALLOW_CLICK = false;
 
 function wireRowDrag() {
@@ -1851,13 +1858,12 @@ function autoScroll() {
   if (!d || !d.active) return;
   const rail = $(".rail"), r = rail.getBoundingClientRect();
   const bottom = Math.min(r.bottom, $(".rail-foot").getBoundingClientRect().top);
-  const EDGE = 36;
   if (d.x >= r.left && d.x <= r.right) {
     let dy = 0;
     // Faster the deeper in: over the footer it races (200 folders is ~5000px).
-    const speed = depth => Math.min(48, Math.ceil(depth / 2));
-    if (d.y < r.top + EDGE) dy = -speed(r.top + EDGE - d.y);
-    else if (d.y > bottom - EDGE) dy = speed(d.y - (bottom - EDGE));
+    const speed = depth => Math.min(SCROLL_MAX_PX, Math.ceil(depth / 2));
+    if (d.y < r.top + SCROLL_EDGE_PX) dy = -speed(r.top + SCROLL_EDGE_PX - d.y);
+    else if (d.y > bottom - SCROLL_EDGE_PX) dy = speed(d.y - (bottom - SCROLL_EDGE_PX));
     if (dy) { const was = rail.scrollTop; rail.scrollTop += dy; if (rail.scrollTop !== was) hitTest(); }
   }
   d.raf = requestAnimationFrame(autoScroll);
@@ -1911,11 +1917,13 @@ async function doExport() {
   }
 }
 
-/** The items whose notes onX will cut, by name as written (round 4): up
-    to 8, then "and N more". */
+/** The items whose notes onX will cut, by name as written: up to
+    LONG_NOTES_SHOWN, then "and N more". */
+const LONG_NOTES_SHOWN = 8;
 function longNoteNames() {
   const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `“${n || "(no name)"}”`));
-  return names.length > 8 ? `${names.slice(0, 8).join(", ")} and ${names.length - 8} more` : names.join(", ");
+  const n = LONG_NOTES_SHOWN;
+  return names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
 }
 
 function renderRunbook() {
@@ -2031,7 +2039,7 @@ function cancelConfirm() { if (CONFIRM && CONFIRM.cancel) CONFIRM.cancel.run(); 
    (docs/ONX_ROUND_TRIP.md #area-fidelity). Areas from an onX export (they carry
    an onX id) with any other fill, a clear one excepted, would change, so say so once
    on load and offer to leave them out of the export. */
-const ONX_DEFAULT_FILL = "rgba(74,144,226,0.1)";
+let ONX_DEFAULT_FILL = null;           // bridge.ColorMapper.DEFAULT_AREA_FILL, read at boot
 const fillChanges = i => i.kind === "shapes" && !!i.onx_id && !!i.fill && i.fill !== ONX_DEFAULT_FILL
   && fillAlpha(i.fill) > 0;   // a clear fill is deliberate (UI-30): not flagged
 function fillLossItems() {
