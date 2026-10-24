@@ -167,8 +167,10 @@ def test_rename_trims_renames_and_exports_under_the_new_safe_name():
     _load(BITTERROOTS)
     key = _key("Lost Trail Pass")
     res = json.loads(bridge.rename_folder(key, "  Lost Trail #2 & Co.  "))
+    folders = res.pop("folders")
     assert res == {"ok": True, "key": key, "name": "Lost Trail #2 & Co.",
-                   "safe": bridge._safe("Lost Trail #2 & Co.")}
+                   "safe": bridge._safe("Lost Trail #2 & Co."), "unorganized": False}
+    assert [(f["key"], f["name"], f["safe"], f["uids"]) for f in folders] == _layout()
     assert res["safe"] == "Lost_Trail_2_Co"
     assert _layout()[1][:3] == (key, "Lost Trail #2 & Co.", "Lost_Trail_2_Co")
     zf = _export()
@@ -234,8 +236,8 @@ def test_move_into_an_existing_folder_goes_to_the_end_of_each_kind():
     res = _move([trk, wps[1], wps[0]], dst)
     assert res["ok"] and res["key"] == dst and res["created"] is False
     assert res["moved"] == 3 and res["removed"] == []
-    assert res["folders"] == [{"key": k, "name": n, "safe": s, "uids": u}
-                              for k, n, s, u in _layout()]
+    assert res["folders"] == [{"key": k, "name": n, "safe": s, "unorganized": n == "Unorganized",
+                               "uids": u} for k, n, s, u in _layout()]
     got = _uids("North Roots")
     n_wp = len([u for u in old_dst if _item(u)["kind"] == "waypoints"])
     assert got[:n_wp] == old_dst[:n_wp] and got[n_wp:n_wp + 2] == wps
@@ -599,3 +601,150 @@ def test_merging_an_empty_folder_removes_it():
     assert res["removed"] == ["fe"] and res["moved"] == 0
     assert [f["name"] for f in res["folders"]] == ["A"]
     assert set(bridge._STATE["doc"].folders) == {"fa"}
+
+
+# --- round 2 (2026-10-23): review and QA findings --------------------------------
+
+from tests.hardening_maps import make_map  # noqa: E402
+
+
+def _load_text(text: str, name: str = "m.json") -> dict:
+    return json.loads(bridge.load_document(text, name))
+
+
+def test_the_loose_items_are_flagged_by_where_they_came_from_not_by_name():
+    """F6 / review #8: a real CalTopo folder called "Unorganized" is an ordinary
+    folder; only the items outside every folder are the loose items."""
+    doc = json.loads(make_map(2, seed=5, names=["Unorganized", "Trips"]))
+    doc["features"].append({"type": "Feature", "id": "loose", "properties": {
+        "title": "Loose", "class": "Marker"}, "geometry": {"type": "Point", "coordinates": [-114, 46]}})
+    # Two folders would then share the name "Unorganized": rename the real one first.
+    data = _load_text(json.dumps(doc))
+    flags = {(g["key"], g["name"]): g["unorganized"] for g in data["groups"]}
+    assert flags[("f0", "Unorganized")] is False
+    assert flags[("orphaned_features", "Unorganized")] is True
+    assert [f["unorganized"] for f in json.loads(bridge.layout_json())["folders"]] == \
+        [g["unorganized"] for g in data["groups"]]
+
+
+def test_renaming_the_loose_items_clears_the_flag_and_renaming_back_restores_it():
+    _load(BITTERROOTS)
+    key = _key("Unorganized")
+    assert _group("Unorganized")["unorganized"] is True
+    res = json.loads(bridge.rename_folder(key, "Misc"))
+    assert res["unorganized"] is False and _group("Misc")["unorganized"] is False
+    assert [f["unorganized"] for f in res["folders"] if f["key"] == key] == [False]
+    assert json.loads(bridge.rename_folder(key, "Unorganized"))["unorganized"] is True
+    # Another folder renamed to it (once it is free) is not the loose items.
+    bridge.rename_folder(key, "Misc")
+    res = json.loads(bridge.rename_folder(_key("Paddling"), "Unorganized"))
+    assert res["ok"] and res["unorganized"] is False
+    # A new folder never is.
+    res = json.loads(bridge.move_to_new_folder(json.dumps(_uids("Blodgett")[:1])))
+    assert [f["unorganized"] for f in res["folders"] if f["key"] == res["key"]] == [False]
+
+
+def test_new_folder_takes_the_first_free_default_name_by_the_bridges_rule():
+    """Review #7: the default name is picked by the bridge (casefolded, trimmed),
+    not by the UI retrying move_items."""
+    data = _load_text(make_map(3, seed=3, names=["New folder", " new FOLDER 2 ", "Camp"]))
+    assert bridge.default_folder_name() == "New folder 3"
+    uid = data["groups"][0]["items"][0]["uid"]
+    res = json.loads(bridge.move_to_new_folder(json.dumps([uid])))
+    assert res["ok"] and res["created"] and res["moved"] == 1
+    assert [f["name"] for f in res["folders"]][-1] == "New folder 3"
+    assert bridge.default_folder_name() == "New folder 4"
+    _load(BITTERROOTS)
+    assert bridge.default_folder_name() == "New folder"
+
+
+def _old_safe(name: str) -> str:
+    s = re.sub(r"[^\w\s-]", "", (name or "").strip()).strip()
+    s = re.sub(r"[-\s]+", "_", s)
+    while len(s.encode("utf-8")) > bridge._SAFE_MAX_BYTES:
+        s = s[:-1]
+    return s.rstrip("_") or "Unnamed"
+
+
+@pytest.mark.parametrize("name", ["ä" * 200, "x" * 300, "日本語のフォルダ" * 20, "a" * 79 + " b",
+                                  "Zürich Café", "a" * 79 + "ä", "🏔️ Peaks 🎿", ".."])
+def test_safe_cuts_by_bytes_in_one_step_with_the_same_result(name):
+    """Review #3: the char-at-a-time loop was O(L^2); the byte slice gives the same name."""
+    assert bridge._safe(name) == _old_safe(name)
+    assert len(bridge._safe(name).encode("utf-8")) <= bridge._SAFE_MAX_BYTES
+
+
+def test_safe_of_a_huge_name_is_fast():
+    import time
+    t = time.perf_counter()
+    assert len(bridge._safe("ä" * 200_000).encode("utf-8")) <= bridge._SAFE_MAX_BYTES
+    assert time.perf_counter() - t < 0.5
+
+
+def _rename_to_line(runbook: str, n: int) -> str:
+    block = runbook.split(f"### {n}. ", 1)[1]
+    return re.search(r"\*\*Rename it to:\*\* (.*)", block).group(1)
+
+
+def _code_span_text(span: str) -> str:
+    """Read a CommonMark code span back (the fence is the leading run of backticks)."""
+    fence = re.match(r"`+", span).group(0)
+    assert span.endswith(fence) and "\n" not in span
+    inner = span[len(fence):-len(fence)]
+    # Inside, no run of backticks exactly as long as the fence (it would close it).
+    assert all(len(r) != len(fence) for r in re.findall(r"`+", inner))
+    if len(inner) > 1 and inner.startswith(" ") and inner.endswith(" ") and inner.strip():
+        inner = inner[1:-1]
+    return inner
+
+
+@pytest.mark.parametrize("name", ["Trip `A`", "`tick", "a``b```c", "plain"])
+def test_runbook_rename_line_shows_a_name_with_backticks_exactly(name):
+    """Review #4: the 'Rename it to:' code span must survive backticks in the name."""
+    _load(BITTERROOTS)
+    bridge.rename_folder(_key("Paddling"), name)
+    n = [g["name"] for g in _groups()].index(name) + 1
+    runbook = _export().read("RUNBOOK.md").decode()
+    assert _code_span_text(_rename_to_line(runbook, n)) == name
+
+
+def test_control_characters_in_folder_names_become_one_space():
+    """Review #4: a newline in a name broke the runbook's heading and code span."""
+    data = _load_text(make_map(2, seed=7, names=["new\nline", "tab\there\r\n"]))
+    names = {g["name"] for g in data["groups"]}
+    assert "new line" in names and "tab here" in names
+    key = data["groups"][0]["key"]
+    res = json.loads(bridge.rename_folder(key, "two\nlines\x00here "))
+    assert res["name"] == "two lines here"
+    runbook = _export().read("RUNBOOK.md").decode()
+    assert "### 1. two lines here  (" in runbook
+    with pytest.raises(ValueError):
+        bridge.rename_folder(key, "\n\t\r")
+
+
+def test_folder_zip_is_read_from_the_kept_zip_not_a_second_copy():
+    """Review #6: no per-file copy of the export is kept beside the zip."""
+    _load(BITTERROOTS)
+    allz = _export()
+    assert "blobs" not in bridge._STATE and bridge._STATE["zip"]
+    for e in bridge._STATE["manifest"]:
+        fz = zipfile.ZipFile(io.BytesIO(bridge.export_folder_zip(e["n"])))
+        assert fz.namelist() == [f["path"] for f in e["files"]]
+        assert all(fz.read(p) == allz.read(p) for p in fz.namelist())
+        assert bridge.export_folder_zip_name(e["n"]) == f"{e['n']:02d}_{e['safe']}.zip" == e["dir"] + ".zip"
+
+
+def test_with_100_or_more_folders_the_number_is_three_digits():
+    """L1: 100_ sorted before 11_; the width grows only past 99 folders."""
+    _load_text(make_map(120, seed=9, names=[f"F{i}" for i in range(120)], per=(1, 1)))
+    zf = _export()
+    dirs = sorted({n.split("/")[0] for n in zf.namelist() if "/" in n})
+    assert dirs[0].startswith("001_") and dirs[-1].startswith("12") and len(dirs) == len(_groups())
+    assert all(re.match(r"\d{3}_", d) for d in dirs)
+    assert [int(d[:3]) for d in dirs] == list(range(1, len(dirs) + 1))   # sorts in order
+    e = bridge._STATE["manifest"][0]
+    assert e["dir"].startswith("001_") and bridge.export_folder_zip_name(1) == e["dir"] + ".zip"
+    _load_text(make_map(98, seed=9, names=[f"F{i}" for i in range(98)], per=(1, 1)))
+    assert len(_groups()) <= 99
+    dirs = {n.split("/")[0] for n in _export().namelist() if "/" in n}
+    assert all(re.match(r"\d{2}_", d) and not re.match(r"\d{3}", d) for d in dirs)

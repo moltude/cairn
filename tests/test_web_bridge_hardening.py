@@ -190,4 +190,4 @@ def test_the_oldest_state_never_leaks_into_a_fresh_load_after_moves():
     assert [g["name"] for g in j2["groups"]] == [g["name"] for g in j["groups"]]
     assert bridge._STATE["next_folder"] == 1
     assert "Moved" not in {g["name"] for g in bridge._STATE["groups"]}
-    assert not bridge._STATE.get("blobs")
+    assert not bridge._STATE.get("zip")

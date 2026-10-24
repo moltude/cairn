@@ -105,6 +105,9 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert loaded.pop("sources") == [
         {"name": BITTERROOTS.name, "kind": "geojson", "dialect": "caltopo"}
     ]
+    # Each group says whether it is the loose items (2026-10-23, round 2): only
+    # Unorganized is.
+    assert [g["name"] for g in loaded["groups"] if g.pop("unorganized")] == ["Unorganized"]
     padded = {"Stimson", "Parking", "Ingress", "Sample run"}
     stripped = [i for g in loaded["groups"] for i in g["items"] if i["name"] in padded]
     assert len(stripped) == 4

@@ -97,7 +97,7 @@ LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 # an item is in and where it sits. export_zip reads nothing else. doc.folders
 # is kept in step by the folder primitives for code that inspects it.
 _STATE: dict = {"doc": None, "groups": [], "features": {}, "config": None,
-                "edited": set(), "color_edited": set(), "next_folder": 1}
+                "edited": set(), "color_edited": set(), "next_folder": 1, "loose": set()}
 
 # Path the UI writes the user's cairn_config.yaml to before loading a document.
 CONFIG_PATH = Path("/cairn_config.yaml")
@@ -125,9 +125,20 @@ _SAFE_MAX_BYTES = 80
 def _safe(name: str) -> str:
     s = re.sub(r"[^\w\s-]", "", (name or "").strip()).strip()
     s = re.sub(r"[-\s]+", "_", s)
-    while len(s.encode("utf-8")) > _SAFE_MAX_BYTES:
-        s = s[:-1]
+    # The longest whole-character prefix that fits: "ignore" drops a character
+    # the byte cut split. (One slice, not a char-at-a-time loop.)
+    s = s.encode("utf-8")[:_SAFE_MAX_BYTES].decode("utf-8", "ignore")
     return s.rstrip("_") or "Unnamed"
+
+
+# Control characters (newlines, tabs, NUL, ...) in a folder name: a name is one
+# line everywhere it is shown, and it goes into RUNBOOK.md's "Rename it to:".
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]+")
+
+
+def _clean_name(name) -> str:
+    """A folder name as stored: control characters become one space, trimmed."""
+    return _CONTROL.sub(" ", name).strip() if isinstance(name, str) else ""
 
 
 def _hex_for(rgba: str) -> str:
@@ -416,10 +427,11 @@ def load_files(files_json: str) -> str:
 
     groups.sort(key=lambda g: -len(g["items"]))
     _STATE.update(doc=doc, groups=groups, features=features, config=cfg,
-                  edited=set(), color_edited=set(), next_folder=1)
+                  edited=set(), color_edited=set(), next_folder=1,
+                  loose={g["key"] for g in groups if g["unorganized"]})
     # The last export belonged to the previous map: forget it, or
     # export_folder_zip(n) would hand out that map's files for this one.
-    for k in ("manifest", "unlisted_dropped", "runbook", "blobs"):
+    for k in ("manifest", "unlisted_dropped", "runbook", "zip"):
         _STATE.pop(k, None)
 
     filename = files[0].get("name") or ""
@@ -467,8 +479,12 @@ def _group(fkey, okey, fdata, origin, resolver, cfg, catalog, features) -> dict:
     # doc.folders is keyed by CalTopo's folder UUID, not its name. The
     # display name is inside the folder dict. Using the key here put raw
     # UUIDs in the runbook's "rename it to:" instruction.
-    fname = (fdata.get("name") or "").strip()
-    if not fname or okey == "orphaned_features":
+    fname = _clean_name(fdata.get("name") or "")
+    # The items outside any folder of the file. Flagged here, by where they
+    # came from, never by name: a real CalTopo folder may be called
+    # "Unorganized" too (and gets no such styling).
+    loose = not fname or okey == "orphaned_features"
+    if loose:
         fname = UNORGANIZED_FOLDER_NAME
     items = []
     for kind in ("waypoints", "tracks", "shapes"):
@@ -479,7 +495,8 @@ def _group(fkey, okey, fdata, origin, resolver, cfg, catalog, features) -> dict:
             uid = f"i{len(features)}"
             features[uid] = feat
             items.append(_item(uid, kind, feat, origin, resolver, cfg, catalog))
-    return {"key": fkey, "name": fname, "safe": _safe(fname), "items": items}
+    return {"key": fkey, "name": fname, "safe": _safe(fname), "unorganized": loose,
+            "items": items}
 
 
 def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
@@ -659,8 +676,8 @@ def _folder(key: str) -> dict:
 
 
 def _folder_name_of(name) -> str:
-    """A folder name as stored: trimmed, and never empty."""
-    name = name.strip() if isinstance(name, str) else ""
+    """A folder name as stored: one line, trimmed, and never empty."""
+    name = _clean_name(name)
     if not name:
         raise ValueError("A folder needs a name.")
     return name
@@ -682,7 +699,14 @@ def _layout() -> list:
     """Every folder in order, with its items' uids in order: what the UI needs
     to rearrange its own copies of the items after a move."""
     return [{"key": g["key"], "name": g["name"], "safe": g["safe"],
+             "unorganized": g["unorganized"],
              "uids": [i["uid"] for i in g["items"]]} for g in _STATE["groups"]]
+
+
+def layout_json() -> str:
+    """{"folders": layout}: the UI re-syncs from this when applying a move's
+    answer failed, so what it shows is always what export will write."""
+    return json.dumps({"folders": _layout()})
 
 
 def _sync_doc(keys) -> None:
@@ -734,8 +758,9 @@ def _move(items: list, target: dict) -> list:
 def rename_folder(key: str, name: str) -> str:
     """Rename one folder. Returns JSON:
 
-    {"ok": true, "key", "name", "safe"} on success (renaming a folder to its own
-    name in another case or spacing is allowed); or, when another folder already
+    {"ok": true, "key", "name", "safe", "unorganized", "folders": layout} on
+    success (renaming a folder to its own name in another case or spacing is
+    allowed); or, when another folder already
     has that name, {"ok": false, "name", "duplicate": {"key", "name", "count"}}
     and nothing is changed -- the UI offers merge_folders(key, duplicate.key).
     An unknown key or an empty name raises ValueError.
@@ -746,8 +771,12 @@ def rename_folder(key: str, name: str) -> str:
     if dup:
         return json.dumps(_duplicate(name, dup))
     g["name"], g["safe"] = name, _safe(name)
+    # The loose items stay styled as such only under their own name: renamed,
+    # they are an ordinary folder (renamed back, the loose items again).
+    g["unorganized"] = key in _STATE["loose"] and name == UNORGANIZED_FOLDER_NAME
     _sync_doc([key])
-    return json.dumps({"ok": True, "key": key, "name": name, "safe": g["safe"]})
+    return json.dumps({"ok": True, "key": key, "name": name, "safe": g["safe"],
+                       "unorganized": g["unorganized"], "folders": _layout()})
 
 
 def move_items(uids_json: str, target_key: str | None = None, new_name: str | None = None) -> str:
@@ -779,7 +808,7 @@ def move_items(uids_json: str, target_key: str | None = None, new_name: str | No
         if dup:
             return json.dumps(_duplicate(name, dup))
         target, created = {"key": _new_folder_key(), "name": name, "safe": _safe(name),
-                           "items": []}, True
+                           "unorganized": False, "items": []}, True
     else:
         target, created = _folder(target_key), False
     items = [i for g in _STATE["groups"] if g is not target
@@ -791,6 +820,20 @@ def move_items(uids_json: str, target_key: str | None = None, new_name: str | No
         removed = _move(items, target)
     return json.dumps({"ok": True, "key": target["key"], "created": created,
                        "moved": len(items), "removed": removed, "folders": _layout()})
+
+
+def default_folder_name() -> str:
+    """The first free one of "New folder", "New folder 2", ... (free by the
+    same trimmed, case-insensitive rule every folder name follows)."""
+    n = 1
+    while _name_taken(name := "New folder" if n == 1 else f"New folder {n}"):
+        n += 1
+    return name
+
+
+def move_to_new_folder(uids_json: str) -> str:
+    """move_items into a new folder with default_folder_name(): + New folder."""
+    return move_items(uids_json, None, default_folder_name())
 
 
 def merge_folders(source_key: str, target_key: str) -> str:
@@ -862,15 +905,15 @@ def export_zip() -> bytes:
     out = Path("/tmp/out")
     buf = io.BytesIO()
     manifest = []
-    # Every member's bytes, by zip path, so export_folder_zip can hand out one
-    # folder's files without exporting again (and without re-reading /tmp/out,
-    # where a previous export's files may linger).
-    blobs: dict = {}
     unlisted_dropped = 0  # dropped items in folders that produced no file at all
+    # NN_ is two digits, or as many as the largest number needs, so a map of
+    # 100+ folders still sorts in order in a file list (010_ before 100_).
+    width = max(2, len(str(len(groups))))
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for n, g in enumerate(groups, 1):
             safe = g["safe"]
-            d = out / f"{n:02d}_{safe}"
+            dirname = f"{n:0{width}d}_{safe}"
+            d = out / dirname
             d.mkdir(parents=True, exist_ok=True)
             files = []
             clear_name_changes()
@@ -911,15 +954,15 @@ def export_zip() -> bytes:
                 ):
                     files.append((p, cnt))
 
-            entry = {"n": n, "folder": g["name"], "safe": safe, "files": [], "count": 0}
+            entry = {"n": n, "folder": g["name"], "safe": safe, "dir": dirname,
+                     "files": [], "count": 0}
             for p, cnt in files:
                 if not cnt:
                     # Every item of this kind was unusable: an empty file would
                     # be an import step that imports nothing.
                     continue
-                rel = f"{n:02d}_{safe}/{p.name}"
-                blobs[rel] = p.read_bytes()
-                zf.writestr(rel, blobs[rel])
+                rel = f"{dirname}/{p.name}"
+                zf.writestr(rel, p.read_bytes())
                 entry["files"].append({"path": rel, "count": cnt, "kml": p.suffix == ".kml"})
                 entry["count"] += cnt
             entry["expected"] = len(wps) + len(trks) + len(shapes)
@@ -953,8 +996,11 @@ def export_zip() -> bytes:
     _STATE["manifest"] = manifest
     _STATE["unlisted_dropped"] = unlisted_dropped
     _STATE["runbook"] = runbook
-    _STATE["blobs"] = blobs
-    return buf.getvalue()
+    # The zip itself, so export_folder_zip can hand out one folder's files
+    # without exporting again (and without re-reading /tmp/out, where a
+    # previous export's files may linger). Not a second copy of every file.
+    _STATE["zip"] = buf.getvalue()
+    return _STATE["zip"]
 
 
 def export_folder_zip(n: int) -> bytes:
@@ -965,12 +1011,21 @@ def export_folder_zip(n: int) -> bytes:
     entry = next((e for e in _STATE.get("manifest") or [] if e["n"] == int(n)), None)
     if entry is None:
         raise ValueError(f"No exported folder {n}. Export again.")
-    blobs = _STATE["blobs"]
     buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(io.BytesIO(_STATE["zip"])) as src, \
+            zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in entry["files"]:
-            zf.writestr(f["path"], blobs[f["path"]])
+            zf.writestr(f["path"], src.read(f["path"]))
     return buf.getvalue()
+
+
+def export_folder_zip_name(n: int) -> str:
+    """The file name for export_folder_zip(n): its directory's name plus .zip
+    ("02_Trip_1.zip"); two names can sanitize alike, their numbers can't."""
+    entry = next((e for e in _STATE.get("manifest") or [] if e["n"] == int(n)), None)
+    if entry is None:
+        raise ValueError(f"No exported folder {n}. Export again.")
+    return entry["dir"] + ".zip"
 
 
 def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
@@ -1007,6 +1062,17 @@ def runbook_summary_json() -> str:
 def _n(count: int, word: str) -> str:
     """'1 file', '3 files', '1,200 markups'."""
     return f"{count:,} {word}{'' if count == 1 else 's'}"
+
+
+def _code(text) -> str:
+    """`text` as a Markdown code span that shows it exactly: on one line, fenced
+    by one more backtick than its longest run of them (CommonMark), padded
+    when it starts or ends with one."""
+    text = _CONTROL.sub(" ", str(text or ""))
+    run = max((len(m) for m in re.findall(r"`+", text)), default=0)
+    fence = "`" * (run + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
 
 
 def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
@@ -1055,7 +1121,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "",
             f"1. In onX, choose **Import** and {add}: **{flist}**",
             "2. Tick **Import map data to a new folder**.",
-            f"3. onX names the folder by date. **Rename it to:** `{e['folder']}`",
+            f"3. onX names the folder by date. **Rename it to:** {_code(e['folder'])}",
             "",
         ]
     renamed = [(e["folder"], o, nw) for e in manifest for o, nw in e.get("renamed", ())]
@@ -1066,7 +1132,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "These names had `! @ # $ % ^ * &` removed. Search onX for the new name.",
             "",
         ]
-        L += [f"- `{o}` → `{nw}`  ({folder})" for folder, o, nw in renamed]
+        L += [f"- {_code(o)} → {_code(nw)}  ({folder})" for folder, o, nw in renamed]
         L += [""]
     holes = [(e["folder"], name) for e in manifest for name in e.get("holes", ())]
     if holes:
@@ -1076,7 +1142,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "onX areas have one outline, so these areas were exported without their holes.",
             "",
         ]
-        L += [f"- `{name}`  ({folder})" for folder, name in holes]
+        L += [f"- {_code(name)}  ({folder})" for folder, name in holes]
         L += [""]
     long_notes = [(e["folder"], n, c) for e in manifest for n, c in e.get("long_notes", ())]
     if long_notes:
@@ -1090,7 +1156,7 @@ def build_runbook(manifest, unlisted_dropped: int = 0) -> str:
             "for a reason we have not found.)",
             "",
         ]
-        L += [f"- `{n}`: {c} bytes  ({folder})" for folder, n, c in long_notes]
+        L += [f"- {_code(n)}: {c} bytes  ({folder})" for folder, n, c in long_notes]
         L += [""]
     L += [
         "---",
