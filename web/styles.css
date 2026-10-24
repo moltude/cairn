@@ -373,6 +373,7 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .rb-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 .rb-title{font-size:24px;flex-grow:1;min-width:0;display:flex;align-items:baseline;gap:.3em}
 .rb-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb-num{flex-shrink:0;color:var(--muted);font-variant-numeric:tabular-nums}
 .rb-meta{font-size:16px;font-weight:400;font-style:italic;color:var(--muted);flex-shrink:0;white-space:nowrap}
 .rb-dl.btn{font-size:15px;min-height:44px;border-color:var(--green)}
 .rb-files{display:flex;gap:8px;flex-wrap:wrap}

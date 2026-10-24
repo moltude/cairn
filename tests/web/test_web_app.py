@@ -3371,3 +3371,35 @@ def test_the_100_character_message_shows_only_when_typing_was_cut(fresh_page: Pa
     # Under the limit again: the message goes.
     page.keyboard.press("Backspace")
     expect(status).not_to_have_text(msg)
+
+
+def test_export_boxes_of_folders_with_the_same_name_show_their_numbers(fresh_page: Page, tmp_path):
+    """Round 3 #3: two folders called "Camp" (CalTopo allows it) had identical
+    export boxes, while their downloads were 01_Camp.zip and 02_Camp.zip. Only
+    where names (or file names) collide, the box shows its number and its
+    chips their NN_ path; every other box is unchanged."""
+    from tests.hardening_maps import make_map
+    page = fresh_page
+    f = tmp_path / "twins.json"
+    f.write_text(make_map(5, seed=3, names=["Camp", "camp ", "A B", "A_B", "Trips"], per=(2, 2), kinds="w"))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    _done(page)
+    manifest = page.evaluate("MANIFEST")
+    boxes = page.locator("#runbook .rb-step")
+    for i, e in enumerate(manifest):
+        box, num = boxes.nth(i), e["dir"].split("_")[0]
+        twin = e["folder"].strip().lower() == "camp"
+        file_twin = twin or e["folder"] in ("A B", "A_B")
+        expect(box.locator(".rb-name")).to_have_text(e["folder"])
+        if twin:
+            expect(box.locator(".rb-num")).to_have_text(f"{num} ·")
+        else:
+            expect(box.locator(".rb-num")).to_have_count(0)
+        expect(box.locator(".rb-file")).to_have_text(
+            [f["path"] if file_twin else f["path"].split("/")[-1] for f in e["files"]])
+    assert page.locator("#runbook .rb-num").count() == 2
+    # Downloads stay numbered like the box says.
+    with page.expect_download() as dl:
+        boxes.nth(0).locator(".rb-dl").click()
+    assert dl.value.suggested_filename == manifest[0]["dir"] + ".zip"

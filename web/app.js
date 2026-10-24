@@ -1628,17 +1628,24 @@ function renderRunbook() {
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
     (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; RUNBOOK.md lists ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
+  // Two folders may share a name ("Camp" twice, from the file), or two names
+  // sanitize alike ("A B", "A_B"): only then does a box show its number, and
+  // its file chips their NN_ folder, as its download is named.
+  const tally = f => MANIFEST.reduce((m, e) => m.set(f(e), (m.get(f(e)) || 0) + 1), new Map());
+  const byName = tally(e => e.folder.trim().toLowerCase()), bySafe = tally(e => e.safe.toLowerCase());
   MANIFEST.forEach(e => {
     const nf = e.files.length;
+    const twin = byName.get(e.folder.trim().toLowerCase()) > 1;
+    const fileTwin = bySafe.get(e.safe.toLowerCase()) > 1;
     const d = document.createElement("section");
     d.className = "rb-step";
     d.innerHTML = `
       <div class="rb-head">
-        <h2 class="rb-title"><span class="rb-name" title="${esc(e.folder)}">${esc(e.folder)}</span> <span class="rb-meta">· <span class="rb-count">${plural(e.count, "markup")}</span> · <span class="rb-nfiles">${plural(nf, "file")}</span></span></h2>
+        <h2 class="rb-title">${twin ? `<span class="rb-num">${esc(e.dir.split("_")[0])} ·</span>` : ""}<span class="rb-name" title="${esc(e.folder)}">${esc(e.folder)}</span> <span class="rb-meta">· <span class="rb-count">${plural(e.count, "markup")}</span> · <span class="rb-nfiles">${plural(nf, "file")}</span></span></h2>
         <button type="button" class="btn rb-dl" data-n="${e.n}">Download this folder</button>
       </div>
       <div class="rb-files">${e.files.map(f =>
-        `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(f.path.split("/").pop())}</span>`).join("")}</div>
+        `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(fileTwin ? f.path : f.path.split("/").pop())}</span>`).join("")}</div>
       <ol class="rb-do">
         <li>In onX, choose <b>Import</b> and ${nf === 1 ? "add this file" : `add these ${nf} files together`}.</li>
         <li>Tick <b>Import map data to a new folder</b>.</li>

@@ -921,7 +921,10 @@ reorder folders, no item in two folders, no empty folder made up front.
   export it says "This clears the current map." (round 3).
 - **Export** follows the bridge (names, numbering, per-folder zips). A per-folder download is now
   named after its `NN_` directory (`02_A_B.zip`, `002_A_B.zip` with 100+ folders), since "A/B"
-  and "A_B" sanitize alike.
+  and "A_B" sanitize alike. Where two boxes would look alike, they say which is which (round 3): a
+  folder whose name another box shares (any case: "Camp", "camp") shows its number before
+  the name ("01 · Camp"), and a box whose file names another box shares ("A B", "A_B") shows
+  its chips with their `NN_` folder. Every other box is unchanged.
 
 Options not taken: HTML5 drag and drop (above); renaming from the rail entry (it is the filter);
 keeping the selection after a move; a click on "+ New folder" making an empty folder.
