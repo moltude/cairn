@@ -53,9 +53,10 @@ The attention count drops from 37 to 34 — exactly the 3 waypoints just fixed.
 
 <img src="./docs/screenshots/web-06-after-bulk-edit.png" alt="The map after the bulk edit, attention count reduced from 37 to 34" width="800">
 
-**6. Export, and get an import checklist, not just a pile of files.** onX creates one folder per
-import and names it with a timestamp — never from the filename — so Cairn tells you exactly
-which files to drag in together and what to rename the folder to.
+**6. Export, and get import instructions, not just a pile of files.** onX creates one folder per
+import and names it with a timestamp — never from the filename — so Cairn gives you one box per
+folder with its files and a Download button, and the zip carries `instructions.txt`: plain text
+naming each folder to rename, its files, and every waypoint, line and area in each.
 
 <img src="./docs/screenshots/web-07-runbook.png" alt="The generated import runbook, listing the files to import together and the folder name to use" width="800">
 

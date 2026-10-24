@@ -374,12 +374,10 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .rb-title{font-size:24px;flex-grow:1;min-width:0;display:flex;align-items:baseline;gap:.3em}
 .rb-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rb-num{flex-shrink:0;color:var(--muted);font-variant-numeric:tabular-nums}
-.rb-meta{font-size:16px;font-weight:400;font-style:italic;color:var(--muted);flex-shrink:0;white-space:nowrap}
 .rb-dl.btn{font-size:15px;min-height:44px;border-color:var(--green)}
 .rb-files{display:flex;gap:8px;flex-wrap:wrap}
 .rb-file{font-size:15px;background:#fff;border:1px solid var(--rule);padding:4px 12px;overflow-wrap:anywhere}
 .rb-file.kml{border-color:var(--warning);color:var(--warning)}
-.rb-do{margin:0;padding-left:24px;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
 code{font-family:var(--serif);font-weight:700;background:var(--sheet);border:1px solid var(--brown);
   color:var(--brown);padding:2px 8px;font-size:14px}
 
@@ -468,6 +466,9 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 .doc ul,.doc ol{padding-left:22px}
 .doc code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:var(--card);
   border:1px solid var(--rule-soft);border-radius:2px;padding:1px 5px;overflow-wrap:anywhere}
+/* A wide diagram (the FAQ's lead): wider than the text column, centred on it; click opens it full size. */
+.doc-fig{width:min(1200px,calc(100vw - 64px));margin:4px 0 32px;position:relative;left:50%;transform:translateX(-50%)}
+.doc-fig img{display:block;width:100%;height:auto;border:1px solid var(--rule)}
 .doc-toc{background:var(--card);border:1px solid var(--rule);padding:16px 22px 12px;margin:0 0 36px}
 .doc-toc ol{list-style:none;padding:0;margin:8px 0 0}
 .doc-toc ol ol,.doc-toc ul{padding-left:18px;margin:2px 0 8px}

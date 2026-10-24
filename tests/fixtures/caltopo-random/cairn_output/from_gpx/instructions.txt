@@ -1,0 +1,20 @@
+How to import these files into onX
+
+Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.
+In onX, choose Import and add all of that folder's files together.
+Tick "Import map data to a new folder".
+onX names the new folder with a date and time stamp.
+Rename it to the name shown for that folder below.
+Importing needs onX Premium or Elite.
+
+01_onx_test_random/    rename to: onx test random
+    onx_test_random_Waypoints.gpx
+        Waypoints
+            blerg
+            Hiker
+    onx_test_random_Tracks.gpx
+        Lines
+            Chaos line
+            Fire zone
+            section 1
+            straight line

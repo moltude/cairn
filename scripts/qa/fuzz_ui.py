@@ -1080,9 +1080,8 @@ class Session:
           boxes: [...document.querySelectorAll('#runbook .rb-step')].map(b => ({
              title: b.querySelector('.rb-name').textContent.trim(),
              num: b.querySelector('.rb-num') && b.querySelector('.rb-num').textContent,
-             count: b.querySelector('.rb-count').textContent, nfiles: b.querySelector('.rb-nfiles').textContent,
-             chips: [...b.querySelectorAll('.rb-file')].map(c => c.textContent),
-             rename: b.querySelector('.rb-do li:nth-child(3) b').textContent}))})""")
+             label: b.querySelector('.rb-dl').getAttribute('aria-label'),
+             chips: [...b.querySelectorAll('.rb-file')].map(c => c.textContent)}))})""")
         man, groups, boxes = info["manifest"], info["groups"], info["boxes"]
         # expected boxes: folders with any included item, at their position
         exp = []
@@ -1097,13 +1096,10 @@ class Session:
         if len(boxes) != len(man):
             raise Violation("export_box_count", f"{len(boxes)} boxes vs {len(man)}")
         for e, (n, g, inc), b in zip(man, exp, boxes):
-            if e["folder"] != g["name"] or b["title"] != g["name"] or b["rename"] != g["name"]:
-                raise Violation("export_box_name", f"{n}: manifest {e['folder']!r} box {b['title']!r} rename {b['rename']!r} vs {g['name']!r}")
+            if e["folder"] != g["name"] or b["title"] != g["name"]:
+                raise Violation("export_box_name", f"{n}: manifest {e['folder']!r} box {b['title']!r} vs {g['name']!r}")
             if e["count"] != len(inc):
                 raise Violation("export_box_count_items", f"{g['name']!r}: {e['count']} vs {len(inc)} included")
-            want = f"{len(inc):,} markup{'s' if len(inc) != 1 else ''}"
-            if b["count"] != want:
-                raise Violation("export_box_count_text", f"{b['count']!r} vs {want!r}")
             if e["safe"] != g["safe"]:
                 raise Violation("export_safe", f"{e['safe']} vs {g['safe']}")
             # Round 3: a box whose name another box shares (any case) shows its
@@ -1113,6 +1109,9 @@ class Session:
             want_num = f"{e['dir'].split('_')[0]} ·" if twin else None
             if b["num"] != want_num:
                 raise Violation("export_box_number", f"{g['name']!r}: {b['num']!r} vs {want_num!r}")
+            want_label = f"Download {want_num + ' ' if want_num else ''}{g['name']}"
+            if b["label"] != want_label:
+                raise Violation("export_box_label", f"{b['label']!r} vs {want_label!r}")
             if b["chips"] != [f["path"] if file_twin else f["path"].split("/")[-1] for f in e["files"]]:
                 raise Violation("export_chips", f"{b['chips']}")
         # Download all
@@ -1123,9 +1122,13 @@ class Session:
             raise Violation("download_all_name", d.suggested_filename)
         allz = zipfile.ZipFile(io.BytesIO(Path(d.path()).read_bytes()))
         members = {n: allz.read(n) for n in allz.namelist()}
-        if "RUNBOOK.md" not in members:
-            raise Violation("zip_no_runbook", str(list(members)[:5]))
-        want_members = {f["path"] for e in man for f in e["files"]} | {"RUNBOOK.md"}
+        if "instructions.txt" not in members:
+            raise Violation("zip_no_instructions", str(list(members)[:5]))
+        guide = members["instructions.txt"].decode("utf-8").split("\r\n")
+        for e in man:
+            if f"{e['dir']}/    rename to: {e['folder']}" not in guide:
+                raise Violation("instructions_folder_line", f"{e['dir']!r} {e['folder']!r}")
+        want_members = {f["path"] for e in man for f in e["files"]} | {"instructions.txt"}
         if set(members) != want_members:
             raise Violation("zip_members", f"extra {sorted(set(members) - want_members)[:3]} missing {sorted(want_members - set(members))[:3]}")
         # items exactly once across all files; excluded absent

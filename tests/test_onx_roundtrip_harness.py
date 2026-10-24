@@ -241,7 +241,7 @@ def test_offline_round_trip_passes_everything(tmp_path):
     for r in done:
         assert r["onx_folder"] == "ZZTEST · r9 · i1 · " + " · ".join(r["set"].rsplit("-", 1))
         d = r["dir"]
-        assert (d / "RUNBOOK.md").exists() and r["files"]
+        assert (d / "instructions.txt").exists() and r["files"]
         exp1 = json.loads((d / "expected.json").read_text())
         assert exp1["items"] and all(i["name"].startswith("[r9i1] ") for i in exp1["items"])
 

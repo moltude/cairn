@@ -41,7 +41,7 @@ def _check_export(zf: zipfile.ZipFile) -> None:
         assert all(len(p.encode("utf-8")) <= 255 for p in parts), f"component too long: {n[:60]}"
     manifest = bridge._STATE["manifest"]
     listed = {f["path"] for e in manifest for f in e["files"]}
-    assert set(names) == listed | {"RUNBOOK.md"}
+    assert set(names) == listed | {"instructions.txt"}
     included = sum(1 for g in bridge._STATE["groups"] for i in g["items"] if i.get("included", True))
     dropped = sum(e["dropped"] for e in manifest) + bridge._STATE["unlisted_dropped"]
     assert sum(e["count"] for e in manifest) + dropped == included
@@ -112,9 +112,12 @@ def test_every_hostile_name_exports_safely():
     _load_text(make_map(len(NASTY_NAMES), seed=6, per=(1, 2)))
     zf = _export()
     _check_export(zf)
-    rb = zf.read("RUNBOOK.md").decode("utf-8")
+    lines = zf.read("instructions.txt").decode("utf-8").split("\r\n")
     for e in bridge._STATE["manifest"]:
-        assert f"### {e['n']}. " in rb
+        # One line per folder, whatever its name: the name is cleaned of
+        # control characters, so it can't break onto a second line.
+        (line,) = [ln for ln in lines if ln.startswith(e["dir"] + "/    rename to: ")]
+        assert line.endswith(e["folder"])
 
 
 def test_names_with_the_same_safe_form_do_not_collide():

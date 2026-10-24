@@ -1,5 +1,5 @@
 """CalTopo areas (class "Shape", Polygon geometry) end to end: parser ->
-web/bridge.load_document -> edits -> export -> RUNBOOK.md.
+web/bridge.load_document -> edits -> export -> instructions.txt.
 
 Each test here pins one defect found in the 2026-10-22 review; each failed
 before its fix.
@@ -179,15 +179,16 @@ def test_writer_does_not_count_unusable_polygons(tmp_path):
     assert [pm.findtext("name") for pm in _xml(path.read_text()).iter("Placemark")] == ["ok"]
 
 
-def test_runbook_reports_dropped_polygons():
+def test_export_summary_reports_dropped_polygons():
     _load(_doc(
         _poly_feature("a", "Good", [SQUARE]),
         _poly_feature("b", "Broken", []),
     ))
     z = _export()
-    runbook = z.read("RUNBOOK.md").decode()
-    assert "**1 item(s) could not be exported**" in runbook
-    assert "1 of 2 were written" in runbook
+    # The export screen reports it (from this summary); instructions.txt lists
+    # only what was written.
+    text = z.read("instructions.txt").decode("utf-8")
+    assert "            Good\r\n" in text and "Broken" not in text
     summary = json.loads(bridge.runbook_summary_json())
     assert (summary["written"], summary["expected"], summary["dropped"]) == (1, 2, 1)
 
@@ -197,7 +198,7 @@ def test_folder_whose_only_polygon_is_unusable_still_counts_as_dropped():
     z = _export()
     assert not [n for n in z.namelist() if n.endswith((".kml", "_Areas.gpx"))], "empty area file written"
     assert json.loads(bridge.runbook_summary_json())["dropped"] == 1
-    assert "**1 item(s) could not be exported**" in z.read("RUNBOOK.md").decode()
+    assert "Broken" not in z.read("instructions.txt").decode("utf-8")
 
 
 # ---- (e) KML is size-split like GPX ----------------------------------------
@@ -228,19 +229,15 @@ def test_area_names_pass_through_unchanged(tmp_path):
     assert W.get_name_changes()["shapes"] == []
 
 
-def test_runbook_has_no_renamed_section_for_special_characters():
+def test_instructions_show_special_character_names_as_written():
     _load(_doc(
         _poly_feature("a", "Zone #1", [SQUARE]),
         {"type": "Feature", "id": "w", "geometry": {"type": "Point", "coordinates": [-114.0, 45.0]},
          "properties": {"class": "Marker", "title": "#01 Porcupine", "folderId": "f1"}},
     ))
-    runbook = _export().read("RUNBOOK.md").decode()
-    assert "Renamed for onX" not in runbook
-
-
-def test_runbook_has_no_renamed_section_when_nothing_changed():
-    _load(_doc(_poly_feature("a", "Plain", [SQUARE])))
-    assert "Renamed for onX" not in _export().read("RUNBOOK.md").decode()
+    lines = _export().read("instructions.txt").decode("utf-8").split("\r\n")
+    assert "            Zone #1" in lines and "            #01 Porcupine" in lines
+    assert not [ln for ln in lines if "Renamed" in ln]
 
 
 def test_bad_first_vertex_drops_only_that_vertex(tmp_path):

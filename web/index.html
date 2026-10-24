@@ -135,7 +135,7 @@
       <button type="button" class="btn newmap">Start over</button>
     </div>
   </div>
-  <p class="rb-intro">Import each folder into onX's Web Map, one at a time. Importing needs onX Premium or Elite.</p>
+  <p class="rb-intro">Import each folder into onX's Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.</p>
   <div id="runbook" class="runbook"></div>
 </main>
 
@@ -212,10 +212,11 @@
        duplicated tracks. Nothing is ever deleted from your CalTopo file.</p>
 
     <h3>6 · Export and import</h3>
-    <p>Cairn writes one set of files per folder and a checklist. This matters:
+    <p>Cairn writes one set of files per folder, and <b>instructions.txt</b>. This matters:
        <b>onX creates one folder per import, and names it with a timestamp</b> — never from the
-       filename. So the checklist tells you which files to drag in together and exactly what to
-       rename each folder to. Work through it in order.</p>
+       filename. So import each folder's files together, tick <b>Import map data to a new
+       folder</b>, and rename the new folder; instructions.txt lists each folder's name, its files
+       and every item in them.</p>
 
     <h3>What carries across</h3>
     <table class="help-tbl">
@@ -224,8 +225,8 @@
       <tr><th>Icon</th><td>Yes, for waypoints. onX has 95; CalTopo has many more, so some map approximately.</td></tr>
       <tr><th>Color</th><td>Yes, snapped to onX's 10 waypoint colors (11 for lines).</td></tr>
       <tr><th>Line style</th><td>Yes, for lines and area outlines — solid or dashed, thin or thick, as onX draws them. An onX file's dotted or extra-thin line is kept.</td></tr>
-      <tr><th>Folders</th><td>Yes — but only if you follow the import checklist.</td></tr>
-      <tr><th>Lines vs areas</th><td>Handled automatically: lines go to GPX as tracks, areas to GPX as onX areas with their outline color, style and weight. onX gives every imported area its own light blue fill, whatever the file says. An area's holes aren't kept; the checklist lists those areas.</td></tr>
+      <tr><th>Folders</th><td>Yes — import one folder at a time and rename each, as instructions.txt says.</td></tr>
+      <tr><th>Lines vs areas</th><td>Handled automatically: lines go to GPX as tracks, areas to GPX as onX areas with their outline color, style and weight. onX gives every imported area its own light blue fill, whatever the file says. An area's holes aren't kept; instructions.txt marks those areas.</td></tr>
     </table>
 
     <h3>Good to know</h3>

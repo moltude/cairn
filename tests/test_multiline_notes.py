@@ -124,4 +124,4 @@ def test_fuchsia_line_color_exports():
     z = zipfile.ZipFile(io.BytesIO(bridge.export_zip()))
     gpx = "".join(z.read(n).decode() for n in z.namelist() if n.endswith(".gpx"))
     assert "rgba(255,0,255,1)" in gpx
-    assert "Unorganized" in "".join(z.read(n).decode() for n in z.namelist() if n.endswith(".md"))
+    assert "Unorganized" in "".join(z.read(n).decode() for n in z.namelist() if n == "instructions.txt")

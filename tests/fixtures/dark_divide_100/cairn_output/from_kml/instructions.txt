@@ -1,0 +1,42 @@
+How to import these files into onX
+
+Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.
+In onX, choose Import and add all of that folder's files together.
+Tick "Import map data to a new folder".
+onX names the new folder with a date and time stamp.
+Rename it to the name shown for that folder below.
+Importing needs onX Premium or Elite.
+
+01_3_Course_Segments_Dark_Divide_100_Miler/    rename to: 3 - Course Segments Dark Divide 100 Miler
+    3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx
+        Lines
+            01 - Cispus Learning Center (START) to Juniper Ridge AS
+            02 - Juniper Ridge AS #1 to Sunrise Peak AS
+            03 - Sunrise Peak AS #1 to Dark Creek AS
+            04 - Dark Creek AS to Wilderness Crossing AS
+            05 - Wilderness Crossing AS to Wright Meadow AS
+            06 - Wright Meadow AS to Lewis River AS
+            07 - Lewis River AS to Quartz Butte AS
+            08 - Quartz Butte AS to Summit Prairie AS
+            09 - Summit Prairie AS to Sunrise Peak #2 AS
+            10 - Sunrise Peak #2 AS to Juniper Ridge #2 AS
+            11 - Juniper Ridge #2 AS to Cispus Learning Center (FINISH)
+
+02_2_Aid_Stations_Dark_Divide_100_Miler/    rename to: 2 - Aid Stations Dark Divide 100 Miler
+    2_Aid_Stations_Dark_Divide_100_Miler_Waypoints.gpx
+        Waypoints
+            01 - Cispus Learning Center Start/Finish
+            02 - Juniper Ridge AS (Used Twice)
+                (onX keeps only the first 512 bytes of this note, about 512 characters)
+            03 - Sunrise AS (Used Twice)
+            04 - Dark Creek AS
+            05 - Wilderness Crossing AS
+            06 - Wright Meadow AS
+            07 - Lewis River AS
+            08 - Quartz Butte AS
+            09 - Summit Prairie AS
+
+03_1_Course_GPX_Dark_Divide_100_Miler/    rename to: 1 - Course GPX Dark Divide 100 Miler
+    1_Course_GPX_Dark_Divide_100_Miler_Tracks.gpx
+        Lines
+            2027 Dark Divide 100 Mile Endurance Run

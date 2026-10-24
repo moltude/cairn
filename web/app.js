@@ -701,10 +701,14 @@ function wireTip() {
    has none. Rows re-render after every edit, so the mark follows the note. */
 const NOTE_LIMIT = 512;
 const utf8Len = cp => cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
-/** [bytes, characters past the limit] of a note, by UTF-8 bytes. */
+/** [bytes, characters past the limit] of a note, by UTF-8 bytes, measured
+    on the note as the export writes it to the GPX <desc> (line endings made
+    "\n", outer whitespace trimmed: writers.clean_notes for plain notes), the
+    same measure instructions.txt uses, so the screen and the file agree. */
+const writtenNote = d => String(d || "").replace(/\r\n?/g, "\n").trim();
 function noteOverflow(desc) {
   let bytes = 0, kept = 0, total = 0;
-  for (const ch of String(desc || "")) {
+  for (const ch of writtenNote(desc)) {
     bytes += utf8Len(ch.codePointAt(0)); total++;
     if (bytes <= NOTE_LIMIT) kept++;
   }
@@ -1892,16 +1896,17 @@ async function doExport() {
 }
 
 function renderRunbook() {
-  // Same numbers as RUNBOOK.md: both come from bridge.runbook_summary, so the
-  // over-limit check uses max(written, expected) and dropped items are reported.
-  // One box per folder (UI-31); the warnings sit above them.
+  // The warnings' numbers come from bridge.runbook_summary (the manifest that
+  // instructions.txt is built from), so the over-limit check uses
+  // max(written, expected) and dropped items are reported. One box per folder
+  // (UI-31: its name, Download, the file chips); the warnings sit above them.
   const S = JSON.parse(py.runPython("bridge.runbook_summary_json()"));
   const kml = S.kml_batches;
   const host = $("#runbook");
   host.innerHTML =
     (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
-    (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; RUNBOOK.md lists ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
+    (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; instructions.txt marks ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   // Two folders may share a name ("Camp" twice, from the file), or two names
   // sanitize alike ("A B", "A_B"): only then does a box show its number, and
@@ -1909,23 +1914,21 @@ function renderRunbook() {
   const tally = f => MANIFEST.reduce((m, e) => m.set(f(e), (m.get(f(e)) || 0) + 1), new Map());
   const byName = tally(e => e.folder.trim().toLowerCase()), bySafe = tally(e => e.safe.toLowerCase());
   MANIFEST.forEach(e => {
-    const nf = e.files.length;
     const twin = byName.get(e.folder.trim().toLowerCase()) > 1;
     const fileTwin = bySafe.get(e.safe.toLowerCase()) > 1;
+    const num = e.dir.split("_")[0];
+    // The visible label is just "Download"; its accessible name says which
+    // folder (and, for a twin, its number), so every one is distinct.
+    const label = `Download ${twin ? num + " · " : ""}${e.folder}`;
     const d = document.createElement("section");
     d.className = "rb-step";
     d.innerHTML = `
       <div class="rb-head">
-        <h2 class="rb-title">${twin ? `<span class="rb-num">${esc(e.dir.split("_")[0])} ·</span>` : ""}<span class="rb-name" title="${esc(e.folder)}">${esc(e.folder)}</span> <span class="rb-meta">· <span class="rb-count">${plural(e.count, "markup")}</span> · <span class="rb-nfiles">${plural(nf, "file")}</span></span></h2>
-        <button type="button" class="btn rb-dl" data-n="${e.n}">Download this folder</button>
+        <h2 class="rb-title">${twin ? `<span class="rb-num">${esc(num)} ·</span>` : ""}<span class="rb-name" title="${esc(e.folder)}">${esc(e.folder)}</span></h2>
+        <button type="button" class="btn rb-dl" data-n="${e.n}" aria-label="${esc(label)}">Download</button>
       </div>
       <div class="rb-files">${e.files.map(f =>
-        `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(fileTwin ? f.path : f.path.split("/").pop())}</span>`).join("")}</div>
-      <ol class="rb-do">
-        <li>In onX, choose <b>Import</b> and ${nf === 1 ? "add this file" : `add these ${nf} files together`}.</li>
-        <li>Tick <b>Import map data to a new folder</b>.</li>
-        <li>onX names the folder by date. Rename it to <b>${esc(e.folder)}</b>.</li>
-      </ol>`;
+        `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(fileTwin ? f.path : f.path.split("/").pop())}</span>`).join("")}</div>`;
     d.querySelector(".rb-dl").onclick = () => downloadFolder(e);
     host.appendChild(d);
   });

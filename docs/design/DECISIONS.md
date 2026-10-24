@@ -554,7 +554,7 @@ Decision:
   would discard it on import.
 - **Holes — provisional, subject to revision.** An onX area is single-ring, so a polygon with
   holes is written as its outer ring only (the hole is filled in) and listed in RUNBOOK.md under
-  "Holes not kept in onX". Not tested: whether onX can keep a hole through any import path (e.g.
+  "Holes not kept in onX" (since UI-31 round 4: one line under the area in instructions.txt). Not tested: whether onX can keep a hole through any import path (e.g.
   KML `innerBoundaryIs` — which would bring back the default-color problem), or whether writing
   each hole as a separate area would serve users better.
 - Bitterroots' export changed only in its 6 area files (`*_Areas.kml` → `*_Areas.gpx`, 17 areas;
@@ -639,8 +639,9 @@ be renamed, emptied (and so removed) and moved into.
   trimmed, casefolded rule; `move_to_new_folder(uids_json)` is `move_items` into it. The UI no
   longer picks the name and retries.
 - Folder names lose control characters (newline, tab, NUL, …: each run becomes one space) on load
-  and on rename. RUNBOOK.md's code spans are fenced with one more backtick than the longest run in
-  the text, so "Rename it to:" shows a name with backticks exactly.
+  and on rename. RUNBOOK.md's code spans were fenced with one more backtick than the longest run in
+  the text, so "Rename it to:" showed a name with backticks exactly; instructions.txt (UI-31
+  round 4) is plain text and writes the name as is.
 - `_safe` cuts to 80 UTF-8 bytes in one slice (the old char-at-a-time loop was quadratic); the
   result is the same.
 
@@ -820,30 +821,42 @@ on load:
 
 
 ### UI-31 — The export screen: one box per folder
-Status: decided 2026-10-23 (owner, from the `ExportScreen.dc.html` mockup).
+Status: decided 2026-10-23 (owner, from the `ExportScreen.dc.html` mockup); revised the same day
+in round 4 from the owner's edited mockup (export screen v2, and instructions.txt in place of
+RUNBOOK.md). Release log: docs/testing/FOLDERS_RELEASE.md "Round 4".
 
 The old screen confused the owner: an unlabelled tick box per folder looked like include/exclude
 but only greyed the row, "Import all 1 file together" was ungrammatical, and a boxed explanation
 sat at the top. Now:
 
-- **Header:** "Export", "Your files are ready", then **Download all** (the zip as before: one
-  `NN_Name/` folder per onX folder, in screen order, plus RUNBOOK.md) with the italic hint "One
+- **Header:** "Export", "Your files are ready", then **Download all** (the zip: one `NN_Name/`
+  folder per onX folder, in screen order, plus `instructions.txt`) with the italic hint "One
   zip, one folder inside it per onX folder". Back and Start over sit on the right.
-- **One intro line:** "Import each folder into onX's Web Map, one at a time. Importing needs onX
-  Premium or Elite." The warnings that apply (dropped items, long notes, over the account limit,
-  KML) follow it, above the boxes.
-- **One box per folder:** the folder name, "· N markups · F files", a **Download this folder**
-  button, the file names as chips, and three numbered steps: "In onX, choose **Import** and add
-  these F files together." ("add this file." for one), "Tick **Import map data to a new
-  folder**.", "onX names the folder by date. Rename it to **<folder>**." Counts are singular for
-  one.
-- **Download this folder** is a zip of that folder's `NN_Name/` directory only, named
-  `<Name>.zip` (the folder name sanitized like the file names). Its files are the same bytes as
-  in Download all: `bridge.export_folder_zip(n)` reads the last export, nothing is exported again.
+- **One intro line**, the owner's wording with its comma splice made a semicolon: "Import each
+  folder into onX's Web Map; onX will use a default datetime stamp for the folder name.
+  Importing needs onX Premium or Elite." The warnings that apply (dropped items, long notes, over
+  the account limit, KML) follow it, above the boxes.
+- **One box per folder, and only:** the folder name as its heading (no counts), a **Download**
+  button, and the file names as chips. The button's accessible name says which folder
+  ("Download Lost Trail Pass"; "Download 02 · Camp" for a same-named twin, whose heading also
+  shows "02 ·", UI-32). The three numbered steps of the first version are gone from the boxes:
+  the intro line and instructions.txt carry them.
+- **Download** is a zip of that folder's `NN_Name/` directory only, named after that directory
+  (`02_Lost_Trail_Pass.zip`). Its files are the same bytes as in Download all:
+  `bridge.export_folder_zip(n)` reads the last export, nothing is exported again.
 - **Removed:** the tick box and its done state, the boxed paragraph, and no Copy button. The
   screen keeps no "imported" state.
-- RUNBOOK.md says the same: the intro line, and each folder's three steps (still naming the files
-  and the folder to type).
+- **instructions.txt** (round 4; it was RUNBOOK.md, Markdown): plain text with no Markdown
+  syntax, UTF-8 without a BOM, CRLF line endings (Windows' own; every Notepad shows the lines,
+  TextEdit and the rest read CRLF too; `.gitattributes` keeps the committed copies byte-exact).
+  The general steps once at the top (import each folder's files together in the Web Map, tick
+  "Import map data to a new folder", rename the date-named folder to the name shown, Premium or
+  Elite needed), then each folder nested: `NN_Name/    rename to: <folder>`, each file, its item
+  kind (Waypoints / Lines / Areas), and every item's name as written in that file, indented
+  4 spaces a level. An item with no name shows "(no name)". Only two warnings stay, each one
+  line under its item: a note onX will cut (its written `<desc>` is over 512 bytes) and an area
+  whose hole is not kept. Totals, dropped items, the account limit and the "Renamed" list (empty
+  since ENG-06) are not in it; the screen shows the first three.
 
 ### UI-32 — Folders: drag to move, + New folder, rename and merge, Move to…
 Status: decided 2026-10-23 (owner, from the DragToFolder, DragToNewFolder, NameNewFolder,
