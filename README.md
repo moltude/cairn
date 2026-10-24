@@ -172,7 +172,9 @@ uv run pytest                 # add --no-cov for a single file/test — the cove
 The web app's end-to-end suite (`tests/web/test_web_app.py`) needs that dev server running and
 drives it headlessly; see [`web/README.md`](web/README.md). Engine modules the web app imports
 are marked with a `# Web engine:` header, and `tests/test_web_engine_surface.py` keeps that
-marking honest.
+marking honest. The walkthrough screenshots in `docs/screenshots/` are regenerated against the
+dev server with `uv run python scripts/make_readme_shots.py` (`BASE_URL` to point elsewhere);
+the in-app walkthrough images come from `scripts/make_walkthrough_shots.py`.
 
 | | |
 |---|---|
