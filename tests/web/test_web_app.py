@@ -458,7 +458,7 @@ def test_export_screen_is_one_box_per_folder_name_download_and_files(loaded: Pag
     expect(done.locator(".runbook-intro")).to_have_count(0)
     expect(done.get_by_role("button", name="Copy")).to_have_count(0)
     expect(loaded.locator("#download")).to_have_text("Download all")
-    expect(done.locator(".done-hint")).to_have_text("One zip, one folder inside it per onX folder")
+    expect(done.locator(".done-hint")).to_have_text("One zip with every folder and instructions.txt")
     expect(done.locator(".rb-intro")).to_have_text(
         "Import each folder into onX's Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.")
     boxes = done.locator(".rb-step")
@@ -528,7 +528,7 @@ def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path)
     host = fresh_page.locator("#runbook")
     warns = host.locator(".note.warn")
     expect(warns).to_have_count(3)
-    expect(warns.nth(0)).to_contain_text("1 item could not be exported")
+    expect(warns.nth(0)).to_contain_text("1 item wasn't exported: it has no coordinates.")
     expect(warns.nth(1)).to_contain_text("1 note is over onX's 512-byte limit and will be cut: “Long”.")
     expect(warns.nth(2)).to_contain_text("onX accounts hold at most 3,000 markups; this map has 3,002.")
     # Every warning comes before the first folder box.
@@ -723,7 +723,7 @@ def test_deliberately_choosing_the_default_pin_marks_it_resolved(fresh_page):
     assert it["icon"] == "Location"
     assert it["confirmed"] is True
     assert it["needs_attention"] is False
-    assert it["why"] == "You chose the default pin for this one."
+    assert it["why"] == "You chose the default pin."
     assert fresh_page.evaluate("DATA.totals.attention") == before - 1
 
 
@@ -1736,7 +1736,7 @@ def test_start_over_counts_unexported_changes_and_escape_cancels(loaded: Page):
     loaded.locator(".newmap").first.click()
     body = loaded.locator("#confirm-body")
     expect(body).to_have_text(
-        "You have 1 unexported change to this map. Starting over discards it."
+        "This discards 1 unexported change."
     )
     loaded.keyboard.press("Escape")
     expect(loaded.locator("#confirm")).to_be_hidden()
@@ -1979,7 +1979,7 @@ def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
     zf = zipfile.ZipFile(io.BytesIO(export_zip_bytes(fresh_page)))
     assert "Broken" not in zf.read("instructions.txt").decode("utf-8")
     text = fresh_page.locator("#runbook").inner_text()
-    assert "1 item could not be exported" in text
+    assert "1 item wasn't exported: it has no coordinates." in text
     assert "1 of 2 were written" in text
 
 
@@ -2758,7 +2758,7 @@ def test_start_over_counts_moves_and_renames(loaded: Page):
     page.keyboard.press("Enter")
     page.locator(".newmap").first.click()
     expect(page.locator("#confirm-body")).to_have_text(
-        "You have 3 unexported changes to this map. Starting over discards them.")
+        "This discards 3 unexported changes.")
     page.click("#confirm-actions button:text-is('Start over')")
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
     assert page.evaluate("SAVED") is None and page.evaluate("unexportedChanges()") == 0
@@ -3346,7 +3346,7 @@ def test_start_over_counts_only_changes_since_the_last_export(loaded: Page):
     assert page.evaluate("unexportedChanges()") == 3
     page.locator(".newmap").first.click()
     expect(page.locator("#confirm-body")).to_have_text(
-        "You have 3 unexported changes to this map. Starting over discards them.")
+        "This discards 3 unexported changes.")
 
 
 def test_the_100_character_message_shows_only_when_typing_was_cut(fresh_page: Page, tmp_path):

@@ -129,7 +129,7 @@
     <h1>Your files are ready</h1>
     <div class="done-actions">
       <button id="download" type="button" class="btn primary big">Download all</button>
-      <span class="done-hint">One zip, one folder inside it per onX folder</span>
+      <span class="done-hint">One zip with every folder and instructions.txt</span>
       <span class="push"></span>
       <button id="back" type="button" class="btn">Back</button>
       <button type="button" class="btn newmap">Start over</button>
@@ -160,83 +160,84 @@
   <div class="modal-head"><h2 id="help-title">How to use Cairn</h2><button id="help-close" type="button" class="x" aria-label="Close" data-ui-icon="close"></button></div>
   <div class="help-body">
     <h3>1 · Export from CalTopo</h3>
-    <p>On your CalTopo map choose <b>Export</b> and pick <b>GeoJSON</b>. It keeps everything and is the one to use.
-       CalTopo's <b>KML</b> works too: it keeps folders, icons and colors but not dashed lines.
-       Drop that file here.</p>
-    <p>Cairn also opens <b>GPX</b>: a CalTopo GPX (names, notes and line colors, but no folders
-       or icons, which you can add here), or the GPX and KML you export from onX to clean up an
-       onX map. Drop the GPX and KML of one onX
-       export together; they become one folder. Several files dropped at once become one
-       folder each, named after the file.</p>
+    <p>In CalTopo choose <b>Export</b>, then <b>GeoJSON</b>. It keeps everything.
+       <b>KML</b> works too, but loses dashed lines. Drop the file here.</p>
+    <p>Cairn also opens <b>GPX</b>. A CalTopo GPX has names, notes and line colors, but no
+       folders or icons; you can add icons here. To clean up an onX map, drop the GPX and KML of
+       one onX export together: they become one folder. Drop several other files at once and
+       each becomes a folder named after the file.</p>
 
     <h3>2 · Review the icons</h3>
-    <p>Cairn maps each CalTopo symbol to the closest onX icon, and shows each waypoint as the
-       marker onX will draw. Hover any marker to see <b>why</b> it was chosen. Some waypoints
-       fall back to onX's <i>Default pin</i> because CalTopo had no symbol and the name gave no
-       clue — that is often perfectly fine (mile markers, numbered stops). Set an icon only where
-       the meaning matters; choosing an icon — <i>including deliberately choosing “Location”</i> —
-       marks it reviewed. Click a marker to change that one item's icon and color, or a
-       line's or area's color, style (solid or dashed) and weight.</p>
+    <p>Cairn picks the closest onX icon for each CalTopo symbol and draws each waypoint as onX
+       will. Hover a marker to see <b>why</b>. A waypoint with no symbol and no clue in its name
+       gets onX's <i>Default pin</i>, which is often fine (mile markers, numbered stops). Picking
+       any icon, even <i>Location</i> (the default pin), marks it reviewed. Click a marker to
+       change its icon and color, or a line's or area's color, style and weight.</p>
+    <p>Hover a name or note that's cut short to read all of it. A caution mark before a note
+       means onX won't keep something as is: a note over onX's 512-byte limit, an area fill onX
+       resets, or an item with no coordinates. Hover the mark for details. The arrow in a
+       <b>Name</b> header sorts every folder A–Z, then Z–A, then back to map order. Sorting
+       changes only the view.</p>
 
     <h3>3 · Edit in bulk</h3>
-    <p>Narrow the list with the search box or the <b>Type</b>, <b>Folders</b> and
-       <b>Icon</b> sections on the left (tick <b>Default pin</b> to see only those). Then tick rows —
-       <b>Icon &amp; color…</b> applies to your selection (<b>Color…</b> when it holds only lines
-       and areas; with both, pins and lines take their own color), and <b>Line style…</b>
-       (shown when lines or areas are selected) sets their style and weight. <b>More</b> holds <i>Use note as
-       name</i> (when the real information is in the notes) and the export include/exclude
-       controls.</p>
+    <p>Narrow the list with the search box or the <b>Type</b>, <b>Folders</b> and <b>Icon</b>
+       lists on the left (tick <b>Default pin</b> to see only those). Then tick rows.
+       <b>Icon &amp; color…</b> changes them all; it's <b>Color…</b> when only lines and areas are
+       ticked, and with both, pins and lines each get their own color. <b>Line style…</b> sets the
+       style and weight of lines and areas. <b>More</b> has <i>Move to…</i>, <i>Use note as
+       name</i>, <i>Exclude</i> and <i>Include</i>.</p>
     <table class="help-tbl">
       <tr><th>Click a box</th><td>Select one row.</td></tr>
-      <tr><th>Shift + click</th><td>Select everything between it and the last row you clicked.</td></tr>
-      <tr><th>Ctrl / ⌘ + A</th><td>Select everything currently shown. Press again to deselect.</td></tr>
-      <tr><th>Header checkbox</th><td>Select every row in that folder.</td></tr>
-      <tr><th>Esc</th><td>Clear the selection. While editing a name or note, Esc undoes that edit instead.</td></tr>
+      <tr><th>Shift + click</th><td>Select every row between it and the last one you clicked.</td></tr>
+      <tr><th>Ctrl / ⌘ + A</th><td>Select every row shown. Press again to deselect.</td></tr>
+      <tr><th>Header checkbox</th><td>Select every row shown in that folder.</td></tr>
+      <tr><th>Esc</th><td>Clear the selection. While editing a name or note, undo that edit instead.</td></tr>
       <tr><th>Notes</th><td>Click a note to open it. Enter starts a new line; Ctrl / ⌘ + Enter saves.</td></tr>
     </table>
-    <p class="help-note">Selection always follows what is on screen: filter first, then select
-       all, and you only touch the rows you can see.</p>
+    <p class="help-note">Selection follows the screen: filter first, then select all, and you
+       only touch the rows you can see.</p>
 
     <h3>4 · Folders</h3>
     <p>Each folder becomes one onX folder. To move rows, drag them onto a folder in the
-       <b>Folders</b> list on the left; tick several first to move them together. Drop on
-       <b>+ New folder</b> to make one, then type its name; clicking it does the same for the
-       ticked rows, or with none ticked makes an empty folder to drop rows on (its <b>×</b>
-       removes it). <b>More → Move to…</b> does the same from the keyboard. Click a folder's name
-       above its rows to rename it; a name that's taken offers to merge the two. A folder you
-       empty goes away, and an empty folder isn't exported.</p>
+       <b>Folders</b> list; tick several first to move them together. Drop them on
+       <b>+ New folder</b> to make a folder, then type its name. Clicking <b>+ New folder</b>
+       does the same with the ticked rows, or makes an empty folder when none are ticked (its
+       <b>×</b> removes it). <b>More → Move to…</b> works from the keyboard. Click a folder's
+       name above its rows to rename it; if the name is taken, Cairn offers to merge the two.
+       A folder you empty goes away. Empty folders aren't exported.</p>
 
     <h3>5 · Leave things out</h3>
-    <p>Select rows and choose <b>More → Exclude</b>. Excluded rows stay
-       visible, struck through, with an <b>Include</b> button. Useful for scratch lines and
-       duplicated tracks. Nothing is ever deleted from your CalTopo file.</p>
+    <p>Tick rows and choose <b>More → Exclude</b>. Excluded rows stay in the list, struck
+       through, with an <b>Include</b> button. Handy for scratch lines and duplicate tracks. Your
+       CalTopo file is never changed.</p>
 
     <h3>6 · Export and import</h3>
-    <p>Cairn writes one set of files per folder, and <b>instructions.txt</b>. This matters:
-       <b>onX creates one folder per import, and names it with a timestamp</b> — never from the
-       filename. So import each folder's files together, tick <b>Import map data to a new
-       folder</b>, and rename the new folder; instructions.txt lists each folder's name, its files
-       and every item in them.</p>
+    <p><b>onX creates one folder per import and names it with a date and time</b>, never from
+       the file name. So Cairn writes one set of files per folder. <b>Download all</b> gets every
+       folder in one zip, with <b>instructions.txt</b>; a folder's <b>Download</b> gets just that
+       folder. Import each folder's files together, tick <b>Import map data to a new folder</b>,
+       then rename the new folder. instructions.txt lists each folder's name, its files and every
+       item in them.</p>
 
     <h3>What carries across</h3>
     <table class="help-tbl">
-      <tr><th>Name</th><td>Yes — and it is the only field onX lets you search.</td></tr>
-      <tr><th>Note</th><td>Yes — arrives as the markup's <b>Notes</b> in onX.</td></tr>
-      <tr><th>Icon</th><td>Yes, for waypoints. onX has 95; CalTopo has many more, so some map approximately.</td></tr>
+      <tr><th>Name</th><td>Yes. It's the only field onX searches.</td></tr>
+      <tr><th>Note</th><td>Yes, as the markup's <b>Notes</b> in onX, up to 512 bytes.</td></tr>
+      <tr><th>Icon</th><td>Yes, for waypoints. onX has 95 icons and CalTopo many more, so some are a close match, not an exact one.</td></tr>
       <tr><th>Color</th><td>Yes, snapped to onX's 10 waypoint colors (11 for lines).</td></tr>
-      <tr><th>Line style</th><td>Yes, for lines and area outlines — solid or dashed, thin or thick, as onX draws them. An onX file's dotted or extra-thin line is kept.</td></tr>
-      <tr><th>Folders</th><td>Yes — import one folder at a time and rename each, as instructions.txt says.</td></tr>
-      <tr><th>Lines vs areas</th><td>Handled automatically: lines go to GPX as tracks, areas to GPX as onX areas with their outline color, style and weight. onX gives every imported area its own light blue fill, whatever the file says. An area's holes aren't kept; instructions.txt marks those areas.</td></tr>
+      <tr><th>Line style</th><td>Yes, for lines and area outlines: solid or dashed, thin or thick. A dotted or extra-thin line from an onX file is kept.</td></tr>
+      <tr><th>Folders</th><td>Yes. Import one folder at a time and rename each, as instructions.txt says.</td></tr>
+      <tr><th>Lines vs areas</th><td>Lines go out as GPX tracks, areas as onX areas with their outline color, style and weight. onX fills every imported area light blue, whatever the file says. Area holes aren't kept; instructions.txt marks those areas.</td></tr>
     </table>
 
     <h3>Good to know</h3>
     <ul>
-      <li>Importing needs an onX <b>Premium or Elite</b> membership.</li>
-      <li>Import on the onX <b>Web Map</b> on a computer: that is where the new-folder checkbox is.</li>
-      <li>An onX account holds <b>3,000 markups</b>; Cairn warns you if a map exceeds it.</li>
-      <li>Your map never leaves this computer — the conversion runs entirely in your browser.</li>
-      <li>The markers here are Cairn's own drawings, not onX's artwork; the icon <i>name</i> is
-          exactly what onX will use.</li>
+      <li>Importing needs onX <b>Premium or Elite</b>.</li>
+      <li>Import on the onX <b>Web Map</b> on a computer. That's where the new-folder checkbox is.</li>
+      <li>An onX account holds <b>3,000 markups</b>. Cairn warns you if a map has more.</li>
+      <li>Your map never leaves this computer. Everything runs in your browser.</li>
+      <li>The markers here are Cairn's drawings, not onX's artwork. The icon <i>name</i> is
+          exactly what onX uses.</li>
     </ul>
   </div>
 </div></div>

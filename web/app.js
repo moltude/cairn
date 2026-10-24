@@ -776,7 +776,7 @@ function row(it) {
   tr.innerHTML = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
-      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
+      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
       `<div class="note-cell">${caution ? `<span class="caution" tabindex="0" role="img" data-fk="${fk}caution" aria-label="${esc(caution)}">${UI_ICON.caution}</span>` : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
         <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
@@ -847,7 +847,7 @@ function wireTextField(el, it, key, { required = false } = {}) {
     const v = el.value;
     if (required && !v.trim()) {
       el.value = el.dataset.orig ?? "";
-      setStatus("A name is required — onX can only search by name.", "err");
+      setStatus("A name is required. onX searches by name only.", "err");
       return;
     }
     if (v === el.dataset.orig) return;
@@ -935,7 +935,7 @@ function edit(it, patch, { render = true } = {}) {
     it.confirmed = true;
     it.needs_attention = false;
     it.why = patch.icon === "Location"
-      ? "You chose the default pin for this one."
+      ? "You chose the default pin."
       : "You set this icon.";
   }
   EDITS[it.uid] = Object.assign(EDITS[it.uid] || {}, patch);
@@ -1940,7 +1940,7 @@ function renderRunbook() {
   const host = $("#runbook");
   host.innerHTML =
     (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
-    (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
+    (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? " wasn't" : "s weren't"} exported: ${S.dropped === 1 ? "it has" : "they have"} no coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
     (S.long_notes ? `<div class="note warn">${S.long_notes === 1 ? "1 note is" : `${S.long_notes} notes are`} over onX's ${S.note_limit}-byte limit and will be cut: ${esc(longNoteNames())}.</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   // Two folders may share a name ("Camp" twice, from the file), or two names
@@ -2122,7 +2122,7 @@ function requestStartOver() {
   openConfirm({
     title: "Start over?",
     body: n
-      ? `You have ${n} unexported change${n === 1 ? "" : "s"} to this map. Starting over discards ${n === 1 ? "it" : "them"}.`
+      ? `This discards ${n} unexported change${n === 1 ? "" : "s"}.`
       : "This clears the current map.",
     ret,
     buttons: [
