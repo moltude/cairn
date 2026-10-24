@@ -555,15 +555,17 @@ tbody tr.dragging{background:#E9E3D2;opacity:.45}
 .facet-x:hover{color:var(--ink);background:var(--card)}
 body.dragging-rows .facet-x{opacity:0;pointer-events:none}
 .folder.empty-folder .folder-head{border-bottom:none}
-/* What won't carry over: a caution mark before the note (or an empty slot,
-   so every note starts in line). An excluded row has neither. */
+/* What won't carry over: a caution mark before the note, or an empty slot of
+   the same width (an excluded row too), so every note starts in line, and
+   the Note header starts where the note text does: the cell's 12px padding
+   plus the 22px slot and the 6px gap. */
 .note-cell{display:flex;align-items:center;gap:6px;min-width:0}
 .note-cell .note-btn{flex:1 1 auto;min-width:0}
 .caution,.caution-slot{flex:none;width:22px;height:22px}
 .caution{display:inline-flex;align-items:center;justify-content:center;
   color:var(--warning);border-radius:2px;cursor:help}
 .caution:hover{background:var(--rail)}
-tr.excluded .caution-slot{display:none}
+.edit th.note-th{padding-left:40px}
 /* Name sort: the header is a button with up/down arrows. */
 .sort-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:2px 4px;margin:-2px -4px;
   font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;border-radius:2px}

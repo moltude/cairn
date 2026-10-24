@@ -4190,6 +4190,28 @@ def test_the_rails_last_row_clears_the_footer_when_scrolled_to_the_end(loaded: P
     assert gap >= 0, gap
 
 
+def test_the_note_header_lines_up_with_the_note_text_with_or_without_a_caution(loaded: Page):
+    """Owner feedback 2026-10-24: the NOTE header's text starts where every
+    row's note text starts, with a caution mark, without one, and excluded."""
+    page = loaded
+    _wide(page)
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    uids = [rows.nth(k).get_attribute("data-uid") for k in range(3)]
+    _set(page, uids[0], desc="x" * 600)        # a caution mark
+    _set(page, uids[2], included=False)        # excluded: no mark, same slot
+    expect(_caution(page, uids[0])).to_have_count(1)
+    lefts = page.evaluate("""uids => {
+      const sec = document.querySelector(`tr[data-uid="${uids[0]}"]`).closest('section');
+      const head = sec.querySelector('th.note-th span').getBoundingClientRect().left;
+      return [head, ...uids.map(u => document.querySelector(`tr[data-uid="${u}"] .note-text`).getBoundingClientRect().left)];
+    }""", uids)
+    head, *notes = lefts
+    for x in notes:
+        assert abs(x - head) <= 1, lefts
+    _section(page, "Lost Trail Pass").evaluate("e => e.scrollIntoView()")
+    _shot(page, "fb-4-note-header-aligned")
+
+
 def test_the_sort_button_keeps_no_pill_once_the_pointer_has_left(loaded: Page):
     page = loaded
     _wide(page)

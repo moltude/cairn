@@ -530,7 +530,7 @@ function renderFolders() {
         <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
         <thead><tr>
           <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
-          <th class="name-th" aria-sort="${ARIA_SORT[SORT]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${SORT || "none"}" aria-label="Sort by name">Name${sortIcon(SORT)}</button></th><th>Note</th><th>Icon</th>
+          <th class="name-th" aria-sort="${ARIA_SORT[SORT]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${SORT || "none"}" aria-label="Sort by name">Name${sortIcon(SORT)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
         </tr></thead><tbody></tbody></table></div>`;
     const tb = el.querySelector("tbody");
     items.forEach(it => tb.appendChild(row(it)));

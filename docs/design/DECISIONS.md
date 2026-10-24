@@ -1018,6 +1018,8 @@ Status: decided 2026-10-23 (owner, round 4).
   dropped) has one mark: "Won't export: it has no coordinates." (`no_coords` on the load item).
 - An excluded row has no mark (it isn't exported). The mark follows every edit: shortening a
   note removes it.
+- Owner feedback 2026-10-24: the NOTE header starts where the note text does (past the mark's
+  slot). Every row keeps the slot, an excluded one too, so all notes start in line.
 - The export screen's long-note warning names the items (up to 8, then "and N more").
 - Round 5: UI-30's load dialog now skips a transparent fill too, matching the mark (owner).
 
