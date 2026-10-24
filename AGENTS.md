@@ -35,8 +35,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-23 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2 fixes): **1229 passed** with the web dev server up; without
-it the `tests/web` tests skip. (Before the round-2 fixes it was 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
+Baseline as of 2026-10-23 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2 and round-3 fixes): **1258 passed** with the web dev server up; without
+it the `tests/web` tests skip. (Before the round-3 fixes it was 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 
@@ -97,9 +97,10 @@ readers via document_adapter.
 - **Do not add `try/except Exception` around assertions in tests.** The deleted TUI suite had 35
   tests that swallowed exceptions and asserted nothing. A flaky interaction should be fixed or
   `pytest.skip`ped explicitly.
-- `tests/output/` (gitignored) holds stale generated output from an edge-case runner script that
-  has since been deleted. Nothing produces it any more, it is not a fixture, and it is not an
-  expectation baseline.
+- `tests/output/` (gitignored) is local scratch: stale edge-case output, review notes,
+  screenshots. It is not a fixture, not an expectation baseline, and a tracked doc must not cite
+  it as evidence. The folders UI fuzzer and its repro probes are tracked in `scripts/qa/` (how to
+  run: its README) and write to `archive/qa-fuzz/`; nothing under `tests/` imports them.
 - `tests/web/test_web_app.py` drives the Pyodide web app in headless Chromium (needs the dev
   server: `uv run python web/serve.py`, and once per machine `uv run playwright install
   chromium`). The main fixture context sets `bypass_csp=True` because the page ships a strict

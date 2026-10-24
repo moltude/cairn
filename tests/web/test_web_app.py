@@ -2846,7 +2846,7 @@ def test_a_long_rail_scrolls_while_dragging_to_new_folder(fresh_page: Page, tmp_
 
 # ---------------------------------------------------------------------------
 # Folders, round 2 (2026-10-23): code review items and QA / fuzzer findings.
-# Each test names the finding it pins (tests/output/round2-findings.md).
+# Each test names the finding it pins (docs/testing/FOLDERS_RELEASE.md, "Round 2 fixes").
 # ---------------------------------------------------------------------------
 
 

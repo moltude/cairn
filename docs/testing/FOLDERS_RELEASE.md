@@ -143,9 +143,11 @@ Loaded Bitterroots (10 folders on screen; 177 markups), `caltopo-random/onx-test
 Download all and every Download this folder, unzipped each: every folder zip held only its
 `NN_Name/` files, byte-identical to Download all's copies; names `Unorganized.zip`,
 `Lost_Trail_Pass.zip`, …, `onx_test_random.zip`, `onx_dialect.zip`. No console errors.
-Screenshots (gitignored): `tests/output/export-screen/` — `bitterroots.png`,
-`bitterroots_end.png`, `bitterroots_full.png`, `one_folder.png`, `onx_pair.png`,
-`warnings.png`. They match the mockup apart from the page's contour background (UI-20).
+Screenshots were taken locally (`bitterroots.png`, `bitterroots_end.png`, `bitterroots_full.png`,
+`one_folder.png`, `onx_pair.png`, `warnings.png`); they are local-only, not tracked, and not
+evidence anyone else can open. They matched the mockup apart from the page's contour background
+(UI-20). The tracked record of this screen is `web/walkthrough/06-export.webp` (below) and the
+e2e tests.
 
 `web/walkthrough/06-export.webp` is replaced with the new Bitterroots export screen (from
 `bitterroots.png`, `cwebp -q 82`) and its walkthrough text updated. Still showing the old screen:
@@ -163,15 +165,16 @@ Branch `test/folders-hardening` (on `feat/folders-release`, 1139 tests). Adversa
 `rename_folder` / `move_items` / `merge_folders` and the Download all / Download this folder export.
 
 ### What was run
-- **Map generator** (`tests/hardening_maps.py`, tracked; scratch drivers in the gitignored
-  `tests/output/hardening/`): CalTopo GeoJSON with 0, 1, 30 and 200 folders; empty folders;
+- **Map generator** (`tests/hardening_maps.py`, tracked). The bridge fuzzer and browser driver
+  below were local scratch scripts and were not kept (round 3); what they found is pinned by the
+  tracked `tests/test_web_bridge_hardening.py`. Maps: CalTopo GeoJSON with 0, 1, 30 and 200 folders; empty folders;
   lines-only and areas-only folders; 28 hostile names (case/whitespace twins, `A/B` vs `A_B` vs
   `A:B`, `..`, `.`, `CON`, `NUL`, trailing dots, blank, unicode, RTL, emoji, emoji-only, 300-char
   and 200-`ä` names, a right-to-left override, tabs, newlines, quotes, `../../etc/passwd`);
   items with no coordinates (null geometry, empty line, empty point); polygons with 2 holes;
   3 KB notes; a 5,200-item and a 6,000-item folder (GPX splits at 3.75 MiB into 3 files).
   Also the Bitterroots map, the onX dialect pair, the onX areas pair and CalTopo + onX mixed.
-- **Bridge fuzzer** (`tests/output/hardening/fuzz.py`): 13 maps x 4 seeds x 40 random steps of
+- **Bridge fuzzer** (local scratch script, not kept): 13 maps x 4 seeds x 40 random steps of
   apply_edits (names, notes, icon, colour, style/weight, exclusion), move to an existing folder,
   move to a new folder (hostile names, clashes), rename (hostile names, case/space variants),
   merge, export, and six error-path calls (each must raise ValueError and leave the layout
@@ -181,7 +184,7 @@ Branch `test/folders-hardening` (on `feat/folders-release`, 1139 tests). Adversa
   name match the folder at that position, items in files + dropped = included items, each file's
   element count = its manifest count, every file named in RUNBOOK.md, and every
   `export_folder_zip(n)` byte-equal to Download all's copies. 52 sessions, 0 failures after the fixes.
-- **Real browser** (headless Chromium, `tests/output/hardening/browser.py`, port 8785): 7 maps
+- **Real browser** (headless Chromium, a local scratch script, not kept; port 8785): 7 maps
   (1, 30, 200 folders; empties; no-coordinate items; hostile names; 5,200 items). Each: load,
   Export, Download all, click EVERY "Download this folder" and unzip (names and bytes vs the full
   zip), Back, Export again, Download this folder, Start over, load a second map, export,
@@ -247,7 +250,7 @@ Branch `feat/folders-ui` (on `feat/folders-release`, merged again after the hard
 - Two existing download tests now expect `NN_<safe>.zip`.
 
 ### Manual / break-it (headless Chromium 1440×900, port 8784)
-Scripts in the gitignored scratch area. Maps: Bitterroots, the onX areas pair, and generated
+Local scratch scripts, not kept (the round-2 fuzzer in `scripts/qa/` covers the same ground). Maps: Bitterroots, the onX areas pair, and generated
 CalTopo GeoJSON from `tests/hardening_maps.py`: 34 hostile names with 3 empty folders, 200
 folders / 1,100 items, and case twins ("Camp", "camp", "Camp", " Camp ", "A/B", "A_B", emoji,
 CJK). On each map: 15 rapid drags to random targets (naming or Esc-ing new folders), a drag during
@@ -262,10 +265,10 @@ over 255 bytes. Also: a note draft on a row dragged out of a folder filter, a po
 dragged row, switching from one header name to another, the area-fill dialog blocking a drag,
 keyboard Tab order, rail auto-scroll down and up on 200 folders. Final run: 0 problems.
 
-Screenshots (gitignored): `tests/output/folders-ui/` — `1-drag-to-folder.png`,
+Screenshots, local-only and not tracked: `1-drag-to-folder.png`,
 `2-drag-to-new-folder.png`, `3-name-new-folder.png`, `4a-rename-in-header.png`,
 `4b-rename-merge.png`, `5a-more-menu.png`, `5b-keyboard-move.png`, `5c-after-move.png`. They
-match the mockups apart from the rail's existing Type and Icon sections and the contour background.
+matched the mockups apart from the rail's existing Type and Icon sections and the contour background.
 
 ### Bugs found and fixed
 | # | Bug | Fix | Test |
@@ -300,10 +303,11 @@ match the mockups apart from the rail's existing Type and Icon sections and the 
 
 ## Round 2 fixes (2026-10-23)
 
-Inputs (gitignored, `tests/output/`): `round2-findings.md` (F1–F7 from the scripted fuzzer,
-H1–H6 from a human-style QA pass, L1), `code-review-round1.md` (red-team review items 1–10),
-`qa-round2-human.md` with its `r2-*.png` screenshots, and `qa-fuzz/` (`fuzz_ui.py`, repro
-probes `probes/probe1..9.py`, run records, generated maps). Design changes are in DECISIONS.md
+Inputs (local-only review notes, not tracked; this section restates every item):
+`round2-findings.md` (F1–F7 from the scripted fuzzer, H1–H6 from a human-style QA pass, L1),
+`code-review-round1.md` (red-team review items 1–10) and `qa-round2-human.md` with its `r2-*.png`
+screenshots. The fuzzer and its repro probes are tracked since round 3: `scripts/qa/fuzz_ui.py`
+and `scripts/qa/probes/probe1..9.py` (how to run: `scripts/qa/README.md`). Design changes are in DECISIONS.md
 UI-32 and ENG-07 ("Round 2").
 
 ### Findings, fixes and tests
@@ -346,7 +350,7 @@ Found while fixing (by the fuzzer re-run, and by the owner testing live):
 |---|---------|-----|------|
 | R1 | (H1's own) Cancel on a new folder's taken name reopened the name box; leaving it unchanged re-offered the merge, and Cancel reopened it again: Export never ran. | Leaving it with the declined name keeps the folder's default name, no second offer. | `test_cancel_on_a_new_folders_taken_name_reopens_its_name` (extended) |
 | R2 | (F1's own) The render that waits for a click can run after that click opened the icon popover; it replaced the row, and closing the popover then dropped focus to the page. | The popover finds its marker again by its focus key. | `test_a_popover_opened_by_the_click_that_left_a_name_returns_focus_to_its_marker` |
-| R3 | (H2's own; owner, live) A new folder "Crew" showed "Cr…" in its table header. Every header lost its last 7px: the name button's `margin-left:-7px` makes its h2 7px narrower than the button, and the H2 change gave the button `max-width:100%`. | The button is sized by flex shrink (no max-width), so it is only cut when the header is really out of room. Screenshot `tests/output/r2-crew-header.png` (gitignored). | `test_a_short_folder_name_is_never_cut_in_its_header` (Dark Divide; "Crew" with 3 items named in the rail under the Lines filter; header renames to 1–5 characters; every loaded header: scrollWidth <= clientWidth) |
+| R3 | (H2's own; owner, live) A new folder "Crew" showed "Cr…" in its table header. Every header lost its last 7px: the name button's `margin-left:-7px` makes its h2 7px narrower than the button, and the H2 change gave the button `max-width:100%`. | The button is sized by flex shrink (no max-width), so it is only cut when the header is really out of room. (The owner's screenshot is local-only; the test pins it.) | `test_a_short_folder_name_is_never_cut_in_its_header` (Dark Divide; "Crew" with 3 items named in the rail under the Lines filter; header renames to 1–5 characters; every loaded header: scrollWidth <= clientWidth) |
 
 Two items from PR-C's "Open" list are closed by these: long names (H2) and the `applyLayout`
 failure leaving UI and bridge apart (CR2).
@@ -356,7 +360,7 @@ failure leaving UI and bridge apart (CR2).
 31 e2e test cases).
 
 ### Fuzzer re-run
-`tests/output/qa-fuzz/fuzz_ui.py` with no `--known` step-overs (round 1 stepped over
+`scripts/qa/fuzz_ui.py` (then at `tests/output/qa-fuzz/`, moved in round 3) with no `--known` step-overs (round 1 stepped over
 `click_lost_after_field`, `move_list_stale`, `drag_under_modal` and `dialog_over_export`), 250
 actions a session, the invariants checked after every action and every export verified (screen,
 Download all, every per-folder zip, 12 sampled on 200 folders). Harness changes: the `NN_`
@@ -375,11 +379,55 @@ and very likely some of round 1's `click_lost_after_field` count too).
 Every failing session of passes 1 and 2 replays clean (`--replay`) after its fix. Maps:
 Bitterroots, hostile (34 nasty names, 3 empty), twins (case / safe-name twins, a CalTopo
 folder called "Unorganized", a 150-character name), big200 (200 folders), and the onX areas and
-three-round-trips pairs. Records: `tests/output/qa-fuzz/runs/w{1,2}_seed0{4,5,6}*_r2*.json`,
-logs `tests/output/qa-fuzz/r2/`, report `tests/output/qa-fuzz/REPORT.md` (all gitignored).
+three-round-trips pairs. The run records, logs and the fuzzer's own report were local-only
+and are not tracked; the tables above are the record.
 
 ### Open
 - H5 (b): renaming a folder to "Unorganized" keeps the plain merge wording (reason above).
 - Leaving a folder name by pressing a control still saves the rename at once; only the redraw
   waits for the release. A press that becomes a drag therefore drags with the new name already
   in the bridge, and a taken name's offer appears after the drop (F3 note).
+
+## Round 3 (final review) fixes (2026-10-23)
+
+Input: a red-team review of `feat/folders-release` against main (local-only note, items 1–10
+restated here). Items 1–6 and 8–10 are fixed; item 7 is a follow-up (below). The first test in
+each row failed on the code before its fix (checked one by one).
+
+| # | Finding | Fix | Test |
+|---|---------|-----|------|
+| 1 | Start over compared with the map as loaded: right after a successful export it still warned "N unexported changes". | `savedState()` snapshots each item's folder, each folder's name and each item's edits (as JSON) at load and at every successful export; `unexportedChanges()` counts against it. DECISIONS UI-32 updated. | e2e `test_start_over_counts_only_changes_since_the_last_export`; the fuzzer now checks 0 changes after every export |
+| 2 | `_safe` stripped a trailing `_` from every name, not just a cut one: "Trip -" exported as `Trip`, not main's `Trip_`; "___" became `Unnamed`. | The strip runs only after the 80-byte cut; an uncut name is exactly main's. | bridge `test_safe_is_mains_for_a_name_that_was_never_cut` (14 names vs main's `_safe` verbatim); `_old_safe` and the hardening `_safe` test updated to the rule |
+| 3 | Two folders called "Camp" had identical export boxes, while they downloaded as `01_Camp.zip` / `02_Camp.zip`. | A box whose name another box shares (any case) shows "NN ·" before it; a box whose file names collide with another's ("A B", "A_B") shows its chips with their `NN_` folder. Others unchanged. DECISIONS UI-32. | e2e `test_export_boxes_of_folders_with_the_same_name_show_their_numbers`; fuzzer box check |
+| 4 | Renaming "Unorganized" to "unorganized" (case only) dropped the loose-items flag. | Compared casefolded. | bridge `test_a_case_only_rename_of_the_loose_items_keeps_their_flag` (3 cases) |
+| 5 | "A folder name can be up to 100 characters." showed at exactly 100, and on every keystroke (deletions too) in a longer name from the file. | `beforeinput`: shown only when an insert would pass 100 (so maxlength cut it); cleared once the name is under 100. DECISIONS UI-32. | e2e `test_the_100_character_message_shows_only_when_typing_was_cut`; `test_long_folder_names_are_cut_with_an_ellipsis_and_titled` still passes (a 150-character paste) |
+| 6 | RUNBOOK.md escaped a folder name only in "Rename it to:"; the `### N. name` heading and the "(name)" after each renamed item, hole and long note were raw Markdown ("*Camp*" read as italic). | `_md()`: CommonMark backslash escapes of `` \ ` * _ [ ] < > & ~ `` there; a plain name is unchanged, so the Bitterroots sha pin holds. | bridge `test_runbook_shows_a_folder_name_the_same_on_every_line` (6 names; every line read back to the exact name, no unescaped special) |
+| 8 | `_sync_doc` copied every move into `doc.folders`, a second record of membership. | Removed; `doc.folders` stays as parsed, `doc_folders()` derives the current folders from the groups. Tests that read `doc.folders` after a move use it. DECISIONS ENG-07. | bridge `test_folder_moves_leave_the_loaded_document_alone`; `_check_invariants` |
+| 9 | `export_folder_zip` inflated and re-deflated every member of the kept zip; `export_folder_zip` and `export_folder_zip_name` each looked the folder up (two bridge calls per download). | `_manifest_entry(n)` is the one lookup; `_copy_members` copies each member's stored bytes with headers from its own ZipInfo (no zlib); the page names the file from the manifest's `dir`, so a download is one call. `export_folder_zip_name` is gone. Kept: the Download all Blob in the page and `_STATE["zip"]` (one copy a side; dropping either needs a JS zip reader or a multi-MB copy across per click). | `test_a_folder_zip_copies_its_members_without_recompressing` (zlib patched to raise; CRC, sizes, method, date and stored bytes equal), `test_a_non_ascii_folder_name_survives_the_raw_copy`; `unzip -t` clean |
+| 10 | This log cited gitignored tools and screenshots as if tracked. | The fuzzer and its probes are tracked in `scripts/qa/` (`fuzz_ui.py`, `probes/`, `README.md`), with paths fixed (repo root, `BASE_URL`, output to `archive/qa-fuzz/` or `--out`). The hardening drivers no longer existed in this worktree and were not recovered: their sections now say so, and point at the tracked `tests/test_web_bridge_hardening.py`. Every screenshot is described as local-only. Nothing under `tests/` imports `scripts/qa` (checked by grep); AGENTS.md says so. | n/a (docs and tooling) |
+
+### Automated
+`BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1258 passed** (1229 + 29: 26 bridge test
+cases, 3 e2e tests).
+
+### Fuzzer re-run
+From its tracked location, `scripts/qa/fuzz_ui.py --seeds 1-12 --actions 250 --wave 1` and
+`--wave 2`, no `--known`: 24 sessions, 4 per map over all 6 maps (Bitterroots, hostile, twins,
+big200, onX areas, onX three-round-trips). Harness additions this round: box numbers and `NN_`
+chips on name / file-name twins (#3), and 0 unexported changes right after every export (#1).
+Result: **24 of 24 clean**: 6,024 actions, 6,048 invariant checks, 200 verified exports
+(screen, Download all, every per-folder zip), 0 failures; 7 harness timeouts (a Playwright wait
+in the fuzzer itself, stepped over as in rounds 1 and 2). Logs and run records are local-only
+(`archive/qa-fuzz/`).
+
+## Follow-ups
+
+- **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`
+  rebuild their hosts through `innerHTML`, so every edit, move or rename replaces the DOM under
+  the pointer and the focus. Round 2 layered fixes on top of that (`rebuild()` ignoring the
+  blur it causes, `deferRender()` waiting for the button to come up, the popover finding its
+  marker again by focus key). Refactor to keyed, in-place updates of rows, headers and rail
+  entries so a re-render no longer destroys what the user is touching; then retire those
+  workarounds. Not done for this release: the current behaviour is pinned by the e2e tests and
+  the fuzzer, and the refactor touches every render path.
+- `docs/screenshots/web-07-runbook.png` in README.md still shows the old export screen (PR-B).
