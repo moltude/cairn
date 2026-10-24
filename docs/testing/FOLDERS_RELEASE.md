@@ -710,6 +710,92 @@ Final check, on the dev server at :8790:
 (wave 1 had two sessions with a "harness" count, i.e. a Playwright timeout in the fuzzer itself,
 stepped over; the two waves ran side by side on one server). `build_faq_page.py --check`: clean.
 
+## Owner feedback 2026-10-24
+
+Eighteen items from the owner, each a small commit with tests (e2e in tests/web/test_web_app.py
+or bridge tests) and a 1440×900 screenshot (local-only, `tests/output/followups/fb-*.png`).
+
+| # | Item | Status | Where |
+|---|------|--------|-------|
+| 1 | CalTopo GPX banner → one line in Help ("CalTopo's GPX has no folders, icons or pin colors. Export GeoJSON (or KML) to keep them.") | done | `renderSourceNotice`, `#source-notice` removed |
+| 2 | Long-note tip: "onX imports only the first 512 bytes of a note. About N characters will be cut." | done | UI-34 |
+| 3 | No "Map loaded" status line | done | status is for moves, errors |
+| 4 | NOTE header aligned with the note text (with, without a caution, excluded) | done | UI-34 |
+| 5 | Sort per folder | done | UI-35 |
+| 6 | Folders by name (natural, any case), Unorganized last; export numbers follow | done | ENG-07; pins re-pinned |
+| 7 | Rail: All first, then alphabetical (Type, Folders; Icon with Default pin first) | done | UI-28 |
+| 8 | Area fill caution at the far right of the Icon cell | done | UI-34 |
+| 9 | Fill row: Leave as is / Use onX's blue fill; bridge accepts only the default | done | UI-36, UI-30 |
+| 10 | Swatch rows on one line; "Leave as is" on the label line, same everywhere | done | UI-36 |
+| 11 | One dialog for lines and areas (and mixed); Line style… removed | done | UI-36 (supersedes UI-25's split) |
+| 12 | Export warning: "Item 'temp' is over the length limit and will be truncated by onX." | done | UI-34 |
+| 13 | Footer links in the kicker style | done, then folded into 15 | UI-27 → UI-38 |
+| 14 | Browser Back / Forward between stages; "Leave this map?"; beforeunload | done | UI-37 |
+| 15 | One site nav (App · Help · FAQ · Walkthrough · GitHub) top and bottom, current underlined | done | UI-38 |
+| 16 | FAQ / walkthrough lose their kicker + title head (h1 kept for screen readers) | done | UI-38 |
+| 17 | Doc content on the landing page's paper panel | done | `.doc-main` joins `.drop-copy`'s rule |
+| 18 | No inline nav duplicates ("Back to the app · Read the FAQ" gone) | done | UI-38 |
+
+### Decisions made here
+
+- **Sort state on move, rename, merge (item 5).** The state belongs to the folder, keyed by its
+  key: a rename keeps it; items moved in show in the target's state (an unsorted target keeps
+  the map's order); a merge's target keeps its own and the merged-away folder's state goes; a
+  removed folder's state goes; a new folder starts unsorted; a new map or Start over clears all.
+- **Folder order (item 6).** Made in one place, `bridge._sort_folders`: by name, digit runs as
+  numbers, `casefold`, stable for twins; the loose items last by their `unorganized` flag (not
+  by name: renamed, they sort as an ordinary folder; renamed back, last again). Load, a new
+  folder and a rename take their sorted place; a move or merge doesn't reorder. The UI only
+  follows the bridge's layout, so the table, rail, Move to… and the `NN_` numbers can't disagree.
+- **Re-pins (item 6).** Bitterroots export pin (`export_zip_sha256_e927aa9.json`): only the
+  `NN_` names and instructions.txt changed; every GPX member was checked to have the same
+  sha256 under its new name, and instructions.txt's header is unchanged and its folder blocks
+  are the same text apart from number and order. `load_document_json` is unchanged (the test
+  compares the groups in the old by-size order). Dark Divide `cairn_output/from_geojson` and
+  `from_kml`: the two Course folders swapped numbers (git shows pure renames, 0 byte changes),
+  instructions.txt renumbered; `from_gpx` and caltopo-random (one folder each) unchanged.
+- **Button labels (item 11).** "Icon & color…" with any waypoint ticked, "Color & style…" with
+  only lines and areas. Mixed dialog rows: Pin color, Icon, Line color, Style, Weight (+ Fill).
+- **Fill (item 9).** Offered for any area (CalTopo ones too); the only choice is onX's default.
+- **Nav on the edit screen (item 15).** No top bar there, so the nav sits at the right of the
+  search row. In the app FAQ and Walkthrough open in a new tab (leaving would drop the map).
+- **History (item 14).** Back from edit with no changes goes to drop without asking and clears
+  the map (the drop screen holds none), so Forward then does nothing.
+
+### Cross-page consistency review (1440×900)
+
+Looked at side by side: landing, edit, Help, waypoint popover, line popover, area popover,
+several-items dialogs (waypoints; lines + areas; waypoints + areas), Move to…, Start over and
+"Leave this map?" confirms, export screen, FAQ top / middle / bottom, walkthrough top / middle /
+bottom.
+
+- Nav: the same five links, kicker style, current page underlined, at the top and the bottom of
+  every page and stage (fixed: the doc pages had their own top links in body type, bold FAQ).
+- Head text: the doc pages no longer open with a kicker + big title; the app's export screen
+  keeps its "EXPORT" kicker and title (it is a stage, not a page). Kickers ("EXPORT",
+  "BEFORE", "BE AWARE", Help's numbered headings) share the brown letter-spaced capitals.
+- Panels: the doc pages' text now sits on paper like the landing's intro and the export
+  screen; no contour line runs behind text anywhere (checked FAQ, walkthrough, landing, export).
+- Fixed: the walkthrough's four stat boxes were indented 22px by the doc list rule and didn't
+  line up with the text above and below them.
+- Fixed: duplicate inline navs at the bottom of both doc pages.
+- Dialogs: every popover and dialog row is a label line plus one line of choices; "Leave as
+  is" is the one "no change" wording; Cancel / Save in the same place and style; the two
+  confirms are the same component.
+- Buttons: primary green, secondary outlined, danger brown, same sizes across stages.
+- Kept on purpose: in-text links inside sentences (the FAQ's "On this page" list and question
+  links, "The FAQ has the details") stay body links; the selection bar's Clear and the chips'
+  Clear all stay action links. Retaken: the walkthrough's eight shots and the README's seven.
+
+### Automated
+
+`BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1349 passed** (was 1317).
+`scripts/qa/fuzz_ui.py --seeds 1-6 --actions 150`, waves 1 and 2: **12 of 12 sessions ok,
+0 FAIL** (two wave-2 sessions had one "harness" count each, a Playwright timeout in the fuzzer
+itself, stepped over). The fuzzer now checks per-folder sort (the other folders keep their
+state), folder order after every action, a new folder by key (not "last"), the one dialog's
+Style / Weight / Fill, and each caution mark's own tip. `build_faq_page.py --check`: clean.
+
 ## Follow-ups
 
 - **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`
