@@ -639,6 +639,8 @@ function scheduleTip(src, ms, viaKey = false) {
   TIP.showT = setTimeout(() => showTip(src, viaKey), ms);
 }
 const tipShown = () => !$("#tip").classList.contains("hidden");
+/** The left edge nearest x that keeps a w-wide popup 8px inside the window. */
+const leftInWindow = (x, w) => Math.max(8, Math.min(x, document.documentElement.clientWidth - w - 8));
 function showTip(src, viaKey = false) {
   if (!src.isConnected || DRAG || CONFIRM || BULK || POP || MOVE) return;
   // Still pointed at or focused (a scroll may have moved it from under the pointer).
@@ -663,9 +665,8 @@ function showTip(src, viaKey = false) {
   // Below the control, else above it; never over it (that would block the
   // click it is waiting for), and always inside the window.
   const r = src.getBoundingClientRect();
-  const vw = document.documentElement.clientWidth, vh = window.innerHeight;
-  const w = tip.offsetWidth, h = tip.offsetHeight;
-  const left = Math.max(8, Math.min(r.left, vw - w - 8));
+  const vh = window.innerHeight, h = tip.offsetHeight;
+  const left = leftInWindow(r.left, tip.offsetWidth);
   let top = r.bottom + 6;
   if (top + h > vh - 8) top = r.top - h - 6 >= 8 ? r.top - h - 6 : Math.max(8, vh - h - 8);
   tip.style.left = `${left}px`; tip.style.top = `${top}px`;
@@ -1725,11 +1726,11 @@ function openMoveTo() {
   };
   p.classList.remove("hidden");
   const r = $("#more-btn").getBoundingClientRect();
-  const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+  const vh = window.innerHeight;
   const top = Math.min(r.bottom + 6, vh - 160);
   p.style.top = `${top}px`;
   p.style.maxHeight = `${vh - top - 12}px`;
-  p.style.left = `${Math.max(8, Math.min(r.left, vw - p.offsetWidth - 8))}px`;
+  p.style.left = `${leftInWindow(r.left, p.offsetWidth)}px`;
   const first = p.querySelector(".move-opt:not([disabled])");
   first.focus({ preventScroll: true });
 }
