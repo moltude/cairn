@@ -627,6 +627,18 @@ is still waypoints, then lines, then areas. Unknown uids or keys, an empty list 
 targets raise ValueError and change nothing. "Unorganized" is a folder like any other: it can
 be renamed, emptied (and so removed) and moved into.
 
+**Round 4 (2026-10-23): an empty folder up front (UI-32).**
+- `create_folder(name=None)` → `move_items`' success shape with `"created": true, "moved": 0`:
+  an empty folder at the end, named `default_folder_name()` unless a name is given; a taken
+  name gives the duplicate report with nothing changed; an empty name raises.
+- `remove_empty_folder(key)` → `{"ok": true, "removed": [key], "folders": layout}`; a folder
+  with items, or an unknown key, raises ValueError and changes nothing.
+- So the rule above becomes: a folder a move or merge EMPTIES is removed; one made empty, or
+  loaded empty, stays until then (or until `remove_empty_folder`).
+- `export_zip` numbers only folders with items: an empty folder writes nothing and takes no
+  `NN_` number (the width counts numbered folders), so the ones after it close up. A folder
+  whose items are all excluded keeps its number, as before.
+
 **Round 2 (2026-10-23).**
 - Each group (and each layout entry) carries `unorganized`: true only for the items outside every
   folder of the file (the reader's `orphaned_features`, or a nameless folder), decided at load by
@@ -863,7 +875,8 @@ Status: decided 2026-10-23 (owner, from the DragToFolder, DragToNewFolder, NameN
 RenameMerge and KeyboardMove mockups). Engine: ENG-07. Release log: docs/testing/FOLDERS_RELEASE.md PR-C.
 
 Owner rules: an item is in exactly one folder; a folder that empties disappears; no drag to
-reorder folders, no item in two folders, no empty folder made up front.
+reorder folders, no item in two folders. (Round 4, 2026-10-23: an empty folder CAN be made up
+front, by clicking + New folder with nothing ticked; see "+ New folder" below.)
 
 - **Drag rows to a folder.** Press on a row and move 6px. If that row is ticked, every ticked
   row comes along, else just that row. A dark label follows the pointer: "Move 3 items" ("Move 1
@@ -891,8 +904,25 @@ reorder folders, no item in two folders, no empty folder made up front.
   away to keep; Esc keeps the default. Enter on an empty name says "A folder needs a name." and
   keeps the box open (leaving it keeps the default). A taken name opens the merge offer below;
   its Cancel returns to the name box with what was typed, to pick another; leaving the box with
-  that same name keeps the folder's default name and doesn't ask again. It is a drop target
-  only, not a button.
+  that same name keeps the folder's default name and doesn't ask again.
+  **Round 4 (2026-10-23, owner): it is also a button.** A click, or Enter / Space when it is
+  focused, moves the ticked rows into a new folder (exactly as dropping them there), or, with
+  nothing ticked, makes an EMPTY folder ("Made an empty folder."), ready as a drop target;
+  either way its name opens in the rail as above. An empty folder:
+  - stays, with count 0, until items are moved in; a move that later empties it removes it,
+    as before (bridge `create_folder`, ENG-07);
+  - shows in the list as its header only ("Empty"), so it can be renamed there, unless a
+    search, type or icon filter is on;
+  - has a small × in its rail entry, shown on hover and focus ("Remove empty folder"); after
+    it, focus goes to the next rail entry (bridge `remove_empty_folder`; a folder that loaded
+    empty gets the × too);
+  - is skipped at export: no box, no files and no number, so the folders after it are
+    numbered as if it weren't there (a folder whose items are all excluded still takes its
+    number, as before);
+  - has no items to merge, so a taken name for it says "“X” already exists." and keeps its
+    name, with no merge offer;
+  - counts once in Start over's changes when made (or a loaded empty one removed) since the
+    last export.
 - **Rename:** click a folder's name in its table header (the one primary control; the rail entry
   stays the folder filter). Enter or leaving the field saves, Esc cancels, an empty name is
   refused with "A folder needs a name." and the old one kept, the same name does nothing, another
@@ -931,7 +961,8 @@ reorder folders, no item in two folders, no empty folder made up front.
 - **Start over** counts changes since the last export (or, before any, since load): each item
   edited or moved since then once (moved back is not moved) and each folder of then whose name
   differs now. A merged-away or new folder's name isn't counted; its items are. Right after an
-  export it says "This clears the current map." (round 3).
+  export it says "This clears the current map." (round 3). A new folder that is still empty,
+  or an empty folder of then that was removed, counts once (round 4).
 - **Export** follows the bridge (names, numbering, per-folder zips). A per-folder download is now
   named after its `NN_` directory (`02_A_B.zip`, `002_A_B.zip` with 100+ folders), since "A/B"
   and "A_B" sanitize alike. Where two boxes would look alike, they say which is which (round 3): a
@@ -940,4 +971,58 @@ reorder folders, no item in two folders, no empty folder made up front.
   its chips with their `NN_` folder. Every other box is unchanged.
 
 Options not taken: HTML5 drag and drop (above); renaming from the rail entry (it is the filter);
-keeping the selection after a move; a click on "+ New folder" making an empty folder.
+keeping the selection after a move. (A click on "+ New folder" making an empty folder was not
+taken at first; the owner asked for it in round 4.)
+
+### UI-33 — Whole names and notes on hover; a note's preview is its first line
+Status: decided 2026-10-23 (owner, round 4 follow-ups). Release log: FOLDERS_RELEASE.md "Round 4".
+
+- A note's preview in the list is its first non-blank line, cut with an ellipsis (it used to
+  run every line together). "Use note as name" still joins every line.
+- Hovering a row name that is cut, or a note whose preview hides text (more lines, or a cut
+  line), shows the whole value in a styled popup, never the native `title` (it drops line
+  breaks on some platforms and can't be styled). It shows after ~0.45 s, below its control
+  (above it near the window's bottom), inside the window, never over the control; line breaks
+  are kept; the pointer can move onto it to select and copy (it has a short grace period); it
+  scrolls when long. It also shows on keyboard focus (not on a click's focus, nor while typing
+  in the name), and Esc closes it and does nothing else. A press anywhere else, a scroll, a
+  drag or a re-render closes it. The note editor and dragging work as before.
+- The same popup carries the caution mark's text (UI-34).
+
+### UI-34 — A caution mark for what won't carry over to onX
+Status: decided 2026-10-23 (owner, round 4).
+
+- Before export, a small caution triangle sits just before a row's note when onX will change
+  something on import, with one plain line each in its popup (UI-33, hover or focus; its
+  `aria-label` says the same):
+  - "onX keeps the first 512 bytes of this note; about N characters will be cut." The bytes
+    are measured on the note as written to the GPX (line endings made "\n", trimmed: the
+    measure instructions.txt uses), so the mark and the file agree.
+  - "onX will reset this area's fill to its default blue." UI-30's rule (an onX area, from an
+    onX export, whose fill isn't onX's default), except that a transparent or none fill is not
+    flagged (owner).
+- An excluded row has no mark (it isn't exported). The mark follows every edit: shortening a
+  note removes it.
+- The export screen's long-note warning names the items (up to 8, then "and N more").
+- **Open for the owner:** UI-30's load dialog still counts a "none" fill (it is a change: onX
+  draws its blue). Align it with the mark (drop none) or keep the two apart?
+
+### UI-35 — Sort by name; pin colour apart from line colour
+Status: decided 2026-10-23 (owner, round 4); the dialog awaits the owner's look at
+screenshots 5a / 5b.
+
+- **Sort.** Each folder's Name header is a button with up/down arrows: the map's order (the
+  default, nothing pre-sorted) → A to Z → Z to A → the map's order. One sort for every folder
+  at once, shown in every header and as `aria-sort`. Natural, numeric-aware and
+  case-insensitive (`Intl.Collator`, numeric, base sensitivity), so "01 - …", "02 - …",
+  "10 - …" (Dark Divide aid stations) come out in order; equal names keep the map's order. It
+  sorts across waypoints, lines and areas together. View only: export keeps the map's order.
+  Shift-click ranges and select-all follow the sorted rows; drag and Move to… are unchanged.
+  A new map starts unsorted. Option not taken: a sort per folder (one state is simpler to
+  read, and the owner's case is every folder at once).
+- **Icon & color… / Color….** The selection bar's button reads "Icon & color…" when waypoints
+  are ticked and "Color…" when only lines and areas are. In a mixed selection the dialog shows
+  a **Pin color** row (onX's 10) and a **Line color** row (11, with Fuchsia), each starting on
+  "Leave as is"; one pick no longer recolours both. One kind keeps a single "Color" row. The
+  chips that used to read "Reset" (colour and icon) now read "Leave as is", which is what they
+  do. The single-item popover is unchanged: one item, no coupling.

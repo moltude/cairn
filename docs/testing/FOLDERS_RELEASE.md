@@ -508,6 +508,85 @@ at 1280px.
 - `docs/screenshots/web-07-runbook.png` (README) still shows the PR-B screen; the
   `docs/design/mockups/project/Main.dc.html` mockup is the pre-edit diagram.
 
+## Round 4: edit-screen follow-ups (2026-10-23)
+
+Branch `feat/edit-followups` (on `feat/folders-release`, merged again at `39ba9f6` for the
+export screen v2 and instructions.txt). Five owner items. Design: DECISIONS.md UI-32 (round-4
+update), ENG-07 (round 4), UI-33, UI-34, UI-35.
+
+### What changed
+1. **+ New folder is a button** (UI-32). Click / Enter / Space: the ticked rows go into a new
+   folder, or with none ticked an empty folder is made; its name opens in the rail. An empty
+   folder stays (count 0, a header-only "Empty" section) until filled, has an × in the rail
+   (hover / focus), and is skipped at export with no box, files or number. Bridge:
+   `create_folder`, `remove_empty_folder`; `export_zip` numbers only folders with items.
+   Start over counts a new empty folder (or a removed loaded-empty one) once. A taken name for
+   an empty folder says "“X” already exists." (no "Move the 0 items" offer).
+2. **Whole names and notes on hover** (UI-33). Note preview = first non-blank line. A styled
+   tip (`#tip`, not `title`) for a cut name or a note whose preview hides text: ~0.45 s delay,
+   line breaks kept, in the window and off its control, selectable, on keyboard focus too, Esc
+   closes only it.
+3. **Sort by name** (UI-35). Arrow button in every Name header: map order → A–Z → Z–A; one
+   state for all folders, `aria-sort`, `Intl.Collator` numeric / case-insensitive; view only.
+4. **Caution mark** (UI-34) before a note: over 512 bytes (as written to the GPX, the
+   instructions.txt measure) or an onX area whose fill onX resets (not a none fill). The
+   export screen's long-note warning now names the items.
+5. **Pin vs line colour** (UI-35). "Color…" for lines / areas only; a mixed selection gets
+   Pin color (10) and Line color (11) rows, each "Leave as is".
+
+### Automated
+`BASE_URL=http://127.0.0.1:8792/ uv run pytest`: **1301 passed** (1265 after the export-screen
+merge + 36: 11 bridge test cases, 25 e2e).
+
+- `tests/test_web_bridge_folders.py`: create (default names, trimmed, taken → report, empty →
+  raises), an empty folder survives other moves and goes when filled then emptied, rename and
+  merge an empty folder, `remove_empty_folder` (empty only; unknown / non-empty raise and change
+  nothing; a loaded-empty folder too), export skips an empty folder with no number and leaves
+  every other file byte-identical, 95 empty folders don't widen `NN_`. The property test gains
+  create / remove-empty steps, and `_check_export` numbers non-empty folders.
+- `tests/web/test_web_app.py` (round 4 block): click / Enter / Space on + New folder, ticked
+  rows into it, a drop is not also a click, the × (hover, focus, keyboard, focus after, a
+  removed filtered folder), export numbering, Start over count, taken name on an empty folder;
+  first-line preview, tip on hover with line breaks, selection inside the tip, Esc, keyboard
+  focus vs click, inside the window above a bottom row, no tip for short text, drag still
+  starts, leaving across another row's name hides it; sort cycle and `aria-sort` on Dark
+  Divide ("01"…"11"), natural / case-insensitive, export byte-identical with a sort on,
+  shift-range / drag / Move to… with a sort on; caution text and byte counting, "é" counts 2,
+  exactly 512 none, trimmed as written, shortened in the editor → gone, keyboard focus,
+  excluded → none, the marked set == the export's `long_notes`, onX area fills (none / default
+  fill not flagged); Color… label, mixed dialog rows and colours applied apart, export colour.
+- Updated: the note-preview test ("first line"), the export warnings test (names listed).
+
+### Fuzzer
+`scripts/qa/fuzz_ui.py`, new actions `click_new_folder` (ticked or not; click, Enter, Space;
+then name it), `remove_empty_folder` (mouse or keyboard), `sort_toggle`, `hover` (names,
+notes, caution marks: the tip shows exactly when the preview hides text, with the whole
+value, inside the window; Esc closes it without touching the selection; it goes when the
+pointer leaves). Invariants: an empty folder is allowed only if it loaded empty or was made
+empty and never filled; every empty folder has its × and (unfiltered) its header-only
+section; export numbering skips empty folders.
+
+`--seeds 1-12 --actions 250`, waves 1 and 2: **24 of 24 clean**, 6,024 actions, 6,048
+invariant checks, 188 verified exports, 252 new-folder clicks, 146 removals, 141 sort toggles,
+167 hovers; 2 harness timeouts (stepped over, as in rounds 1–3). Earlier runs found:
+
+| # | Finding | Fix |
+|---|---------|-----|
+| F1 | Leaving a note's tip across another row's name (no tip of its own) cancelled the hide; the tip stayed up. | A delayed hide takes down only the tip that is up and isn't cancelled by another control; `test_leaving_across_another_rows_name_still_hides_the_tip`. |
+| H1 | (harness) The × check counted a new folder whose name box was still open (Enter on a blank name keeps it open, by design). | The invariant skips the folder being named. |
+| H2 | (harness) The sort action focused a hidden header in a collapsed folder. | Visible headers only. |
+
+### Screenshots (1440×900, local-only in `tests/output/followups/`, made by the e2e tests)
+`1a-empty-folder-made`, `1b-remove-empty-folder`, `2a-note-on-hover`, `2b-note-tip-above`,
+`3a-sorted-ascending`, `4a-long-note-caution`, `4b-area-fill-caution`,
+`5a-color-button-lines-only`, `5b-mixed-dialog-pin-and-line`.
+
+### For the owner
+- [ ] Approve the mixed dialog (5a, 5b) and "Leave as is" replacing "Reset".
+- [ ] UI-30's load dialog still counts a "none" area fill; the caution mark doesn't. Align?
+- [ ] An empty folder shows as a header-only "Empty" section in the list (for renaming).
+- [ ] One sort for every folder, across waypoints / lines / areas together.
+
 ## Follow-ups
 
 - **Keyed in-place rendering (review round 3, item 7).** `renderRail` and `renderFolders`
