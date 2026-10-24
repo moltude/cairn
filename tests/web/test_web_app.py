@@ -3481,13 +3481,13 @@ def test_new_folder_responds_to_enter_and_space(loaded: Page):
     nf.focus()
     page.keyboard.press("Enter")
     expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
-    page.keyboard.press("Escape")                     # keeps the default
-    assert _layout(page)[-1] == ("New folder", 0)
+    page.keyboard.press("Escape")                     # round 5: takes the empty folder back
+    assert "New folder" not in [n for n, c in _layout(page)]
     page.locator("#folder-facets .new-folder").focus()
     page.keyboard.press(" ")
-    expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder 2")
+    expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder")
     page.keyboard.press("Enter")
-    assert [n for n, c in _layout(page)[-2:]] == ["New folder", "New folder 2"]
+    assert _layout(page)[-1] == ("New folder", 0)
 
 
 def test_clicking_new_folder_with_rows_ticked_moves_them_into_it(loaded: Page):
@@ -4198,3 +4198,23 @@ def test_a_pasted_folder_name_over_100_characters_says_it_was_cut(loaded: Page):
     page.keyboard.insert_text("z" * 150)
     expect(page.locator(".folder-head .folder-name-in")).to_have_value("z" * 100)
     expect(page.locator("#status")).to_have_text("A folder name can be up to 100 characters.")
+
+
+def test_esc_on_a_just_made_empty_folder_takes_it_back(loaded: Page):
+    page = loaded
+    before = _layout(page)
+    page.locator("#folder-facets .new-folder").click()
+    assert len(_layout(page)) == len(before) + 1
+    page.keyboard.press("Escape")
+    assert _layout(page) == before
+    expect(page.locator("#folder-facets .folder-name-in")).to_have_count(0)
+    # Named and kept (Enter) stays; and Esc once rows are in keeps the default name.
+    page.locator("#folder-facets .new-folder").click()
+    page.keyboard.type("Keep me")
+    page.keyboard.press("Enter")
+    assert len(_layout(page)) == len(before) + 1
+    uid = _first_row(page, "Lost Trail Pass").get_attribute("data-uid")
+    page.evaluate("([u]) => moveTo([u], NEW_TARGET)", [uid])
+    page.keyboard.press("Escape")
+    lay = _layout(page)
+    assert len(lay) == len(before) + 2 and lay[-1] == ("New folder", 1)

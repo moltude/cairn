@@ -1496,7 +1496,8 @@ function newFolderClicked() {
     resyncAfterFailure();
     return;
   }
-  RENAME = { key: res.key, draft: res.folders.find(f => f.key === res.key).name, where: "rail" };
+  // fresh: Esc on its name takes the still-empty folder back (finishRename).
+  RENAME = { key: res.key, draft: res.folders.find(f => f.key === res.key).name, where: "rail", fresh: true };
   RAIL_FOLDED.delete("folders");
   refreshAfterEdit();
   setStatus("Made an empty folder.", "ready");
@@ -1576,9 +1577,10 @@ function wireFolderName(inp) {
 
 function finishRename(key, save, { defer = false } = {}) {
   if (!RENAME || RENAME.key !== key || !DATA) return;
-  const { draft, where, declined } = RENAME;
+  const { draft, where, declined, fresh } = RENAME;
   RENAME = null;
   const g = groupByKey(key);
+  if (!save && fresh && g && !g.items.length) { removeEmptyFolder(key); return; }
   let reopen = false, failed = false;
   // Left unchanged after Cancel on its merge offer: keep the name it has,
   // don't ask again (or Cancel, reopen, leave, ask... would never end).

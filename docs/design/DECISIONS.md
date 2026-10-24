@@ -981,6 +981,10 @@ Options not taken: HTML5 drag and drop (above); renaming from the rail entry (it
 keeping the selection after a move. (A click on "+ New folder" making an empty folder was not
 taken at first; the owner asked for it in round 4.)
 
+**Round 5 (C5, C4).** Esc on the name of a folder just made empty by + New folder takes that empty
+folder back (bridge `remove_empty_folder`); once rows are in it, Esc keeps the default name as
+before. A pasted name over 100 characters shows the same "up to 100 characters" status as typing.
+
 ### UI-33 — Whole names and notes on hover; a note's preview is its first line
 Status: decided 2026-10-23 (owner, round 4 follow-ups). Release log: FOLDERS_RELEASE.md "Round 4".
 
