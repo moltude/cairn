@@ -140,7 +140,7 @@ def test_a_split_file_lists_each_part_with_its_own_items(monkeypatch):
     monkeypatch.setattr(bridge, "write_gpx_waypoints_maybe_split",
                         functools.partial(bridge.write_gpx_waypoints_maybe_split, max_bytes=2000))
     zf = _export()
-    e = bridge._STATE["manifest"][0]
+    (e,) = [e for e in bridge._STATE["manifest"] if e["folder"] == "Unorganized"]
     parts = [f for f in e["files"] if f["kind"] == "waypoints"]
     assert len(parts) >= 2
     lines = _text(zf).split("\r\n")

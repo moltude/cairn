@@ -619,8 +619,8 @@ removed, and `removed` names exactly those; a folder that loaded empty (a CalTop
 members) or whose items are all excluded stays. Names are trimmed and must be non-empty (else ValueError);
 inner spacing and case are kept. Two folders may not share a name compared trimmed and
 case-insensitively (`casefold`); renaming a folder to its own name in another case is allowed.
-A clash is reported, never merged silently. New folders go at the end with a fresh key
-(`new:N`). Moving an item to the folder it is in does nothing. Moved items keep the map's
+A clash is reported, never merged silently. New folders get a fresh key (`new:N`) and take
+their sorted place (folder order, below; they went at the end until 2026-10-24). Moving an item to the folder it is in does nothing. Moved items keep the map's
 order (not the order given) and go to the end of their kind's run in the target, so a folder
 is still waypoints, then lines, then areas. Unknown uids or keys, an empty list or both/neither
 targets raise ValueError and change nothing. "Unorganized" is a folder like any other: it can
@@ -633,7 +633,7 @@ allows it); both load as they are, and export tells the twins apart by their `NN
 
 **Round 4 (2026-10-23): an empty folder up front (UI-32).**
 - `create_folder(name=None)` → `move_items`' success shape with `"created": true, "moved": 0`:
-  an empty folder at the end, named `default_folder_name()` unless a name is given; a taken
+  an empty folder (in its sorted place since 2026-10-24), named `default_folder_name()` unless a name is given; a taken
   name gives the duplicate report with nothing changed; an empty name raises.
 - `remove_empty_folder(key)` → `{"ok": true, "removed": [key], "folders": layout}`; a folder
   with items, or an unknown key, raises ValueError and changes nothing.
@@ -661,10 +661,22 @@ allows it); both load as they are, and export tells the twins apart by their `NN
 - `_safe` cuts to 80 UTF-8 bytes in one slice (the old char-at-a-time loop was quadratic); the
   result is the same.
 
-**Export numbering and the runbook.** Folders are sorted by size once, at load, and never
-re-sorted: a drag must not reshuffle the rail. Export's `NN_` prefix and the runbook's step
-number are each folder's current position (1-based) at export time, so removing a folder
-closes the gap and a new folder is numbered last. `NN_` is two digits, or as many as the folder
+**Folder order (owner feedback 2026-10-24; replaces "sorted by size once at load").** Folders
+are sorted by name: natural (digit runs compare as numbers, so "1 - …", "2 - …", "10 - …"),
+case-insensitive (`casefold`), stable (twins, "Camp" and "camp" from a file, keep their load
+order). The loose items (`unorganized`, by the flag, not by name) come last: they are not a
+real folder. Loading sorts; a new folder (`move_items` with `new_name`, `create_folder`) and a
+renamed one take their sorted place; a move or merge doesn't reorder (names don't change).
+Renamed away from "Unorganized" the loose items are an ordinary folder and sort by their new
+name; renamed back, they are last again. `bridge._sort_folders` is the one place the order is
+made, and the UI only follows the layout, so the table, the rail, the Move to… list and the
+export agree. The old order read as unnatural (Dark Divide: "3 - …, 2 - …, 1 - …").
+Re-pinned: the Bitterroots export pin (NN_ names and instructions.txt only; every GPX member's
+bytes unchanged) and the Dark Divide cairn_output folders (renumbered, same bytes).
+
+**Export numbering and the runbook.** Export's `NN_` prefix and the runbook's step
+number are each folder's current position (1-based, folder order) at export time, so removing
+a folder closes the gap. `NN_` is two digits, or as many as the folder
 count needs from 100 folders on (`001_` … `120_`), so a file list still sorts in order; maps
 under 100 folders are unchanged (Bitterroots pin). Each manifest entry names its directory
 (`dir`). The last export keeps the zip itself (not a second copy of every file);
@@ -683,7 +695,8 @@ The GPX's own folder name is the display name, unchanged. Two names with the sam
 Options not taken: uuid4 ids (nondeterministic, unhashable load JSON); keeping the old uid
 string as an opaque value (it would still read as a position and invite parsing); auto-merging
 on a duplicate name (the owner wants the merge offered, RenameMerge mockup); re-sorting folders
-by size after each move.
+by size after each move; sorting folders in the UI only (two collators could disagree with the
+export's numbers).
 
 ### UI-25 — Line style and weight editing
 Status: decided 2026-10-23 (from the line-style option canvas: 2C, and the Style / Weight

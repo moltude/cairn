@@ -802,7 +802,7 @@ def test_folder_primitives_run_in_pyodide_and_an_edit_follows_a_moved_item(fresh
     fresh_page.wait_for_timeout(300)
     assert res["ok"] and res["created"] and res["moved"] == 1
     zf = _export_zip(fresh_page)
-    n = len(res["folders"])
+    n = [f["name"] for f in res["folders"] if f["uids"]].index("Moved here") + 1   # by name
     moved = zf.read(f"{n:02d}_Moved_here/Moved_here_Waypoints.gpx").decode()
     assert moved.count("<wpt ") == 1 and "<name>Moved by uid</name>" in moved
     blob = "".join(zf.read(m).decode() for m in zf.namelist() if m.endswith(".gpx"))
@@ -1204,8 +1204,11 @@ def test_area_popover_sets_style_and_weight(loaded: Page):
     import html
     blocks = [b for b in re.findall(r"<rte>.*?</rte>", gpx, flags=re.S)
               if html.unescape(re.search(r"<name>(.*?)</name>", b, flags=re.S).group(1)) == after["name"]]
-    assert blocks and all("<onx:style>dash</onx:style>" in b and "<onx:weight>6.0</onx:weight>" in b
-                          and f"<onx:fill_color>{before['fill']}</onx:fill_color>" in b for b in blocks)
+    # Two Bitterroots areas share this name; exactly the edited one is dashed and thick.
+    assert sum("<onx:style>dash</onx:style>" in b and "<onx:weight>6.0</onx:weight>" in b
+               and "<onx:fill_color>" in b for b in blocks) == 1
+    # (The fill is written as onX's nearest swatch, so the exact value isn't
+    # the item's; the item's own fill is unchanged by the style edit, above.)
 
 
 def test_line_style_dialog_takes_areas_too(loaded: Page):
@@ -2154,7 +2157,7 @@ def test_several_files_become_one_folder_each_and_start_over_clears_them(csp_pag
     _load_files(page, [*ONX_PAIR, CALTOPO_GPX, rattlesnake])
     _keep_fills(page)  # onx_dialect's area has a non-default fill
     expect(page.locator(".folder h2")).to_have_text(
-        ["rattlesnake test waypoints", "bitterroots subet", "onx dialect"])
+        ["bitterroots subet", "onx dialect", "rattlesnake test waypoints"])   # by name
     expect(page.locator("#map-title")).to_have_text("onx dialect + 2 more")
     expect(page.locator("#map-label")).to_have_text("Map")
     # Start over goes back to an empty drop screen; it never adds (UI-12, UI-21).
@@ -2255,7 +2258,7 @@ def test_caltopo_kml_loads_with_its_folders(csp_page: Page):
     _load_files(page, [CALTOPO_SYN / "caltopo_synthetic.kml"])
     expect(page.locator("#map-label")).to_have_text("CalTopo map")
     expect(page.locator(".folder h2")).to_have_text(
-        ["Camps & Water #1", "Routes", "Areas", "Routes / Spur lines"])
+        ["Areas", "Camps & Water #1", "Routes", "Routes / Spur lines"])   # by name
     # The CalTopo symbol mapped to an onX icon, as it does from the GeoJSON.
     expect(_row(page, "Trailhead lot").locator(".icon-btn .icon-name")).to_have_text("Parking")
 
@@ -2324,7 +2327,21 @@ def _layout(page: Page) -> list:
         "JSON.parse(py.runPython('import json; json.dumps(bridge._layout())'))"
     )
     assert [[f["key"], f["name"], f["uids"]] for f in py] == ui
+    # Folder order (owner feedback 2026-10-24): by name, natural and any case,
+    # the loose items last; the rail lists them in the same order.
+    keys = [(bool(f["unorganized"]), _natural(f["name"])) for f in py]
+    assert keys == sorted(keys), [f["name"] for f in py]
+    rail = page.evaluate("[...document.querySelectorAll('#folder-facets [data-fk^=\"folder|\"]')]"
+                         ".map(e => e.dataset.fk.slice(7)).filter(k => k !== '\\u0000all')")
+    if not page.evaluate("!!DRAG"):
+        assert rail == [f["key"] for f in py], rail
     return [(name, len(uids)) for _key, name, uids in ui]
+
+
+def _natural(name: str) -> list:
+    """Folder order's name key, written independently of the bridge's."""
+    return [(0, int(c)) if c.isdecimal() else (1, c)
+            for c in re.findall(r"\d+|\D+", name.strip().casefold())]
 
 
 def _rail(page: Page, name: str):
@@ -2457,20 +2474,20 @@ def test_drag_onto_new_folder_then_name_it(loaded: Page):
     page.keyboard.press("Enter")
     expect(_rail(page, "Camps")).to_be_focused()
     lay = _layout(page)
-    assert lay[-1] == ("Camps", 3) and dict(lay)["Lost Trail Pass"] == 28
+    assert ("Camps", 3) in lay and dict(lay)["Lost Trail Pass"] == 28
     expect(_section(page, "Camps").locator("tbody tr")).to_have_count(3)
 
     # A second one: "New folder" is free again, so it is taken; Esc keeps it.
     _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
     expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder")
     page.keyboard.press("Escape")
-    assert _layout(page)[-1] == ("New folder", 1)
+    assert ("New folder", 1) in _layout(page)
     # The default is never a name that's taken: the third is "New folder 2".
     _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
     expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder 2")
     page.locator("#filter").click()   # leaving the field keeps the name
     expect(page.locator("#folder-facets .folder-name-in")).to_have_count(0)
-    assert _layout(page)[-1] == ("New folder 2", 1)
+    assert ("New folder 2", 1) in _layout(page)
 
 
 def test_drag_onto_its_own_folder_or_nowhere_does_nothing(loaded: Page):
@@ -2589,7 +2606,7 @@ def test_rename_onto_a_taken_name_offers_to_merge(loaded: Page):
     lay = _layout(page)
     names = [n for n, _ in lay]
     assert "Lost Trail Pass" not in names
-    assert names.index("North Roots") == 1 and dict(lay)["North Roots"] == 53
+    assert names.index("North Roots") == 4 and dict(lay)["North Roots"] == 53
     expect(page.locator("#status")).to_have_text("Moved 31 items to North Roots.")
     expect(_rail(page, "Lost Trail Pass")).to_have_count(0)
     assert page.evaluate("DATA.totals.folders") == 9
@@ -2617,7 +2634,7 @@ def test_keyboard_move_to_end_to_end(loaded: Page):
     expect(here).to_be_disabled()
     expect(here).to_contain_text("here now")
     expect(pop.locator(".move-opt").last).to_have_text("+ New folder…")
-    expect(pop.locator(".move-opt").first).to_be_focused()   # Unorganized
+    expect(pop.locator(".move-opt").first).to_be_focused()   # Blodgett (folders by name)
 
     # Esc closes it and gives focus back to More.
     page.keyboard.press("Escape")
@@ -2625,16 +2642,21 @@ def test_keyboard_move_to_end_to_end(loaded: Page):
     expect(page.locator("#more-btn")).to_be_focused()
     expect(page.locator("#selcount")).to_have_text("2 selected")
 
-    # Arrow keys skip "here now": Down from Unorganized lands on North Roots.
+    # Arrow keys skip "here now": Down from Lost Horse Canyon lands on Mill
+    # Creek Canyon (Blodgett, Central roots, Lost Horse Canyon, [Lost Trail Pass], …).
     page.keyboard.press("Enter")
     page.keyboard.press("Enter")
+    for _ in range(3):
+        page.keyboard.press("ArrowDown")
+    expect(pop.locator(".move-opt", has_text="Mill Creek Canyon")).to_be_focused()
     page.keyboard.press("ArrowDown")
     expect(pop.locator(".move-opt", has_text="North Roots")).to_be_focused()
-    page.keyboard.press("ArrowUp")
+    page.keyboard.press("Home")
     page.keyboard.press("ArrowUp")          # wraps to the end
     expect(pop.locator(".move-new")).to_be_focused()
     page.keyboard.press("Home")
-    page.keyboard.press("ArrowDown")
+    for _ in range(4):
+        page.keyboard.press("ArrowDown")
     page.keyboard.press("Enter")
     expect(pop).to_be_hidden()
     expect(page.locator("#status")).to_have_text("Moved 2 items to North Roots.")
@@ -2659,7 +2681,7 @@ def test_keyboard_move_to_end_to_end(loaded: Page):
     page.keyboard.press("Enter")
     expect(_rail(page, "Yurts")).to_be_focused()
     lay = _layout(page)
-    assert lay[-1] == ("Yurts", 2) and dict(lay)["North Roots"] == 22
+    assert ("Yurts", 2) in lay and dict(lay)["North Roots"] == 22
 
 
 def test_move_to_opens_the_folded_folders_section_for_the_new_name(loaded: Page):
@@ -2672,7 +2694,7 @@ def test_move_to_opens_the_folded_folders_section_for_the_new_name(loaded: Page)
     page.click("#move-pop .move-new")
     expect(page.locator("#folder-facets .folder-name-in")).to_be_focused()
     page.keyboard.press("Enter")
-    assert _layout(page)[-1] == ("New folder", 1)
+    assert ("New folder", 1) in _layout(page)
 
 
 def test_an_emptied_folder_disappears_with_its_filter(loaded: Page):
@@ -2754,9 +2776,13 @@ def test_export_after_moves_and_renames(loaded: Page):
     manifest = page.evaluate("MANIFEST")
     assert [e["folder"] for e in manifest] == [n for n, _ in lay]
     assert [e["count"] for e in manifest] == [c for _, c in lay]
-    assert manifest[-1]["folder"] == "Ski lines" and manifest[-1]["count"] == 4
-    expect(boxes.last.locator("h2")).to_have_text("Ski lines")
-    expect(boxes.last.locator(".rb-file")).to_have_count(1)
+    # Folders by name, the loose items last: the new and renamed ones take their place.
+    assert [e["folder"] for e in manifest] == [
+        "Blodgett / Big Creek", "Central roots", "Lost Horse Canyon", "Lost Trail Pass",
+        "North Roots", "Paddling", "Sheafman ridge", "Ski lines", "Trapper area", "Unorganized"]
+    assert manifest[7]["folder"] == "Ski lines" and manifest[7]["count"] == 4
+    expect(boxes.nth(7).locator("h2")).to_have_text("Ski lines")
+    expect(boxes.nth(7).locator(".rb-file")).to_have_count(1)
     big = boxes.filter(has_text="Blodgett / Big Creek")
     expect(big.locator(".rb-dl")).to_have_attribute("aria-label", "Download Blodgett / Big Creek")
     for i, e in enumerate(manifest):
@@ -2767,14 +2793,14 @@ def test_export_after_moves_and_renames(loaded: Page):
         assert dl.value.suggested_filename == f"{nn}.zip"
         names = zipfile.ZipFile(dl.value.path()).namelist()
         assert names == [f["path"] for f in e["files"]] and all(n.startswith(nn + "/") for n in names)
-    assert manifest[5]["safe"] == "Blodgett_Big_Creek"
-    assert manifest[-1]["files"][0]["path"].startswith("10_Ski_lines/Ski_lines_")
+    assert manifest[0]["safe"] == "Blodgett_Big_Creek"
+    assert manifest[7]["files"][0]["path"].startswith("08_Ski_lines/Ski_lines_")
     # Back, move more, export again: the screen follows.
     page.click("#back")
     _drag(page, _first_row(page, "Ski lines").locator(".note-btn"), _rail(page, "Paddling"))
     _done(page)
     manifest = page.evaluate("MANIFEST")
-    assert manifest[-1]["count"] == 3
+    assert manifest[7]["count"] == 3
     assert [e["count"] for e in manifest] == [c for _, c in _layout(page)]
 
 
@@ -3137,7 +3163,7 @@ def test_cancel_on_a_new_folders_taken_name_reopens_its_name(loaded: Page):
     page.click("#export")
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator("#confirm")).to_be_hidden()
-    assert _layout(page)[-1] == ("New folder", 1)
+    assert ("New folder", 1) in _layout(page)
     page.click("#back")
     _drag(page, _first_row(page, "New folder").locator(".note-btn"), page.locator(".new-folder"))
     page.keyboard.type("Blodgett")
@@ -3147,14 +3173,14 @@ def test_cancel_on_a_new_folders_taken_name_reopens_its_name(loaded: Page):
     page.keyboard.press("ControlOrMeta+a")
     page.keyboard.type("Kayaks")
     page.keyboard.press("Enter")
-    assert _layout(page)[-1] == ("Kayaks", 1)
+    assert ("Kayaks", 1) in _layout(page)
     # A header rename's Cancel still just keeps the old name.
     _section(page, "Kayaks").locator(".folder-name").click()
     page.keyboard.type("Blodgett")
     page.keyboard.press("Enter")
     page.keyboard.press("Escape")
     expect(page.locator(".folder-name-in")).to_have_count(0)
-    assert _layout(page)[-1] == ("Kayaks", 1)
+    assert ("Kayaks", 1) in _layout(page)
 
 
 def test_an_empty_name_for_a_new_folder_keeps_its_box_open(loaded: Page):
@@ -3169,7 +3195,7 @@ def test_an_empty_name_for_a_new_folder_keeps_its_box_open(loaded: Page):
     expect(inp).to_have_value("New folder")
     page.keyboard.type("Rafts")
     page.keyboard.press("Enter")
-    assert _layout(page)[-1] == ("Rafts", 1)
+    assert ("Rafts", 1) in _layout(page)
     # H3: the error doesn't outlive the next success.
     expect(page.locator("#status")).to_have_text("")
 
@@ -3484,7 +3510,7 @@ def test_clicking_new_folder_with_nothing_ticked_makes_an_empty_folder(loaded: P
     page.keyboard.type("Water")
     page.keyboard.press("Enter")
     lay = _layout(page)
-    assert lay[:-1] == before and lay[-1] == ("Water", 0)
+    assert [x for x in lay if x != ("Water", 0)] == before and ("Water", 0) in lay
     # In the rail with count 0; in the list as a header only, renamable there.
     expect(_rail(page, "Water").locator(".facet-count")).to_have_text("0")
     sec = page.locator("section.folder.empty-folder")
@@ -3518,7 +3544,7 @@ def test_new_folder_responds_to_enter_and_space(loaded: Page):
     page.keyboard.press(" ")
     expect(page.locator("#folder-facets .folder-name-in")).to_have_value("New folder")
     page.keyboard.press("Enter")
-    assert _layout(page)[-1] == ("New folder", 0)
+    assert ("New folder", 0) in _layout(page)
 
 
 def test_clicking_new_folder_with_rows_ticked_moves_them_into_it(loaded: Page):
@@ -3533,7 +3559,7 @@ def test_clicking_new_folder_with_rows_ticked_moves_them_into_it(loaded: Page):
     page.keyboard.type("Picked")
     page.keyboard.press("Enter")
     lay = _layout(page)
-    assert lay[-1] == ("Picked", 2) and dict(lay)["Lost Trail Pass"] == 29
+    assert ("Picked", 2) in lay and dict(lay)["Lost Trail Pass"] == 29
     assert page.evaluate("SEL.size") == 0
     # A drop on + New folder is still a drop, not also a click (no second folder).
     _drag(page, _first_row(page, "Paddling").locator(".note-btn"), page.locator(".new-folder"))
@@ -3562,13 +3588,13 @@ def test_an_empty_folder_can_be_removed_with_its_x(loaded: Page):
     # Folders with items have no ×.
     expect(page.locator("#folder-facets .facet-x")).to_have_count(1)
     # Keyboard: Tab from the entry reaches the ×; Enter removes; focus lands
-    # on + New folder (the next entry).
+    # on the next entry: "New folder" sorts before North Roots.
     _rail(page, "New folder").focus()
     page.keyboard.press("Tab")
     expect(x).to_be_focused()
     page.keyboard.press("Enter")
     expect(page.locator("#status")).to_have_text("Removed the empty folder “New folder”.")
-    expect(page.locator("#folder-facets .new-folder")).to_be_focused()
+    expect(_rail(page, "North Roots")).to_be_focused()
     assert len(_layout(page)) == 10
     expect(page.locator("section.folder.empty-folder")).to_have_count(0)
     # A removed folder filter goes back to All.
@@ -3592,8 +3618,11 @@ def test_an_empty_folder_is_not_exported_and_numbers_close_up(loaded: Page):
     page.keyboard.press("Enter")
     zf = _export_zip(page)
     manifest = page.evaluate("MANIFEST")
-    assert [e["folder"] for e in manifest][-1] == "Boat" and len(manifest) == 11
-    assert manifest[-1]["dir"] == "11_Boat"
+    # "Boat" sorts after Blodgett; the empty "Nothing yet" (between North Roots
+    # and Paddling) takes no number, so the numbers close up around it.
+    assert [e["folder"] for e in manifest][1] == "Boat" and len(manifest) == 11
+    assert manifest[1]["dir"] == "02_Boat"
+    assert [e["dir"][:2] for e in manifest] == [f"{k:02d}" for k in range(1, 12)]
     assert not [n for n in zf.namelist() if "Nothing" in n]
     boxes = page.locator("#runbook .rb-step .rb-name")
     expect(boxes).to_have_count(11)
@@ -3619,7 +3648,7 @@ def test_an_empty_folders_taken_name_is_refused_without_a_merge_offer(loaded: Pa
     page.keyboard.press("Enter")
     expect(page.locator("#confirm")).to_be_hidden()
     expect(page.locator("#status")).to_have_text("“Paddling” already exists.")
-    assert _layout(page)[-1] == ("New folder", 0)
+    assert ("New folder", 0) in _layout(page)
     # The same from its header.
     page.locator("section.folder.empty-folder .folder-name").click()
     page.keyboard.press("ControlOrMeta+a")
@@ -3627,7 +3656,7 @@ def test_an_empty_folders_taken_name_is_refused_without_a_merge_offer(loaded: Pa
     page.keyboard.press("Enter")
     expect(page.locator("#confirm")).to_be_hidden()
     expect(page.locator("#status")).to_have_text("“Blodgett” already exists.")
-    assert _layout(page)[-1] == ("New folder", 0)
+    assert ("New folder", 0) in _layout(page)
 
 
 # --- 2. Full names and notes on hover ----------------------------------------
@@ -4190,6 +4219,43 @@ def test_the_rails_last_row_clears_the_footer_when_scrolled_to_the_end(loaded: P
     assert gap >= 0, gap
 
 
+def test_folders_are_in_name_order_in_the_list_and_the_rail_with_unorganized_last(fresh_page: Page):
+    """Owner feedback 2026-10-24: folders by name, natural and any case
+    ("1 - …" before "2 - …" and "10 - …"), the same in the list, the rail and
+    the export's numbers; the loose items last; a new or renamed folder takes
+    its sorted place."""
+    page = _dark_divide(fresh_page)
+    _wide(page)
+    names = ["1 - Course GPX Dark Divide 100 Miler", AID, "3 - Course Segments Dark Divide 100 Miler"]
+    expect(page.locator(".folder h2")).to_have_text(names)
+    expect(page.locator("#folder-facets .facet-btn .facet-name")).to_have_text(["All", *names])
+    _shot(page, "fb-6a-dark-divide-folders-in-order")
+    assert [e["folder"] for e in (_export_zip(page), page.evaluate("MANIFEST"))[1]] == names
+    page.click("#back")
+    # A new folder named "10 - Finish" goes after "3 - …"; renamed "0 - Start", first.
+    page.locator("#folder-facets .new-folder").click()
+    page.keyboard.type("10 - Finish")
+    page.keyboard.press("Enter")
+    expect(page.locator("#folder-facets .facet-btn .facet-name")).to_have_text(["All", *names, "10 - Finish"])
+    _layout(page)
+    _section(page, AID).locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("0 - Start")
+    page.keyboard.press("Enter")
+    expect(page.locator(".folder h2").first).to_have_text("0 - Start")
+    _layout(page)
+
+
+def test_bitterroots_folders_by_name_with_unorganized_last(loaded: Page):
+    page = loaded
+    _wide(page)
+    order = ["Blodgett", "Central roots", "Lost Horse Canyon", "Lost Trail Pass", "Mill Creek Canyon",
+             "North Roots", "Paddling", "Sheafman ridge", "Trapper area", "Unorganized"]
+    assert [n for n, _ in _layout(page)] == order
+    expect(page.locator("#folders .folder-name")).to_have_text(order)
+    _shot(page, "fb-6b-bitterroots-folders-in-order")
+
+
 def test_the_note_header_lines_up_with_the_note_text_with_or_without_a_caution(loaded: Page):
     """Owner feedback 2026-10-24: the NOTE header's text starts where every
     row's note text starts, with a caution mark, without one, and excluded."""
@@ -4271,7 +4337,7 @@ def test_esc_on_a_just_made_empty_folder_takes_it_back(loaded: Page):
     page.evaluate("([u]) => moveTo([u], NEW_TARGET)", [uid])
     page.keyboard.press("Escape")
     lay = _layout(page)
-    assert len(lay) == len(before) + 2 and lay[-1] == ("New folder", 1)
+    assert len(lay) == len(before) + 2 and ("New folder", 1) in lay
 
 
 def test_the_header_rename_box_fills_the_header_and_esc_leaves_a_tight_ring(loaded: Page):

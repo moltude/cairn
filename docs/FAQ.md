@@ -152,7 +152,7 @@ Per project docs (Aug 2026), from reading onX's Web Map code: when you tick "Imp
 So Cairn gives you one numbered import per folder. On the onX Web Map, under My Content → Import, add all of one folder's files at once, tick "Import map data to a new folder", click Import, and rename the new folder. `instructions.txt` says the same and gives the name for each folder.
 
 Some details:
-- Folders are numbered in the order of the Folders list: largest first as loaded, then any you made, in the order you made them.
+- Folders are listed and numbered by name, with numbers in order ("1 - …" before "2 - …" and "10 - …"), whatever the case. A new or renamed folder takes its place in that order. "Unorganized" (the items that weren't in any folder) always comes last.
 - Items that weren't in any CalTopo folder go in a folder called "Unorganized". You can rename it.
 - If your map has no folders at all, everything goes into one folder named after your file.
 - `instructions.txt` names every item in each file, so you can check a folder in onX against it. If a folder comes up short, delete it in onX and redo just that import.

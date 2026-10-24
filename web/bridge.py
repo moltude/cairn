@@ -440,10 +440,11 @@ def load_files(files_json: str) -> str:
             doc.folders[fkey] = fdata
             groups.append(_group(fkey, okey, fdata, origin, resolver, cfg, catalog, features))
 
-    groups.sort(key=lambda g: -len(g["items"]))
     _STATE.update(doc=doc, groups=groups, features=features, config=cfg,
                   edited=set(), color_edited=set(), next_folder=1,
                   loose={g["key"] for g in groups if g["unorganized"]})
+    _sort_folders()
+    groups = _STATE["groups"]
     # The last export belonged to the previous map: forget it, or
     # export_folder_zip(n) would hand out that map's files for this one.
     for k in _EXPORT_KEYS:
@@ -689,14 +690,32 @@ def apply_edits(edits_json: str) -> str:
 # with no items is removed (one made empty by create_folder, or loaded empty,
 # stays until then, or until remove_empty_folder); folder names are trimmed
 # and must be non-empty; two folders may not share a name compared trimmed
-# and case-insensitively (a clash is REPORTED, never merged silently); new
-# folders go at the end; moving an item to the folder it is in does nothing;
-# an unknown uid or key raises ValueError and changes nothing. Folder order is
-# never re-sorted after load, so export's NN_ numbers are the folders' current
-# positions.
+# and case-insensitively (a clash is REPORTED, never merged silently); moving
+# an item to the folder it is in does nothing; an unknown uid or key raises
+# ValueError and changes nothing.
+#
+# Folder order (owner feedback 2026-10-24, ENG-07): folders are sorted by name,
+# natural (numbers by value, so "2 - …" before "10 - …") and case-insensitive,
+# with the loose items ("Unorganized", by its flag, not its name) last. Loading
+# sorts them; a new folder and a renamed one take their sorted place. Twins
+# (the same name) keep their load order. The screen and the export's NN_
+# numbers both follow this one order.
 
 _KIND_ORDER = {"waypoints": 0, "tracks": 1, "shapes": 2}
 DEFAULT_FOLDER_NAME = "New folder"
+
+
+def _folder_order_key(g: dict) -> tuple:
+    """Sort key for a folder: the loose items last, then the name, natural and
+    case-insensitive. re.split with a group alternates text and digit runs, so
+    every position compares like with like (str with str, int with int)."""
+    parts = re.split(r"(\d+)", g["name"].strip().casefold())
+    return (bool(g["unorganized"]), [int(p) if k % 2 else p for k, p in enumerate(parts)])
+
+
+def _sort_folders() -> None:
+    """Put _STATE["groups"] in folder order (stable: twins keep their order)."""
+    _STATE["groups"].sort(key=_folder_order_key)
 
 
 def _folder(key: str) -> dict:
@@ -749,7 +768,7 @@ def layout_json() -> str:
 
 
 def _new_folder(name: str) -> dict:
-    """A new, empty folder at the end, under a key no folder has had."""
+    """A new, empty folder in its sorted place, under a key no folder has had."""
     taken = {g["key"] for g in _STATE["groups"]} | set(_STATE["doc"].folders)
     while True:
         key = f"new:{_STATE['next_folder']}"
@@ -758,6 +777,7 @@ def _new_folder(name: str) -> dict:
             break
     g = {"key": key, "name": name, "safe": _safe(name), "unorganized": False, "items": []}
     _STATE["groups"].append(g)
+    _sort_folders()
     return g
 
 
@@ -802,13 +822,14 @@ def rename_folder(key: str, name: str) -> str:
     # name" by the folder-name rule: "unorganized" is the same name.
     g["unorganized"] = (key in _STATE["loose"]
                         and name.casefold() == UNORGANIZED_FOLDER_NAME.casefold())
+    _sort_folders()   # a renamed folder takes its sorted place
     return json.dumps({"ok": True, "key": key, "name": name, "safe": g["safe"],
                        "unorganized": g["unorganized"], "folders": _layout()})
 
 
 def move_items(uids_json: str, target_key: str | None = None, new_name: str | None = None) -> str:
     """Move items to an existing folder (target_key) or to a new one (new_name,
-    created at the end). Give exactly one of the two. Returns JSON:
+    created in its sorted place). Give exactly one of the two. Returns JSON:
 
     {"ok": true, "key": <the target folder's key>, "created": bool, "moved": n,
      "removed": [keys of folders this emptied], "folders": layout}
@@ -858,7 +879,7 @@ def move_to_new_folder(uids_json: str) -> str:
 
 
 def create_folder(name: str | None = None) -> str:
-    """An EMPTY new folder, at the end: a click on + New folder with nothing
+    """An EMPTY new folder, in its sorted place: a click on + New folder with nothing
     ticked. `name` defaults to default_folder_name(). Returns
     move_items' success JSON with "created": true and "moved": 0, or the
     duplicate report when the name is taken (nothing changed). An empty name

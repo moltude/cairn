@@ -127,9 +127,42 @@ def _check_export(zf: zipfile.ZipFile) -> None:
             assert any(e["n"] == n for e in manifest), g["name"]
 
 
+# Bitterroots' folders in folder order (owner feedback 2026-10-24): by name,
+# natural and case-insensitive, the loose items last.
+BITTERROOTS_ORDER = ["Blodgett", "Central roots", "Lost Horse Canyon", "Lost Trail Pass",
+                     "Mill Creek Canyon", "North Roots", "Paddling", "Sheafman ridge",
+                     "Trapper area", "Unorganized"]
+
+
+def _num(name: str) -> int:
+    """The folder's export number: its place among the folders that have items."""
+    return [g["name"] for g in _groups() if g["items"]].index(name) + 1
+
+
+def _by_key(key: str) -> dict:
+    (g,) = [g for g in _groups() if g["key"] == key]
+    return g
+
+
+def _natural(name: str) -> list:
+    """The folder order's name key, written out independently of the bridge's."""
+    out = []
+    for chunk in re.findall(r"\d+|\D+", name.strip().casefold()):
+        out.append((0, int(chunk)) if chunk.isdecimal() else (1, chunk))   # digits first
+    return out
+
+
+def _in_folder_order(groups) -> bool:
+    """Owner feedback 2026-10-24: folders by name (natural, any case), the
+    loose items (Unorganized, by flag) last."""
+    keys = [(bool(g["unorganized"]), _natural(g["name"])) for g in groups]
+    return keys == sorted(keys)
+
+
 def _check_invariants(all_uids: set, empty_ok: set = frozenset()) -> None:
     """empty_ok: keys of folders made empty with create_folder and not filled
     since (round 4); every other folder has items."""
+    assert _in_folder_order(_groups()), [g["name"] for g in _groups()]
     seen = [i["uid"] for g in _groups() for i in g["items"]]
     assert len(seen) == len(set(seen)), "an item is in two folders"
     assert set(seen) == all_uids, "an item was lost or invented"
@@ -189,13 +222,14 @@ def test_rename_trims_renames_and_exports_under_the_new_safe_name():
                    "safe": bridge._safe("Lost Trail #2 & Co."), "unorganized": False}
     assert [(f["key"], f["name"], f["safe"], f["uids"]) for f in folders] == _layout()
     assert res["safe"] == "Lost_Trail_2_Co"
-    assert _layout()[1][:3] == (key, "Lost Trail #2 & Co.", "Lost_Trail_2_Co")
+    # It takes its sorted place: after Lost Horse Canyon, as Lost Trail Pass was.
+    assert _layout()[3][:3] == (key, "Lost Trail #2 & Co.", "Lost_Trail_2_Co")
     zf = _export()
     names = zf.namelist()
-    assert "02_Lost_Trail_2_Co/Lost_Trail_2_Co_Waypoints.gpx" in names
+    assert "04_Lost_Trail_2_Co/Lost_Trail_2_Co_Waypoints.gpx" in names
     assert not [n for n in names if "Lost_Trail_Pass" in n]
     assert "<name>Lost Trail #2 &amp; Co.</name>" in zf.read(
-        "02_Lost_Trail_2_Co/Lost_Trail_2_Co_Tracks.gpx").decode()
+        "04_Lost_Trail_2_Co/Lost_Trail_2_Co_Tracks.gpx").decode()
     _check_export(zf)
 
 
@@ -234,8 +268,10 @@ def test_unorganized_is_renamable():
     _load(BITTERROOTS)
     key = _key("Unorganized")
     assert json.loads(bridge.rename_folder(key, "Misc"))["ok"]
+    # No longer the loose items: an ordinary folder in its sorted place (not last).
+    assert [g["name"] for g in _groups()][4:7] == ["Mill Creek Canyon", "Misc", "North Roots"]
     zf = _export()
-    assert "01_Misc/Misc_Waypoints.gpx" in zf.namelist()
+    assert "06_Misc/Misc_Waypoints.gpx" in zf.namelist()
     assert not [n for n in zf.namelist() if "Unorganized" in n]
     _check_export(zf)
 
@@ -261,22 +297,24 @@ def test_move_into_an_existing_folder_goes_to_the_end_of_each_kind():
     n_trk = len([u for u in old_dst if _item(u)["kind"] == "tracks"])
     assert got[n_wp + 2 + n_trk] == trk
     assert len(_group("Lost Trail Pass")["items"]) == 28 and len(got) == 25
-    assert [g["key"] for g in _groups()][:3] == ["orphaned_features", src, dst]
+    # Folder order is by name and unchanged by the move.
+    assert [g["name"] for g in _groups()] == BITTERROOTS_ORDER
+    assert [g["key"] for g in _groups()][-1] == "orphaned_features"
     _check_invariants(all_uids)
 
 
-def test_move_into_a_new_folder_creates_it_at_the_end():
+def test_move_into_a_new_folder_creates_it_in_its_sorted_place():
     data = _load(BITTERROOTS)
     all_uids = {i["uid"] for g in data["groups"] for i in g["items"]}
     uids = _uids("Trapper area")[:3]
     res = _move(uids, name="  Camps ")
     assert res["created"] is True and res["moved"] == 3
-    assert _groups()[-1]["key"] == res["key"] and _groups()[-1]["name"] == "Camps"
+    assert _groups()[1]["key"] == res["key"] and _groups()[1]["name"] == "Camps"
     assert _uids("Camps") == uids
     assert res["key"] not in {g["key"] for g in data["groups"]}
     _check_invariants(all_uids)
     zf = _export()
-    assert "11_Camps/Camps_Waypoints.gpx" in zf.namelist()
+    assert "02_Camps/Camps_Waypoints.gpx" in zf.namelist()
     _check_export(zf)
 
 
@@ -284,7 +322,7 @@ def test_a_second_new_folder_gets_its_own_key():
     _load(BITTERROOTS)
     a = _move(_uids("Blodgett")[:1], name="A")["key"]
     b = _move(_uids("Blodgett")[:1], name="B")["key"]
-    assert a != b and [g["name"] for g in _groups()][-2:] == ["A", "B"]
+    assert a != b and [g["name"] for g in _groups()][:3] == ["A", "B", "Blodgett"]
 
 
 def test_a_new_folder_named_like_an_existing_one_is_reported():
@@ -337,8 +375,10 @@ def test_emptying_a_middle_folder_closes_the_gap_in_numbering():
     _load(BITTERROOTS)
     _move(_uids("North Roots"), _key("Paddling"))
     zf = _export()
-    assert "03_Trapper_area/Trapper_area_Waypoints.gpx" in zf.namelist()
-    assert "08_Paddling/Paddling_Areas.gpx" in zf.namelist()
+    # North Roots (06) is gone: everything after it moves up one.
+    assert "05_Mill_Creek_Canyon/Mill_Creek_Canyon_Waypoints.gpx" in zf.namelist()
+    assert "06_Paddling/Paddling_Areas.gpx" in zf.namelist()
+    assert "08_Trapper_area/Trapper_area_Waypoints.gpx" in zf.namelist()
     _check_export(zf)
 
 
@@ -391,7 +431,7 @@ def test_move_mixed_kinds_keeps_each_kind_in_its_run():
     assert kinds == ["waypoints"] * 9 + ["tracks"] * 14 + ["shapes"]
     _check_invariants(all_uids)
     zf = _export()
-    assert "04_Trapper_area/Trapper_area_Areas.gpx" in zf.namelist()
+    assert "09_Trapper_area/Trapper_area_Areas.gpx" in zf.namelist()
     _check_export(zf)
 
 
@@ -417,11 +457,12 @@ def test_moving_out_of_unorganized_into_a_new_folder():
     all_uids = {i["uid"] for g in data["groups"] for i in g["items"]}
     unorg = _key("Unorganized")
     res = _move(_uids("Unorganized"), name="Sorted")
-    assert res["removed"] == [unorg] and _groups()[-1]["name"] == "Sorted"
+    assert res["removed"] == [unorg] and [g["name"] for g in _groups()][-3:] == [
+        "Sheafman ridge", "Sorted", "Trapper area"]
     _check_invariants(all_uids)
     zf = _export()
-    assert "01_Lost_Trail_Pass/Lost_Trail_Pass_Tracks.gpx" in zf.namelist()
-    assert "10_Sorted/Sorted_Waypoints.gpx" in zf.namelist()
+    assert "01_Blodgett/Blodgett_Tracks.gpx" in zf.namelist()
+    assert "09_Sorted/Sorted_Waypoints.gpx" in zf.namelist()
     _check_export(zf)
 
 
@@ -435,7 +476,7 @@ def test_merge_moves_everything_and_keeps_the_targets_name_and_place():
     moved = _uids("Paddling")
     res = json.loads(bridge.merge_folders(src, dst))
     assert res["ok"] and res["key"] == dst and res["moved"] == 5 and res["removed"] == [src]
-    assert [g["name"] for g in _groups()].index("Blodgett") == 5
+    assert [g["name"] for g in _groups()].index("Blodgett") == 0
     assert set(moved) < set(_uids("Blodgett")) and len(_uids("Blodgett")) == 22
     _check_invariants(all_uids)
     _check_export(_export())
@@ -483,7 +524,7 @@ def test_edits_and_exclusions_survive_a_move(edit_first):
         assert json.loads(bridge.apply_edits(json.dumps(edits)))["applied"] == 4
     zf = _export()
     _check_export(zf)
-    moved_n = len(_groups())
+    moved_n = _num("Moved")
     wps = zf.read(f"{moved_n:02d}_Moved/Moved_Waypoints.gpx").decode()
     assert _markups(wps) == 1
     assert "<name>Moved Camp</name>" in wps and "moved note" in wps
@@ -497,8 +538,9 @@ def test_edits_and_exclusions_survive_a_move(edit_first):
     assert "rgba(255,0,255,1)" in trks
     areas = zf.read(f"{moved_n:02d}_Moved/Moved_Areas.gpx").decode()
     assert "<name>Moved Area</name>" in areas and "<onx:style>dash</onx:style>" in areas
-    assert not [n for n in zf.namelist() if n.startswith("02_") and "Areas" in n]
-    entry = bridge._STATE["manifest"][-1]
+    ltp = f"{_num('Lost Trail Pass'):02d}_"
+    assert not [n for n in zf.namelist() if n.startswith(ltp) and "Areas" in n]
+    (entry,) = [e for e in bridge._STATE["manifest"] if e["folder"] == "Moved"]
     assert entry["folder"] == "Moved" and entry["count"] == 3 and entry["excluded"] == 1
 
 
@@ -508,7 +550,7 @@ def test_onx_track_and_area_styles_survive_a_move(paths, tmp_path):
     lines = [i for g in data["groups"] for i in g["items"] if i["kind"] != "waypoints"]
     shown = sorted((i["name"], i["color"], i["style"], i["weight"]) for i in lines)
     _move([i["uid"] for i in lines], name="Lines")
-    n = len(_groups())
+    n = _num("Lines")
     zf = _export()
     _check_export(zf)
     got = []
@@ -561,7 +603,7 @@ def _random_session(rng: random.Random, paths) -> None:
             before = _layout()
             res = json.loads(bridge.create_folder(name))
             if res["ok"]:
-                assert res["created"] and res["moved"] == 0 and _groups()[-1]["items"] == []
+                assert res["created"] and res["moved"] == 0 and _by_key(res["key"])["items"] == []
                 empty_ok.add(res["key"])
             else:
                 assert _layout() == before
@@ -589,7 +631,7 @@ def _random_session(rng: random.Random, paths) -> None:
             before = _layout()
             res = _move(picks, name=name)
             if res["ok"]:
-                assert res["created"] and _groups()[-1]["name"] == name.strip()
+                assert res["created"] and _by_key(res["key"])["name"] == name.strip()
                 assert set(_uids(name.strip())) == set(picks)
             else:
                 assert _layout() == before
@@ -707,7 +749,7 @@ def test_new_folder_takes_the_first_free_default_name_by_the_bridges_rule():
     uid = data["groups"][0]["items"][0]["uid"]
     res = json.loads(bridge.move_to_new_folder(json.dumps([uid])))
     assert res["ok"] and res["created"] and res["moved"] == 1
-    assert [f["name"] for f in res["folders"]][-1] == "New folder 3"
+    assert next(f["name"] for f in res["folders"] if f["key"] == res["key"]) == "New folder 3"
     assert bridge.default_folder_name() == "New folder 4"
     _load(BITTERROOTS)
     assert bridge.default_folder_name() == "New folder"
@@ -776,7 +818,7 @@ def test_control_characters_in_folder_names_become_one_space():
     res = json.loads(bridge.rename_folder(key, "two\nlines\x00here "))
     assert res["name"] == "two lines here"
     text = _export().read("instructions.txt").decode("utf-8")
-    assert _rename_to(text, 1) == "two lines here"
+    assert _rename_to(text, _num("two lines here")) == "two lines here"
     with pytest.raises(ValueError):
         bridge.rename_folder(key, "\n\t\r")
 
@@ -849,18 +891,23 @@ def _create(name=None) -> dict:
     return json.loads(bridge.create_folder(name))
 
 
-def test_create_folder_makes_an_empty_folder_at_the_end_with_the_default_name():
+def test_create_folder_makes_an_empty_folder_in_its_sorted_place_with_the_default_name():
     _load(BITTERROOTS)
     before = _layout()
     res = _create()
     assert res["ok"] and res["created"] and res["moved"] == 0 and res["removed"] == []
     assert res["key"].startswith("new:")
-    assert res["folders"][-1] == {"key": res["key"], "name": "New folder", "safe": "New_folder",
-                                  "unorganized": False, "uids": []}
-    assert _layout()[:-1] == before and len(_groups()) == 11
+    # "New folder" sorts between Mill Creek Canyon and North Roots.
+    assert res["folders"][5] == {"key": res["key"], "name": "New folder", "safe": "New_folder",
+                                 "unorganized": False, "uids": []}
+    assert [x for x in _layout() if x[0] != res["key"]] == before and len(_groups()) == 11
+
+    def created(r):
+        return next(f["name"] for f in r["folders"] if f["key"] == r["key"])
     # The next one takes the next free default name; a given name is trimmed.
-    assert _create()["folders"][-1]["name"] == "New folder 2"
-    assert _create("  Camps  ")["folders"][-1]["name"] == "Camps"
+    assert created(_create()) == "New folder 2"
+    assert created(_create("  Camps  ")) == "Camps"
+    assert [g["name"] for g in _groups()][:3] == ["Blodgett", "Camps", "Central roots"]
     assert bridge.default_folder_name() == "New folder 3"
 
 
@@ -938,19 +985,23 @@ def test_an_empty_folder_is_left_out_of_the_export_and_takes_no_number():
     _create("Empty B")
     zf = _export()
     names = zf.namelist()
-    assert "10_Mill_2/Mill_2_Waypoints.gpx" in names, names
+    # "Empty A" sorts first and "Empty B" second, yet Blodgett is still 01:
+    # the empty ones take no number. Mill 2 takes Mill Creek Canyon's place.
+    assert [g["name"] for g in _groups()][:3] == ["Blodgett", "Central roots", "Empty A"]
+    assert "01_Blodgett/Blodgett_Waypoints.gpx" in names, names
+    assert "05_Mill_2/Mill_2_Waypoints.gpx" in names, names
     assert not [n for n in names if "Empty" in n or n.startswith(("11_", "12_"))]
     man = bridge._STATE["manifest"]
-    assert [e["n"] for e in man] == list(range(1, 11)) and man[-1]["folder"] == "Mill 2"
+    assert [e["n"] for e in man] == list(range(1, 11)) and man[4]["folder"] == "Mill 2"
     text = zf.read("instructions.txt").decode("utf-8")
     assert "Empty A" not in text and "Empty B" not in text
-    assert "10_Mill_2/    rename to: Mill 2" in text.split("\r\n")
+    assert "05_Mill_2/    rename to: Mill 2" in text.split("\r\n")
     _check_export(zf)
     # The other folders' files are exactly as without the empty ones (only
     # Mill Creek Canyon's own files moved to "Mill 2").
     mine = _members(zf)
     for n, b in plain.items():
-        if n != "instructions.txt" and not n.startswith("10_"):
+        if n != "instructions.txt" and not n.startswith("05_"):
             assert mine[n] == b, n
     assert a in {g["key"] for g in _groups()}            # export removes nothing
 
@@ -964,3 +1015,61 @@ def test_only_empty_folders_do_not_widen_or_break_the_export():
     # 105 folders, 95 of them empty: still two-digit numbers (L1 counts numbered folders).
     assert all(re.match(r"\d\d_", n) for n in zf.namelist() if n != "instructions.txt")
     _check_export(zf)
+
+
+# --- folder order (owner feedback 2026-10-24) --------------------------------------
+
+
+def _ordered_map() -> str:
+    """Folders loaded biggest first (the old order), plus loose items."""
+    feats, n = [], 0
+    for fid, title, size in [("a", "3 - Course", 4), ("b", "2 - Aid", 3), ("c", "10 - Finish", 2),
+                             ("d", "1 - Start", 1), ("e", "beta", 1), ("f", "Alpha", 1),
+                             ("g", "camp", 1), ("h", "Camp", 1)]:
+        feats.append({"type": "Feature", "id": fid, "geometry": None,
+                      "properties": {"class": "Folder", "title": title}})
+        for _ in range(size):
+            n += 1
+            feats.append({"type": "Feature", "id": f"p{n}",
+                          "geometry": {"type": "Point", "coordinates": [-114 + n / 1e3, 45.0]},
+                          "properties": {"class": "Marker", "title": f"P{n}", "folderId": fid}})
+    feats.append({"type": "Feature", "id": "loose",
+                  "geometry": {"type": "Point", "coordinates": [-114.5, 45.0]},
+                  "properties": {"class": "Marker", "title": "Loose"}})
+    return json.dumps({"type": "FeatureCollection", "features": feats})
+
+
+ORDERED = ["1 - Start", "2 - Aid", "3 - Course", "10 - Finish", "Alpha", "beta", "camp", "Camp",
+           "Unorganized"]
+
+
+def test_folders_load_by_name_natural_case_insensitive_with_the_loose_items_last():
+    data = _load_text(_ordered_map())
+    assert [g["name"] for g in data["groups"]] == ORDERED
+    # Twins ("camp", "Camp") keep the file's order; the loose items are last.
+    assert data["groups"][-1]["unorganized"] is True
+    # The export numbers follow the same order.
+    zf = _export()
+    dirs = sorted({n.split("/")[0] for n in zf.namelist() if "/" in n})
+    assert dirs == [f"{k:02d}_{bridge._safe(n)}" for k, n in enumerate(ORDERED, 1)]
+    assert [e["folder"] for e in bridge._STATE["manifest"]] == ORDERED
+    _check_export(zf)
+
+
+def test_new_and_renamed_folders_take_their_sorted_place():
+    data = _load_text(_ordered_map())
+    loose = data["groups"][-1]["key"]
+    uid = data["groups"][2]["items"][0]["uid"]          # one of 3 - Course's four
+    res = _move([uid], name="2b - Water")
+    assert [f["name"] for f in res["folders"]][:4] == ["1 - Start", "2 - Aid", "2b - Water", "3 - Course"]
+    res = json.loads(bridge.rename_folder(_key("Alpha"), "Zulu"))
+    names = [f["name"] for f in res["folders"]]
+    assert names[-2:] == ["Zulu", "Unorganized"]
+    res = json.loads(bridge.create_folder("0 - Prep"))
+    assert res["folders"][0]["name"] == "0 - Prep"
+    # The loose items renamed are an ordinary folder, sorted by name; renamed
+    # back, they are last again.
+    names = [f["name"] for f in json.loads(bridge.rename_folder(loose, "Aardvark"))["folders"]]
+    assert names.index("Aardvark") == names.index("10 - Finish") + 1
+    assert json.loads(bridge.rename_folder(loose, "Unorganized"))["folders"][-1]["key"] == loose
+    assert _in_folder_order(_groups())   # (twins "camp"/"Camp" rule out _check_invariants)

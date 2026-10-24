@@ -104,16 +104,16 @@ EXPECTED = {
     "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.gpx": (GPX, CALTOPO),       # REAL CalTopo export
     "dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.kml": (KML, CALTOPO),       # REAL CalTopo KML
     "dark_divide_100/cairn_output/from_geojson/instructions.txt": (UNKNOWN, NOT_A_MAP),
-    "dark_divide_100/cairn_output/from_geojson/01_3_Course_Segments_Dark_Divide_100_Miler/3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_geojson/03_3_Course_Segments_Dark_Divide_100_Miler/3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_geojson/02_2_Aid_Stations_Dark_Divide_100_Miler/2_Aid_Stations_Dark_Divide_100_Miler_Waypoints.gpx": (GPX, CAIRN),
-    "dark_divide_100/cairn_output/from_geojson/03_1_Course_GPX_Dark_Divide_100_Miler/1_Course_GPX_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_geojson/01_1_Course_GPX_Dark_Divide_100_Miler/1_Course_GPX_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_gpx/instructions.txt": (UNKNOWN, NOT_A_MAP),
     "dark_divide_100/cairn_output/from_gpx/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Tracks.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_gpx/01_2027_Dark_Divide_100_Mile_Endurance_Run/2027_Dark_Divide_100_Mile_Endurance_Run_Waypoints.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_kml/instructions.txt": (UNKNOWN, NOT_A_MAP),
-    "dark_divide_100/cairn_output/from_kml/01_3_Course_Segments_Dark_Divide_100_Miler/3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_kml/03_3_Course_Segments_Dark_Divide_100_Miler/3_Course_Segments_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
     "dark_divide_100/cairn_output/from_kml/02_2_Aid_Stations_Dark_Divide_100_Miler/2_Aid_Stations_Dark_Divide_100_Miler_Waypoints.gpx": (GPX, CAIRN),
-    "dark_divide_100/cairn_output/from_kml/03_1_Course_GPX_Dark_Divide_100_Miler/1_Course_GPX_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
+    "dark_divide_100/cairn_output/from_kml/01_1_Course_GPX_Dark_Divide_100_Miler/1_Course_GPX_Dark_Divide_100_Miler_Tracks.gpx": (GPX, CAIRN),
     "caltopo_synthetic/README.md": (UNKNOWN, NOT_A_MAP),
     "caltopo_synthetic/caltopo_synthetic.json": (GEOJSON, CALTOPO),   # synthetic, scripts/generate_caltopo_synthetic.py
     "caltopo_synthetic/caltopo_synthetic.kml": (KML, CALTOPO),
