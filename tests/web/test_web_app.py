@@ -4256,3 +4256,25 @@ def test_the_merge_dialog_wraps_long_unbroken_names(loaded: Page):
     assert card.evaluate("e => e.scrollWidth <= e.clientWidth")
     assert page.locator("#confirm-body").evaluate("e => e.scrollWidth <= e.clientWidth")
     assert page.locator("#confirm-title").evaluate("e => e.scrollWidth <= e.clientWidth")
+
+
+def test_a_pointer_drag_move_stays_announced_in_the_status_line(loaded: Page):
+    """C6: the status (role=status) says "Moved N items to …" and keeps saying it."""
+    page = loaded
+    _wide(page)
+    st = page.locator("#status")
+    assert st.get_attribute("role") == "status"
+    _drag(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"), _rail(page, "North Roots"))
+    expect(st).to_have_text("Moved 1 item to North Roots.")
+    for ms in (300, 400, 1500):
+        page.wait_for_timeout(ms)
+        assert st.text_content() == "Moved 1 item to North Roots."
+    assert st.is_visible()
+    # Several rows at once, and the multi-row ghost path.
+    rows = _section(page, "Lost Trail Pass").locator("tbody tr")
+    for i in (0, 1):
+        rows.nth(i).locator(".sel-box").check()
+    _drag(page, rows.nth(0).locator(".note-btn"), _rail(page, "North Roots"))
+    expect(st).to_have_text("Moved 2 items to North Roots.")
+    page.wait_for_timeout(700)
+    assert st.text_content() == "Moved 2 items to North Roots."
