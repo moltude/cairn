@@ -1241,6 +1241,15 @@ def test_no_fill_warning_when_nothing_would_change(fresh_page: Page, files):
     expect(fresh_page.locator("#confirm")).to_be_hidden()
 
 
+def test_clear_area_fill_is_not_a_fill_change(fresh_page: Page):
+    """A transparent fill is deliberate: the load dialog skips it, as the caution mark does."""
+    r = fresh_page.evaluate("""() => [
+      fillChanges({kind: "shapes", onx_id: "a", fill: "rgba(1,2,3,0)"}),
+      fillChanges({kind: "shapes", onx_id: "a", fill: "rgba(1,2,3,0.1)"}),
+      fillChanges({kind: "shapes", onx_id: "a", fill: "rgba(74,144,226,0.1)"})]""")
+    assert r == [False, True, False]
+
+
 def test_onx_area_dot_and_extra_thin_are_shown_and_kept(fresh_page: Page):
     """An onX file's dotted and 2.0 areas are drawn and named as such; neither is
     offered as a choice, so no toggle is pressed for them."""

@@ -728,7 +728,7 @@ function cautionText(it) {
   const [bytes, cutN] = noteOverflow(it.desc);
   if (bytes > NOTE_LIMIT)
     lines.push(`onX keeps the first ${NOTE_LIMIT} bytes of this note; about ${plural(Math.max(cutN, 1), "character")} will be cut.`);
-  if (fillChanges(it) && fillAlpha(it.fill) > 0)
+  if (fillChanges(it))
     lines.push("onX will reset this area's fill to its default blue.");
   return lines.length ? lines.join("\n") : null;
 }
@@ -2020,10 +2020,11 @@ function cancelConfirm() { if (CONFIRM && CONFIRM.cancel) CONFIRM.cancel.run(); 
 
 /* onX gives every imported area its default blue fill, whatever the file says
    (docs/ONX_ROUND_TRIP.md #area-fidelity). Areas from an onX export (they carry
-   an onX id) with any other fill, "none" included, would change, so say so once
+   an onX id) with any other fill, a clear one excepted, would change, so say so once
    on load and offer to leave them out of the export. */
 const ONX_DEFAULT_FILL = "rgba(74,144,226,0.1)";
-const fillChanges = i => i.kind === "shapes" && !!i.onx_id && !!i.fill && i.fill !== ONX_DEFAULT_FILL;
+const fillChanges = i => i.kind === "shapes" && !!i.onx_id && !!i.fill && i.fill !== ONX_DEFAULT_FILL
+  && fillAlpha(i.fill) > 0;   // a clear fill is deliberate (UI-30): not flagged
 function fillLossItems() {
   return allItems().filter(fillChanges);
 }

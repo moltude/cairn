@@ -818,7 +818,8 @@ Status: decided 2026-10-23 (owner; wording option A).
 
 onX gives every imported area its default blue fill (`rgba(74,144,226,0.1)`), whatever the
 file says (docs/ONX_ROUND_TRIP.md #area-fidelity). When a loaded map has areas from an onX
-export (they carry an onX id) whose fill is anything else, "none" included, a dialog shows once
+export (they carry an onX id) whose fill is anything else, a transparent ("none") fill excepted (round 5: deliberate, and the
+caution mark skips it too), a dialog shows once
 on load:
 
 > **N areas will lose their fill.** onX resets area fills to blue on import.
@@ -1004,8 +1005,7 @@ Status: decided 2026-10-23 (owner, round 4).
 - An excluded row has no mark (it isn't exported). The mark follows every edit: shortening a
   note removes it.
 - The export screen's long-note warning names the items (up to 8, then "and N more").
-- **Open for the owner:** UI-30's load dialog still counts a "none" fill (it is a change: onX
-  draws its blue). Align it with the mark (drop none) or keep the two apart?
+- Round 5: UI-30's load dialog now skips a transparent fill too, matching the mark (owner).
 
 ### UI-35 — Sort by name; pin colour apart from line colour
 Status: decided 2026-10-23 (owner, round 4); the dialog awaits the owner's look at
