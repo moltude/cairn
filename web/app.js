@@ -218,7 +218,7 @@ async function handleFiles(files) {
     renderSourceNotice(DATA);
     renderEdit();
     showStage("edit");
-    setStatus("Map loaded", "ready");
+    setStatus("");   // the screen says it; the status line is for messages (moves, errors)
     window.__cairnLoaded = true;
     warnFillLoss();
   } catch (e) {

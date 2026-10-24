@@ -550,6 +550,19 @@ def test_export_screen_back_and_start_over(loaded: Page):
     assert loaded.evaluate("document.querySelector('#runbook').childElementCount") == 0
 
 
+def test_loading_a_map_leaves_no_status_line_above_export(loaded: Page):
+    """Owner feedback 2026-10-24: no "Map loaded" over Export; the line is for
+    real messages (a move, an error), and the "Reading …" line is cleared."""
+    _wide(loaded)
+    st = loaded.locator("#status")
+    expect(st).to_have_text("")
+    assert "Map loaded" not in loaded.inner_text("body")
+    _shot(loaded, "fb-3-no-map-loaded")
+    # Real messages still show there.
+    _drag(loaded, _first_row(loaded, "Lost Trail Pass").locator(".note-btn"), _rail(loaded, "Paddling"))
+    expect(st).to_have_text(re.compile(r"^Moved 1 item to Paddling\."))
+
+
 def test_a_ready_status_line_clears_itself_but_keeps_its_announcement_first(loaded: Page):
     st = loaded.locator("#status")
     loaded.evaluate("STATUS_LINGER_MS = 2500; setStatus('Moved 1 item to X.', 'ready')")
@@ -2461,13 +2474,13 @@ def test_drag_onto_its_own_folder_or_nowhere_does_nothing(loaded: Page):
     row = _first_row(page, "Lost Trail Pass")
     _drag(page, row.locator(".note-btn"), _rail(page, "Lost Trail Pass"))
     assert _layout(page) == before
-    expect(page.locator("#status")).to_have_text("Map loaded")
+    expect(page.locator("#status")).to_have_text("")
     # Dropped on the list, the search box, the rail's "All": nothing.
     for target in (page.locator("#folders tbody tr").nth(5), page.locator("#filter"),
                    page.locator("#folder-facets .facet-btn").first):
         _drag(page, row.locator(".note-btn"), target)
         assert _layout(page) == before
-    expect(page.locator("#status")).to_have_text("Map loaded")
+    expect(page.locator("#status")).to_have_text("")
     # The drop's click didn't land as a click on what was under it.
     assert page.evaluate("FILTERS.folder") is None
     assert page.evaluate("POP") is None and page.evaluate("NOTE_EDIT") is None
