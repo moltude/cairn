@@ -535,7 +535,7 @@ def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path)
     order = host.locator(":scope > *").evaluate_all("els => els.map(e => e.className)")
     assert order[:3] == ["note warn"] * 3 and order[3:] == ["rb-step"]
     expect(host.locator(".rb-step h2")).to_have_text("Big")
-    expect(warns.nth(1)).to_contain_text("instructions.txt marks it.")
+    expect(warns.nth(1)).to_contain_text("instructions.txt marks it: “Long”.")
 
 
 def test_export_screen_back_and_start_over(loaded: Page):

@@ -1895,6 +1895,13 @@ async function doExport() {
   }
 }
 
+/** The items whose notes onX will cut, by name as written (round 4): up
+    to 8, then "and N more". */
+function longNoteNames() {
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `“${n || "(no name)"}”`));
+  return names.length > 8 ? `${names.slice(0, 8).join(", ")} and ${names.length - 8} more` : names.join(", ");
+}
+
 function renderRunbook() {
   // The warnings' numbers come from bridge.runbook_summary (the manifest that
   // instructions.txt is built from), so the over-limit check uses
@@ -1906,7 +1913,7 @@ function renderRunbook() {
   host.innerHTML =
     (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
-    (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; instructions.txt marks ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
+    (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; instructions.txt marks ${S.long_notes === 1 ? "it" : "them"}: ${esc(longNoteNames())}.</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   // Two folders may share a name ("Camp" twice, from the file), or two names
   // sanitize alike ("A B", "A_B"): only then does a box show its number, and
