@@ -89,7 +89,7 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
+      <onx:icon>Food Source</onx:icon>
       <onx:color>rgba(255,0,0,1)</onx:color>
     </extensions>
   </wpt>
@@ -106,7 +106,7 @@ Restrooms: No
 Cutoff Time: 5:00 PM Friday
 Total Hours to Cutoff: 12 hours</desc>
     <extensions>
-      <onx:icon>Water Source</onx:icon>
+      <onx:icon>Food Source</onx:icon>
       <onx:color>rgba(255,0,0,1)</onx:color>
     </extensions>
   </wpt>
@@ -122,7 +122,7 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
+      <onx:icon>Food Source</onx:icon>
       <onx:color>rgba(255,0,0,1)</onx:color>
     </extensions>
   </wpt>
@@ -139,7 +139,7 @@ Restrooms: No
 Cutoff Time: 6:00 AM Saturday
 Total Time to Cutoff: 25 hours</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
+      <onx:icon>Food Source</onx:icon>
       <onx:color>rgba(255,0,0,1)</onx:color>
     </extensions>
   </wpt>
@@ -155,7 +155,7 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
+      <onx:icon>Food Source</onx:icon>
       <onx:color>rgba(255,0,0,1)</onx:color>
     </extensions>
   </wpt>
@@ -171,7 +171,7 @@ Restrooms: No
 
 No Cutoff</desc>
     <extensions>
-      <onx:icon>Location</onx:icon>
+      <onx:icon>Food Source</onx:icon>
       <onx:color>rgba(255,0,0,1)</onx:color>
     </extensions>
   </wpt>
@@ -188,7 +188,7 @@ Restrooms: No
 Cutoff Time: 5:00 PM Saturday
 Total Time to Cutoff: 36 hours</desc>
     <extensions>
-      <onx:icon>Summit</onx:icon>
+      <onx:icon>Food Source</onx:icon>
       <onx:color>rgba(255,0,0,1)</onx:color>
     </extensions>
   </wpt>

@@ -188,8 +188,9 @@ def _explain(decision, symbol: str, default_icon: str = "Location") -> str:
         return f"Your CalTopo symbol \u201c{sym}\u201d maps to this icon."
     if src == "keyword":
         terms = ", ".join(getattr(decision, "matched_terms", ()) or ())
-        return (f"Matched \u201c{terms}\u201d in the name."
-                if terms else "Matched a keyword in the name.")
+        where = "note" if getattr(decision, "field", "") == "description" else "name"
+        return (f"Matched \u201c{terms}\u201d in the {where}."
+                if terms else f"Matched a keyword in the {where}.")
     # default / fell through
     if sym and sym.lower() not in {g.lower() for g in GENERIC_SYMBOLS}:
         return (f"Your CalTopo symbol \u201c{sym}\u201d has no onX equivalent, and "

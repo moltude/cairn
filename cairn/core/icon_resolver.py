@@ -14,7 +14,7 @@ deterministic and explainable by producing a structured decision.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict, List, Literal, Set, Tuple
 
 import re
@@ -32,9 +32,32 @@ class IconDecision:
     source: IconSource
     reasons: Tuple[str, ...] = ()
     matched_terms: Tuple[str, ...] = ()
+    # Where a keyword matched: "title" or "description" ("" for symbol/default).
+    field: str = ""
 
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+# Title abbreviations, matched case-sensitively as whole words ("AS" but not
+# the word "as"). Race maps label aid stations "Juniper Ridge AS".
+_TITLE_ABBREVIATIONS = ((re.compile(r"\bAS\b"), "aid station"),)
+
+
+def _expand_abbreviations(title: str) -> str:
+    for pattern, phrase in _TITLE_ABBREVIATIONS:
+        title = pattern.sub(phrase, title)
+    return title
+
+
+def _as_written(term: str, title: str) -> str:
+    """A matched term as the title spells it: "AS" rather than "aid station"."""
+    if term in title.lower():
+        return term
+    for pattern, phrase in _TITLE_ABBREVIATIONS:
+        found = pattern.search(title)
+        if phrase == term and found:
+            return found.group()
+    return term
 
 
 class IconResolver:
@@ -115,63 +138,17 @@ class IconResolver:
                     matched_terms=(key,),
                 )
 
-        # 2) Keyword scoring.
-        text = f"{title} {description}".lower()
-        tokens = set(_TOKEN_RE.findall(text))
-
-        best: IconDecision | None = None
-        best_points: int = 0
-        best_matches: Tuple[str, ...] = ()
-
-        for icon in self._keyword_priority:
-            kws = self._normalized_keywords.get(icon, ())
-            if not kws:
-                continue
-
-            matched: List[str] = []
-            points = 0
-            for kw in kws:
-                if " " in kw:
-                    # Phrase match: simple substring
-                    if kw in text:
-                        matched.append(kw)
-                        points += 1
-                else:
-                    # Token match: avoids false positives like 'th' in 'path'
-                    if kw in tokens:
-                        matched.append(kw)
-                        points += 1
-
-            if points <= 0:
-                continue
-
-            # Construct decision; score is a stable, explainable "points" value.
-            decision = IconDecision(
-                icon=icon,
-                score=float(points),
-                source="keyword",
-                reasons=(f"keyword matches for '{icon}': {', '.join(matched)}",),
-                matched_terms=tuple(matched),
-            )
-
-            if best is None:
-                best = decision
-                best_points = points
-                best_matches = decision.matched_terms
-                continue
-
-            # Prefer higher points, then more distinct matches, then priority order already ensures stability.
-            if points > best_points:
-                best = decision
-                best_points = points
-                best_matches = decision.matched_terms
-            elif points == best_points:
-                if len(decision.matched_terms) > len(best_matches):
-                    best = decision
-                    best_matches = decision.matched_terms
-
+        # 2) Keyword scoring. The title decides when it matches anything; the
+        # description is only consulted when it doesn't. Within the title, a tie
+        # goes to the later match: place names end in what the place is ("Dark
+        # Creek AS" is an aid station, "Camp Creek" is a creek).
+        best = self._best_keyword(_expand_abbreviations(title).lower(), by_position=True)
         if best is not None:
-            return best
+            terms = tuple(_as_written(t, title) for t in best.matched_terms)
+            return replace(best, matched_terms=terms, field="title")
+        best = self._best_keyword(description.lower(), by_position=False)
+        if best is not None:
+            return replace(best, field="description")
 
         # 3) Default
         return IconDecision(
@@ -180,3 +157,46 @@ class IconResolver:
             source="default",
             reasons=(f"default icon '{self._default_icon}'",),
         )
+
+    def _best_keyword(self, text: str, *, by_position: bool) -> IconDecision | None:
+        """Best keyword decision for one text, or None if nothing matches.
+
+        Ranks by number of matches; with by_position, a tie goes to the icon
+        whose last match ends later. Remaining ties go to the configured
+        keyword order.
+        """
+        if not text:
+            return None
+        token_ends: Dict[str, int] = {}
+        for m in _TOKEN_RE.finditer(text):
+            token_ends[m.group()] = m.end()
+
+        best: IconDecision | None = None
+        best_rank: Tuple[int, int] = (-1, 0)
+        for icon in self._keyword_priority:
+            matched: List[str] = []
+            last_end = -1
+            for kw in self._normalized_keywords.get(icon, ()):
+                if " " in kw:
+                    # Phrase match: simple substring
+                    at = text.rfind(kw)
+                    end = at + len(kw) if at >= 0 else -1
+                else:
+                    # Token match: avoids false positives like 'th' in 'path'
+                    end = token_ends.get(kw, -1)
+                if end >= 0:
+                    matched.append(kw)
+                    last_end = max(last_end, end)
+            if not matched:
+                continue
+            rank = (len(matched), last_end if by_position else 0)
+            if best is None or rank > best_rank:
+                best_rank = rank
+                best = IconDecision(
+                    icon=icon,
+                    score=float(len(matched)),
+                    source="keyword",
+                    reasons=(f"keyword matches for '{icon}': {', '.join(matched)}",),
+                    matched_terms=tuple(matched),
+                )
+        return best

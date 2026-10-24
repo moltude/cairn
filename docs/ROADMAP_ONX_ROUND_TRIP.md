@@ -421,7 +421,7 @@ CalTopo GPX files read for the dialect (`tests/fixtures/caltopo_synthetic/README
 - **Exit criteria, met:**
   - The P6 file loads with its folders and colors.
   - Against the GeoJSON, the Dark Divide KML gives identical review items and identical
-    exported files, except 8 custom-icon marker colors. GeoJSON's red there is a `stroke` on
+    exported files, except 9 custom-icon marker colors. GeoJSON's red there is a `stroke` on
     the marker that the KML doesn't carry.
   - The GPX differs only in folders, those marker colors and one line color.
   - Every remaining difference is pinned with its reason in `PARITY.md`,

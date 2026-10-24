@@ -143,6 +143,17 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
         "Blodgett", "Central roots", "Lost Horse Canyon", "Lost Trail Pass", "Mill Creek Canyon",
         "North Roots", "Paddling", "Sheafman ridge", "Trapper area", "Unorganized"]
     loaded["groups"].sort(key=lambda g: -len(g["items"]))
+    # A tie between two name keywords goes to the later one since 2026-10-24
+    # ("Mill Creek TH" is a trailhead, not a creek); the baseline has Water Source.
+    renamed = {"Mill Creek TH?", "Bass Creek TH"}
+    moved = [i for g in loaded["groups"] for i in g["items"] if i["name"] in renamed]
+    assert [(i["icon"], i["why"]) for i in moved] == [("Trailhead", "Matched \u201cth\u201d in the name.")] * 2
+    for i in moved:
+        i["icon"], i["why"] = "Water Source", "Matched \u201ccreek\u201d in the name."
+    # And a match found only in the note now says so (the baseline said "name").
+    trapper = [i for g in loaded["groups"] for i in g["items"] if i["name"] == "Trapper"]
+    assert [i["why"] for i in trapper] == ["Matched \u201cpeak\u201d in the note."]
+    trapper[0]["why"] = "Matched \u201cpeak\u201d in the name."
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
@@ -151,6 +162,10 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert sum(zf.read(n).count(dash) for n in zf.namelist()) == 6
     for name, digest in baseline["members"].items():
         data = zf.read(name).replace(dash, solid)  # exported names were already stripped
+        if name.endswith(("North_Roots_Waypoints.gpx", "Unorganized_Waypoints.gpx")):
+            # The two "... Creek TH" waypoints, the only Trailheads there (see above).
+            assert data.count(b"<onx:icon>Trailhead</onx:icon>") == 1
+            data = data.replace(b"<onx:icon>Trailhead</onx:icon>", b"<onx:icon>Water Source</onx:icon>")
         assert hashlib.sha256(data).hexdigest() == digest, name
 
 
