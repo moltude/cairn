@@ -192,8 +192,10 @@ body[data-stage=edit]{font-size:13px}
   /* Sized by flex shrink, not max-width:100%: with the -7px margin the h2's box is 7px
      narrower than the button, so max-width clipped every name ("Crew" showed "Cr…"). */
   flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folder-head h2:has(.folder-name-in){flex:1 1 auto}
 .folder-name:hover{border-color:var(--rule)}
-.folder-head .folder-name-in{font:inherit;font-size:17px;font-weight:700;color:var(--ink);width:min(320px,100%);
+.folder-name:focus-visible{outline-offset:0}
+.folder-head .folder-name-in{font:inherit;font-size:17px;font-weight:700;color:var(--ink);width:calc(100% + 7px);
   padding:1px 6px;margin:-2px 0 -2px -7px;border:1px solid var(--brown);border-radius:2px;background:var(--sheet);outline:none}
 .collapse{align-self:center;background:none;border:none;color:var(--muted);min-width:26px;min-height:26px;
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px}
@@ -334,8 +336,8 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .modal-card{background:var(--sheet);border:1px solid var(--brown);box-shadow:var(--shadow);
   width:min(560px,100%);max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
 .confirm-card{width:min(440px,100%);padding:22px 24px 20px}
-.confirm-card h2{margin:0 0 8px;font-size:20px}
-.confirm-card p{margin:0 0 18px;line-height:1.55;font-size:16px}
+.confirm-card h2{margin:0 0 8px;font-size:20px;overflow-wrap:anywhere}
+.confirm-card p{margin:0 0 18px;line-height:1.55;font-size:16px;overflow-wrap:anywhere}
 .confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .btn.danger{background:var(--warning);border-color:var(--warning);color:#fff;font-weight:700}
 .btn.danger:hover:not(:disabled){background:var(--warning);border-color:var(--brown);filter:brightness(.9)}

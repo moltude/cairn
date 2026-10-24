@@ -4218,3 +4218,41 @@ def test_esc_on_a_just_made_empty_folder_takes_it_back(loaded: Page):
     page.keyboard.press("Escape")
     lay = _layout(page)
     assert len(lay) == len(before) + 2 and lay[-1] == ("New folder", 1)
+
+
+def test_the_header_rename_box_fills_the_header_and_esc_leaves_a_tight_ring(loaded: Page):
+    page = loaded
+    _wide(page)
+    sec = _section(page, "Paddling")
+    sec.locator(".folder-name").click()
+    inp = page.locator(".folder-name-in")
+    editing = page.locator(".folder-head:has(.folder-name-in)")
+    head = editing.bounding_box()
+    sub = editing.locator(".folder-sub").bounding_box()
+    box = inp.bounding_box()
+    assert box["x"] + box["width"] >= sub["x"] - 24, (box, sub)     # runs up to the item count
+    assert box["width"] > head["width"] * 0.6
+    page.keyboard.press("Escape")
+    btn = _section(page, "Paddling").locator(".folder-name")
+    expect(btn).to_be_focused()
+    assert btn.bounding_box()["width"] < 200                         # the name, not the whole header
+    assert btn.evaluate("e => getComputedStyle(e).outlineOffset") == "0px"
+
+
+def test_the_merge_dialog_wraps_long_unbroken_names(loaded: Page):
+    page = loaded
+    _wide(page)
+    big = "W" * 90
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.insert_text(big)
+    page.keyboard.press("Enter")
+    _section(page, "North Roots").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.insert_text(big)
+    page.keyboard.press("Enter")
+    card = page.locator("#confirm .confirm-card")
+    expect(card).to_be_visible()
+    assert card.evaluate("e => e.scrollWidth <= e.clientWidth")
+    assert page.locator("#confirm-body").evaluate("e => e.scrollWidth <= e.clientWidth")
+    assert page.locator("#confirm-title").evaluate("e => e.scrollWidth <= e.clientWidth")
