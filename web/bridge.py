@@ -95,7 +95,7 @@ LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 # "features" maps each uid to the ParsedFeature the writers read; "groups" (in
 # order, and each group's "items" in order) is the ONLY record of which folder
 # an item is in and where it sits. export_zip reads nothing else. doc.folders
-# is kept in step by the folder primitives for code that inspects it.
+# stays as parsed (the folders as loaded); doc_folders() gives the current ones.
 _STATE: dict = {"doc": None, "groups": [], "features": {}, "config": None,
                 "edited": set(), "color_edited": set(), "next_folder": 1, "loose": set()}
 
@@ -713,20 +713,16 @@ def layout_json() -> str:
     return json.dumps({"folders": _layout()})
 
 
-def _sync_doc(keys) -> None:
-    """Keep doc.folders in step with the groups for the folders in `keys`
-    (export reads the groups; this is for code that inspects the document)."""
-    doc, features = _STATE["doc"], _STATE["features"]
-    live = {g["key"]: g for g in _STATE["groups"]}
-    for key in keys:
-        if key not in live:
-            doc.folders.pop(key, None)
-            continue
-        g = live[key]
-        fdata = doc.folders.setdefault(key, {})
-        fdata["name"] = g["name"]
-        for kind in _KIND_ORDER:
-            fdata[kind] = [features[i["uid"]] for i in g["items"] if i["kind"] == kind]
+def doc_folders() -> dict:
+    """The folders as they are now, in doc.folders' shape ({key: {"name",
+    "waypoints", "tracks", "shapes"}}, in order), derived from the groups: for
+    code that inspects the document. doc.folders itself stays as parsed; the
+    groups are the one record of membership (ENG-07)."""
+    features = _STATE["features"]
+    return {g["key"]: {"name": g["name"],
+                       **{kind: [features[i["uid"]] for i in g["items"] if i["kind"] == kind]
+                          for kind in _KIND_ORDER}}
+            for g in _STATE["groups"]}
 
 
 def _new_folder_key() -> str:
@@ -755,7 +751,6 @@ def _move(items: list, target: dict) -> list:
     emptied = [g for g in sources if not g["items"]]
     removed = [g["key"] for g in emptied]
     _STATE["groups"] = [g for g in _STATE["groups"] if not any(g is e for e in emptied)]
-    _sync_doc([g["key"] for g in sources] + [target["key"]])
     return removed
 
 
@@ -780,7 +775,6 @@ def rename_folder(key: str, name: str) -> str:
     # name" by the folder-name rule: "unorganized" is the same name.
     g["unorganized"] = (key in _STATE["loose"]
                         and name.casefold() == UNORGANIZED_FOLDER_NAME.casefold())
-    _sync_doc([key])
     return json.dumps({"ok": True, "key": key, "name": name, "safe": g["safe"],
                        "unorganized": g["unorganized"], "folders": _layout()})
 
@@ -858,7 +852,6 @@ def merge_folders(source_key: str, target_key: str) -> str:
     if any(g is source for g in _STATE["groups"]):
         _STATE["groups"] = [g for g in _STATE["groups"] if g is not source]
         removed.append(source_key)
-        _sync_doc([source_key])
     return json.dumps({"ok": True, "key": target_key, "created": False, "moved": len(items),
                        "removed": removed, "folders": _layout()})
 
