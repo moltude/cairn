@@ -9,7 +9,7 @@ engine it runs in the browser via Pyodide. The typer CLI (`cairn/cli.py`, `cairn
 legacy prompt-toolkit UI (`cairn/ui/`) and the Textual TUI (`cairn/tui/`) were deleted — their
 last state is git tag `cli-final`. Do not reintroduce a terminal interface or a typer/rich/
 textual dependency. The human-facing doc is `README.md` — what/why,
-icon/color mapping tables, known quirks (`TECH_DETAIILS.md` was merged into it 2026-08-30).
+icon/color mapping tables (`TECH_DETAIILS.md` was merged into it 2026-08-30); onX quirks are in `docs/FAQ.md`.
 
 ## Environment: read this first
 
@@ -35,8 +35,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-23 (area fidelity + track passthrough, after PR #41's 1028): **1060 passed** with the web dev server up; without
-it the 102 `tests/web` tests skip, giving **958 passed, 102 skipped**. (2026-10-22 was 892; 2026-10-21 was 568; the
+Baseline as of 2026-10-24 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup, owner feedback 2026-10-24 UI-36..38, public copy cleanup and sticky top bar): **1357 passed** with the web dev server up; without
+it the `tests/web` tests skip. (Copy cleanup and sticky bar took it from 1349. Owner feedback 2026-10-24 added 32; before it 1317. The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 
@@ -97,9 +97,10 @@ readers via document_adapter.
 - **Do not add `try/except Exception` around assertions in tests.** The deleted TUI suite had 35
   tests that swallowed exceptions and asserted nothing. A flaky interaction should be fixed or
   `pytest.skip`ped explicitly.
-- `tests/output/` (gitignored) holds stale generated output from an edge-case runner script that
-  has since been deleted. Nothing produces it any more, it is not a fixture, and it is not an
-  expectation baseline.
+- `tests/output/` (gitignored) is local scratch: stale edge-case output, review notes,
+  screenshots. It is not a fixture, not an expectation baseline, and a tracked doc must not cite
+  it as evidence. The folders UI fuzzer and its repro probes are tracked in `scripts/qa/` (how to
+  run: its README) and write to `archive/qa-fuzz/`; nothing under `tests/` imports them.
 - `tests/web/test_web_app.py` drives the Pyodide web app in headless Chromium (needs the dev
   server: `uv run python web/serve.py`, and once per machine `uv run playwright install
   chromium`). The main fixture context sets `bypass_csp=True` because the page ships a strict
@@ -136,7 +137,8 @@ readers via document_adapter.
   on every machine turns the logging back on for everyone.
 - The onX format is not fully standard: the same linework exports as `<trk>` or `<rte>`; areas
   usually only survive as KML polygons; onX reorders items after import. See
-  `README.md`'s "Known quirks" section.
+  `docs/FAQ.md` ("Why do my CalTopo lines show up as onX Tracks, not Lines?" and "Why are areas
+  in a GPX file, not KML?").
 - **The CSP allows jsdelivr only under the pinned Pyodide folder** (`web/vercel.json`,
   e.g. `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/`). A Pyodide bump must change the version
   in `web/index.html` (plus its SRI hash), `web/app.js` `indexURL`, and `web/vercel.json` together;

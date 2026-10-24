@@ -94,9 +94,12 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     stripped them. Both are put back before hashing, so nothing else may move.
     Re-pinned for ENG-05: the 6 *_Areas.kml members are now *_Areas.gpx (onX Area
     routes) and RUNBOOK.md lists those names and no KML warning; see the
-    baseline's notes. Lines also carry their onX style and weight for the line-style
+    baseline's notes. Since round 4 the guide is instructions.txt (plain text,
+    every item by name), pinned in the baseline in RUNBOOK.md's place. Lines also carry their onX style and weight for the line-style
     editor (2026-10-23); those two keys are taken off before hashing, and the export
-    is unchanged by them."""
+    is unchanged by them. Folders are in name order since 2026-10-24: the load JSON
+    is compared in the old (by size) order, and the export was re-pinned for its
+    NN_ numbers and instructions.txt only (see the baseline's notes)."""
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     raw = bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
     loaded = json.loads(raw)
@@ -105,6 +108,9 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert loaded.pop("sources") == [
         {"name": BITTERROOTS.name, "kind": "geojson", "dialect": "caltopo"}
     ]
+    # Each group says whether it is the loose items (2026-10-23, round 2): only
+    # Unorganized is.
+    assert [g["name"] for g in loaded["groups"] if g.pop("unorganized")] == ["Unorganized"]
     padded = {"Stimson", "Parking", "Ingress", "Sample run"}
     stripped = [i for g in loaded["groups"] for i in g["items"] if i["name"] in padded]
     assert len(stripped) == 4
@@ -120,6 +126,23 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     assert len(areas) == 17
     assert {(i.pop("style"), i.pop("weight")) for i in areas} == {("solid", "4.0")}
     assert sum(i.pop("fill") == "rgba(0,0,0,0)" for i in areas) == 1  # CalTopo fill-opacity 0
+    # uids are opaque ids since ENG-07 (2026-10-23); the baseline holds the old
+    # `<folder key>::<kind>::<index within kind>` value, so rebuild it to compare
+    # everything else. The export below is pinned with no such adjustment.
+    uids = [i["uid"] for g in loaded["groups"] for i in g["items"]]
+    assert len(set(uids)) == len(uids) and not [u for u in uids if "::" in u]
+    for g in loaded["groups"]:
+        per_kind: dict = {}
+        for i in g["items"]:
+            n = per_kind[i["kind"]] = per_kind.get(i["kind"], -1) + 1
+            i["uid"] = f"{g['key']}::{i['kind']}::{n}"
+    # Folders load sorted by name, the loose items last (owner feedback
+    # 2026-10-24); the baseline has them biggest first. Put that order back
+    # (Bitterroots' folder sizes are all different) so nothing else may move.
+    assert [g["name"] for g in loaded["groups"]] == [
+        "Blodgett", "Central roots", "Lost Horse Canyon", "Lost Trail Pass", "Mill Creek Canyon",
+        "North Roots", "Paddling", "Sheafman ridge", "Trapper area", "Unorganized"]
+    loaded["groups"].sort(key=lambda g: -len(g["items"]))
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
@@ -168,9 +191,9 @@ def _cairn_kml(tmp_path: Path) -> Path:
         # CalTopo GPX: coordinates and names only.
         ([FX / "bitterroots" / "bitterroots_subet.gpx"], [("gpx", "caltopo")],
          [("bitterroots subet", (10, 0, 0))]),
-        # CalTopo KML: its folders (largest first), like the GeoJSON (Phase 7).
+        # CalTopo KML: its folders (by name, 2026-10-24), like the GeoJSON (Phase 7).
         ([FX / "caltopo_synthetic" / "caltopo_synthetic.kml"], [("kml", "caltopo")],
-         [("Camps & Water #1", (8, 0, 0)), ("Routes", (0, 5, 0)), ("Areas", (0, 0, 3)),
+         [("Areas", (0, 0, 3)), ("Camps & Water #1", (8, 0, 0)), ("Routes", (0, 5, 0)),
           ("Routes / Spur lines", (0, 1, 0))]),
         # Cairn's own GPX output.
         ([FX / "rattlesnake_test_waypoints.gpx"], [("gpx", "cairn")],
@@ -340,7 +363,7 @@ def _reread(zip_bytes: bytes, tmp_path: Path) -> MapDocument:
     back = MapDocument()
     zf = _zip(zip_bytes)
     for name in zf.namelist():
-        if name.endswith(".md"):
+        if name == "instructions.txt":
             continue
         path = tmp_path / Path(name).name
         path.write_bytes(zf.read(name))

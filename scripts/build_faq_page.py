@@ -5,7 +5,8 @@
 
 Deterministic: same FAQ.md in, byte-identical HTML out. Handles only the Markdown
 subset FAQ.md uses (#/##/### headings, paragraphs, - and 1. lists, one pipe
-table, **bold**, *italic*, `code`). Anything else raises rather than rendering
+table, **bold**, *italic*, `code`, and an image alone on its line,
+![alt](../web/<path>), which may come before the first ## as the page's lead). Anything else raises rather than rendering
 wrongly, so a new construct in the FAQ is noticed here.
 """
 import html, pathlib, re, sys
@@ -35,6 +36,37 @@ def inline(text: str) -> str:
     return re.sub(r"\x00(\d+)\x00", lambda m: codes[int(m.group(1))], s)
 
 
+IMG = re.compile(r"^!\[([^\]]+)\]\((\.\./web/[^)\s]+)\)$")
+
+
+def image_size(path: pathlib.Path) -> tuple:
+    """(width, height) of a WebP or PNG, from its header (no image library)."""
+    b = path.read_bytes()[:40]
+    if b[:8] == b"\x89PNG\r\n\x1a\n":
+        return int.from_bytes(b[16:20], "big"), int.from_bytes(b[20:24], "big")
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        kind = b[12:16]
+        if kind == b"VP8 ":
+            return (int.from_bytes(b[26:28], "little") & 0x3FFF,
+                    int.from_bytes(b[28:30], "little") & 0x3FFF)
+        if kind == b"VP8L":
+            v = int.from_bytes(b[21:25], "little")
+            return (v & 0x3FFF) + 1, ((v >> 14) & 0x3FFF) + 1
+        if kind == b"VP8X":
+            return int.from_bytes(b[24:27], "little") + 1, int.from_bytes(b[27:30], "little") + 1
+    raise ValueError(f"not a PNG or WebP: {path}")
+
+
+def figure(alt: str, src: str) -> str:
+    """docs/FAQ.md links ../web/<path> (renders on GitHub); web/faq.html, <path>.
+    Click to open it full size: the diagram is wider than the column."""
+    path = ROOT / "web" / src[len("../web/"):]
+    w, h = image_size(path)
+    rel = html.escape(src[len("../web/"):])
+    return (f'<figure class="doc-fig"><a href="{rel}"><img src="{rel}" alt="{html.escape(alt)}" '
+            f'width="{w}" height="{h}"></a></figure>')
+
+
 def slug(text: str, used: set) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60].strip("-") or "section"
     base, n = s, 2
@@ -49,9 +81,10 @@ def cells(line: str):
 
 
 def parse(md: str):
-    """-> (title, [(h2 text, [(h3 text or None, [block...])])]) with blocks as HTML strings."""
+    """-> (title, lead, [(h2 text, [(h3 text or None, [block...])])]) with blocks
+    as HTML strings; lead is the images between the title and the first ##."""
     lines = md.split("\n")
-    title, sections = None, []
+    title, sections, lead = None, [], []
     para, i = [], 0
 
     def cur_blocks():
@@ -82,6 +115,13 @@ def parse(md: str):
             sections[-1][1].append((ln[4:].strip(), [])); i += 1; continue
         if ln.startswith("#"):
             raise ValueError(f"unsupported heading: {ln!r}")
+        m = IMG.match(ln)
+        if m:
+            flush()
+            (cur_blocks() if sections else lead).append(figure(m.group(1), m.group(2)))
+            i += 1; continue
+        if ln.startswith("!["):
+            raise ValueError(f"unsupported image (alt text and a ../web/ path, alone on a line): {ln!r}")
         m = re.match(r"^(-|\d+\.) ", ln)
         if m:
             flush()
@@ -107,9 +147,16 @@ def parse(md: str):
             head, rule, body = cells(rows[0]), rows[1], [cells(r) for r in rows[2:]]
             if not re.fullmatch(r"[|\s:-]+", rule):
                 raise ValueError("table without header rule")
-            t = ('<div class="tbl-wrap"><table class="tbl"><thead><tr>'
+            def val(c):
+                m = re.match(r"(Yes|No|Partly)\b", c)
+                if not m:
+                    return inline(c)
+                cls = {"Yes": "wt-ok", "No": "wt-no", "Partly": "wt-part"}[m.group(1)]
+                return f'<span class="{cls}">{m.group(1)}</span>' + inline(c[m.end():])
+
+            t = ('<div class="tbl-wrap"><table class="tbl wt-cmp wt-eq"><thead><tr>'
                  + "".join(f"<th>{inline(c)}</th>" for c in head) + "</tr></thead><tbody>"
-                 + "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in r) + "</tr>" for r in body)
+                 + "".join(f'<tr><th scope="row">{inline(r[0])}</th>' + "".join(f"<td>{val(c)}</td>" for c in r[1:]) + "</tr>" for r in body)
                  + "</tbody></table></div>")
             cur_blocks().append(t)
             continue
@@ -117,11 +164,28 @@ def parse(md: str):
             raise ValueError(f"unsupported construct: {ln!r}")
         para.append(ln); i += 1
     flush()
-    return title, sections
+    return title, lead, sections
+
+
+# The shared site nav (owner feedback 2026-10-24, UI-38): the same five links,
+# in the same order and markup, at the top and the bottom of every page.
+# web/index.html and web/walkthrough.html carry the identical markup by hand
+# (no JS includes: the CSP allows no inline script, and the doc pages have none);
+# tests/web/test_web_app.py checks the three pages agree.
+def site_nav(current: str, label: str) -> str:
+    def cur(name):
+        return ' aria-current="page"' if name == current else ""
+    return (f'<nav class="site-nav" aria-label="{label}">\n'
+            f'    <a href="./"{cur("app")}>App</a> &middot;\n'
+            f'    <a href="./#help">Help</a> &middot;\n'
+            f'    <a href="faq.html"{cur("faq")}>FAQ</a> &middot;\n'
+            f'    <a href="walkthrough.html"{cur("walkthrough")}>Walkthrough</a> &middot;\n'
+            f'    <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>\n'
+            f'  </nav>')
 
 
 def render(md: str) -> str:
-    title, sections = parse(md)
+    title, lead, sections = parse(md)
     used: set = set()
     toc, body = [], []
     for h2, subs in sections:
@@ -157,27 +221,16 @@ def render(md: str) -> str:
 <body class="docpage">
 <header class="topbar">
   <a class="wordmark wordmark-link" href="./"><span class="cairn-mark">{CAIRN_MARK}</span><span>Cairn</span></a>
-  <nav class="topnav" aria-label="Help pages">
-    <a href="./">Back to the app</a>
-    <a href="faq.html" aria-current="page">FAQ</a>
-    <a href="walkthrough.html">Walkthrough</a>
-  </nav>
+  {site_nav("faq", "Site")}
 </header>
 <div class="doc doc-faq">
   <main class="doc-main">
-    <span class="kicker">Help</span>
-    <h1>{inline(title)}</h1>
+    <h1 class="sr-only">{inline(title)}</h1>
+    {"".join(lead)}
     <nav class="doc-toc" aria-label="On this page"><span class="label">On this page</span>{toc_html}</nav>
     {"".join(body)}
-    <p class="doc-foot"><a href="./">Back to the app</a> &middot; <a href="walkthrough.html">See the walkthrough</a></p>
   </main>
 </div>
-<footer class="site-foot" aria-label="Site links">
-  <a href="./#help">Help</a> &middot;
-  <a href="faq.html" aria-current="page">FAQ</a> &middot;
-  <a href="walkthrough.html">Walkthrough</a> &middot;
-  <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
-</footer>
 </body>
 </html>
 """

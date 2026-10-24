@@ -2,6 +2,10 @@
    All map logic is the existing Python engine, running in Pyodide. */
 let py = null, DATA = null, EDITS = {}, SEL = new Set(), ZIP = null, MANIFEST = null;
 let ANCHOR = null;   // last row clicked without shift -- the pivot for range select
+/* EDITS, SEL, ANCHOR, NOTE_EDIT, POP and BULK all key items by uid. A uid is
+   an opaque id from bridge.py ("i0", "i1", ...) that stays the same when the
+   item moves to another folder (ENG-07): never parse it for a folder or
+   position -- read the item's group from DATA instead. */
 
 /* Every filter lives here; the rail facets (Type, Folders, Icon), the chips and
    #only-attention all render FROM this object, and visibleItems() reads only
@@ -13,9 +17,31 @@ const RAIL_FOLDED = new Set();         // rail filter sections folded away (UI-2
 let NOTE_EDIT = null;                  // {uid, draft} -- the one note open for editing
 let POP = null;                        // single-item icon & color popover state
 let BULK = null;                       // several-items dialog state
+/* Folders (UI-32). The bridge owns membership and names (ENG-07); after each
+   move, rename or merge DATA.groups is rebuilt from the layout it returns,
+   keeping the same JS item objects (they carry the unexported edits). */
+let RENAME = null;                     // {key, draft, where: "head"|"rail", declined?} -- the one folder name being edited
+let DRAG = null;                       // row drag in progress (pointer events)
+let MOVE = null;                       // More ▸ Move to… list state
+let SAVED = null;                      // {home, names, edits} as loaded or at the last export (Start over)
+let PENDING_MERGE = null;              // a taken name, waiting for its deferred render to offer the merge
+const NEW_TARGET = "\u0000new";        // drop key of the rail's "+ New folder"
 
 const $ = s => document.querySelector(s);
-const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; e.className = "status " + cls; };
+/* A "ready" line ("Moved 2 items to …") is a receipt, not state: it clears itself
+   after STATUS_LINGER_MS if nothing else has replaced it. Errors and in-progress
+   lines stay until something supersedes them. */
+let STATUS_LINGER_MS = 8000;
+let STATUS_TIMER = null;
+const setStatus = (t, cls = "") => {
+  const e = $("#status"); e.textContent = t; e.className = "status " + cls;
+  clearTimeout(STATUS_TIMER); STATUS_TIMER = null;
+  if (t && cls === "ready") STATUS_TIMER = setTimeout(() => {
+    if (e.textContent === t) { e.textContent = ""; e.className = "status "; }
+  }, STATUS_LINGER_MS);
+};
+/** An error that a later success has made stale ("A folder needs a name."). */
+const clearError = () => { if ($("#status").classList.contains("err")) setStatus(""); };
 
 /* Keyboard focus across re-renders. The rail and the list are rebuilt with
    innerHTML, which drops focus to <body>. Every control they rebuild carries a
@@ -25,10 +51,38 @@ const setStatus = (t, cls = "") => { const e = $("#status"); e.textContent = t; 
    note button and its open editor share one key, so Save/Cancel land back on
    the note button. A key that no longer exists is a silent no-op. */
 const focusedKey = () => document.activeElement?.dataset?.fk || null;
+const fkEl = k => [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k) || null;
+const focusFk = k => fkEl(k)?.focus({ preventScroll: true });
 function refocus(k) {
   if (!k || focusedKey() === k) return;
-  const el = [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k);
-  if (el) el.focus({ preventScroll: true });
+  focusFk(k);
+}
+
+/* A render that follows leaving a field (Tab, or a click elsewhere) runs on
+   the next task, once focus has landed, so the control being focused isn't
+   rebuilt under it. With a mouse button down it waits for the release: a
+   rebuild between a button's pointerdown and pointerup replaces the button,
+   and the click is lost. Queued from pointerup, it runs after that click. */
+let POINTER_HELD = false, FLUSH_T = null;
+const DEFERRED = [];
+function deferRender(fn) {
+  DEFERRED.push(fn);
+  if (!POINTER_HELD) scheduleFlush();
+}
+function scheduleFlush() {
+  if (FLUSH_T === null && DEFERRED.length) FLUSH_T = setTimeout(flushDeferred);
+}
+/** Run whatever is waiting now (Export and Start over must see its result). */
+function flushDeferred() {
+  clearTimeout(FLUSH_T); FLUSH_T = null;
+  DEFERRED.splice(0).forEach(fn => fn());
+}
+function wirePointerHeld() {
+  document.addEventListener("pointerdown", () => { POINTER_HELD = true; }, true);
+  const up = () => { POINTER_HELD = false; scheduleFlush(); };
+  document.addEventListener("pointerup", up, true);
+  document.addEventListener("pointercancel", up, true);
+  window.addEventListener("blur", up);
 }
 
 /* Modals keep Tab and Shift+Tab inside their card. Computed at keydown time:
@@ -85,6 +139,8 @@ async function boot() {
     py.FS.writeFile("/bridge.py", bridge);
     if (cfg !== null) py.FS.writeFile("/cairn_config.yaml", cfg);
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
+    NOTE_LIMIT = py.runPython("bridge.ONX_IMPORT_NOTE_LIMIT");
+    ONX_DEFAULT_FILL = py.runPython("bridge.ColorMapper.DEFAULT_AREA_FILL");
     window.__cairnReady = true;
     // The same signal as a DOM attribute, for tests that run under the
     // enforced CSP, where Playwright can't evaluate window.__cairnReady.
@@ -92,7 +148,7 @@ async function boot() {
     // A file chosen or dropped while the engine was still booting waits here.
     if (PENDING_FILES) { const f = PENDING_FILES; PENDING_FILES = null; handleFiles(f); }
   } catch (e) {
-    PENDING_FILES = null; $("#drop-wait").classList.add("hidden");
+    PENDING_FILES = null; showDropWait(false);
     setStatus("Failed: " + e.message, "err");
     window.__cairnError = String(e);
     console.error(e);
@@ -108,6 +164,77 @@ function showStage(name) {
   const slot = name === "edit" ? $("#status-rail") : $("#status-top");
   if ($("#status").parentNode !== slot) slot.appendChild($("#status"));
   window.scrollTo(0, 0);
+  syncUnloadGuard();
+}
+
+/* ---------- browser Back and Forward (UI-37) ----------
+   Each stage is a history entry: drop (replaced in at boot), edit (pushed on
+   load), done (pushed on export), so the entries are always drop, edit, done
+   in that order and a stage's depth is its index. The app's own buttons stay
+   synchronous: Back (done -> edit) and Start over move the screen at once and
+   step history to match, ignoring the popstate that causes (HIST_SKIP).
+   popstate (the browser's Back / Forward):
+   - done -> edit: nothing lost, no prompt;
+   - edit -> drop: with unexported changes, "Leave this map?" [Stay] [Leave];
+     Stay steps forward again, Leave clears the map like Start over; with
+     none, straight to drop;
+   - Forward only to a stage that is still valid (edit: a loaded map; done: an
+     export that is current, no change since); otherwise history steps back to
+     where the screen is and nothing changes.
+   A popstate with no state of ours (a hash link, "#help") is left alone. */
+const STAGE_DEPTH = { drop: 0, edit: 1, done: 2 };
+let HIST_SKIP = 0;                     // popstates our own history.go() will fire
+function pushStage(name) {
+  showStage(name);
+  history.pushState({ cairn: name }, "");
+}
+/** Step history by n entries without reacting to the popstate it fires. */
+function stepHistory(n) {
+  if (!n) return;
+  HIST_SKIP++;
+  history.go(n);
+}
+const stageValid = name => name === "drop" || (name === "edit" && !!DATA) ||
+  (name === "done" && !!DATA && !!ZIP && unexportedChanges() === 0);
+function onPopState(e) {
+  if (HIST_SKIP) { HIST_SKIP--; return; }
+  const want = e.state && e.state.cairn;
+  const now = document.body.dataset.stage;
+  if (!want || !(want in STAGE_DEPTH) || want === now) return;
+  if (!stageValid(want)) { stepHistory(STAGE_DEPTH[now] - STAGE_DEPTH[want]); return; }
+  if (want === "drop") return leaveMap(now);
+  // done -> edit (Back), or edit -> done (Forward to a current export).
+  closePop(); closeBulk(); closeMove(false); hideTip();
+  if (CONFIRM) closeConfirm(false);
+  showStage(want);
+  setStatus("");
+}
+/** Back to the drop screen from `from` (history is already there). */
+function leaveMap(from) {
+  flushDeferred();
+  if (CONFIRM) closeConfirm(false);
+  const n = unexportedChanges();
+  if (!n) { resetAll({ history: false }); return; }
+  openConfirm({
+    title: "Leave this map?",
+    body: "Changes will be lost.",
+    buttons: [
+      { label: "Stay", initial: true, cancel: true, run: () => {
+          closeConfirm(); stepHistory(STAGE_DEPTH[from]); } },
+      { label: "Leave", cls: "danger", run: () => { closeConfirm(false); resetAll({ history: false }); } },
+    ],
+  });
+}
+/* The browser's own "Leave site?" prompt on reload, tab close or leaving the
+   site, only while there are unexported changes: the listener is added then
+   and removed otherwise. */
+const onBeforeUnload = e => { e.preventDefault(); e.returnValue = ""; };
+let UNLOAD_ON = false;
+function syncUnloadGuard() {
+  const on = typeof unexportedChanges === "function" && unexportedChanges() > 0;
+  if (on === UNLOAD_ON) return;
+  UNLOAD_ON = on;
+  (on ? addEventListener : removeEventListener)("beforeunload", onBeforeUnload);
 }
 
 /* ---------- file intake ---------- */
@@ -139,10 +266,10 @@ async function handleFiles(files) {
   // arrives first is queued and processed by boot() the moment it is ready.
   if (!window.__cairnReady) {
     PENDING_FILES = files;
-    $("#drop-wait").classList.remove("hidden");
+    showDropWait(true);
     return;
   }
-  $("#drop-wait").classList.add("hidden");
+  showDropWait(false);
   setStatus("Reading " + (files.length === 1 ? files[0].name : `${files.length} files`) + "…");
   try {
     const payload = await Promise.all(files.map(async f => ({ name: f.name, text: await f.text() })));
@@ -153,12 +280,15 @@ async function handleFiles(files) {
     const raw = py.runPython("bridge.load_files(_cairn_files)");
     DATA = JSON.parse(raw); EDITS = {}; SEL.clear(); ANCHOR = null;
     resetFilters(); COLLAPSED.clear(); RAIL_FOLDED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
+    SORT.clear(); hideTip();
+    resetFolderState();
+    $("#runbook").replaceChildren();
+    SAVED = savedState();
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
-    renderSourceNotice(DATA);
     renderEdit();
-    showStage("edit");
-    setStatus("Map loaded", "ready");
+    pushStage("edit");
+    setStatus("");   // the screen says it; the status line is for messages (moves, errors)
     window.__cairnLoaded = true;
     warnFillLoss();
   } catch (e) {
@@ -169,6 +299,14 @@ async function handleFiles(files) {
     setStatus("Couldn't read that file — " + humanError(e), "err");
     console.error(e);
   }
+}
+
+/** The "Getting ready…" line is a status region: empty it when hidden, or a
+    screen reader's view of the page says it all session. */
+function showDropWait(on) {
+  const w = $("#drop-wait");
+  w.textContent = on ? "Getting ready…" : "";
+  w.classList.toggle("hidden", !on);
 }
 
 function humanError(e) {
@@ -204,17 +342,6 @@ function mapLabel(data) {
   return caltopo ? "CalTopo map" : onx ? "onX map" : "Map";
 }
 
-/** CalTopo's GPX has no folders, waypoint icons or waypoint colors (only line
-    colors, as Garmin color names): say that its GeoJSON or KML would have
-    brought them. CalTopo KML keeps them (roadmap Phase 7), so it gets no notice. */
-const CALTOPO_GPX_NOTICE = "CalTopo's GPX has no folders, icons or waypoint colors. Its GeoJSON or KML export keeps them.";
-function renderSourceNotice(data) {
-  const el = $("#source-notice");
-  const show = (data.sources || []).some(s => s.dialect === "caltopo" && s.kind === "gpx");
-  el.textContent = show ? CALTOPO_GPX_NOTICE : "";
-  el.classList.toggle("hidden", !show);
-}
-
 /* ---------- filters ---------- */
 function resetFilters() {
   FILTERS.q = ""; FILTERS.kind = ""; FILTERS.folder = null;
@@ -223,7 +350,10 @@ function resetFilters() {
   syncTypeFacet();
 }
 
-const isUnorganized = g => g.key === "orphaned_features" || /^(Unorganized|Uncategorized)$/.test(g.name);
+/* The items outside any folder of the file. The bridge says which folder that
+   is (by where its items came from, not its name) and clears it on a rename
+   (UI-32): a CalTopo folder called "Unorganized" is an ordinary folder. */
+const isUnorganized = g => !!g.unorganized;
 const iconKey = it => it.needs_attention ? DEFAULT_PIN : it.icon;
 
 function visibleItems(g) {
@@ -231,10 +361,42 @@ function visibleItems(g) {
   const q = FILTERS.q.toLowerCase();
   const keys = new Set(FILTERS.icons);
   if (FILTERS.attention) keys.add(DEFAULT_PIN);
-  return g.items.filter(i =>
+  const shown = g.items.filter(i =>
     (!q || i.name.toLowerCase().includes(q) || (i.desc || "").toLowerCase().includes(q)) &&
     (!FILTERS.kind || i.kind === FILTERS.kind) &&
     (!keys.size || (i.kind === "waypoints" && keys.has(iconKey(i)))));
+  const dir = SORT.get(g.key);
+  return dir ? sortByName(shown, dir) : shown;
+}
+
+/* Name sort, per folder (owner feedback 2026-10-24): each folder's Name header
+   cycles ITS rows through the map's order, A to Z, Z to A; sorting one folder
+   leaves the others as they are. The state is keyed by folder key, so a
+   rename keeps it, a merge's target keeps its own, items moved in show in the
+   target's state, and a removed folder's state goes with it; a new folder
+   starts in the map's order. View only: DATA.groups (and so the export) keeps
+   the map's order. Everything that reads visibleItems -- the rows,
+   shift-click ranges, select-all -- follows the sorted order. Natural and
+   case-insensitive, so "01 - …", "02 - …", "10 - …" come out in order. */
+const SORT = new Map();                // folder key -> "asc" | "desc" (absent: the map's order)
+const NAME_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+function sortByName(items, how) {
+  const dir = how === "desc" ? -1 : 1;
+  // Array.prototype.sort is stable: equal names keep the map's order.
+  return [...items].sort((a, b) => dir * NAME_ORDER.compare(a.name.trim(), b.name.trim()));
+}
+/** Up and down arrows; the one in use is dark (.on), both are faint in map order. */
+function sortIcon(s) {
+  return `<svg class="sort-icon" width="8" height="12" viewBox="0 0 8 12" aria-hidden="true">` +
+    `<path d="M4 0.5 7.5 4.5H0.5Z"${s === "asc" ? ` class="on"` : ""}/>` +
+    `<path d="M4 11.5 0.5 7.5H7.5Z"${s === "desc" ? ` class="on"` : ""}/></svg>`;
+}
+const SORT_NEXT = { null: "asc", asc: "desc", desc: null };
+const ARIA_SORT = { null: "none", asc: "ascending", desc: "descending" };
+function toggleSort(key) {
+  const next = SORT_NEXT[SORT.get(key) || null];
+  next ? SORT.set(key, next) : SORT.delete(key);
+  renderFolders();
 }
 
 function syncTypeFacet() {
@@ -284,42 +446,83 @@ function renderEdit() {
 
 function renderRail() {
   const fk = focusedKey();
-  // Type: each kind with its count; "Areas" only when the map has any.
+  // Type: "All", then each kind the map has (Areas, Lines, Waypoints: alphabetical,
+  // fixed in index.html) with its count. A kind with none is hidden, unless it is
+  // the filter in use (so it can be seen and cleared).
   const byKind = { "": 0, waypoints: 0, tracks: 0, shapes: 0 };
   allItems().forEach(i => { byKind[""]++; byKind[i.kind] = (byKind[i.kind] || 0) + 1; });
   document.querySelectorAll("#type-filter [data-kind]").forEach(b => {
     b.querySelector(".facet-count").textContent = byKind[b.dataset.kind] || 0;
-    if (b.dataset.kind === "shapes") b.classList.toggle("hidden", !byKind.shapes && FILTERS.kind !== "shapes");
+    const k = b.dataset.kind;
+    if (k) b.classList.toggle("hidden", !byKind[k] && FILTERS.kind !== k);
   });
   syncTypeFacet();
 
   // Folders: "All" first, then each folder with its item count.
-  const fl = $("#folder-facets"); fl.innerHTML = "";
+  const fl = $("#folder-facets"); rebuild(fl);
   const facetBtn = (label, count, key, italic) => {
+    const fkey = "folder|" + (key === null ? "\u0000all" : key);
+    if (key !== null && naming(key, "rail")) {
+      // A new folder's name, edited in place (NameNewFolder mockup).
+      const d = document.createElement("div");
+      d.className = "facet-btn naming";
+      d.innerHTML = `${folderNameInput(fkey)}<span class="facet-count">${count}</span>`;
+      wireFolderName(d.querySelector("input"));
+      fl.appendChild(d);
+      return;
+    }
     const b = document.createElement("button");
     b.type = "button"; b.className = "facet-btn" + (italic ? " unorg" : "");
     b.setAttribute("aria-pressed", String(FILTERS.folder === key));
-    b.dataset.fk = "folder|" + (key === null ? "\u0000all" : key);
-    b.innerHTML = `<span class="facet-name">${esc(label)}</span><span class="facet-count">${count ?? ""}</span>`;
+    b.dataset.fk = fkey;
+    const here = key !== null && DRAG && DRAG.active && DRAG.here === key;
+    if (key !== null) b.dataset.drop = key;
+    if (here) b.classList.add("here-now");
+    b.innerHTML = `<span class="facet-name"${key !== null ? ` title="${esc(label)}"` : ""}>${esc(label)}</span><span class="facet-count">${here ? "here now" : count ?? ""}</span>`;
     b.onclick = () => {
       FILTERS.folder = FILTERS.folder === key && key !== null ? null : key;
       renderRail(); renderFolders();
     };
+    if (key !== null && count === 0) {
+      // An empty folder (made with + New folder, or loaded empty) can be
+      // removed: an × beside it, shown on hover and focus. A
+      // wrapper, since a button can't hold another button.
+      const row = document.createElement("div");
+      row.className = "facet-row empty";
+      const x = document.createElement("button");
+      x.type = "button"; x.className = "facet-x"; x.dataset.fk = "remove|" + key;
+      x.setAttribute("aria-label", `Remove empty folder ${label}`);
+      x.title = "Remove empty folder";
+      x.innerHTML = UI_ICON.close;
+      x.onclick = e => { e.stopPropagation(); removeEmptyFolder(key); };
+      row.append(b, x);
+      fl.appendChild(row);
+      return;
+    }
     fl.appendChild(b);
   };
   facetBtn("All", "", null, false);
   DATA.groups.forEach(g => facetBtn(g.name, g.items.length, g.key, isUnorganized(g)));
+  // + New folder: a drop target for dragged rows, and a button:
+  // clicked, it moves the ticked rows into a new folder, or with nothing
+  // ticked makes an empty one, ready to drop rows on.
+  const nf = document.createElement("button");
+  nf.type = "button"; nf.className = "new-folder"; nf.textContent = "+ New folder";
+  nf.dataset.fk = "newfolder";
+  nf.dataset.drop = NEW_TARGET;   // set as a property: an HTML parser turns the NUL into U+FFFD
+  nf.onclick = newFolderClicked;
+  fl.appendChild(nf);
 
-  // Icons present in the map, most common first; "Default pin" last.
+  // Icons present in the map: "Default pin" first (owner, 2026-10-24), then the
+  // icons alphabetically (natural, any case).
   const counts = new Map();
   allItems().filter(i => i.kind === "waypoints").forEach(i => {
     const k = iconKey(i); counts.set(k, (counts.get(k) || 0) + 1);
   });
-  const keys = [...counts.keys()].filter(k => k !== DEFAULT_PIN)
-    .sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b));
-  if (counts.has(DEFAULT_PIN) || FILTERS.attention) keys.push(DEFAULT_PIN);
-  // keep an icon you're filtering on visible even after its last item changed
-  FILTERS.icons.forEach(k => { if (!keys.includes(k)) keys.splice(keys.length - (keys.at(-1) === DEFAULT_PIN), 0, k); });
+  // Keep an icon you're filtering on visible even after its last item changed.
+  const keys = [...new Set([...counts.keys(), ...FILTERS.icons])].filter(k => k !== DEFAULT_PIN)
+    .sort((a, b) => NAME_ORDER.compare(a, b));
+  if (counts.has(DEFAULT_PIN) || FILTERS.attention) keys.unshift(DEFAULT_PIN);
   const il = $("#icon-facets"); il.innerHTML = "";
   keys.forEach(k => {
     const def = k === DEFAULT_PIN;
@@ -376,26 +579,31 @@ function renderFolders() {
   // selected row, it drops out of the selection rather than staying an
   // invisible target for the next bulk edit.
   const fk = focusedKey();
+  hideTip();                       // its control is about to be replaced
   const shownUids = new Set(shownItems().map(i => i.uid));
   const selectableUids = new Set(selectableItems().map(i => i.uid));
   for (const uid of SEL) if (!selectableUids.has(uid)) SEL.delete(uid);
   if (NOTE_EDIT && !shownUids.has(NOTE_EDIT.uid)) NOTE_EDIT = null;
   renderChips();
 
-  const host = $("#folders"); host.innerHTML = "";
+  const host = $("#folders"); rebuild(host);
   DATA.groups.forEach(g => {
     const items = visibleItems(g);
-    if (!items.length) return;
+    if (!items.length) {
+      if (!g.items.length && showsEmptyFolders(g)) host.appendChild(emptyFolderSection(g));
+      return;
+    }
     const el = document.createElement("section");
     el.className = "folder";
     el.setAttribute("aria-label", g.name);
     const collapsed = COLLAPSED.has(g.key);
-    const sub = isUnorganized(g) ? "Not in any CalTopo folder"
+    const sort = SORT.get(g.key) || null;
+    const sub = isUnorganized(g) ? "Not in any folder"
       : items.length === g.items.length ? `${g.items.length} item${g.items.length === 1 ? "" : "s"}`
       : `${items.length} of ${g.items.length} shown`;
     el.innerHTML = `
       <div class="folder-head">
-        <h2>${esc(g.name)}</h2>
+        ${folderTitleHTML(g)}
         <span class="folder-sub">${esc(sub)}</span>
         <button type="button" class="collapse" data-fk="collapse|${esc(g.key)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
       </div>
@@ -403,7 +611,7 @@ function renderFolders() {
         <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
         <thead><tr>
           <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
-          <th>Name</th><th>Note</th><th>Icon</th>
+          <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}" aria-label="Sort ${esc(g.name)} by name">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
         </tr></thead><tbody></tbody></table></div>`;
     const tb = el.querySelector("tbody");
     items.forEach(it => tb.appendChild(row(it)));
@@ -415,6 +623,8 @@ function renderFolders() {
       items.forEach(i => e.target.checked ? SEL.add(i.uid) : SEL.delete(i.uid));
       renderFolders();
     };
+    wireFolderTitle(el, g);
+    el.querySelector(".sort-btn").onclick = () => toggleSort(g.key);
     el.querySelector(".collapse").onclick = () => {
       COLLAPSED.has(g.key) ? COLLAPSED.delete(g.key) : COLLAPSED.add(g.key);
       renderFolders();
@@ -425,6 +635,39 @@ function renderFolders() {
     host.innerHTML = `<div class="note">Nothing matches these filters.</div>`;
   updateSel();
   refocus(fk);
+  syncUnloadGuard();               // every edit, move and rename redraws the list
+}
+
+/** An empty folder shows as a header only (so it can be renamed there), when
+    no search, type or icon filter would hide it anyway. */
+const showsEmptyFolders = g => !FILTERS.q && !FILTERS.kind && !FILTERS.icons.size && !FILTERS.attention &&
+  (FILTERS.folder === null || FILTERS.folder === g.key);
+function emptyFolderSection(g) {
+  const el = document.createElement("section");
+  el.className = "folder empty-folder";
+  el.setAttribute("aria-label", g.name);
+  el.innerHTML = `<div class="folder-head">
+      ${folderTitleHTML(g)}
+      <span class="folder-sub">Empty</span></div>`;
+  wireFolderTitle(el, g);
+  return el;
+}
+
+/** Whether folder `key`'s name is open for editing in its table header
+    ("head") or in the rail ("rail"). */
+const naming = (key, where) => !!RENAME && RENAME.key === key && RENAME.where === where;
+const folderNameInput = fk =>
+  `<input class="folder-name-in" data-fk="${esc(fk)}" aria-label="Folder name" maxlength="${FOLDER_NAME_MAX}" autocomplete="off">`;
+/** A folder header's title: its name as a button (click to rename), or the open name field. */
+function folderTitleHTML(g) {
+  const fk = "fname|" + g.key;
+  return `<h2>${naming(g.key, "head") ? folderNameInput(fk)
+    : `<button type="button" class="folder-name" data-fk="${esc(fk)}" title="${esc(g.name)}">${esc(g.name)}</button>`}</h2>`;
+}
+function wireFolderTitle(el, g) {
+  const inp = el.querySelector(".folder-head .folder-name-in");
+  if (inp) wireFolderName(inp);
+  else el.querySelector(".folder-name").onclick = () => startRename(g.key, "head");
 }
 
 const colorList = () => DATA.line_colors || DATA.colors;
@@ -437,6 +680,171 @@ const kindWord = k => k === "shapes" ? "Area" : "Line";
 const SUBKIND_WORD = { line: "Line", track: "Track", area: "Area" };
 const rowKindWord = it => SUBKIND_WORD[it.subkind] || kindWord(it.kind);
 const oneLine = s => String(s || "").replace(/\s*\n\s*/g, " ").trim();
+/** A note's preview in the list: its first line that isn't blank.
+    The rest shows on hover (the tip below). "Use note as name" still joins
+    every line (oneLine). */
+const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boolean) || "";
+
+/* ---------- the hover tip ----------
+   One styled popup (#tip) for a row name or note preview that hides text,
+   and for a row's caution mark: shown after a short hover or on keyboard
+   focus, with line breaks kept, inside the window, selectable and copyable
+   (the pointer may move onto it), and gone on Esc. Not the native `title`:
+   it drops line breaks on some platforms and can't be styled. */
+const TIP_SRC = ".name-in, .note-btn, .caution";
+const TIP_HOVER_MS = 450, TIP_FOCUS_MS = 150;   // how long a hover / keyboard focus waits for the tip
+const TIP_GRACE_MS = 200;      // leaving the control or the tip: time to cross from one to the other
+const PRESS_FOCUS_MS = 300;    // focus this soon after a press came from the pointer, not the keyboard
+const TIP = { src: null, showT: null, hideT: null, over: false };
+let LAST_POINTER = 0;   // when the last press happened: focus right after it isn't keyboard focus
+const cut = el => !!el && el.scrollWidth > el.clientWidth + 1;
+function tipText(src, viaKey = false) {
+  const tr = src.closest("tr[data-uid]");
+  const it = tr && allItems().find(i => i.uid === tr.dataset.uid);
+  if (!it) return null;
+  if (src.classList.contains("caution")) return src.getAttribute("aria-label");   // each mark its own
+  if (src.classList.contains("name-in")) {
+    // Not while typing in it (the field shows what is typed), unless it was
+    // just reached by keyboard.
+    return (viaKey || src !== document.activeElement) && cut(src) ? src.value : null;
+  }
+  const desc = String(it.desc || "").trim();
+  if (!desc) return null;
+  return desc !== firstLine(desc) || cut(src.querySelector(".note-text")) ? desc : null;
+}
+function scheduleTip(src, ms, viaKey = false) {
+  clearTimeout(TIP.showT);
+  // Back on the control whose tip is up: keep it. Any other control leaves a
+  // pending hide alone (crossing another row's name on the way out must not
+  // keep this tip up).
+  if (TIP.src === src && tipShown()) { clearTimeout(TIP.hideT); return; }
+  TIP.showT = setTimeout(() => showTip(src, viaKey), ms);
+}
+const tipShown = () => !$("#tip").classList.contains("hidden");
+/** The left edge nearest x that keeps a w-wide popup 8px inside the window. */
+const leftInWindow = (x, w) => Math.max(8, Math.min(x, document.documentElement.clientWidth - w - 8));
+function showTip(src, viaKey = false) {
+  if (!src.isConnected || DRAG || CONFIRM || BULK || POP || MOVE) return;
+  // Still pointed at or focused (a scroll may have moved it from under the pointer).
+  if (!src.matches(":hover") && !src.contains(document.activeElement)) return;
+  const text = tipText(src, viaKey);
+  if (!text) { hideTip(); return; }
+  hideTip();
+  const tip = $("#tip");
+  tip.textContent = text;
+  tip.classList.remove("hidden");
+  // Longer than fits: end on a whole line (never half of one) and say there is more.
+  tip.style.maxHeight = "";
+  const scrolls = tip.scrollHeight > tip.clientHeight + 1;
+  tip.classList.toggle("scrolls", scrolls);
+  if (scrolls) {
+    const lh = parseFloat(getComputedStyle(tip).lineHeight), pad = tip.offsetHeight - tip.clientHeight + 16;
+    const room = parseFloat(getComputedStyle(tip).maxHeight) - pad;   // styles.css .tip max-height
+    tip.style.maxHeight = `${Math.max(1, Math.floor(room / lh)) * lh + pad}px`;
+  }
+  TIP.src = src;
+  src.setAttribute("aria-describedby", "tip");
+  // Below the control, else above it; never over it (that would block the
+  // click it is waiting for), and always inside the window.
+  const r = src.getBoundingClientRect();
+  const vh = window.innerHeight, h = tip.offsetHeight;
+  const left = leftInWindow(r.left, tip.offsetWidth);
+  let top = r.bottom + 6;
+  if (top + h > vh - 8) top = r.top - h - 6 >= 8 ? r.top - h - 6 : Math.max(8, vh - h - 8);
+  tip.style.left = `${left}px`; tip.style.top = `${top}px`;
+}
+/** keepPending: a delayed hide takes down the tip that is up, but not a
+    show that is waiting for another control the pointer has moved onto. */
+function hideTip(keepPending = false) {
+  if (!keepPending) clearTimeout(TIP.showT);
+  clearTimeout(TIP.hideT);
+  TIP.over = false;
+  if (TIP.src) { TIP.src.removeAttribute("aria-describedby"); TIP.src = null; }
+  const tip = $("#tip");
+  if (tip && !tip.classList.contains("hidden")) { tip.classList.add("hidden"); tip.textContent = ""; }
+}
+/** Leaving the control or the tip: a short grace, so the pointer can cross
+    from one to the other (to select the text). */
+function laterHideTip(cancelShow = true) {
+  if (cancelShow) clearTimeout(TIP.showT);
+  clearTimeout(TIP.hideT);
+  TIP.hideT = setTimeout(() => { if (!TIP.over) hideTip(true); }, TIP_GRACE_MS);
+}
+function wireTip() {
+  const host = $("#folders"), tip = $("#tip");
+  host.addEventListener("pointerover", e => {
+    if (e.pointerType === "touch" || DRAG) return;
+    const src = e.target.closest(TIP_SRC);
+    if (src) scheduleTip(src, TIP_HOVER_MS);
+  });
+  host.addEventListener("pointerout", e => {
+    const src = e.target.closest(TIP_SRC);
+    if (!src || src.contains(e.relatedTarget)) return;
+    if (TIP.src === src || !tipShown()) laterHideTip();
+  });
+  host.addEventListener("focusin", e => {
+    const src = e.target.closest(TIP_SRC);
+    if (src && Date.now() - LAST_POINTER > PRESS_FOCUS_MS) scheduleTip(src, TIP_FOCUS_MS, true);   // keyboard focus
+  });
+  host.addEventListener("focusout", e => { if (TIP.src && TIP.src.contains(e.target)) hideTip(); });
+  // Typing in a name it describes: the field shows the text now.
+  host.addEventListener("input", e => { if (TIP.src && TIP.src === e.target) hideTip(); });
+  tip.addEventListener("pointerenter", () => { TIP.over = true; clearTimeout(TIP.hideT); });
+  tip.addEventListener("pointerleave", () => { TIP.over = false; laterHideTip(false); });
+  document.addEventListener("pointerdown", e => {
+    LAST_POINTER = Date.now();
+    if (!tip.contains(e.target)) hideTip();
+  }, true);
+  // Esc dismisses the tip and nothing else (not a name's revert, not the
+  // selection): capture, ahead of every other Esc handler.
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && tipShown()) { e.preventDefault(); e.stopPropagation(); hideTip(); }
+  }, true);
+  // A scroll moves the control from under its tip (not one that is waiting:
+  // scrolling a row into view is how a hover often starts).
+  window.addEventListener("scroll", e => { if (e.target !== tip && tipShown()) hideTip(); }, true);
+  window.addEventListener("resize", hideTip);
+}
+/* ---------- what won't carry over ----------
+   A caution mark beside a row's note, before export, for what onX will
+   change on import: a note over its byte limit (the export's long_notes rule)
+   and an onX area whose fill onX will reset (UI-30's rule, except a
+   transparent / none fill). One plain line each; the tip shows them. An
+   excluded row isn't exported, so it has none. Rows re-render after every
+   edit, so the mark follows the note. */
+let NOTE_LIMIT = null;                 // bridge.ONX_IMPORT_NOTE_LIMIT (512), read at boot
+const utf8Len = cp => cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+/** [bytes, characters past the limit] of a note, by UTF-8 bytes, measured
+    on the note as the export writes it to the GPX <desc> (line endings made
+    "\n", outer whitespace trimmed: writers.clean_notes for plain notes), the
+    same measure instructions.txt uses, so the screen and the file agree. */
+const writtenNote = d => String(d || "").replace(/\r\n?/g, "\n").trim();
+function noteOverflow(desc) {
+  let bytes = 0, kept = 0, total = 0;
+  for (const ch of writtenNote(desc)) {
+    bytes += utf8Len(ch.codePointAt(0)); total++;
+    if (bytes <= NOTE_LIMIT) kept++;
+  }
+  return [bytes, total - kept];
+}
+const fillAlpha = f => { const m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(f || ""); return m ? parseFloat(m[1]) : 1; };
+/** The mark beside the note: a note onX will cut, or an item that won't export. */
+function noteCaution(it) {
+  if (!it.included) return null;
+  if (it.no_coords) return "Won't export: it has no coordinates.";
+  const [bytes, cutN] = noteOverflow(it.desc);
+  return bytes > NOTE_LIMIT
+    ? `onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
+}
+/** The mark at the far right of an area's Icon cell, after "Area" (owner
+    feedback 2026-10-24): onX will reset its fill. Not for an item that won't
+    export (its one mark says so). */
+function fillCaution(it) {
+  return it.included && !it.no_coords && fillChanges(it) ? "onX will reset this area's fill to its default blue." : null;
+}
+const cautionMark = (fk, text, cls = "") =>
+  `<span class="caution${cls}" tabindex="0" role="img" data-fk="${fk}" aria-label="${esc(text)}">${UI_ICON.caution}</span>`;
 
 function row(it) {
   const tr = document.createElement("tr");
@@ -446,25 +854,28 @@ function row(it) {
   if (SEL.has(it.uid)) tr.classList.add("sel");
   if (!it.included) tr.classList.add("excluded");
   if (POP && POP.uid === it.uid) tr.classList.add("editing");
+  if (DRAG && DRAG.active && DRAG.uidSet.has(it.uid)) tr.classList.add("dragging");
   const noteOpen = NOTE_EDIT && NOTE_EDIT.uid === it.uid;
   if (noteOpen) tr.classList.add("note-open");
   const cname = colorName(it.color);
   const iconLabel = it.needs_attention ? "Default pin" : it.icon;
   const fk = esc(it.uid) + "|";
+  const caution = noteCaution(it);
+  const fillMark = fillCaution(it);
   tr.innerHTML = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
-      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
+      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
-        <span class="note-text${it.desc ? "" : " empty"}">${esc(oneLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
+      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
+        <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
           ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>`
           // An icon an onX file named that isn't in onX's list (Phase 2 flags
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
-      : `<button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>`}</td>`;
+      : `<div class="icon-cell"><button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>${fillMark ? cautionMark(`${fk}fillcaution`, fillMark, " fill-caution") : ""}</div>`}</td>`;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {
@@ -521,29 +932,35 @@ function syncFolderBox(tr) {
  */
 function wireTextField(el, it, key, { required = false } = {}) {
   el.addEventListener("focus", () => { el.dataset.orig = el.value; });
-  el.addEventListener("keydown", e => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      el.value = el.dataset.orig ?? "";   // no diff => no change event => no commit
-      el.blur();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      el.blur();                          // commit
-    }
-  });
-  el.addEventListener("change", () => {
+  const commit = now => {
     const v = el.value;
     if (required && !v.trim()) {
       el.value = el.dataset.orig ?? "";
-      setStatus("A name is required — onX can only search by name.", "err");
+      setStatus("A name is required. onX searches by name only.", "err");
       return;
     }
-    // `change` fires on blur BEFORE focus lands on the next control; a
-    // synchronous re-render would destroy that control mid-Tab. Update the data
-    // now, re-render on the next task, when focus has arrived and can be kept.
+    if (v === el.dataset.orig) return;
+    el.dataset.orig = v;
     edit(it, { [key]: v }, { render: false });
-    setTimeout(() => DATA && refreshAfterEdit());
+    // Enter keeps focus in the field: render now (refocus finds it again).
+    // `change` fires on blur BEFORE focus lands on the next control; a
+    // synchronous re-render would destroy that control mid-Tab, so leaving
+    // the field renders later (deferRender).
+    if (now) refreshAfterEdit();
+    else deferRender(() => DATA && refreshAfterEdit());
+  };
+  // Enter saves and Esc reverts, both staying in the field (focus never drops
+  // to the page): Esc's restored value means the blur that follows sees no change.
+  el.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      el.value = el.dataset.orig ?? "";
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      commit(true);
+    }
   });
+  el.addEventListener("change", () => commit(false));
 }
 
 /* ---------- notes: inline multi-line editor ---------- */
@@ -582,7 +999,7 @@ function closeNote(it, apply) {
 
 function wireNoteEditor(tr, it) {
   const ta = tr.querySelector(".desc-in");
-  ta.addEventListener("input", () => { NOTE_EDIT.draft = ta.value; });
+  ta.addEventListener("input", () => { NOTE_EDIT.draft = ta.value; syncUnloadGuard(); });
   ta.addEventListener("keydown", e => {
     if (e.key === "Escape") {
       e.preventDefault(); e.stopPropagation();
@@ -607,7 +1024,7 @@ function edit(it, patch, { render = true } = {}) {
     it.confirmed = true;
     it.needs_attention = false;
     it.why = patch.icon === "Location"
-      ? "You chose the default pin for this one."
+      ? "You chose the default pin."
       : "You set this icon.";
   }
   EDITS[it.uid] = Object.assign(EDITS[it.uid] || {}, patch);
@@ -615,6 +1032,7 @@ function edit(it, patch, { render = true } = {}) {
 }
 
 function refreshAfterEdit() {
+  clearError();
   DATA.totals.attention = DATA.groups.reduce(
     (n, g) => n + g.items.filter(i => i.needs_attention).length, 0);
   DATA.totals.excluded = DATA.groups.reduce(
@@ -655,7 +1073,10 @@ function updateSel() {
     el.disabled = n === 0;
     el.title = n === 0 ? "Select rows first" : "";
   });
-  $("#bulk-line").classList.toggle("hidden", !selectedItems().some(hasLineStyle));
+  const sel = selectedItems();
+  // One button, one dialog (UI-36). Lines and areas take a colour and a line
+  // style, not an icon: say what it does.
+  $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color & style…";
   closeMenu();
 }
 
@@ -679,20 +1100,52 @@ const WEIGHT_NAMES = { "4.0": "Thin", "6.0": "Thick" };
 const hasLineStyle = it => it.kind === "tracks" || it.kind === "shapes";
 const styleLabel = s => STYLE_NAMES[s] || (s === "dot" ? "Dotted" : "Solid");
 const weightLabel = w => WEIGHT_NAMES[w] || (w === "2.0" ? "Extra thin" : "Thin");
-/** Two titled groups of drawn-line toggles; the drawing is the label. */
-function lineOptsHTML(style, weight) {
+/* Every row of the popover and the dialog has one shape (owner feedback
+   2026-10-24, UI-36): a label line with, in a dialog for several items, the
+   "Leave as is" chip at its right end; the choices below it on one line. */
+const LEAVE = "Leave as is";
+const leaveChip = (cls, on, row = "") =>
+  `<button type="button" class="reset-chip ${cls}"${row ? ` data-row="${row}"` : ""} aria-pressed="${on}">${LEAVE}</button>`;
+const secHead = (label, chip = "") => `<div class="sec-row"><span class="label">${label}</span>${chip}</div>`;
+/** A colour row: `leave` adds the chip (several items), `current` presses a swatch (one item). */
+function colorRowHTML(row, label, colors, { leave = false, current = null, spread = false } = {}) {
+  return `<div class="pop-sec color-sec" data-row="${row}">
+      ${secHead(label, leave ? leaveChip("color-reset", true, row) : "")}
+      <div class="palette${spread ? " spread" : ""}" data-row="${row}">${paletteHTML(colors, current)}</div>
+    </div>`;
+}
+/** Style and Weight side by side, each its drawn-line toggles; `leave` adds
+    each group's chip (several items). */
+function lineOptsHTML(style, weight, leave = false) {
   const tog = (attr, k, name, glyph, on) =>
     `<button type="button" class="tog" data-${attr}="${k}" aria-label="${name}" title="${name}" aria-pressed="${on}">${glyph}</button>`;
   return `<div class="pop-sec line-opts">
-      <div class="opt-group"><span class="label">Style</span><div class="toggles" role="group" aria-label="Style">${
+      <div class="opt-group">${secHead("Style", leave ? leaveChip("style-reset", !style) : "")}<div class="toggles" role="group" aria-label="Style">${
         Object.keys(STYLE_NAMES).map(k => tog("style", k, STYLE_NAMES[k], lineGlyphSVG(k), k === style)).join("")}</div></div>
-      <div class="opt-group"><span class="label">Weight</span><div class="toggles" role="group" aria-label="Weight">${
+      <div class="opt-group">${secHead("Weight", leave ? leaveChip("weight-reset", !weight) : "")}<div class="toggles" role="group" aria-label="Weight">${
         Object.keys(WEIGHT_NAMES).map(k => tog("weight", k, WEIGHT_NAMES[k], lineGlyphSVG("solid", k), k === weight)).join("")}</div></div>
     </div>`;
 }
 function syncLineOpts(root, style, weight) {
   root.querySelectorAll(".tog[data-style]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.style === style)));
   root.querySelectorAll(".tog[data-weight]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.weight === weight)));
+  root.querySelector(".style-reset")?.setAttribute("aria-pressed", String(!style));
+  root.querySelector(".weight-reset")?.setAttribute("aria-pressed", String(!weight));
+}
+/* Fill (owner feedback 2026-10-24, UI-30/UI-36): onX gives every imported area
+   its default blue, whatever the file says, so the one fill on offer is that
+   blue ("Leave as is" or it). Picking it clears the area's fill caution and is
+   what the export writes; the bridge refuses any other fill. */
+const FILL_LABEL = "Use onX's blue fill";
+function fillRowHTML() {
+  return `<div class="pop-sec fill-sec" data-row="fill">
+      ${secHead("Fill", leaveChip("fill-reset", true))}
+      <div class="palette"><button type="button" class="fill-btn" aria-pressed="false"><span class="fill-swatch" aria-hidden="true"></span>${FILL_LABEL}</button></div>
+    </div>`;
+}
+function syncFill(root, fill) {
+  root.querySelector(".fill-reset")?.setAttribute("aria-pressed", String(!fill));
+  root.querySelector(".fill-btn")?.setAttribute("aria-pressed", String(!!fill));
 }
 
 /* The icon list (UI-29) is built once per open of the popover or dialog. After
@@ -725,7 +1178,7 @@ function syncIconGrid(grid, selected) {
 function openPop(it, anchor) {
   closeMenu(); closeBulk();
   POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor,
-          style: it.style, weight: it.weight };
+          fk: anchor.dataset.fk, style: it.style, weight: it.weight, fill: null };
   const isWp = it.kind === "waypoints";
   const isLine = it.kind === "tracks";
   const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
@@ -738,15 +1191,13 @@ function openPop(it, anchor) {
       <div class="pop-title"><span class="pop-name">${esc(it.name || "Untitled")}</span></div>
     </div>
     ${isLine ? `<div class="pop-map"></div>` : ""}
-    <div class="pop-sec">
-      <span class="label">Color</span>
-      <div class="palette${styled ? " spread" : ""}">${paletteHTML(paletteFor([it]), POP.color)}</div>
-    </div>
+    ${colorRowHTML("color", "Color", paletteFor([it]), { current: POP.color, spread: styled })}
     ${isWp ? `<div class="pop-sec icons">
-      <div class="sec-row"><span class="label">Icon</span><span class="sec-count">${DATA.icons.length} icons</span></div>
+      ${secHead("Icon", `<span class="sec-count">${DATA.icons.length} icons</span>`)}
       <input type="search" class="icon-search" aria-label="Find an icon" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : styled ? lineOptsHTML(POP.style, POP.weight) : ""}
+    ${it.kind === "shapes" ? fillRowHTML() : ""}
     <div class="pop-foot">
       <button type="button" class="btn pop-cancel">Cancel</button>
       <button type="button" id="pop-apply" class="btn primary pop-apply">Save</button>
@@ -762,6 +1213,11 @@ function openPop(it, anchor) {
   }
   pop.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => { POP.style = b.dataset.style; drawPop(); });
   pop.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => { POP.weight = b.dataset.weight; drawPop(); });
+  const fb = pop.querySelector(".fill-btn");
+  if (fb) {
+    fb.onclick = () => { POP.fill = ONX_DEFAULT_FILL; drawPop(); };
+    pop.querySelector(".fill-reset").onclick = () => { POP.fill = null; drawPop(); };
+  }
   pop.querySelector(".pop-cancel").onclick = closePop;
   pop.querySelector(".pop-apply").onclick = applyPop;
   pop.classList.remove("hidden");
@@ -775,6 +1231,14 @@ function openPop(it, anchor) {
 }
 
 function popItem() { return POP && allItems().find(i => i.uid === POP.uid); }
+/** The marker the popover belongs to. A re-render while it is open (one that
+    waited for the click that opened it, say) replaces the row: find the new
+    marker by its focus key. */
+function popAnchor() {
+  if (!POP) return null;
+  if (!POP.anchor.isConnected) POP.anchor = fkEl(POP.fk) || POP.anchor;
+  return POP.anchor.isConnected ? POP.anchor : null;
+}
 
 function drawPop() {
   const it = popItem(); if (!it) return;
@@ -787,6 +1251,7 @@ function drawPop() {
   pop.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === POP.color)));
   if (isLine) pop.querySelector(".pop-map").innerHTML = lineMapSVG(hex, POP.style, POP.weight);
   if (hasLineStyle(it)) syncLineOpts(pop, POP.style, POP.weight);
+  syncFill(pop, POP.fill);
   // The icon list keeps its neutral outline markers; only the pressed state moves.
   if (isWp) syncIconGrid(pop.querySelector(".icon-grid"), POP.icon);
 }
@@ -823,13 +1288,14 @@ function applyPop() {
     if (POP.style !== it.style) patch.style = POP.style;
     if (POP.weight !== it.weight) patch.weight = POP.weight;
   }
+  if (it.kind === "shapes" && POP.fill && POP.fill !== it.fill) patch.fill = POP.fill;
   closePop();
   if (Object.keys(patch).length) edit(it, patch);
 }
 
 function closePop() {
   if (!POP) return;
-  const anchor = POP.anchor;
+  const anchor = popAnchor();
   POP = null;
   $("#mark-pop").classList.add("hidden");
   $("#mark-pop").innerHTML = "";
@@ -837,41 +1303,48 @@ function closePop() {
   if (anchor && anchor.isConnected) anchor.focus({ preventScroll: true });
 }
 
-/* ---------- several items: dialog from the selection bar ---------- */
+/* ---------- several items: ONE dialog from the selection bar (UI-36) ----------
+   Waypoints get Pin color and Icon; lines and areas get Color, Style and
+   Weight, and Fill when there are areas. Every row starts on "Leave as is",
+   which leaves each item its own value. A mixed selection gets both sets, the
+   pin and line colours apart (onX's 10 and 11). */
 function openBulk() {
   const items = selectedItems();
   if (!items.length) return;
   const ret = document.activeElement;
   closeMenu(); closePop();
-  BULK = { mode: "mark", uids: new Set(items.map(i => i.uid)), color: null, icon: null, q: "", ret };
+  BULK = { uids: new Set(items.map(i => i.uid)), pinColor: null, lineColor: null, icon: null,
+           style: null, weight: null, fill: null, q: "", ret };
   const hasWp = items.some(i => i.kind === "waypoints");
+  const hasLn = items.some(hasLineStyle);
+  const hasArea = items.some(i => i.kind === "shapes");
+  const mixed = hasWp && hasLn;
   const d = $("#mark-dialog");
-  d.setAttribute("aria-label", `Change icon and color for ${items.length} items`);
+  d.setAttribute("aria-label", `Change ${hasWp ? "icon and color" : "color and style"} for ${items.length} items`);
   d.innerHTML = `
     <div class="bulk-head">
-      <div class="modal-head plain"><h2>Change ${items.length} item${items.length === 1 ? "" : "s"}</h2>
+      <div class="modal-head plain"><h2>Change ${plural(items.length, "item")}</h2>
         <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
       <div class="now-after">
         <span class="label">Now</span><span></span><span class="label">After</span>
         <div class="na-rows"></div>
       </div>
     </div>
-    <div class="pop-sec">
-      <span class="label">Color</span>
-      <div class="palette"><button type="button" class="reset-chip color-reset" aria-pressed="true">Reset</button>${paletteHTML(paletteFor(items), null)}</div>
-    </div>
-    ${hasWp ? `<div class="pop-sec icons">
-      <span class="label">Icon</span>
-      <div class="bulk-icon-row"><button type="button" class="reset-chip icon-reset" aria-pressed="true">Reset</button>
-        <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off"></div>
+    ${hasWp ? colorRowHTML("pin", mixed ? "Pin color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons">
+      ${secHead("Icon", leaveChip("icon-reset", true))}
+      <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : ""}
+    ${hasLn ? colorRowHTML("line", mixed ? "Line color" : "Color", colorList(), { leave: true }) + lineOptsHTML(null, null, true) : ""}
+    ${hasArea ? fillRowHTML() : ""}
     <div class="pop-foot">
       <button type="button" class="btn bulk-cancel">Cancel</button>
       <button type="button" id="bulk-apply" class="btn primary">Save</button>
     </div>`;
-  d.querySelector(".color-reset").onclick = () => { BULK.color = null; drawBulk(); };
-  d.querySelectorAll(".swatch-btn").forEach(b => b.onclick = () => { BULK.color = b.dataset.rgba; drawBulk(); });
+  const key = row => row === "pin" ? "pinColor" : "lineColor";
+  d.querySelectorAll(".color-reset").forEach(c => c.onclick = () => { BULK[key(c.dataset.row)] = null; drawBulk(); });
+  d.querySelectorAll(".palette[data-row] .swatch-btn").forEach(b => b.onclick = () => {
+    BULK[key(b.closest(".palette").dataset.row)] = b.dataset.rgba; drawBulk(); });
   if (hasWp) {
     d.querySelector(".icon-reset").onclick = () => { BULK.icon = null; drawBulk(); };
     const grid = d.querySelector(".icon-grid");
@@ -879,12 +1352,25 @@ function openBulk() {
     const s = d.querySelector(".icon-search");
     s.oninput = () => { BULK.q = s.value; filterIconGrid(grid, BULK.q); };
   }
+  if (hasLn) {
+    // Picking the chosen toggle again un-picks it, like its "Leave as is".
+    d.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => {
+      BULK.style = BULK.style === b.dataset.style ? null : b.dataset.style; drawBulk(); });
+    d.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => {
+      BULK.weight = BULK.weight === b.dataset.weight ? null : b.dataset.weight; drawBulk(); });
+    d.querySelector(".style-reset").onclick = () => { BULK.style = null; drawBulk(); };
+    d.querySelector(".weight-reset").onclick = () => { BULK.weight = null; drawBulk(); };
+  }
+  if (hasArea) {
+    d.querySelector(".fill-btn").onclick = () => { BULK.fill = ONX_DEFAULT_FILL; drawBulk(); };
+    d.querySelector(".fill-reset").onclick = () => { BULK.fill = null; drawBulk(); };
+  }
   d.querySelector(".bulk-x").onclick = closeBulk;
   d.querySelector(".bulk-cancel").onclick = closeBulk;
   d.querySelector("#bulk-apply").onclick = applyBulk;
   $("#mark-modal").classList.remove("hidden");
   drawBulk();
-  d.querySelector(".color-reset").focus();
+  d.querySelector(".reset-chip").focus();
 }
 
 function drawBulk() {
@@ -893,94 +1379,49 @@ function drawBulk() {
   const hexOf = rgba => (colorOf(rgba) || {}).hex;
   d.querySelector(".na-rows").innerHTML = items.map(it => {
     const isWp = it.kind === "waypoints";
-    const toColor = BULK.color || it.color;
+    const toColor = (isWp ? BULK.pinColor : BULK.lineColor) || it.color;
     const toIcon = isWp ? (BULK.icon || it.icon) : null;
     const nowMark = isWp ? markerSVG(it.icon, it.hex, 22, 28) : lineSVG(it.hex, it.kind, 22, 20, it.style, it.weight);
-    const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28) : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, it.style, it.weight);
+    const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28)
+      : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, BULK.style || it.style, BULK.weight || it.weight);
     // The drawn marks show the change; no "Camp · Blue" words beside them (UI-26).
-    return `<span class="na-cell">${nowMark}<span class="na-name">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
+    return `<span class="na-cell">${nowMark}<span class="na-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
       `<span class="na-cell">${afterMark}</span>`;
   }).join("");
-  d.querySelector(".color-reset").setAttribute("aria-pressed", String(!BULK.color));
-  d.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === BULK.color)));
+  d.querySelectorAll(".palette[data-row]").forEach(p => {
+    const v = p.dataset.row === "pin" ? BULK.pinColor : BULK.lineColor;
+    p.closest(".pop-sec").querySelector(".color-reset").setAttribute("aria-pressed", String(!v));
+    p.querySelectorAll(".swatch-btn").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rgba === v)));
+  });
   const ir = d.querySelector(".icon-reset");
   if (ir) ir.setAttribute("aria-pressed", String(!BULK.icon));
   syncIconGrid(d.querySelector(".icon-grid"), BULK.icon);
+  syncLineOpts(d, BULK.style, BULK.weight);
+  syncFill(d, BULK.fill);
 }
 
 function applyBulk() {
-  const { color, icon, uids } = BULK;
+  const { pinColor, lineColor, icon, style, weight, fill, uids } = BULK;
   const items = allItems().filter(i => uids.has(i.uid));
   closeBulk();
-  if (!color && !icon) return;
-  let n = 0;
+  const changed = [];
   items.forEach(it => {
     const patch = {};
+    const color = it.kind === "waypoints" ? pinColor : lineColor;
     if (color) patch.color = color;
     if (icon && it.kind === "waypoints") patch.icon = icon;
-    if (Object.keys(patch).length) { edit(it, patch, { render: false }); n++; }
+    if (hasLineStyle(it)) {
+      if (style && style !== it.style) patch.style = style;
+      if (weight && weight !== it.weight) patch.weight = weight;
+    }
+    if (fill && it.kind === "shapes" && fill !== it.fill) patch.fill = fill;
+    if (Object.keys(patch).length) { edit(it, patch, { render: false }); changed.push(it); }
   });
+  if (!changed.length) return;
   refreshAfterEdit();
-  setStatus(`Changed ${n} item${n === 1 ? "" : "s"}`, "ready");
-}
-
-/* ---------- several lines or areas: the Line style dialog ---------- */
-function openLineBulk() {
-  const lines = selectedItems().filter(hasLineStyle);
-  if (!lines.length) return;
-  const ret = document.activeElement;
-  closeMenu(); closePop();
-  BULK = { mode: "line", uids: new Set(lines.map(i => i.uid)), style: null, weight: null, ret };
-  const d = $("#mark-dialog");
-  d.setAttribute("aria-label", "Line style");
-  d.innerHTML = `
-    <div class="bulk-head">
-      <div class="modal-head plain"><h2>Line style</h2>
-        <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
-      <div class="line-rows"></div>
-    </div>
-    ${lineOptsHTML(null, null)}
-    <div class="pop-foot">
-      <button type="button" class="btn bulk-cancel">Cancel</button>
-      <button type="button" id="line-apply" class="btn primary">Save</button>
-    </div>`;
-  // Picking the chosen toggle again un-picks it: that line keeps its own value.
-  d.querySelectorAll(".tog[data-style]").forEach(b => b.onclick = () => {
-    BULK.style = BULK.style === b.dataset.style ? null : b.dataset.style; drawLineBulk(); });
-  d.querySelectorAll(".tog[data-weight]").forEach(b => b.onclick = () => {
-    BULK.weight = BULK.weight === b.dataset.weight ? null : b.dataset.weight; drawLineBulk(); });
-  d.querySelector(".bulk-x").onclick = closeBulk;
-  d.querySelector(".bulk-cancel").onclick = closeBulk;
-  d.querySelector("#line-apply").onclick = applyLineBulk;
-  $("#mark-modal").classList.remove("hidden");
-  drawLineBulk();
-  d.querySelector(".tog").focus();
-}
-
-function drawLineBulk() {
-  const d = $("#mark-dialog");
-  const lines = allItems().filter(i => BULK.uids.has(i.uid));
-  d.querySelector(".line-rows").innerHTML = lines.map(it =>
-    `<span class="lr-name">${esc(it.name || "Untitled")}</span>` +
-    `<span class="lr-line">${lineStripSVG(it.hex, BULK.style || it.style, BULK.weight || it.weight)}</span>`).join("");
-  syncLineOpts(d, BULK.style, BULK.weight);
-}
-
-function applyLineBulk() {
-  const { style, weight, uids } = BULK;
-  const lines = allItems().filter(i => uids.has(i.uid));
-  closeBulk();
-  let n = 0;
-  lines.forEach(it => {
-    const patch = {};
-    if (style && style !== it.style) patch.style = style;
-    if (weight && weight !== it.weight) patch.weight = weight;
-    if (Object.keys(patch).length) { edit(it, patch, { render: false }); n++; }
-  });
-  if (!n) return;
-  refreshAfterEdit();
-  const word = lines.every(i => i.kind === "shapes") ? "area" : lines.every(i => i.kind === "tracks") ? "line" : "item";
-  setStatus(`Changed ${n} ${word}${n === 1 ? "" : "s"}`, "ready");
+  const n = changed.length;
+  const word = changed.every(i => i.kind === "shapes") ? "area" : changed.every(i => i.kind === "tracks") ? "line" : "item";
+  setStatus(`Changed ${plural(n, word)}`, "ready");
 }
 
 function closeBulk() {
@@ -999,6 +1440,552 @@ function closeMenu() {
   $("#more-btn").setAttribute("aria-expanded", "false");
 }
 
+/* ---------- folders: move, rename, merge (UI-32) ---------- */
+/* Every route ends in moveTo / finishRename / mergeInto, which call the bridge
+   (ENG-07) and then rebuild DATA.groups from the layout it returns. Export
+   needs nothing more: export_zip walks the bridge's own groups. */
+const FOLDER_NAME_MAX = 100;
+
+function resetFolderState() {
+  endDrag(); closeMove(false);
+  RENAME = null; PENDING_MERGE = null; SAVED = null;
+}
+
+const groupByKey = key => DATA.groups.find(g => g.key === key) || null;
+/** Two folder names are the same name when these match: trimmed, any case
+    (the bridge's _name_taken rule, which decides). */
+const nameKey = s => s.trim().toLowerCase();
+/** uid -> the key of the folder it is in. */
+function homeOf() {
+  const m = new Map();
+  DATA.groups.forEach(g => g.items.forEach(i => m.set(i.uid, g.key)));
+  return m;
+}
+/** The folder every one of these items is already in, or null when they come
+    from several. Moving them there would do nothing, so it reads "here now"
+    and isn't offered; a folder holding only SOME of them is a real target. */
+function hereKey(uids) {
+  const m = homeOf();
+  const keys = new Set(uids.map(u => m.get(u)));
+  return keys.size === 1 ? [...keys][0] : null;
+}
+
+/** Arguments cross into Python as globals, never inside the source (as for
+    load_files and apply_edits). */
+function pyJSON(src, vars) {
+  for (const [k, v] of Object.entries(vars)) py.globals.set(k, v);
+  return JSON.parse(py.runPython(src));
+}
+
+/** Rebuild DATA.groups from the bridge's layout ({key, name, safe,
+    unorganized, uids} per folder, in order), reusing the item objects, and
+    forget filters and folds that point at a folder that is gone. Checks
+    everything before changing anything: a throw leaves DATA as it was.
+    Returns the name of the folder the folder filter was on, if it is gone. */
+function applyLayout(res) {
+  const byUid = new Map(allItems().map(i => [i.uid, i]));
+  const old = new Map(DATA.groups.map(g => [g.key, g]));
+  const plan = res.folders.map(f => ({ f, items: f.uids.map(u => {
+    const it = byUid.get(u);
+    if (!it) throw new Error(`Lost track of item ${u}.`);
+    return it;
+  }) }));
+  if (plan.reduce((n, p) => n + p.items.length, 0) !== byUid.size)
+    throw new Error("The folders no longer add up.");
+  const groups = plan.map(({ f, items }) => {
+    const g = old.get(f.key) || { key: f.key };
+    g.name = f.name; g.safe = f.safe; g.unorganized = !!f.unorganized; g.items = items;
+    return g;
+  });
+  DATA.groups = groups;
+  const live = new Set(groups.map(g => g.key));
+  [...COLLAPSED].forEach(k => { if (!live.has(k)) COLLAPSED.delete(k); });
+  [...SORT.keys()].forEach(k => { if (!live.has(k)) SORT.delete(k); });
+  let gone = null;
+  if (FILTERS.folder !== null && !live.has(FILTERS.folder)) {
+    gone = old.get(FILTERS.folder)?.name ?? null;
+    FILTERS.folder = null;
+  }
+  if (RENAME && !live.has(RENAME.key)) RENAME = null;
+  DATA.totals.folders = groups.length;   // nothing on screen reads it; the e2e tests do
+  return gone;
+}
+
+/** applyLayout(res), or, should that fail, the bridge's own layout: the bridge
+    may already have moved the items, and what the screen shows must be what
+    export writes. Throws only if even that can't be shown. */
+function syncLayout(res) {
+  try { return applyLayout(res); }
+  catch (e) {
+    console.error(e);
+    return applyLayout(JSON.parse(py.runPython("bridge.layout_json()")));
+  }
+}
+
+/** One folder action on the bridge: run it and show the layout it returns.
+    On a failure (a taken name included) say so and show the bridge's own
+    layout instead, and return null. */
+function folderAction(verb, src, vars) {
+  try {
+    const res = pyJSON(src, vars);
+    if (!res.ok) throw new Error("That folder name is taken.");
+    return { res, gone: syncLayout(res) };
+  } catch (e) {
+    setStatus(`Couldn't ${verb} — ` + humanError(e), "err"); console.error(e);
+    resyncAfterFailure();
+    return null;
+  }
+}
+
+/** A new folder's name, open for editing in the rail. fresh (made empty by
+    + New folder): Esc on its name takes the folder back (finishRename). */
+function openNewFolderName(key, fresh = false) {
+  RENAME = { key, draft: groupByKey(key).name, where: "rail", fresh };
+  RAIL_FOLDED.delete("folders");
+}
+
+/** After a failed folder action: show the bridge's layout, whatever it is. */
+function resyncAfterFailure() {
+  try { syncLayout(JSON.parse(py.runPython("bridge.layout_json()"))); }
+  catch (e) { console.error(e); }
+  renderEdit();
+}
+
+/** An open note whose row a move takes off screen (a folder filter, say)
+    would be closed by the next render and its draft lost: save it instead. */
+function keepNoteDraft() {
+  if (!NOTE_EDIT) return;
+  if (shownItems().some(i => i.uid === NOTE_EDIT.uid)) return;
+  const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
+  const v = NOTE_EDIT.draft;
+  NOTE_EDIT = null;
+  if (it && v !== (it.desc || "")) edit(it, { desc: v }, { render: false });
+}
+
+/** A folder name in a status line: at most SHORT_NAME characters. */
+const SHORT_NAME = 48;
+const shortName = s => { const c = [...s]; return c.length > SHORT_NAME ? c.slice(0, SHORT_NAME - 1).join("").trimEnd() + "…" : s; };
+
+/** After a move or merge: re-render and say what happened, and why the view
+    changed when the folder it was filtered to is gone. */
+function afterMove(res, uids, gone) {
+  // The ticks did their job: moved rows are unticked, so the next drag of one
+  // of them doesn't drag the whole old selection along. Other ticks stay.
+  uids.forEach(u => SEL.delete(u));
+  if (!SEL.size) ANCHOR = null;
+  keepNoteDraft();
+  refreshAfterEdit();
+  const target = groupByKey(res.key);
+  setStatus(`Moved ${plural(res.moved, "item")} to ${res.created ? "a new folder" : target ? shortName(target.name) : "the folder"}.` +
+    (gone !== null ? ` “${shortName(gone)}” is empty now, so it was removed.` : ""), "ready");
+}
+
+/** Move items into the folder `key`, or into a new folder (NEW_TARGET; the
+    bridge picks its default name), whose name is then open for editing in the
+    rail. Returns the bridge's answer. */
+function moveTo(uids, key) {
+  if (!DATA || !uids.length) return null;
+  closePop();
+  const u = JSON.stringify(uids);
+  const done = key === NEW_TARGET
+    ? folderAction("move", "bridge.move_to_new_folder(_cairn_uids)", { _cairn_uids: u })
+    : folderAction("move", "bridge.move_items(_cairn_uids, _cairn_key)", { _cairn_uids: u, _cairn_key: key });
+  if (!done) return null;
+  const { res, gone } = done;
+  if (res.created) openNewFolderName(res.key);
+  afterMove(res, uids, gone);
+  if (res.created) focusRename();
+  return res;
+}
+
+/** A click (or Enter / Space) on the rail's + New folder: the
+    ticked rows go into a new folder, as if dropped there; with nothing
+    ticked, an empty folder is made, to drop rows on. Either way its name
+    opens for editing in the rail. */
+function newFolderClicked() {
+  if (!DATA) return;
+  const uids = selectedItems().map(i => i.uid);
+  if (uids.length) { moveTo(uids, NEW_TARGET); return; }
+  closePop();
+  const done = folderAction("make a folder", "bridge.create_folder()", {});
+  if (!done) return;
+  openNewFolderName(done.res.key, true);
+  refreshAfterEdit();
+  setStatus("Made an empty folder.", "ready");
+  focusRename();
+}
+
+/** The × beside an empty folder in the rail. Focus goes to the next entry
+    (the folder below, else + New folder): the × itself is gone. */
+function removeEmptyFolder(key) {
+  const g = groupByKey(key);
+  if (!g || g.items.length) return;
+  const i = DATA.groups.indexOf(g);
+  const next = DATA.groups[i + 1] ? "folder|" + DATA.groups[i + 1].key : "newfolder";
+  if (!folderAction("remove", "bridge.remove_empty_folder(_cairn_key)", { _cairn_key: key })) return;
+  refreshAfterEdit();
+  setStatus(`Removed the empty folder “${shortName(g.name)}”.`, "ready");
+  focusFk(next);
+}
+
+function startRename(key, where, draft = null, declined = null) {
+  const g = groupByKey(key); if (!g) return;
+  clearError();
+  RENAME = { key, draft: draft ?? g.name, where, declined };
+  if (where === "rail") RAIL_FOLDED.delete("folders");
+  where === "head" ? renderFolders() : renderRail();
+  focusRename();
+}
+
+function focusRename() {
+  const inp = document.querySelector(".folder-name-in");
+  if (!inp) return;
+  inp.focus({ preventScroll: true });
+  inp.scrollIntoView({ block: "nearest" });
+  inp.select();
+}
+
+/** The folder-name input (a table header, or a new folder's rail entry).
+    Enter or leaving it saves, Esc keeps the name it had. */
+function wireFolderName(inp) {
+  const key = RENAME.key;
+  inp.value = RENAME.draft;
+  inp.title = `Up to ${FOLDER_NAME_MAX} characters`;
+  // maxlength cuts typing or a paste silently: say so, but only when it
+  // actually cut something (not at exactly 100, not when deleting in a longer
+  // name loaded from the file), and take it back once the name is under again.
+  const tooLong = `A folder name can be up to ${FOLDER_NAME_MAX} characters.`;
+  const checkAdded = added => {
+    const kept = inp.value.length - (inp.selectionEnd - inp.selectionStart);
+    if (kept + added.length > FOLDER_NAME_MAX) setStatus(tooLong, "err");
+  };
+  inp.addEventListener("beforeinput", e => {
+    if (!e.inputType.startsWith("insert")) return;
+    checkAdded(e.data ?? e.dataTransfer?.getData("text/plain") ?? "");
+  });
+  // Some browsers give a paste no text in beforeinput: read it from the paste itself.
+  inp.addEventListener("paste", e => checkAdded((e.clipboardData?.getData("text/plain") ?? "").replace(/[\r\n]+/g, " ")));
+  inp.addEventListener("input", () => {
+    if (RENAME && RENAME.key === key) RENAME.draft = inp.value;
+    if (inp.value.length < FOLDER_NAME_MAX && $("#status").textContent === tooLong) setStatus("");
+  });
+  inp.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); finishRename(key, true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finishRename(key, false); }
+  });
+  // A re-render that replaces the input is not the user leaving it (Chrome
+  // fires blur on a focused element as it is removed).
+  inp.addEventListener("blur", () => { if (!REBUILDING && inp.isConnected) finishRename(key, true, { defer: true }); });
+}
+
+function finishRename(key, save, { defer = false } = {}) {
+  if (!RENAME || RENAME.key !== key || !DATA) return;
+  const { draft, where, declined, fresh } = RENAME;
+  RENAME = null;
+  const g = groupByKey(key);
+  if (!save && fresh && g && !g.items.length) { removeEmptyFolder(key); return; }
+  let reopen = false, failed = false;
+  // Left unchanged after Cancel on its merge offer: keep the name it has,
+  // don't ask again (or Cancel, reopen, leave, ask... would never end).
+  if (declined && nameKey(draft) === nameKey(declined)) save = false;
+  if (save && g) {
+    const name = draft.trim();
+    if (!name) {
+      setStatus("A folder needs a name.", "err");
+      // A new folder's name (Enter on an empty box) stays open for another
+      // try; leaving it keeps the default it has.
+      reopen = where === "rail" && !defer;
+    } else if (name !== g.name) {
+      // The bridge is asked NOW, even when the render waits (deferRender):
+      // Export and Start over then see the new name or the pending offer.
+      try {
+        const res = pyJSON("bridge.rename_folder(_cairn_key, _cairn_name)", { _cairn_key: key, _cairn_name: name });
+        if (res.ok) { syncLayout(res); clearError(); }
+        else PENDING_MERGE = { key, dup: res.duplicate, where, draft: name };
+      } catch (e) {
+        setStatus("Couldn't rename — " + humanError(e), "err"); console.error(e);
+        failed = true;
+      }
+    }
+  }
+  const done = () => {
+    if (!DATA) return;
+    if (failed) { resyncAfterFailure(); return; }
+    if (reopen) { startRename(key, "rail"); setStatus("A folder needs a name.", "err"); return; }
+    // Leaving one name for another folder's: keep the new field's selection.
+    const a = document.activeElement;
+    const sel = a && a.classList.contains("folder-name-in") ? [a.selectionStart, a.selectionEnd] : null;
+    renderEdit();
+    const now = document.activeElement;
+    if (sel && now && now.classList.contains("folder-name-in")) now.setSelectionRange(...sel);
+    offerPendingMerge();
+  };
+  defer ? deferRender(done) : done();
+}
+
+/** The merge offer for a taken name, if one is waiting -- only on the edit
+    screen, and only while both folders still exist. */
+function offerPendingMerge() {
+  const m = PENDING_MERGE; PENDING_MERGE = null;
+  if (!m || !DATA || document.body.dataset.stage !== "edit" || CONFIRM) return;
+  const src = groupByKey(m.key), dst = groupByKey(m.dup.key);
+  if (src && dst) offerMerge(src, { key: dst.key, name: dst.name }, m.where, m.draft);
+}
+
+/** Empty a host before re-rendering it. Removing a focused folder-name field
+    fires its blur; REBUILDING tells that apart from the user leaving it, so a
+    re-render while a name is open keeps it open (RENAME draws it again). */
+let REBUILDING = false;
+function rebuild(host) {
+  REBUILDING = true;
+  try { host.innerHTML = ""; } finally { REBUILDING = false; }
+}
+
+/** The name is taken: offer to move this folder's items into that one.
+    Cancel (the default) keeps the old name -- except for a folder just made
+    by + New folder, whose name opens again with what was typed, to pick
+    another (its items stay in it either way). */
+function offerMerge(src, dup, where, draft = null) {
+  const ret = fkEl(where === "head" ? "fname|" + src.key : "folder|" + src.key);
+  if (!src.items.length) {
+    // An empty folder has nothing to move: "Move the 0 items" would offer
+    // nothing. Say the name is taken; the folder keeps the name it has.
+    setStatus(`“${shortName(dup.name)}” already exists.`, "err");
+    return;
+  }
+  const cancel = where === "rail"
+    ? () => { closeConfirm(false); startRename(src.key, "rail", draft, draft); }
+    : () => closeConfirm();
+  openConfirm({
+    title: `“${dup.name}” already exists`,
+    body: `Move the ${plural(src.items.length, "item")} in “${src.name}” into it?`,
+    ret,
+    buttons: [
+      { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
+      { label: "Cancel", initial: true, cancel: true, run: cancel },
+    ],
+  });
+}
+
+function mergeInto(srcKey, dstKey, where = "head") {
+  const src = groupByKey(srcKey);
+  if (!src || srcKey === dstKey) return;
+  const uids = src.items.map(i => i.uid);
+  const done = folderAction("move", "bridge.merge_folders(_cairn_key, _cairn_key2)",
+                            { _cairn_key: srcKey, _cairn_key2: dstKey });
+  if (!done) return;
+  afterMove(done.res, uids, done.gone);
+  const to = (where === "head" && fkEl("fname|" + dstKey)) || fkEl("folder|" + dstKey);
+  if (to) to.focus({ preventScroll: true });
+}
+
+/* ---------- More ▸ Move to… (the keyboard route) ---------- */
+function openMoveTo() {
+  const uids = selectedItems().map(i => i.uid);
+  if (!uids.length) return;
+  closeMenu(); closePop();
+  const here = hereKey(uids);
+  MOVE = { uids, ret: $("#more-btn") };   // uids: for scripts/qa/fuzz_ui.py (the buttons close over theirs)
+  const p = $("#move-pop");
+  p.innerHTML = `<div class="move-h" id="move-h">Move ${plural(uids.length, "item")} to</div>
+    <div class="move-list" role="group" aria-labelledby="move-h">${DATA.groups.map(g => {
+      const h = g.key === here;
+      return `<button type="button" class="move-opt${isUnorganized(g) ? " unorg" : ""}" data-key="${esc(g.key)}"${h ? " disabled" : ""}>` +
+        `<span class="facet-name">${esc(g.name)}${h ? " · here now" : ""}</span>` +
+        // The count tells apart two folders a file named alike ("Camp", "camp").
+        `<span class="facet-count">${h ? "" : g.items.length}</span></button>`;
+    }).join("")}<button type="button" class="move-opt move-new">+ New folder…</button></div>`;
+  p.querySelectorAll(".move-opt[data-key]").forEach(b => b.onclick = () => {
+    const k = b.dataset.key; closeMove(false);
+    moveTo(uids, k);
+    const more = $("#more-btn");
+    (more.disabled ? fkEl("folder|" + k) : more)?.focus({ preventScroll: true });
+  });
+  p.querySelector(".move-new").onclick = () => { closeMove(false); moveTo(uids, NEW_TARGET); };
+  p.onkeydown = e => {
+    const opts = [...p.querySelectorAll(".move-opt:not([disabled])")];
+    const i = opts.indexOf(document.activeElement);
+    const go = j => { e.preventDefault(); opts[(j + opts.length) % opts.length].focus(); };
+    if (e.key === "ArrowDown") go(i + 1);
+    else if (e.key === "ArrowUp") go(i < 0 ? -1 : i - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(-1);
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeMove(true); }
+    else if (e.key === "Tab") trapTab(e, p);
+  };
+  p.classList.remove("hidden");
+  const r = $("#more-btn").getBoundingClientRect();
+  const vh = window.innerHeight;
+  const top = Math.min(r.bottom + 6, vh - 160);
+  p.style.top = `${top}px`;
+  p.style.maxHeight = `${vh - top - 12}px`;
+  p.style.left = `${leftInWindow(r.left, p.offsetWidth)}px`;
+  const first = p.querySelector(".move-opt:not([disabled])");
+  first.focus({ preventScroll: true });
+}
+
+function closeMove(focusRet) {
+  if (!MOVE) return;
+  const { ret } = MOVE;
+  MOVE = null;
+  $("#move-pop").classList.add("hidden");
+  $("#move-pop").innerHTML = "";
+  if (focusRet && ret && ret.isConnected && !ret.disabled) ret.focus({ preventScroll: true });
+}
+
+/* ---------- drag rows onto a rail folder ----------
+   Pointer events rather than HTML5 drag and drop: a row is mostly controls
+   (name field, note and marker buttons), the preview must say "Move N items",
+   and Esc has to cancel. Press on a row and move 6px to start; the ticked rows
+   come along if the pressed row is ticked, else just that row. Not from a
+   checkbox, an open note, or a field you are already typing in (that press
+   selects text). Drop on a folder in the rail, or "+ New folder". */
+const DRAG_START_PX = 6;
+const SCROLL_EDGE_PX = 36, SCROLL_MAX_PX = 48;   // the rail's auto-scroll band, and its top speed per frame
+let SWALLOW_CLICK = false;
+
+function wireRowDrag() {
+  $("#folders").addEventListener("pointerdown", e => {
+    if (e.button !== 0 || DRAG || CONFIRM || BULK || !DATA) return;
+    const tr = e.target.closest("tbody tr[data-uid]");
+    if (!tr) return;
+    const t = e.target;
+    if (t.closest(".note-ed, input[type=checkbox]")) return;
+    if (t.matches("input, textarea") && t === document.activeElement) return;
+    DRAG = { uid: tr.dataset.uid, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY,
+             pointerId: e.pointerId, active: false, over: null };
+  });
+  document.addEventListener("pointermove", e => {
+    if (!DRAG || e.pointerId !== DRAG.pointerId || DRAG.cancelled) return;
+    DRAG.x = e.clientX; DRAG.y = e.clientY;
+    if (!DRAG.active) {
+      if (Math.hypot(e.clientX - DRAG.x0, e.clientY - DRAG.y0) < DRAG_START_PX) return;
+      // A dialog that opened after the press (a merge offer) owns the screen.
+      if (CONFIRM || BULK) { DRAG = null; return; }
+      startDrag();
+    }
+    e.preventDefault();
+    trackDrag();
+  });
+  document.addEventListener("pointerup", e => {
+    if (!DRAG || e.pointerId !== DRAG.pointerId) return;
+    const d = DRAG;
+    if (d.active || d.cancelled) swallowClick();
+    if (d.active && !d.cancelled) {
+      // Where the button came up, not the last pointermove: the rail may
+      // have auto-scrolled, or the release moved, since then.
+      d.x = e.clientX; d.y = e.clientY;
+      hitTest();
+      const to = d.over;
+      endDrag();
+      if (to) moveTo(d.uids, to);
+    } else endDrag();
+  });
+  // No pointerup follows these (the release happened in another window, or
+  // the browser took the pointer): drop the drag outright, keep nothing held.
+  // A cancelled-but-held DRAG left here blocked the next press, text
+  // selection, Esc and a click.
+  document.addEventListener("pointercancel", () => endDrag());
+  window.addEventListener("blur", () => endDrag());
+  // While a press may become a drag, the browser mustn't start selecting text.
+  document.addEventListener("selectstart", e => { if (DRAG && (DRAG.active || DRAG.cancelled)) e.preventDefault(); });
+  // The click that follows a drag lands on whatever is under the pointer.
+  window.addEventListener("click", e => {
+    if (SWALLOW_CLICK) { SWALLOW_CLICK = false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
+}
+
+function swallowClick() {
+  SWALLOW_CLICK = true;
+  setTimeout(() => { SWALLOW_CLICK = false; });
+}
+
+function startDrag() {
+  const d = DRAG;
+  d.uids = SEL.has(d.uid) ? selectedItems().map(i => i.uid) : [d.uid];
+  d.uidSet = new Set(d.uids);
+  d.here = hereKey(d.uids);
+  d.active = true;
+  // A press in an unfocused name field focused it: leave it without a change.
+  const a = document.activeElement;
+  if (a && a.matches && a.matches("input, textarea") && a.closest("#folders")) a.blur();
+  window.getSelection()?.removeAllRanges();
+  closePop(); closeMenu(); closeMove(false); hideTip();
+  if (RAIL_FOLDED.has("folders")) { d.unfolded = true; RAIL_FOLDED.delete("folders"); }
+  document.body.classList.add("dragging-rows");
+  document.querySelectorAll("#folders tbody tr[data-uid]").forEach(tr => {
+    if (d.uidSet.has(tr.dataset.uid)) tr.classList.add("dragging");
+  });
+  const ghost = document.createElement("div");
+  ghost.id = "drag-ghost";
+  ghost.className = "drag-ghost";
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.innerHTML = `${UI_ICON.move}<span>Move ${plural(d.uids.length, "item")}</span>`;
+  document.body.appendChild(ghost);
+  d.ghost = ghost;
+  renderRail();
+  d.raf = requestAnimationFrame(autoScroll);
+}
+
+function hitTest() {
+  const d = DRAG;
+  const el = document.elementFromPoint(d.x, d.y);
+  const t = el && el.closest("[data-drop]");
+  const key = t ? t.dataset.drop : null;
+  d.over = key !== null && key !== d.here ? key : null;
+  document.querySelectorAll(".drop-over").forEach(x => { if (x !== t || !d.over) x.classList.remove("drop-over"); });
+  if (d.over) t.classList.add("drop-over");
+}
+
+function trackDrag() {
+  const d = DRAG;
+  d.ghost.style.transform = `translate(${d.x + 14}px, ${d.y + 12}px)`;
+  hitTest();
+}
+
+/* The rail scrolls on its own (sticky, 100vh): with many folders "+ New folder"
+   can be below its fold. Hold the pointer near the rail's top or bottom edge
+   (above its sticky footer) to scroll it. */
+function autoScroll() {
+  const d = DRAG;
+  if (!d || !d.active) return;
+  const rail = $(".rail"), r = rail.getBoundingClientRect();
+  const bottom = Math.min(r.bottom, $(".rail-foot").getBoundingClientRect().top);
+  if (d.x >= r.left && d.x <= r.right) {
+    let dy = 0;
+    // Faster the deeper in: over the footer it races (200 folders is ~5000px).
+    const speed = depth => Math.min(SCROLL_MAX_PX, Math.ceil(depth / 2));
+    if (d.y < r.top + SCROLL_EDGE_PX) dy = -speed(r.top + SCROLL_EDGE_PX - d.y);
+    else if (d.y > bottom - SCROLL_EDGE_PX) dy = speed(d.y - (bottom - SCROLL_EDGE_PX));
+    if (dy) { const was = rail.scrollTop; rail.scrollTop += dy; if (rail.scrollTop !== was) hitTest(); }
+  }
+  d.raf = requestAnimationFrame(autoScroll);
+}
+
+function endDrag() {
+  const d = DRAG;
+  DRAG = null;
+  if (!d) return;
+  if (d.raf) cancelAnimationFrame(d.raf);
+  if (!d.active) return;
+  d.ghost?.remove();
+  document.body.classList.remove("dragging-rows");
+  document.querySelectorAll("tr.dragging").forEach(tr => tr.classList.remove("dragging"));
+  if (d.unfolded) RAIL_FOLDED.add("folders");
+  if (DATA) renderRail();
+}
+
+/** Esc mid-drag: put everything back. The press is still held, so DRAG stays
+    (cancelled) until it is released and the click that follows can be
+    swallowed. */
+function cancelDrag() {
+  if (!DRAG || DRAG.cancelled) return;   // a second Esc while still held
+  if (!DRAG.active) { DRAG = null; return; }
+  const id = DRAG.pointerId;
+  endDrag();
+  DRAG = { pointerId: id, cancelled: true, active: false };
+}
+
 /* ---------- export ---------- */
 async function doExport() {
   if (!allItems().some(i => i.included)) {
@@ -1013,42 +2000,89 @@ async function doExport() {
     const bytes = py.runPython("bridge.export_zip()").toJs();
     ZIP = new Blob([bytes], { type: "application/zip" });
     MANIFEST = JSON.parse(py.runPython("import json; json.dumps(bridge._STATE['manifest'])"));
+    SAVED = savedState();          // this export wrote every change so far
     renderRunbook();
-    showStage("done");
-    setStatus(`Built ${MANIFEST.length} import batches`, "ready");
+    pushStage("done");
+    setStatus("");   // the screen says it: no "Built N folders" up top
     window.__cairnExported = true;
   } catch (e) {
     setStatus("Export failed: " + e.message, "err"); console.error(e);
   }
 }
 
+/** The export screen's long-note warning (owner's wording, 2026-10-24): the
+    items whose notes onX will cut, by name as written in straight single
+    quotes, up to LONG_NOTES_SHOWN, then "and N more". */
+const LONG_NOTES_SHOWN = 8;
+function longNoteWarning() {
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `'${n || "(no name)"}'`));
+  const n = LONG_NOTES_SHOWN;
+  const list = names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
+  return names.length === 1 ? `Item ${list} is over the length limit and will be truncated by onX.`
+    : `Items ${list} are over the length limit and will be truncated by onX.`;
+}
+
 function renderRunbook() {
-  // Same numbers as RUNBOOK.md: both come from bridge.runbook_summary, so the
-  // over-limit check uses max(written, expected) and dropped items are reported.
+  // The warnings' numbers come from bridge.runbook_summary (the manifest that
+  // instructions.txt is built from), so the over-limit check uses
+  // max(written, expected) and dropped items are reported. One box per folder
+  // (UI-31: its name, Download, the file chips); the warnings sit above them.
   const S = JSON.parse(py.runPython("bridge.runbook_summary_json()"));
   const kml = S.kml_batches;
   const host = $("#runbook");
   host.innerHTML =
-    `<div class="note">onX Premium or Elite is required to import.${kml
-      ? ` <b>${kml}</b> of these batches contain a KML file, which the phone app can't import — use the Web Map on a computer.`
-      : ""}</div>` +
-    (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? "" : "s"} could not be exported because ${S.dropped === 1 ? "it has" : "they have"} no usable coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
-    (S.long_notes ? `<div class="note warn"><b>${S.long_notes}</b> note${S.long_notes === 1 ? " is" : "s are"} longer than ${S.note_limit} bytes (about ${S.note_limit} characters; accented letters, dashes and emoji take 2–4). onX keeps only the first ${S.note_limit} bytes of an imported note; RUNBOOK.md lists ${S.long_notes === 1 ? "it" : "them"}.</div>` : "") +
+    (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
+    (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? " wasn't" : "s weren't"} exported: ${S.dropped === 1 ? "it has" : "they have"} no coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
+    (S.long_notes ? `<div class="note warn">${esc(longNoteWarning())}</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
+  // Two folders may share a name ("Camp" twice, from the file), or two names
+  // sanitize alike ("A B", "A_B"): only then does a box show its number, and
+  // its file chips their NN_ folder, as its download is named.
+  const tally = f => MANIFEST.reduce((m, e) => m.set(f(e), (m.get(f(e)) || 0) + 1), new Map());
+  const byName = tally(e => nameKey(e.folder)), bySafe = tally(e => e.safe.toLowerCase());
   MANIFEST.forEach(e => {
-    const d = document.createElement("div");
+    const twin = byName.get(nameKey(e.folder)) > 1;
+    const fileTwin = bySafe.get(e.safe.toLowerCase()) > 1;
+    const num = e.dir.split("_")[0];
+    // The visible label is just "Download"; its accessible name says which
+    // folder (and, for a twin, its number), so every one is distinct.
+    const label = `Download ${twin ? num + " · " : ""}${e.folder}`;
+    const d = document.createElement("section");
     d.className = "rb-step";
     d.innerHTML = `
-      <label class="rb-title"><input type="checkbox"> <span>${e.n}. ${esc(e.folder)}</span>
-        <span class="rb-count">${e.count} markups</span></label>
+      <div class="rb-head">
+        <h2 class="rb-title">${twin ? `<span class="rb-num">${esc(num)} ·</span>` : ""}<span class="rb-name" title="${esc(e.folder)}">${esc(e.folder)}</span></h2>
+        <button type="button" class="btn rb-dl" aria-label="${esc(label)}">Download</button>
+      </div>
       <div class="rb-files">${e.files.map(f =>
-        `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(f.path.split("/").pop())}</span>`).join("")}</div>
-      <p class="rb-do">Import <b>all ${e.files.length} file${e.files.length > 1 ? "s" : ""} together</b>,
-         tick “Import map data to a new folder”, then:</p>
-      <div class="rb-rename">Rename the new folder to <code>${esc(e.folder)}</code></div>`;
-    d.querySelector("input").onchange = ev => d.classList.toggle("done", ev.target.checked);
+        `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(fileTwin ? f.path : f.path.split("/").pop())}</span>`).join("")}</div>`;
+    d.querySelector(".rb-dl").onclick = () => downloadFolder(e);
     host.appendChild(d);
   });
+}
+
+const plural = (n, word) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
+
+function downloadBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+/* One folder's NN_Name/ directory, the same bytes as inside Download all:
+   bridge.export_folder_zip reads the last export, nothing is exported again. */
+function downloadFolder(e) {
+  try {
+    // The number crosses as a global, like every other argument (pyJSON).
+    py.globals.set("_cairn_n", e.n);
+    const bytes = py.runPython("bridge.export_folder_zip(_cairn_n)").toJs();
+    // Named like its directory inside Download all (the manifest's "dir":
+    // "02_Trip_1.zip", or "002_..." with 100+ folders): two names can
+    // sanitize alike, their numbers can't.
+    downloadBlob(new Blob([bytes], { type: "application/zip" }), e.dir + ".zip");
+  } catch (err) {
+    setStatus("Download failed: " + err.message, "err"); console.error(err);
+  }
 }
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
@@ -1099,11 +2133,13 @@ function cancelConfirm() { if (CONFIRM && CONFIRM.cancel) CONFIRM.cancel.run(); 
 
 /* onX gives every imported area its default blue fill, whatever the file says
    (docs/ONX_ROUND_TRIP.md #area-fidelity). Areas from an onX export (they carry
-   an onX id) with any other fill, "none" included, would change, so say so once
+   an onX id) with any other fill, a clear one excepted, would change, so say so once
    on load and offer to leave them out of the export. */
-const ONX_DEFAULT_FILL = "rgba(74,144,226,0.1)";
+let ONX_DEFAULT_FILL = null;           // bridge.ColorMapper.DEFAULT_AREA_FILL, read at boot
+const fillChanges = i => i.kind === "shapes" && !!i.onx_id && !!i.fill && i.fill !== ONX_DEFAULT_FILL
+  && fillAlpha(i.fill) > 0;   // a clear fill is deliberate (UI-30): not flagged
 function fillLossItems() {
-  return allItems().filter(i => i.kind === "shapes" && i.onx_id && i.fill && i.fill !== ONX_DEFAULT_FILL);
+  return allItems().filter(fillChanges);
 }
 function warnFillLoss() {
   const hit = fillLossItems();
@@ -1129,26 +2165,60 @@ function noteIsChanged() {
   return !!it && NOTE_EDIT.draft !== (it.desc || "");
 }
 
-function resetAll() {
-  closePop(); closeBulk();
+function resetAll({ history: stepBack = true } = {}) {
+  // Start over steps history back to the drop entry, so Back from there
+  // leaves the site; a Leave from the browser's Back is already there.
+  const depth = STAGE_DEPTH[document.body.dataset.stage] || 0;
+  closePop(); closeBulk(); resetFolderState();
+  $("#runbook").replaceChildren();
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
+  SORT.clear(); hideTip();
   resetFilters();
-  renderSourceNotice({});
   $("#file").value = "";
   showStage("drop");
   setStatus("");
   window.__cairnLoaded = false; window.__cairnExported = false;
+  if (stepBack) stepHistory(-depth);
+}
+
+/** What Start over compares with: each item's folder, each folder's name and
+    each item's edits, as loaded or as the last export wrote them. The edits
+    are kept as JSON (edit() changes EDITS' objects in place). */
+function savedState() {
+  return { home: homeOf(), names: new Map(DATA.groups.map(g => [g.key, g.name])),
+           empty: new Set(DATA.groups.filter(g => !g.items.length).map(g => g.key)),
+           edits: new Map(Object.entries(EDITS).map(([uid, e]) => [uid, JSON.stringify(e)])) };
+}
+
+/** Unexported changes, since the last export or (none yet) since load
+    (UI-32): each item edited or moved since then once (an item moved back is
+    not moved), and each folder of then whose name differs now. A merged-away
+    or new folder's name isn't counted; its items are, as moved. */
+function unexportedChanges() {
+  if (!DATA || !SAVED) return 0;
+  const uids = new Set(Object.keys(EDITS).filter(u => SAVED.edits.get(u) !== JSON.stringify(EDITS[u])));
+  if (noteIsChanged()) uids.add(NOTE_EDIT.uid);
+  let renamed = 0, empties = 0;
+  DATA.groups.forEach(g => {
+    g.items.forEach(i => { if (SAVED.home.get(i.uid) !== g.key) uids.add(i.uid); });
+    if (SAVED.names.has(g.key) && SAVED.names.get(g.key) !== g.name) renamed++;
+    // An empty folder made since then: no item says so.
+    if (!SAVED.names.has(g.key) && !g.items.length) empties++;
+  });
+  // An empty folder of then that was removed.
+  SAVED.empty.forEach(k => { if (!groupByKey(k)) empties++; });
+  return uids.size + renamed + empties;
 }
 
 function requestStartOver() {
   const ret = document.activeElement;
-  const uids = new Set(Object.keys(EDITS));
-  if (noteIsChanged()) uids.add(NOTE_EDIT.uid);
-  const n = uids.size;
+  flushDeferred();                 // a name just left: its rename, or its merge offer, first
+  if (CONFIRM) return;
+  const n = unexportedChanges();
   openConfirm({
     title: "Start over?",
     body: n
-      ? `You have ${n} unexported change${n === 1 ? "" : "s"} to this map. Starting over discards ${n === 1 ? "it" : "them"}.`
+      ? `This discards ${n} unexported change${n === 1 ? "" : "s"}.`
       : "This clears the current map.",
     ret,
     buttons: [
@@ -1160,6 +2230,12 @@ function requestStartOver() {
 
 function requestExport() {
   const ret = document.activeElement;
+  // A folder name left by clicking Export: its rename happened, its render
+  // (and a taken name's merge offer) is waiting. Show it here, on the edit
+  // screen, and don't export the old name.
+  if (RENAME) finishRename(RENAME.key, true);
+  flushDeferred();
+  if (CONFIRM) return;
   if (!NOTE_EDIT) { doExport(); return; }
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
   if (!noteIsChanged()) { closeNote(it, false); doExport(); return; }
@@ -1193,16 +2269,22 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#clear-sel").onclick = () => { SEL.clear(); ANCHOR = null; renderFolders(); };
   $("#more-btn").onclick = e => {
     e.stopPropagation();
+    closeMove(false); closePop();   // never a menu under the Move to… list
     const open = $("#more-menu").classList.toggle("hidden") === false;
     $("#more-btn").setAttribute("aria-expanded", String(open));
     if (open) $("#more-menu button").focus();
   };
   $("#more-menu").onclick = e => e.stopPropagation();
   const menuAct = (id, fn) => $(id).onclick = () => { closeMenu(); fn(); };
+  menuAct("#bulk-move", openMoveTo);
+  wireRowDrag();
+  wirePointerHeld();
+  wireTip();
   menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: oneLine(it.desc) } : {}));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
-  $("#help-link").onclick = openHelp;
+  // Every nav's Help (top bar, search row, footer) opens the dialog here.
+  document.querySelectorAll(".help-open").forEach(b => b.onclick = openHelp);
   // faq.html / walkthrough.html link here as "./#help".
   if (location.hash === "#help") openHelp();
   $("#help-close").onclick = closeHelp;
@@ -1212,21 +2294,21 @@ window.addEventListener("DOMContentLoaded", () => {
   // pointer, so the document-level "outside click" test can't be trusted.
   $("#mark-pop").addEventListener("click", e => e.stopPropagation());
   $("#bulk-icon").onclick = openBulk;
-  $("#bulk-line").onclick = openLineBulk;
   $("#export").onclick = requestExport;
-  $("#back").onclick = () => showStage("edit");
+  // Back (done -> edit) is the browser's Back too: history steps with it.
+  $("#back").onclick = () => { showStage("edit"); setStatus(""); stepHistory(-1); };
+  history.replaceState({ cairn: "drop" }, "");
+  addEventListener("popstate", onPopState);
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
   $("#confirm").addEventListener("click", e => { if (e.target === $("#confirm")) cancelConfirm(); });
-  $("#download").onclick = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(ZIP); a.download = "onx_ready.zip"; a.click();
-  };
+  $("#download").onclick = () => downloadBlob(ZIP, "onx_ready.zip");
   // Outside click closes the menu and the popover (Cancel semantics).
   document.addEventListener("click", e => {
     closeMenu();
     if (POP && !$("#mark-pop").contains(e.target)) closePop();
+    if (MOVE && !$("#move-pop").contains(e.target)) closeMove(false);
   });
-  window.addEventListener("resize", () => { if (POP && POP.anchor.isConnected) placePop(POP.anchor); });
+  window.addEventListener("resize", () => { const a = popAnchor(); if (a) placePop(a); });
   document.addEventListener("keydown", e => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ""));
     if (e.key === "Tab") {
@@ -1236,10 +2318,16 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (e.key === "Escape") {
-      // Priority: close what's in front, then an open note, then let a focused
-      // field revert its own edit, else clear the selection.
+      // Priority: a drag in progress, then what's in front, then an open note,
+      // then let a focused field revert its own edit, else clear the selection.
+      if (DRAG) {
+        const held = DRAG.active || DRAG.cancelled;   // Esc again while still held: still the drag's
+        cancelDrag();
+        if (held) { e.preventDefault(); e.stopPropagation(); return; }
+      }
       if (CONFIRM) { e.preventDefault(); cancelConfirm(); return; }
       if (!$("#help").classList.contains("hidden")) { closeHelp(); return; }
+      if (MOVE) { closeMove(true); return; }
       if (BULK) { closeBulk(); return; }
       if (POP) { closePop(); return; }
       if (!$("#more-menu").classList.contains("hidden")) { closeMenu(); $("#more-btn").focus(); return; }
@@ -1248,8 +2336,10 @@ window.addEventListener("DOMContentLoaded", () => {
       if (SEL.size) { SEL.clear(); ANCHOR = null; renderFolders(); }
       return;
     }
+    // Not behind anything in front: a dialog, Move to… or Help.
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && !typing && DATA &&
-        document.body.dataset.stage === "edit" && !BULK && !POP) {
+        document.body.dataset.stage === "edit" && !BULK && !POP && !MOVE && !CONFIRM && !TIP.over &&
+        $("#help").classList.contains("hidden")) {
       e.preventDefault();
       setSelectAll(!(SEL.size && SEL.size === selectableItems().length));
     }

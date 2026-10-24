@@ -84,3 +84,4 @@ tests/fixtures/roundtrip/**/*.gpx
 tests/fixtures/roundtrip/**/*.kml
 tests/fixtures/roundtrip/**/*.json
 tests/fixtures/roundtrip/**/RUNBOOK.md
+tests/fixtures/roundtrip/**/instructions.txt

@@ -77,32 +77,41 @@ def test_source_color_still_quantized_and_unknown_icon_falls_back_to_blue():
 # ---- (g) 3,000 is an account ceiling ---------------------------------------
 
 def _manifest(count, expected=None):
-    return [{"n": 1, "folder": "Big", "count": count,
+    return [{"n": 1, "folder": "Big", "dir": "01_Big", "count": count,
              "expected": count if expected is None else expected,
              "dropped": max(0, (expected or count) - count),
-             "files": [{"path": "01_Big/Big_Waypoints.gpx", "count": count, "kml": False}]}]
+             "files": [{"path": "01_Big/Big_Waypoints.gpx", "count": count, "kml": False,
+                        "kind": "waypoints", "items": []}]}]
+
+
+def _render_runbook_js() -> str:
+    js = (Path(__file__).resolve().parents[1] / "web" / "app.js").read_text(encoding="utf-8")
+    return js.split("function renderRunbook()", 1)[1].split("\nfunction ", 1)[0]
 
 
 def test_over_limit_warning_says_remove_not_split():
-    rb = bridge.build_runbook(_manifest(3100))
-    assert "onX accounts hold at most 3,000 markups; this map has\n> 3,100." in rb
-    assert "Remove or exclude some before importing." in rb
-    assert "split" not in rb.lower()
+    # The export screen's warning (instructions.txt leaves the account limit
+    # to the screen since round 4).
+    body = _render_runbook_js()
+    line = next(ln for ln in body.splitlines() if "S.over_limit ?" in ln)
+    assert "onX accounts hold at most" in line
+    assert "Remove or exclude some before importing." in line
+    assert "split" not in line.lower()
+    assert bridge.runbook_summary(_manifest(3100))["over_limit"]
+    assert "3,000" not in bridge.build_instructions(_manifest(3100))
 
 
 def test_over_limit_uses_max_of_written_and_expected():
     # 2,900 written but 3,100 shown: still over the account ceiling.
     s = bridge.runbook_summary(_manifest(2900, expected=3100))
     assert (s["markups"], s["over_limit"], s["dropped"]) == (3100, True, 200)
-    assert "this map has\n> 3,100." in bridge.build_runbook(_manifest(2900, expected=3100))
     assert not bridge.runbook_summary(_manifest(3000))["over_limit"]
 
 
 def test_on_screen_runbook_reads_the_shared_summary():
-    # web/app.js renderRunbook must use bridge.runbook_summary_json (the same
-    # numbers as RUNBOOK.md) instead of re-deriving its own count.
-    js = (Path(__file__).resolve().parents[1] / "web" / "app.js").read_text(encoding="utf-8")
-    body = js.split("function renderRunbook()", 1)[1].split("\nfunction ", 1)[0]
+    # web/app.js renderRunbook must use bridge.runbook_summary_json (from the
+    # manifest instructions.txt is built from) instead of re-deriving its own count.
+    body = _render_runbook_js()
     assert "bridge.runbook_summary_json()" in body
     assert "S.dropped" in body and "S.over_limit" in body
     assert "e.count, 0)" not in body

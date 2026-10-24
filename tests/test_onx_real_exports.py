@@ -81,14 +81,16 @@ def test_cairn_note_with_tag_like_text_survives_export():
     assert "<desc>Meet at &lt;Lake&gt; &amp; go</desc>" in wpts
 
 
-def test_runbook_lists_notes_longer_than_onx_imports():
+def test_instructions_mark_notes_longer_than_onx_imports():
     import io, zipfile
     src = (ROOT / "tests/fixtures/dark_divide_100/caltopo/2027_Dark_Divide_100_Mile_Endurance_Run.json").read_text(encoding="utf-8")
     bridge.load_files(json.dumps([{"name": "dd.json", "text": src}]))
     z = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
-    rb = z.read("RUNBOOK.md").decode()
-    assert "### Notes longer than onX keeps on import (512 bytes)" in rb
-    assert "`02 - Juniper Ridge AS (Used Twice)`: 617 bytes" in rb
+    lines = z.read("instructions.txt").decode("utf-8").split("\r\n")
+    note = "                (onX keeps only the first 512 bytes of this note, about 512 characters)"
+    assert lines[lines.index("            02 - Juniper Ridge AS (Used Twice)") + 1] == note
+    assert lines.count(note) == 1
+    assert bridge._STATE["manifest"][1]["long_notes"] == [["02 - Juniper Ridge AS (Used Twice)", 617]]
     assert json.loads(bridge.runbook_summary_json())["long_notes"] == 1
 
 

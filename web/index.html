@@ -24,6 +24,13 @@
 <header id="topbar" class="topbar">
   <div class="wordmark"><span class="cairn-mark" data-ui-icon="cairn"></span><span>Cairn</span></div>
   <span id="status-top" class="status-slot"><span id="status" class="status" role="status"></span></span>
+  <nav class="site-nav" aria-label="Site">
+    <a href="./" aria-current="page">App</a> &middot;
+    <button type="button" class="linkbtn help-open">Help</button> &middot;
+    <a href="faq.html" target="_blank" rel="noopener">FAQ</a> &middot;
+    <a href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a> &middot;
+    <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </nav>
 </header>
 
 <!-- 1. DROP -->
@@ -33,16 +40,9 @@
     <p class="tagline">CalTopo to onX, with icons and colors that still mean something.</p>
     <h1>Move your map without losing its icons, colors or folders.</h1>
     <p class="lede">onX can't read CalTopo's full GeoJSON export, and CalTopo's GPX and KML
-      exports leave your icons, colors and folders behind, so your map lands in onX as a pile of
-      identical blue pins. That hurts, because icon and color are how onX lets you filter. Cairn
-      carries them across, lets you review and bulk-edit everything first, and hands you files
-      ready to import. It reads
-      CalTopo GeoJSON, KML and GPX.</p>
-    <ol class="steps">
-      <li><span class="step-n">1</span><span>Export from <a class="plain-link" href="https://caltopo.com" target="_blank" rel="noopener noreferrer">CalTopo</a> as <strong>GeoJSON</strong> (best), KML or GPX.</span></li>
-      <li><span class="step-n">2</span><span>Add it here.</span></li>
-      <li><span class="step-n">3</span><span>Import into <a class="plain-link" href="https://www.onxmaps.com/backcountry" target="_blank" rel="noopener noreferrer">onX Backcountry</a>.</span></li>
-    </ol>
+      exports drop your icons, colors and folders, so your map lands in onX as a pile of identical
+      pins and lines. Cairn carries them across and lets you review and edit names, notes, icons and
+      colors before you import. It reads CalTopo GeoJSON (best), KML and GPX.</p>
   </div>
   <div id="dropzone" class="drop-target">
     <svg class="drop-glyph" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#7A4E25" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14 M15 6v14"/></svg>
@@ -70,9 +70,10 @@
       <button type="button" class="sec-h" data-fk="sec|type" aria-expanded="true" aria-controls="type-filter"><span class="label">Type</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
       <div id="type-filter" class="facet-list" role="group" aria-label="Filter by type">
         <button type="button" class="facet-btn" data-kind="" data-fk="type|all" aria-pressed="true"><span class="facet-name">All</span><span class="facet-count"></span></button>
-        <button type="button" class="facet-btn" data-kind="waypoints" data-fk="type|waypoints" aria-pressed="false"><span class="facet-name">Waypoints</span><span class="facet-count"></span></button>
-        <button type="button" class="facet-btn" data-kind="tracks" data-fk="type|tracks" aria-pressed="false"><span class="facet-name">Lines</span><span class="facet-count"></span></button>
+        <!-- All first, then alphabetical (owner, 2026-10-24); only the kinds the map has. -->
         <button type="button" class="facet-btn" data-kind="shapes" data-fk="type|shapes" aria-pressed="false"><span class="facet-name">Areas</span><span class="facet-count"></span></button>
+        <button type="button" class="facet-btn" data-kind="tracks" data-fk="type|tracks" aria-pressed="false"><span class="facet-name">Lines</span><span class="facet-count"></span></button>
+        <button type="button" class="facet-btn" data-kind="waypoints" data-fk="type|waypoints" aria-pressed="false"><span class="facet-name">Waypoints</span><span class="facet-count"></span></button>
       </div>
     </section>
     <section class="facet" data-sec="folders">
@@ -96,19 +97,26 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5C5242" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg>
         <input id="filter" type="search" placeholder="Name or note" aria-label="Search" autocomplete="off">
       </label>
+      <!-- The edit stage has no top bar (the rail carries the wordmark): the
+           site nav sits at the right of the search row. -->
+      <nav class="site-nav" aria-label="Site">
+        <a href="./" aria-current="page">App</a> &middot;
+        <button type="button" id="help-link" class="linkbtn help-open">Help</button> &middot;
+        <a href="faq.html" target="_blank" rel="noopener">FAQ</a> &middot;
+        <a href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a> &middot;
+        <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
     </div>
-
-    <div id="source-notice" class="note source-notice hidden" role="note"></div>
 
     <div id="chips" class="chips hidden"></div>
 
     <div id="selbar" class="selbar hidden">
       <span id="selcount" class="selcount">0 selected</span>
       <button id="bulk-icon" type="button" class="btn small" aria-haspopup="dialog" disabled>Icon &amp; color…</button>
-      <button id="bulk-line" type="button" class="btn small hidden" aria-haspopup="dialog">Line style…</button>
       <div class="menu-wrap">
         <button id="more-btn" type="button" class="btn small" aria-haspopup="menu" aria-expanded="false" disabled>More<span data-ui-icon="chevron"></span></button>
         <div id="more-menu" class="menu hidden" role="menu" aria-label="More actions">
+          <button id="bulk-move" type="button" role="menuitem" aria-haspopup="dialog">Move to…</button>
           <button id="bulk-desc" type="button" role="menuitem">Use note as name</button>
           <button id="bulk-exclude" type="button" role="menuitem">Exclude</button>
           <button id="bulk-include" type="button" role="menuitem">Include</button>
@@ -121,26 +129,30 @@
   </main>
 </div>
 
-<!-- 3. IMPORT RUNBOOK -->
+<!-- 3. EXPORT (UI-31): one box per folder, filled by app.js renderRunbook -->
 <main id="done-stage" class="stage done hidden">
   <div class="done-head">
     <span class="kicker">Export</span>
     <h1>Your files are ready</h1>
     <div class="done-actions">
-      <button id="download" type="button" class="btn primary big">Download</button>
+      <button id="download" type="button" class="btn primary big">Download all</button>
+      <span class="done-hint">One zip with every folder and instructions.txt</span>
+      <span class="push"></span>
       <button id="back" type="button" class="btn">Back</button>
       <button type="button" class="btn newmap">Start over</button>
     </div>
   </div>
-  <div class="runbook-intro">
-    <p><b>onX makes one folder per import, and names it with a timestamp.</b> That's why this
-    checklist exists — it tells you which files go together and what to rename each folder to.</p>
-  </div>
+  <p class="rb-intro">Import each folder into onX's Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.</p>
   <div id="runbook" class="runbook"></div>
 </main>
 
 <!-- single-item icon & color popover (filled by app.js) -->
 <div id="mark-pop" class="pop hidden" role="dialog"></div>
+
+<!-- hover tip: a row's whole name or note, or what won't carry over (filled by app.js) -->
+<div id="tip" class="tip hidden" role="tooltip"></div>
+<!-- More ▸ Move to…: the folders to move the selection to (filled by app.js) -->
+<div id="move-pop" class="move-pop hidden" role="dialog" aria-label="Move to folder"></div>
 
 <!-- several-items icon & color dialog (filled by app.js) -->
 <div id="mark-modal" class="modal hidden"><div id="mark-dialog" class="modal-card mark-dialog" role="dialog" aria-modal="true"></div></div>
@@ -155,82 +167,91 @@
   <div class="modal-head"><h2 id="help-title">How to use Cairn</h2><button id="help-close" type="button" class="x" aria-label="Close" data-ui-icon="close"></button></div>
   <div class="help-body">
     <h3>1 · Export from CalTopo</h3>
-    <p>On your CalTopo map choose <b>Export</b> and pick <b>GeoJSON</b>. It keeps everything and is the one to use.
-       CalTopo's <b>KML</b> works too: it keeps folders, icons and colors but not dashed lines.
-       Drop that file here.</p>
-    <p>Cairn also opens <b>GPX</b>: a CalTopo GPX (names, notes and line colors, but no folders
-       or icons, which you can add here), or the GPX and KML you export from onX to clean up an
-       onX map. Drop the GPX and KML of one onX
-       export together; they become one folder. Several files dropped at once become one
-       folder each, named after the file.</p>
+    <p>In CalTopo choose <b>Export</b>, then <b>GeoJSON</b>. It keeps everything.
+       <b>KML</b> works too, but loses dashed lines. Drop the file here.</p>
+    <p class="help-note">CalTopo's GPX has no folders, icons or pin colors. Export GeoJSON (or KML) to keep them.</p>
+    <p>Cairn also opens <b>GPX</b>. A CalTopo GPX has names, notes and line colors; you can add
+       icons here. To clean up an onX map, drop the GPX and KML of
+       one onX export together: they become one folder. Drop several other files at once and
+       each becomes a folder named after the file.</p>
 
     <h3>2 · Review the icons</h3>
-    <p>Cairn maps each CalTopo symbol to the closest onX icon, and shows each waypoint as the
-       marker onX will draw. Hover any marker to see <b>why</b> it was chosen. Some waypoints
-       fall back to onX's <i>Default pin</i> because CalTopo had no symbol and the name gave no
-       clue — that is often perfectly fine (mile markers, numbered stops). Set an icon only where
-       the meaning matters; choosing an icon — <i>including deliberately choosing “Location”</i> —
-       marks it reviewed. Click a marker to change that one item's icon and color, or a
-       line's or area's color, style (solid or dashed) and weight.</p>
+    <p>Cairn picks the closest onX icon for each CalTopo symbol and draws each waypoint as onX
+       will. Hover a marker to see <b>why</b>. A waypoint with no symbol and no clue in its name
+       gets onX's <i>Default pin</i>, which is often fine (mile markers, numbered stops). Picking
+       any icon, even <i>Location</i> (the default pin), marks it reviewed. Click a marker to
+       change its icon and color, or a line's or area's color, style and weight.</p>
+    <p>Hover a name or note that's cut short to read all of it. A caution mark means onX
+       won't keep something as is: before a note, a note over onX's 512-byte import limit or an
+       item with no coordinates; after an area's <i>Area</i>, a fill onX resets (pick onX's blue
+       fill to clear it). Hover the mark for details. The arrow in a
+       <b>Name</b> header sorts that folder A–Z, then Z–A, then back to map order; each folder
+       keeps its own. Sorting changes only the view.</p>
 
     <h3>3 · Edit in bulk</h3>
-    <p>Narrow the list with the search box or the <b>Type</b>, <b>Folders</b> and
-       <b>Icon</b> sections on the left (tick <b>Default pin</b> to see only those). Then tick rows —
-       <b>Icon &amp; color…</b> applies to your selection, and <b>Line style…</b>
-       (shown when lines or areas are selected) sets their style and weight. <b>More</b> holds <i>Use note as
-       name</i> (when the real information is in the notes) and the export include/exclude
-       controls.</p>
+    <p>Narrow the list with the search box or the <b>Type</b>, <b>Folders</b> and <b>Icon</b>
+       lists on the left (tick <b>Default pin</b> to see only those). Then tick rows.
+       <b>Icon &amp; color…</b> changes them all; it's <b>Color &amp; style…</b> when only lines and
+       areas are ticked. Lines and areas also take a style and weight, areas onX's blue fill; with
+       both kinds, pins and lines each get their own color. Each row starts on <i>Leave as is</i>. <b>More</b> has <i>Move to…</i>, <i>Use note as
+       name</i>, <i>Exclude</i> and <i>Include</i>.</p>
     <table class="help-tbl">
       <tr><th>Click a box</th><td>Select one row.</td></tr>
-      <tr><th>Shift + click</th><td>Select everything between it and the last row you clicked.</td></tr>
-      <tr><th>Ctrl / ⌘ + A</th><td>Select everything currently shown. Press again to deselect.</td></tr>
-      <tr><th>Header checkbox</th><td>Select every row in that folder.</td></tr>
-      <tr><th>Esc</th><td>Clear the selection. While editing a name or note, Esc undoes that edit instead.</td></tr>
+      <tr><th>Shift + click</th><td>Select every row between it and the last one you clicked.</td></tr>
+      <tr><th>Ctrl / ⌘ + A</th><td>Select every row shown. Press again to deselect.</td></tr>
+      <tr><th>Header checkbox</th><td>Select every row shown in that folder.</td></tr>
+      <tr><th>Esc</th><td>Clear the selection. While editing a name or note, undo that edit instead.</td></tr>
       <tr><th>Notes</th><td>Click a note to open it. Enter starts a new line; Ctrl / ⌘ + Enter saves.</td></tr>
     </table>
-    <p class="help-note">Selection always follows what is on screen: filter first, then select
-       all, and you only touch the rows you can see.</p>
+    <p class="help-note">Selection follows the screen: filter first, then select all, and you
+       only touch the rows you can see.</p>
 
-    <h3>4 · Leave things out</h3>
-    <p>Select rows and choose <b>More → Exclude</b>. Excluded rows stay
-       visible, struck through, with an <b>Include</b> button. Useful for scratch lines and
-       duplicated tracks. Nothing is ever deleted from your CalTopo file.</p>
+    <h3>4 · Folders</h3>
+    <p>Each folder becomes one onX folder. To move rows, drag them onto a folder in the
+       <b>Folders</b> list; tick several first to move them together. Drop them on
+       <b>+ New folder</b> to make a folder, then type its name. Clicking <b>+ New folder</b>
+       does the same with the ticked rows, or makes an empty folder when none are ticked (its
+       <b>×</b> removes it). <b>More → Move to…</b> works from the keyboard. Click a folder's
+       name above its rows to rename it; if the name is taken, Cairn offers to merge the two.
+       A folder you empty goes away. Empty folders aren't exported. Folders are listed, and
+       numbered at export, by name; <i>Unorganized</i> comes last.</p>
 
-    <h3>5 · Export and import</h3>
-    <p>Cairn writes one set of files per folder and a checklist. This matters:
-       <b>onX creates one folder per import, and names it with a timestamp</b> — never from the
-       filename. So the checklist tells you which files to drag in together and exactly what to
-       rename each folder to. Work through it in order.</p>
+    <h3>5 · Leave things out</h3>
+    <p>Tick rows and choose <b>More → Exclude</b>. Excluded rows stay in the list, struck
+       through, with an <b>Include</b> button. Handy for scratch lines and duplicate tracks. Your
+       CalTopo file is never changed.</p>
+
+    <h3>6 · Export and import</h3>
+    <p><b>onX creates one folder per import and names it with a date and time</b>, never from
+       the file name. So Cairn writes one set of files per folder. <b>Download all</b> gets every
+       folder in one zip, with <b>instructions.txt</b>; a folder's <b>Download</b> gets just that
+       folder. Import each folder's files together, tick <b>Import map data to a new folder</b>,
+       then rename the new folder. instructions.txt lists each folder's name, its files and every
+       item in them.</p>
 
     <h3>What carries across</h3>
     <table class="help-tbl">
-      <tr><th>Name</th><td>Yes — and it is the only field onX lets you search.</td></tr>
-      <tr><th>Note</th><td>Yes — arrives as the markup's <b>Notes</b> in onX.</td></tr>
-      <tr><th>Icon</th><td>Yes, for waypoints. onX has 95; CalTopo has many more, so some map approximately.</td></tr>
+      <tr><th>Name</th><td>Yes. It's the only field onX searches.</td></tr>
+      <tr><th>Note</th><td>Yes, as the markup's <b>Notes</b> in onX, up to 512 bytes.</td></tr>
+      <tr><th>Icon</th><td>Yes, for waypoints. onX has 95 icons and CalTopo many more, so some are a close match, not an exact one.</td></tr>
       <tr><th>Color</th><td>Yes, snapped to onX's 10 waypoint colors (11 for lines).</td></tr>
-      <tr><th>Line style</th><td>Yes, for lines and area outlines — solid or dashed, thin or thick, as onX draws them. An onX file's dotted or extra-thin line is kept.</td></tr>
-      <tr><th>Folders</th><td>Yes — but only if you follow the import checklist.</td></tr>
-      <tr><th>Lines vs areas</th><td>Handled automatically: lines go to GPX as tracks, areas to GPX as onX areas with their outline color, style and weight. onX gives every imported area its own light blue fill, whatever the file says. An area's holes aren't kept; the checklist lists those areas.</td></tr>
+      <tr><th>Line style</th><td>Yes, for lines and area outlines: solid or dashed, thin or thick. A dotted or extra-thin line from an onX file is kept.</td></tr>
+      <tr><th>Folders</th><td>Yes. Import one folder at a time and rename each, as instructions.txt says.</td></tr>
+      <tr><th>Lines vs areas</th><td>Lines go out as GPX tracks, areas as onX areas with their outline color, style and weight. onX fills every imported area light blue, whatever the file says. Area holes aren't kept; instructions.txt marks those areas.</td></tr>
     </table>
 
     <h3>Good to know</h3>
     <ul>
-      <li>Importing needs an onX <b>Premium or Elite</b> membership.</li>
-      <li>Import on the onX <b>Web Map</b> on a computer: that is where the new-folder checkbox is.</li>
-      <li>An onX account holds <b>3,000 markups</b>; Cairn warns you if a map exceeds it.</li>
-      <li>Your map never leaves this computer — the conversion runs entirely in your browser.</li>
-      <li>The markers here are Cairn's own drawings, not onX's artwork; the icon <i>name</i> is
-          exactly what onX will use.</li>
+      <li>Importing needs onX <b>Premium or Elite</b>.</li>
+      <li>Import on the onX <b>Web Map</b> on a computer. That's where the new-folder checkbox is.</li>
+      <li>An onX account holds <b>3,000 markups</b>. Cairn warns you if a map has more.</li>
+      <li>The browser's Back and Forward move between the screens; Cairn asks before you leave a map with unexported changes.</li>
+      <li>The markers here are Cairn's drawings, not onX's artwork. The icon <i>name</i> is
+          exactly what onX uses.</li>
     </ul>
   </div>
 </div></div>
 
-<footer class="site-foot" aria-label="Site links">
-  <button id="help-link" type="button" class="linkbtn">Help</button> &middot;
-  <a href="faq.html" target="_blank" rel="noopener">FAQ</a> &middot;
-  <a href="walkthrough.html" target="_blank" rel="noopener">Walkthrough</a> &middot;
-  <a href="https://github.com/moltude/cairn" target="_blank" rel="noopener noreferrer">GitHub</a>
-</footer>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.29.5/full/pyodide.js"
         integrity="sha384-VR47TfKeAmT7vMej7bwOVg0tHTQLLGMSIpsXtFMCZG5OpKZSIXoSLtGY//qHcxc6"

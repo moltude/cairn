@@ -148,8 +148,8 @@ def test_synthetic_kml_exports_byte_identical_to_geojson_but_the_dash():
     a, b = _export(f"{SYN}.json"), _export(f"{SYN}.kml")
     assert a.keys() == b.keys()
     changed = {n for n in a if a[n] != b[n]}
-    assert changed == {"02_Routes/Routes_Tracks.gpx"}
+    assert changed == {"03_Routes/Routes_Tracks.gpx"}   # Areas, Camps & Water #1, Routes, …
     delta = [ln for ln in difflib.unified_diff(
-        a["02_Routes/Routes_Tracks.gpx"].splitlines(), b["02_Routes/Routes_Tracks.gpx"].splitlines(),
+        a["03_Routes/Routes_Tracks.gpx"].splitlines(), b["03_Routes/Routes_Tracks.gpx"].splitlines(),
         lineterm="", n=0) if ln[:1] in "+-" and ln[:3] not in ("+++", "---")]
     assert delta == ["-      <onx:style>dash</onx:style>", "+      <onx:style>solid</onx:style>"]

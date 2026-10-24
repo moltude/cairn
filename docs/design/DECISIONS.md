@@ -554,7 +554,7 @@ Decision:
   would discard it on import.
 - **Holes — provisional, subject to revision.** An onX area is single-ring, so a polygon with
   holes is written as its outer ring only (the hole is filled in) and listed in RUNBOOK.md under
-  "Holes not kept in onX". Not tested: whether onX can keep a hole through any import path (e.g.
+  "Holes not kept in onX" (since UI-31 round 4: one line under the area in instructions.txt). Not tested: whether onX can keep a hole through any import path (e.g.
   KML `innerBoundaryIs` — which would bring back the default-color problem), or whether writing
   each hole as a separate area would serve users better.
 - Bitterroots' export changed only in its 6 area files (`*_Areas.kml` → `*_Areas.gpx`, 17 areas;
@@ -583,6 +583,121 @@ tracker and RUNBOOK section are kept but are always empty (they stay as the plac
 rename if one is ever needed again). Dark Divide `cairn_output` baselines and `PARITY.md`
 changed only in the five `#1` / `#2` track names (now identical to the review screen).
 
+### ENG-07 — Stable item ids and folder primitives (2026-10-23, folders PR-A)
+Status: decided. Engine half of the approved folders feature (rename, merge on a duplicate
+name, drag to a folder, + New folder, More ▸ Move to…); the UI is PR-C.
+
+**Item ids.** An item's `uid` used to be `<folder key>::<kind>::<index within kind>`, and that
+position was load-bearing: `export_zip` dropped excluded items by decoding the index, and pushed
+edits onto features by zipping items with the folder's feature list. Moving an item would have
+pointed every edit and exclusion at the wrong feature. Now:
+- `uid` (name unchanged, so web/app.js needed no logic change) is an opaque id, `i0`, `i1`, …,
+  numbered in load order across every folder and file. It never changes while the map is open
+  and encodes no folder or position. The same file loads with the same ids.
+- `_STATE["features"]` maps uid → the ParsedFeature the writers read. The groups (in order, and
+  each group's `items` in order) are the only record of where an item is; `export_zip` iterates
+  them and reaches each feature by uid. `doc.folders` stays as parsed (the folders as loaded);
+  the tests derive the current folders from the groups (`_doc_folders`), and export reads neither (round 3: the copy kept in step by every move was a second record).
+- A map with no moves or renames exports byte for byte as before (Bitterroots sha pin). The
+  pinned load-JSON hash in that test is compared after rebuilding the old uid strings, the only
+  change to that baseline check.
+- Nothing may parse a uid. EDITS, SEL, ANCHOR, NOTE_EDIT, POP and BULK key by it as before.
+
+**Primitives** (web/bridge.py; JSON in/out like `apply_edits`; no UI yet):
+- `rename_folder(key, name)` → `{"ok": true, "key", "name", "safe"}`, or when another folder
+  has that name `{"ok": false, "name", "duplicate": {"key", "name", "count"}}` with nothing
+  changed, so the UI can offer "Move the N items into it?" → `merge_folders`.
+- `move_items(uids_json, target_key=None, new_name=None)` (exactly one target) →
+  `{"ok": true, "key", "created", "moved", "removed": [emptied keys], "folders": layout}`, or
+  the duplicate report when `new_name` is taken. `layout` is every folder in order as
+  `{"key", "name", "safe", "uids"}`: the UI rearranges its own copies of the items from it.
+- `merge_folders(source_key, target_key)` → the same success shape; the target keeps its name
+  and place.
+
+**Rules.** An item is in exactly one folder. A folder a move or merge leaves with no items is
+removed, and `removed` names exactly those; a folder that loaded empty (a CalTopo folder with no
+members) or whose items are all excluded stays. Names are trimmed and must be non-empty (else ValueError);
+inner spacing and case are kept. Two folders may not share a name compared trimmed and
+case-insensitively (`casefold`); renaming a folder to its own name in another case is allowed.
+A clash is reported, never merged silently. New folders get a fresh key (`new:N`) and take
+their sorted place (folder order, below; they went at the end until 2026-10-24). Moving an item to the folder it is in does nothing. Moved items keep the map's
+order (not the order given) and go to the end of their kind's run in the target, so a folder
+is still waypoints, then lines, then areas. Unknown uids or keys, an empty list or both/neither
+targets raise ValueError and change nothing. "Unorganized" is a folder like any other: it can
+be renamed, emptied (and so removed) and moved into.
+
+**Round 5: duplicate names at load.** The one-name-per-folder rule above covers rename, + New
+folder and Move to… only. A loaded map can already have two folders with the same name (CalTopo
+allows it); both load as they are, and export tells the twins apart by their `NN_` zip folder
+(UI-32). Nothing merges them unasked.
+
+**Round 4 (2026-10-23): an empty folder up front (UI-32).**
+- `create_folder(name=None)` → `move_items`' success shape with `"created": true, "moved": 0`:
+  an empty folder (in its sorted place since 2026-10-24), named `default_folder_name()` unless a name is given; a taken
+  name gives the duplicate report with nothing changed; an empty name raises.
+- `remove_empty_folder(key)` → `{"ok": true, "removed": [key], "folders": layout}`; a folder
+  with items, or an unknown key, raises ValueError and changes nothing.
+- So the rule above becomes: a folder a move or merge EMPTIES is removed; one made empty, or
+  loaded empty, stays until then (or until `remove_empty_folder`).
+- `export_zip` numbers only folders with items: an empty folder writes nothing and takes no
+  `NN_` number (the width counts numbered folders), so the ones after it close up. A folder
+  whose items are all excluded keeps its number, as before.
+
+**Round 2 (2026-10-23).**
+- Each group (and each layout entry) carries `unorganized`: true only for the items outside every
+  folder of the file (the reader's `orphaned_features`, or a nameless folder), decided at load by
+  where they came from, never by name, so a real CalTopo folder called "Unorganized" is ordinary.
+  `rename_folder` clears it, and renaming those loose items back to "Unorganized" sets it again.
+- `rename_folder` success also returns `unorganized` and `folders` (the layout), so the UI
+  rebuilds from it like after a move. `layout_json()` returns `{"folders": layout}`: the UI
+  re-syncs from it whenever applying an answer fails.
+- `default_folder_name()` is the first free one of "New folder", "New folder 2", … by the same
+  trimmed, casefolded rule; `move_to_new_folder(uids_json)` is `move_items` into it. The UI no
+  longer picks the name and retries.
+- Folder names lose control characters (newline, tab, NUL, …: each run becomes one space) on load
+  and on rename. RUNBOOK.md's code spans were fenced with one more backtick than the longest run in
+  the text, so "Rename it to:" showed a name with backticks exactly; instructions.txt (UI-31
+  round 4) is plain text and writes the name as is.
+- `_safe` cuts to 80 UTF-8 bytes in one slice (the old char-at-a-time loop was quadratic); the
+  result is the same.
+
+**Folder order (owner feedback 2026-10-24; replaces "sorted by size once at load").** Folders
+are sorted by name: natural (digit runs compare as numbers, so "1 - …", "2 - …", "10 - …"),
+case-insensitive (`casefold`), stable (twins, "Camp" and "camp" from a file, keep their load
+order). The loose items (`unorganized`, by the flag, not by name) come last: they are not a
+real folder. Loading sorts; a new folder (`move_items` with `new_name`, `create_folder`) and a
+renamed one take their sorted place; a move or merge doesn't reorder (names don't change).
+Renamed away from "Unorganized" the loose items are an ordinary folder and sort by their new
+name; renamed back, they are last again. `bridge._sort_folders` is the one place the order is
+made, and the UI only follows the layout, so the table, the rail, the Move to… list and the
+export agree. The old order read as unnatural (Dark Divide: "3 - …, 2 - …, 1 - …").
+Re-pinned: the Bitterroots export pin (NN_ names and instructions.txt only; every GPX member's
+bytes unchanged) and the Dark Divide cairn_output folders (renumbered, same bytes).
+
+**Export numbering and the runbook.** Export's `NN_` prefix and the runbook's step
+number are each folder's current position (1-based, folder order) at export time, so removing
+a folder closes the gap. `NN_` is two digits, or as many as the folder
+count needs from 100 folders on (`001_` … `120_`), so a file list still sorts in order; maps
+under 100 folders are unchanged (Bitterroots pin). Each manifest entry names its directory
+(`dir`). The last export keeps the zip itself (not a second copy of every file);
+`export_folder_zip(n)` copies that folder's members out of it as stored (compressed bytes,
+not recompressed), and the page names the download `<dir>.zip` from the manifest. The runbook's
+heading and "Rename it to:" line use the current display name, shown exactly (backslash escapes
+in the heading and "(folder)" notes, a code span in "Rename it to:"). As before, a folder whose items are all excluded still
+takes a number but writes no files and gets no runbook step.
+
+**File names for a renamed folder.** `safe` is recomputed with the existing `_safe()` (strip
+everything but word characters, spaces and hyphens; spaces/hyphen runs → `_`; empty →
+`Unnamed`) and names the folder's directory and file stems (`02_Trip_1_AB/Trip_1_AB_Tracks.gpx`).
+The GPX's own folder name is the display name, unchanged. Two names with the same `safe` form
+("Trip 1" and "Trip-1") can't collide in the zip: the `NN_` directory differs.
+
+Options not taken: uuid4 ids (nondeterministic, unhashable load JSON); keeping the old uid
+string as an opaque value (it would still read as a position and invite parsing); auto-merging
+on a duplicate name (the owner wants the merge offered, RenameMerge mockup); re-sorting folders
+by size after each move; sorting folders in the UI only (two collators could disagree with the
+export's numbers).
+
 ### UI-25 — Line style and weight editing
 Status: decided 2026-10-23 (from the line-style option canvas: 2C, and the Style / Weight
 dialog). Engine support already existed (`apply_edits` `style`, `weight`).
@@ -592,8 +707,9 @@ dialog). Engine support already existed (`apply_edits` `style`, `weight`).
   **Style** (solid, dashed) and **Weight** (thin, thick), whose four toggles line up with the
   palette. The toggles show only the drawn line, no words (screen readers and hover still name
   them).
-- **Several lines**: a **Line style…** button in the selection bar, shown only when the selection
-  has lines, opens a dialog titled **Line style**: the selected lines drawn long in their own
+- **Several lines** (superseded 2026-10-24 by UI-36: one dialog for colour, style, weight and
+  fill): a **Line style…** button in the selection bar, shown only when the selection
+  has lines, opened a dialog titled **Line style**: the selected lines drawn long in their own
   colors, then the same Style and Weight groups. Picking the selected toggle again un-picks it,
   and an un-picked group leaves each line as it is. Color stays in Icon & color….
 - The list draws every line's mark in its real style and weight; the row label stays "Line".
@@ -606,7 +722,8 @@ dialog). Engine support already existed (`apply_edits` `style`, `weight`).
 - **Areas too (2026-10-23):** an area's outline takes the same Style and Weight (popover and
   Line style… dialog), solid / dashed and 4.0 / 6.0 only. An onX area's dotted or 2.0
   ("Extra thin") outline is drawn and kept unless changed. No fill choice is offered: onX's
-  importer ignores area fills (ENG-05).
+  importer ignores area fills (ENG-05). (2026-10-24, UI-36: one fill is offered, onX's own
+  default blue, which is what onX shows anyway.)
 - Options not taken (canvas): style rows with word labels (2A), one 2×2 sample grid (2B), Style
   and Weight inside Icon & color… (3A/3D), toggles in the selection bar with no dialog (3F).
 
@@ -629,7 +746,7 @@ Start over tooltip ("Clears this map and your edits. To combine several files, d
 together at the start." -- the confirmation already says what is lost), the note button's
 tooltip ("Becomes the markup's Notes in onX") and the folder checkbox tooltip ("Select every row
 shown in this folder", which repeated its label). Kept: the Excluded row tooltip, the CalTopo GPX
-source notice, the note-over-limit, dropped-item and markup-limit warnings, and the runbook
+source notice (2026-10-24: now a line in Help, not a banner), the note-over-limit, dropped-item and markup-limit warnings, and the runbook
 text. Edit commits now read "Save", not "Apply" (note editor, icon & color popover and dialog,
 Line style dialog, "Save your note?"). The note editor opens with the caret and scroll at the
 start of the note.
@@ -642,6 +759,7 @@ Status: decided 2026-10-23 (owner).
   stages), `faq.html` (generated by `scripts/build_faq_page.py`) and `walkthrough.html`. Help is
   the in-app modal; from the doc pages it links to `./#help`, and the app opens Help when loaded
   with that hash.
+- 2026-10-24 (owner): the footer became the shared site nav (UI-38), in the kicker style.
 - The Help / FAQ / Walkthrough links at the top of the page and in the left rail are removed.
 - The engine's loading status ("Loading Python runtime…", "Loading map engine…") and the
   "Ready · engine vX on GitHub" line are gone. The status area shows only real messages after
@@ -676,6 +794,12 @@ Status: decided 2026-10-23 (owner, from the layout mockups; option C chosen).
   icon & color / line popover, the Icon & color… and Line style dialogs, the confirmations and
   Help keep today's sizes (the owner prefers the larger pop-up). The drop and done screens are
   unchanged. At 1440×900 the list shows 18 full rows (was 11).
+- **Order (owner feedback 2026-10-24).** Each section is "All" first, then alphabetical:
+  Type is All, Areas, Lines, Waypoints, listing only the kinds the map has (a kind with none
+  shows only while it is the filter in use); Folders is All, then the folder order (ENG-07: by
+  name, Unorganized last); Icon is *Default pin* pinned at the top, then the icons
+  alphabetically (natural, any case). It was Waypoints / Lines / Areas, and icons most common
+  first with Default pin last.
 - Options not taken (layout canvas): A, every filter in the rail as flat lists that don't fold;
   B, one filter bar over the list with no facet rail. D (the icon popover at the smaller scale)
   was declined: the pop-ups stay at today's size.
@@ -720,7 +844,8 @@ Status: decided 2026-10-23 (owner; wording option A).
 
 onX gives every imported area its default blue fill (`rgba(74,144,226,0.1)`), whatever the
 file says (docs/ONX_ROUND_TRIP.md #area-fidelity). When a loaded map has areas from an onX
-export (they carry an onX id) whose fill is anything else, "none" included, a dialog shows once
+export (they carry an onX id) whose fill is anything else, a transparent ("none") fill excepted (round 5: deliberate, and the
+caution mark skips it too), a dialog shows once
 on load:
 
 > **N areas will lose their fill.** onX resets area fills to blue on import.
@@ -730,6 +855,321 @@ on load:
   They stay in the list and can be included again.
 - "Keep them" is the default focus, and so is Escape; it changes nothing.
 - No dialog for CalTopo maps, or for onX areas that already have the default fill.
+- 2026-10-24 (UI-36): an area's fill can be set to onX's default blue (popover and dialog, the
+  Fill row); such an area is no longer counted as losing its fill, and its caution goes.
 - The broader "This map came from onX" notice and the import-checklist steps (delete the
   originals; except the ones left out) are still to be worded.
+
+
+### UI-31 — The export screen: one box per folder
+Status: decided 2026-10-23 (owner, from the `ExportScreen.dc.html` mockup); revised the same day
+in round 4 from the owner's edited mockup (export screen v2, and instructions.txt in place of
+RUNBOOK.md). Release log: docs/testing/FOLDERS_RELEASE.md "Round 4".
+
+The old screen confused the owner: an unlabelled tick box per folder looked like include/exclude
+but only greyed the row, "Import all 1 file together" was ungrammatical, and a boxed explanation
+sat at the top. Now:
+
+- **Header:** "Export", "Your files are ready", then **Download all** (the zip: one `NN_Name/`
+  folder per onX folder, in screen order, plus `instructions.txt`) with the italic hint "One
+  zip, one folder inside it per onX folder". Back and Start over sit on the right.
+- **One intro line**, the owner's wording with its comma splice made a semicolon: "Import each
+  folder into onX's Web Map; onX will use a default datetime stamp for the folder name.
+  Importing needs onX Premium or Elite." The warnings that apply (dropped items, long notes, over
+  the account limit, KML) follow it, above the boxes.
+- **One box per folder, and only:** the folder name as its heading (no counts), a **Download**
+  button, and the file names as chips. The button's accessible name says which folder
+  ("Download Lost Trail Pass"; "Download 02 · Camp" for a same-named twin, whose heading also
+  shows "02 ·", UI-32). The three numbered steps of the first version are gone from the boxes:
+  the intro line and instructions.txt carry them.
+- **Download** is a zip of that folder's `NN_Name/` directory only, named after that directory
+  (`02_Lost_Trail_Pass.zip`). Its files are the same bytes as in Download all:
+  `bridge.export_folder_zip(n)` reads the last export, nothing is exported again.
+- **Removed:** the tick box and its done state, the boxed paragraph, and no Copy button. The
+  screen keeps no "imported" state.
+- **instructions.txt** (round 4; it was RUNBOOK.md, Markdown): plain text with no Markdown
+  syntax, UTF-8 without a BOM, CRLF line endings (Windows' own; every Notepad shows the lines,
+  TextEdit and the rest read CRLF too; `.gitattributes` keeps the committed copies byte-exact).
+  The general steps once at the top (import each folder's files together in the Web Map, tick
+  "Import map data to a new folder", rename the date-named folder to the name shown, Premium or
+  Elite needed), then each folder nested: `NN_Name/    rename to: <folder>`, each file, its item
+  kind (Waypoints / Lines / Areas), and every item's name as written in that file, indented
+  4 spaces a level. An item with no name shows "(no name)". Only two warnings stay, each one
+  line under its item: a note onX will cut (its written `<desc>` is over 512 bytes) and an area
+  whose hole is not kept. No area-fill line (round 5, owner: keep it basic; the row's caution
+  mark covers fills, UI-34). Totals, dropped items, the account limit and the "Renamed" list (empty
+  since ENG-06) are not in it; the screen shows the first three.
+
+### UI-32 — Folders: drag to move, + New folder, rename and merge, Move to…
+Status: decided 2026-10-23 (owner, from the DragToFolder, DragToNewFolder, NameNewFolder,
+RenameMerge and KeyboardMove mockups). Engine: ENG-07. Release log: docs/testing/FOLDERS_RELEASE.md PR-C.
+
+Owner rules: an item is in exactly one folder; a folder that empties disappears; no drag to
+reorder folders, no item in two folders. (Round 4, 2026-10-23: an empty folder CAN be made up
+front, by clicking + New folder with nothing ticked; see "+ New folder" below.)
+
+- **Drag rows to a folder.** Press on a row and move 6px. If that row is ticked, every ticked
+  row comes along, else just that row. A dark label follows the pointer: "Move 3 items" ("Move 1
+  item"); the dragged rows dim. The drop targets are the folders in the rail's Folders list:
+  the one under the pointer gets the green fill and dashed outline; the folder every dragged item
+  is already in reads "here now" and isn't a target (a folder holding only some of them is).
+  "+ New folder" sits at the end of the list. Dropping anywhere else, or Esc, does nothing.
+  Excluded rows move like any other. The status line says "Moved 3 items to North Roots." or
+  "…to a new folder."
+- **Built on pointer events, not HTML5 drag and drop.** A row is mostly controls, the label must
+  be our own element (styled, and visible in screenshots), and Esc must cancel and be testable.
+  A drag doesn't start from a checkbox, from an open note, or from a name field you are already
+  typing in (there a press-and-drag selects text). It does start from a name you haven't clicked
+  into: the row's name is the obvious thing to grab, and the field is left unchanged. The click
+  that ends a drag is swallowed. If the Folders section is folded, a drag opens it and folds it
+  again after. The drop target is the one under the pointer where the button comes up. If the
+  window loses focus or the browser cancels the pointer mid-drag, the drag is simply gone (no
+  release will come, so nothing waits for one); a dialog that opens after the press stops a
+  drag from starting.
+- **Long rails.** The rail scrolls on its own, so with many folders "+ New folder" can be below
+  its fold: holding the pointer near the rail's top edge, or near or over its footer, scrolls it,
+  faster the deeper in.
+- **+ New folder** takes the first free name of "New folder", "New folder 2", … (the bridge
+  picks it) and opens it for naming in the rail with the text selected: type, then Enter or click
+  away to keep; Esc keeps the default. Enter on an empty name says "A folder needs a name." and
+  keeps the box open (leaving it keeps the default). A taken name opens the merge offer below;
+  its Cancel returns to the name box with what was typed, to pick another; leaving the box with
+  that same name keeps the folder's default name and doesn't ask again.
+  **Round 4 (2026-10-23, owner): it is also a button.** A click, or Enter / Space when it is
+  focused, moves the ticked rows into a new folder (exactly as dropping them there), or, with
+  nothing ticked, makes an EMPTY folder ("Made an empty folder."), ready as a drop target;
+  either way its name opens in the rail as above. An empty folder:
+  - stays, with count 0, until items are moved in; a move that later empties it removes it,
+    as before (bridge `create_folder`, ENG-07);
+  - shows in the list as its header only ("Empty"), so it can be renamed there, unless a
+    search, type or icon filter is on;
+  - has a small × in its rail entry, shown on hover and focus ("Remove empty folder"); after
+    it, focus goes to the next rail entry (bridge `remove_empty_folder`; a folder that loaded
+    empty gets the × too);
+  - is skipped at export: no box, no files and no number, so the folders after it are
+    numbered as if it weren't there (a folder whose items are all excluded still takes its
+    number, as before);
+  - has no items to merge, so a taken name for it says "“X” already exists." and keeps its
+    name, with no merge offer;
+  - counts once in Start over's changes when made (or a loaded empty one removed) since the
+    last export.
+- **Rename:** click a folder's name in its table header (the one primary control; the rail entry
+  stays the folder filter). Enter or leaving the field saves, Esc cancels, an empty name is
+  refused with "A folder needs a name." and the old one kept, the same name does nothing, another
+  case of its own name is a rename. A name another folder has (compared trimmed, any case) opens
+  **"“X” already exists" / "Move the N items in “Y” into it?" [Move them] [Cancel]**; Cancel is the
+  default (and Esc) and keeps the old name; Move them merges Y into X, which keeps its name and
+  place. Leaving a name by clicking elsewhere saves it at once; the screen redraws only after
+  that click has landed (redrawing between press and release ate the click). Clicking Export or
+  Start over with a taken name just left shows the merge offer on the edit screen instead. New-folder naming happens in the rail because the new folder's rows may not be on screen
+  (a folder filter); renaming happens in the header.
+- **Long names** (up to 100 characters can be typed; typing or pasting past that says "A folder
+  name can be up to 100 characters.", which goes once the name is under 100 again; reaching
+  exactly 100, or deleting in a longer name from the file, says nothing) are cut with an ellipsis in the rail, the folder header and the export box,
+  with the whole name as a tooltip. The export box's "Rename it to" step always shows it whole.
+- **More ▸ Move to…** is first in More. It opens "Move N items to": every folder with its count
+  (the count tells apart folders a file named alike, "Camp" and "camp"), the current one greyed
+  "· here now", and "+ New folder…" (then the same rail naming). Arrow keys (skipping "here now"),
+  Home/End and Enter pick; Esc closes and returns focus to More. After a pick the moved rows are
+  unticked, so More is off and focus goes to the destination's rail entry. Pressing More again
+  closes the list. Ctrl+A does nothing while Move to…, a dialog or Help is in front.
+- **Selection after a move:** moved rows are unticked; other ticks stay. Keeping the ticks meant
+  the next drag of one moved row dragged the whole old selection out again (found in testing),
+  and the mockup shows no selection bar after a move.
+- **State kept in step:** DATA.groups is rebuilt from the bridge's layout after every move,
+  rename or merge, keeping the item objects (and so every edit and exclusion); rail counts,
+  DATA.totals, a folder filter or collapsed fold naming a removed folder are cleared. If applying
+  an answer fails, the UI shows the bridge's own layout (`layout_json`), so the screen is always
+  what export writes. When the folder the view is filtered to empties, the view goes back to All
+  and the status line says why: "Moved 1 item to Paddling. “Mill Creek Canyon” is empty now, so
+  it was removed." An open note whose row a move takes off screen saves its draft rather than
+  losing it. The italics and "Not in any CalTopo folder" go with the bridge's `unorganized`
+  flag (ENG-07): the loose items only, not a CalTopo folder that happens to be called
+  "Unorganized"; renamed, they are an ordinary folder, and renamed back, the loose items again.
+  The merge offer for renaming another folder to "Unorganized" keeps its plain wording: the
+  loose items export as an onX folder called Unorganized, so "Move them into it" is what happens.
+- **Start over** counts changes since the last export (or, before any, since load): each item
+  edited or moved since then once (moved back is not moved) and each folder of then whose name
+  differs now. A merged-away or new folder's name isn't counted; its items are. Right after an
+  export it says "This clears the current map." (round 3). A new folder that is still empty,
+  or an empty folder of then that was removed, counts once (round 4).
+- **Export** follows the bridge (names, numbering, per-folder zips). A per-folder download is now
+  named after its `NN_` directory (`02_A_B.zip`, `002_A_B.zip` with 100+ folders), since "A/B"
+  and "A_B" sanitize alike. Where two boxes would look alike, they say which is which (round 3): a
+  folder whose name another box shares (any case: "Camp", "camp") shows its number before
+  the name ("01 · Camp"), and a box whose file names another box shares ("A B", "A_B") shows
+  its chips with their `NN_` folder. Every other box is unchanged.
+
+Options not taken: HTML5 drag and drop (above); renaming from the rail entry (it is the filter);
+keeping the selection after a move. (A click on "+ New folder" making an empty folder was not
+taken at first; the owner asked for it in round 4.)
+
+**Round 5 (C5, C4).** Esc on the name of a folder just made empty by + New folder takes that empty
+folder back (bridge `remove_empty_folder`); once rows are in it, Esc keeps the default name as
+before. A pasted name over 100 characters shows the same "up to 100 characters" status as typing.
+
+### UI-33 — Whole names and notes on hover; a note's preview is its first line
+Status: decided 2026-10-23 (owner, round 4 follow-ups). Release log: FOLDERS_RELEASE.md "Round 4".
+
+- A note's preview in the list is its first non-blank line, cut with an ellipsis (it used to
+  run every line together). "Use note as name" still joins every line.
+- Hovering a row name that is cut, or a note whose preview hides text (more lines, or a cut
+  line), shows the whole value in a styled popup, never the native `title` (it drops line
+  breaks on some platforms and can't be styled). It shows after ~0.45 s, below its control
+  (above it near the window's bottom), inside the window, never over the control; line breaks
+  are kept; the pointer can move onto it to select and copy (it has a short grace period); it
+  scrolls when long. It also shows on keyboard focus (not on a click's focus, nor while typing
+  in the name), and Esc closes it and does nothing else. A press anywhere else, a scroll, a
+  drag or a re-render closes it. The note editor and dragging work as before.
+- The same popup carries the caution mark's text (UI-34).
+
+### UI-34 — A caution mark for what won't carry over to onX
+Status: decided 2026-10-23 (owner, round 4).
+
+- Before export, a small caution triangle sits just before a row's note when onX will change
+  something on import, with one plain line each in its popup (UI-33, hover or focus; its
+  `aria-label` says the same):
+  - "onX imports only the first 512 bytes of a note. About N characters will be cut."
+    (owner feedback 2026-10-24: say that onX imports no more than 512 bytes; it was "Cut at 512
+    bytes (about N characters lost)."). The export screen says, in the owner's words
+    (2026-10-24), "Item 'temp' is over the length limit and will be truncated by onX." / "Items
+    'temp', 'example 2', 'example 3' are over the length limit and will be truncated by onX."
+    (straight single quotes; up to 8 names, then "and N more"). The bytes
+    are measured on the note as written to the GPX (line endings made "\n", trimmed: the
+    measure instructions.txt uses), so the mark and the file agree.
+  - "onX will reset this area's fill to its default blue." (Cleared by picking onX's blue in the
+    Fill row, UI-36.) UI-30's rule (an onX area, from an
+    onX export, whose fill isn't onX's default), except that a transparent or none fill is not
+    flagged (owner).
+- Round 5: an item with no usable coordinates (the writers skip it; the export counts it as
+  dropped) has one mark: "Won't export: it has no coordinates." (`no_coords` on the load item).
+- An excluded row has no mark (it isn't exported). The mark follows every edit: shortening a
+  note removes it.
+- Owner feedback 2026-10-24: the fill caution is not beside the note but at the far right of
+  the area's Icon cell, after "Area" (same text). The note's mark (long note, no coordinates)
+  stays beside the note; an area with both shows both, each with its own tip.
+- Owner feedback 2026-10-24: the NOTE header starts where the note text does (past the mark's
+  slot). Every row keeps the slot, an excluded one too, so all notes start in line.
+- The export screen's long-note warning names the items (up to 8, then "and N more").
+- Round 5: UI-30's load dialog now skips a transparent fill too, matching the mark (owner).
+
+### UI-35 — Sort by name; pin colour apart from line colour
+Status: decided 2026-10-23 (owner, round 4); the dialog awaits the owner's look at
+screenshots 5a / 5b.
+
+- **Sort.** Each folder's Name header is a button with up/down arrows: the map's order (the
+  default, nothing pre-sorted) → A to Z → Z to A → the map's order. **Per folder** (owner
+  feedback 2026-10-24; it was one sort for every folder): a header sorts its own folder only,
+  shown in that header and its `aria-sort`, and each folder keeps its own state. The state
+  belongs to the folder (keyed by its key): a rename keeps it; items moved in show in the
+  target's state (an unsorted target keeps the map's order); a merge's target keeps its own and
+  the merged-away folder's state goes; a removed folder's state goes; a new folder starts in
+  the map's order; loading a map or Start over clears all of it. Natural, numeric-aware and
+  case-insensitive (`Intl.Collator`, numeric, base sensitivity), so "01 - …", "02 - …",
+  "10 - …" (Dark Divide aid stations) come out in order; equal names keep the map's order. It
+  sorts across waypoints, lines and areas together. View only: export keeps the map's order.
+  Shift-click ranges and select-all follow the sorted rows; drag and Move to… are unchanged.
+  A new map starts unsorted. Option not taken at first: a sort per folder (one state was
+  simpler to read); the owner asked for it on 2026-10-24, since sorting one folder sorted
+  every other one too.
+- **Icon & color… / Color….** The selection bar's button reads "Icon & color…" when waypoints
+  are ticked and "Color…" when only lines and areas are. In a mixed selection the dialog shows
+  a **Pin color** row (onX's 10) and a **Line color** row (11, with Fuchsia), each starting on
+  "Leave as is"; one pick no longer recolours both. One kind keeps a single "Color" row.
+  (2026-10-24, UI-36: "Color…" became "Color & style…", one dialog with Style, Weight and Fill.) The
+  chips that used to read "Reset" (colour and icon) now read "Leave as is", which is what they
+  do. The single-item popover is unchanged: one item, no coupling.
+
+### UI-36 — One editing panel for lines and areas; a Fill row; one row shape
+Status: decided 2026-10-24 (owner feedback on the folders release, items 9–11). Supersedes the
+split in UI-25 ("Several lines": a separate **Line style…** button and dialog) and UI-35's
+"Color…" label. Release log: docs/testing/FOLDERS_RELEASE.md "Owner feedback 2026-10-24".
+
+- **One button, one dialog.** The selection bar has one edit button: **Icon & color…** when any
+  waypoint is ticked, **Color & style…** when only lines and areas are. The separate **Line
+  style…** button and its dialog are gone. The dialog keeps its title ("Change N items") and
+  the Now → After marks (the After mark now draws the picked style and weight too), then the
+  rows in the single popover's order:
+  - waypoints: **Color** (or **Pin color** in a mixed selection; onX's 10) and **Icon**;
+  - lines and areas: **Color** (or **Line color**; 11, with Fuchsia), **Style** and **Weight**
+    side by side, then **Fill** when the selection has areas.
+  Every row starts on **Leave as is**, which leaves each item its own value; a second click on
+  a picked Style or Weight toggle un-picks it too. Save applies style and weight to lines and
+  areas only, fill to areas only, and says "Changed N areas" / "N lines" / "N items".
+- **Fill** (also in the single-area popover, after Style and Weight): two choices, **Leave as
+  is** (the default) and **Use onX's blue fill**, a patch of onX's default
+  `rgba(74,144,226,0.1)` (`ColorMapper.DEFAULT_AREA_FILL`, read from the bridge at boot). onX
+  gives every imported area that fill (UI-30), so it is the only fill offered: picking it sets
+  the area's fill, clears its caution (UI-34), drops it from the load dialog's count on any later
+  check (`fillLossItems`), and is written to the export. `bridge.apply_edits` accepts `fill`
+  only with that value (anything else raises ValueError and applies nothing) and only for
+  areas (ignored for waypoints and lines).
+- **One row shape** (item 10): each row is a label line, with the "Leave as is" chip at its
+  right end in the dialog, then the choices on one line. With the chip off the swatch line, the
+  11 line colours (Fuchsia last) no longer wrap, in the popover (spread, 4px gaps) and the
+  dialog at 1440×900. "Leave as is" is the only wording for "no change" (icon, every colour
+  row, Style, Weight, Fill). The single-item popover's Color row has no chip (the item has a
+  colour; its swatch is pressed).
+- Options not taken: separate Color… and Line style… dialogs (the owner wants one panel);
+  other fill colours (onX ignores them); a section header per kind in a mixed dialog (the row
+  labels say it: Pin color, Line color).
+
+### UI-37 — Browser Back and Forward; a leave-site prompt
+Status: decided 2026-10-24 (owner-approved, feedback item 14).
+
+- Each stage is a browser history entry (History API, `pushState` / `popstate`, no inline JS):
+  the drop screen's entry is replaced in at boot, loading a map pushes **edit**, exporting
+  pushes **done**. The entries are always drop, edit, done, in that order.
+- **Back from done** → edit, nothing lost, no prompt (the export screen's own Back does the
+  same and steps history with it).
+- **Back from edit** with unexported changes (`unexportedChanges()`, Start over's count) → the
+  in-page confirm (the Start over component): **"Leave this map?"** / "Changes will be lost."
+  / **[Stay]** **[Leave]**. Stay is the default and Esc; it steps history forward again so the
+  map's entry is current. Leave clears the map as Start over does and shows the drop screen.
+  With no changes, Back goes straight to the drop screen (the map is cleared: the drop screen
+  holds no map).
+- **Back from drop** leaves the site, as any page. Start over steps history back to the drop
+  entry, so it is the same there.
+- **Forward** only to a stage that is still valid: edit needs a loaded map, done an export with
+  no change since. Otherwise history steps back to where the screen is and nothing changes.
+- The app's buttons stay synchronous; the `popstate` their own history steps cause is ignored
+  (`HIST_SKIP`). A `popstate` with no Cairn state (a hash link such as `#help`) is ignored.
+- **beforeunload:** a listener is added only while there are unexported changes (after any
+  edit, move, rename or a note draft) and removed once there are none (export, Start over,
+  Leave), so reload, closing the tab or leaving the site shows the browser's own prompt only
+  then.
+- Help says it in one line ("Good to know").
+
+### UI-38 — One sticky site nav; doc pages without head text, on paper
+Status: decided 2026-10-24 (owner feedback items 13, 15–18). Supersedes UI-27's footer line
+and the doc pages' own top links.
+
+- **One nav, everywhere:** **App · Help · FAQ · Walkthrough · GitHub**, the same links in the
+  same order at the top of index.html, faq.html and walkthrough.html (no bottom copy: the top
+  bar is sticky, so the nav is always in reach). Kicker
+  style (the "EXPORT" label: 11px, uppercase, letter-spaced, brown) with middots between; the
+  current page underlined (App on the app, FAQ on the FAQ, …); hover and keyboard focus
+  underline the others. "Back to the app" is now **App**.
+- **Help** opens the Help dialog on the app (every nav's Help is a button there) and links to
+  `./#help` from the doc pages, which the app opens on load, as before. In the app, FAQ and
+  Walkthrough open in a new tab as before (leaving would drop the map); on the doc pages every
+  link opens in place, GitHub in a new tab.
+- **Where it sits:** the right end of the top bar on the drop and export screens and on the
+  doc pages; on the edit screen, which has no top bar (the rail carries the wordmark), at the
+  right end of the search row, compact. The top bar (every page, the export screen included)
+  and the edit stage's search row are `position: sticky; top: 0` on a solid paper background
+  with a bottom rule, so content scrolls under them; the selection bar sticks just below the
+  search row. In-page anchors (FAQ TOC, the walkthrough footnote) use `scroll-margin-top` so
+  they land clear of the bar. There is no footer nav (owner, 2026-10-24).
+- **Built once:** `scripts/build_faq_page.py` has `site_nav()` for faq.html; index.html and
+  walkthrough.html carry the same markup by hand (no JS includes, CSP). The e2e suite checks
+  the three pages' navs agree (labels, targets, the current page).
+- **Doc pages:** no "HELP" / "WALKTHROUGH" kicker and no big title at the top (the h1 is kept
+  for screen readers, visually hidden); the underlined nav item says which page this is, and
+  the first content is the top of the page. The content (`.doc-main`) sits on the landing
+  page's paper panel (`background: paper; box-shadow: 0 0 0 18px paper`, the same rule as
+  `.drop-copy`), so no contour line runs behind text.
+- **No duplicates:** the "Back to the app · Read the FAQ / See the walkthrough" lines at the
+  bottom of the doc pages and the old top links are gone. In-text links in a sentence ("The
+  FAQ has the details") stay body links.
 

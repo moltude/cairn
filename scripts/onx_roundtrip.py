@@ -24,7 +24,7 @@ tests/fixtures/roundtrip/<run>/ (or --root).
     uv run python scripts/onx_roundtrip.py summary --run r1
 
 Layout:
-    <root>/<run>/i1/<dataset>-<fmt>/   upload GPX files (flat), RUNBOOK.md, expected.json,
+    <root>/<run>/i1/<dataset>-<fmt>/   upload GPX files (flat), instructions.txt, expected.json,
                                        verify_report.{json,md} after verify
     <root>/<run>/i2/<dataset>-<fmt>/   the same for the edited state (stage2)
     <root>/<run>/SUMMARY.md            written by summary
@@ -107,8 +107,8 @@ def _load(paths: list[Path]) -> dict:
 
 
 def _feature(uid: str):
-    fkey, kind, idx = uid.rsplit("::", 2)
-    return bridge._STATE["doc"].folders[fkey][kind][int(idx)]
+    # uids are opaque (ENG-07): the bridge maps each one to its feature.
+    return bridge._STATE["features"][uid]
 
 
 def _points(feat) -> tuple[list, int]:
@@ -172,7 +172,7 @@ def _sort_key(r: dict):
 
 
 def _export_flat(dest: Path) -> tuple[list[Path], list]:
-    """export_zip, written flat into dest: <NN>_<file>.gpx per zip folder, plus RUNBOOK.md."""
+    """export_zip, written flat into dest: <NN>_<file>.gpx per zip folder, plus instructions.txt."""
     data = bytes(bridge.export_zip())
     manifest = bridge._STATE.get("manifest") or []
     shutil.rmtree(dest, ignore_errors=True)
@@ -184,7 +184,7 @@ def _export_flat(dest: Path) -> tuple[list[Path], list]:
                 continue
             parts = name.split("/")
             if len(parts) == 1:
-                target = dest / parts[0]          # RUNBOOK.md
+                target = dest / parts[0]          # instructions.txt
             else:
                 num = parts[0].split("_", 1)[0]
                 target = dest / f"{num}_{parts[-1]}"

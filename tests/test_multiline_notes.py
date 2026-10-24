@@ -117,11 +117,11 @@ def test_fuchsia_line_color_exports():
         ],
     }
     data = json.loads(bridge.load_document(json.dumps(gj), "fx.json"))
-    assert data["groups"][0]["name"] == "Unorganized"
+    assert data["groups"][-1]["name"] == "Unorganized"   # the loose items sort last
     (item,) = [i for g in data["groups"] for i in g["items"]]
     assert item["kind"] == "tracks"
     bridge.apply_edits(json.dumps({item["uid"]: {"color": "rgba(255,0,255,1)"}}))
     z = zipfile.ZipFile(io.BytesIO(bridge.export_zip()))
     gpx = "".join(z.read(n).decode() for n in z.namelist() if n.endswith(".gpx"))
     assert "rgba(255,0,255,1)" in gpx
-    assert "Unorganized" in "".join(z.read(n).decode() for n in z.namelist() if n.endswith(".md"))
+    assert "Unorganized" in "".join(z.read(n).decode() for n in z.namelist() if n == "instructions.txt")

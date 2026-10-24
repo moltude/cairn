@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- How Cairn bridges CalTopo and onX: the FAQ's diagram.
+     From the owner's edit of the Main mockup (2026-10-23), made self-contained:
+     no support.js, no Google Fonts (the app's own woff2 files), one SVG for every
+     line. Render it to web/images/how-cairn-works.webp with
+         uv run --with pillow python scripts/make_faq_diagram.py -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How Cairn works</title>
+<style>
+@font-face{font-family:"Libre Caslon Text";font-style:normal;font-weight:400;src:url(../../web/fonts/libre-caslon-text-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Libre Caslon Text";font-style:italic;font-weight:400;src:url(../../web/fonts/libre-caslon-text-latin-400-italic.woff2) format("woff2")}
+@font-face{font-family:"Libre Caslon Text";font-style:normal;font-weight:700;src:url(../../web/fonts/libre-caslon-text-latin-700-normal.woff2) format("woff2")}
+html,body{margin:0;background:#EFE8D8}
+.canvas{position:relative;width:1600px;height:900px;background:#EFE8D8;color:#2A241C;font-family:"Libre Caslon Text",Georgia,serif}
+.canvas svg.lines{position:absolute;left:0;top:0;overflow:visible}
+.box{position:absolute;box-sizing:border-box;border-radius:6px;padding:18px 20px;background:#FFFDF7;border:1px solid #C9B98F}
+.box b{font-size:19px;line-height:26px}
+.sub{font-size:15px;color:#5C5242}
+.pill{display:inline-block;margin:0 6px 6px 0;padding:2px 9px;border-radius:999px;font-size:13px;line-height:18px;background:#E3EAD8;border:1px solid #3B6534;color:#22381C}
+.pill.part{background:#F6E7C8;border-color:#A86F14;color:#5E3F0C}
+.pill.lost{background:transparent;border:1px dashed #A99A7C;color:#7D7262;text-decoration:line-through}
+.gap{display:block;height:10px}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <svg class="lines" width="1600" height="900" viewBox="0 0 1600 900" aria-hidden="true">
+    <defs>
+      <marker id="head-brown" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible">
+        <path d="M0 0 L4 2 L0 4 Z" fill="#7A4E25"/>
+      </marker>
+      <marker id="head-green" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible">
+        <path d="M0 0 L4 2 L0 4 Z" fill="#3B6534"/>
+      </marker>
+    </defs>
+    <g fill="none" stroke="#7A4E25" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- CalTopo fans out to its three export formats -->
+      <path d="M264 450 H312 M312 246 V654"/>
+      <path d="M312 246 H355" marker-end="url(#head-brown)"/>
+      <path d="M312 450 H355" marker-end="url(#head-brown)"/>
+      <path d="M312 654 H355" marker-end="url(#head-brown)"/>
+      <!-- the three formats come together into Cairn -->
+      <path d="M740 246 H788 M740 450 H788 M740 654 H788 M788 246 V654"/>
+      <path d="M788 450 H831" marker-end="url(#head-brown)"/>
+      <!-- any other GeoJSON, KML or GPX: one elbow into the bottom of Cairn -->
+      <path d="M264 813 H986 V625" marker-end="url(#head-brown)"/>
+    </g>
+    <g fill="none" stroke="#3B6534" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1136 450 H1177" marker-end="url(#head-green)"/>
+      <path d="M1344 450 H1385" marker-end="url(#head-green)"/>
+    </g>
+  </svg>
+
+  <div style="position:absolute;left:64px;top:52px;font-size:38px;font-weight:700;line-height:46px">Different starting points. One clean import.</div>
+  <div style="position:absolute;left:64px;top:106px;width:1180px;font-size:18px;line-height:27px;color:#5C5242">Each CalTopo export drops something different on the way out. Cairn starts from whatever survived, lets you set the rest across the whole map, and always hands onX the same thing.</div>
+
+  <div class="box" style="left:64px;top:350px;width:200px;height:200px;padding:20px"><b>CalTopo</b><br><span class="sub" style="line-height:22px">Names, notes, folders, icons, colors, lines and areas, all in one place.</span></div>
+  <div class="box" style="left:64px;top:756px;width:200px;height:114px;padding:20px"><b>Any other GeoJSON, KML or GPX</b></div>
+
+  <div class="box" style="left:360px;top:168px;width:380px;height:156px"><b>GeoJSON</b> <span class="sub"> · Keeps it all</span><span class="gap"></span><span class="pill">Names</span><span class="pill">Notes</span><span class="pill">Folders</span><span class="pill">Icons</span><span class="pill">Colors</span><span class="pill">Line style</span><span class="pill">Areas</span></div>
+  <div class="box" style="left:360px;top:372px;width:380px;height:156px"><b>KML</b> <span class="sub"> · Drops dashed lines</span><span class="gap"></span><span class="pill">Names</span><span class="pill">Notes</span><span class="pill">Folders</span><span class="pill">Icons</span><span class="pill">Colors</span><span class="pill part">Line style</span><span class="pill">Areas</span></div>
+  <div class="box" style="left:360px;top:576px;width:380px;height:156px"><b>GPX</b> <span class="sub"> · Names and notes, little else</span><span class="gap"></span><span class="pill">Names</span><span class="pill">Notes</span><span class="pill lost">Folders</span><span class="pill lost">Icons</span><span class="pill part">Colors</span><span class="pill lost">Line style</span><span class="pill lost">Areas</span></div>
+
+  <div style="position:absolute;left:836px;top:210px;width:300px;font-size:14px;line-height:20px;color:#5C5242;font-style:italic">Notes too long for onX are truncated and area fill cannot be imported. Both are flagged before you export.</div>
+  <div class="box" style="left:836px;top:280px;width:300px;height:340px;padding:22px;background:#F4F1E6;border:2px solid #3B6534"><b style="font-size:26px;line-height:32px;color:#3B6534">Cairn</b><br><span style="font-size:15px;line-height:22px">Starts from what your export kept. Set icons, colors and line styles on everything at once, and check every name and note.</span><span class="gap" style="height:14px"></span><span class="pill">Names</span><span class="pill">Notes</span><span class="pill">Folders</span><span class="pill">Icons</span><span class="pill">Colors</span><span class="pill">Line style</span><span class="pill">Areas</span></div>
+
+  <div class="box" style="left:1184px;top:390px;width:160px;height:120px;background:#3B6534;border-color:#3B6534"><b style="font-size:22px;line-height:28px;color:#fff">GPX</b><br><span style="font-size:14px;line-height:20px;color:#E3EAD8">every time, one standard format</span></div>
+  <div class="box" style="left:1392px;top:380px;width:199px;height:140px"><b style="font-size:17px;line-height:23px">onX Backcountry</b><br><span style="font-size:14px;line-height:20px;color:#5C5242">imports every map the same way</span></div>
+
+  <div style="position:absolute;left:366px;top:753px;width:440px"><span class="pill">Carried over</span><span class="pill part">Partly</span><span class="pill lost">Lost in export</span></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,145 @@
+"""Export screen (UI-31): Download all and Download this folder.
+
+bridge.export_folder_zip(n) hands out one folder of the LAST export_zip: the
+same NN_Name/ path and the same bytes, nothing else. Download all's layout is
+unchanged (one NN_Name/ subfolder per folder, then instructions.txt).
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import sys
+import zipfile
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
+import bridge  # noqa: E402
+
+FX = Path(__file__).parent / "fixtures"
+BITTERROOTS = FX / "bitterroots" / "Bitterroots__Complete_.json"
+ONX_PAIR = [FX / "onx_dialect" / "onx_dialect.gpx", FX / "onx_dialect" / "onx_dialect.kml"]
+
+
+def _zip(b) -> zipfile.ZipFile:
+    return zipfile.ZipFile(io.BytesIO(bytes(b)))
+
+
+def _bitterroots() -> zipfile.ZipFile:
+    bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
+    return _zip(bridge.export_zip())
+
+
+def test_download_all_layout_is_one_numbered_subfolder_per_folder_then_the_instructions():
+    zf = _bitterroots()
+    manifest = bridge._STATE["manifest"]
+    names = zf.namelist()
+    assert names[-1] == "instructions.txt"
+    want = [f["path"] for e in manifest for f in e["files"]]
+    assert names[:-1] == want
+    # NN_ prefixes in screen order, every file inside its folder's directory.
+    for e in manifest:
+        prefix = f"{e['n']:02d}_{e['safe']}/"
+        assert e["files"] and all(f["path"].startswith(prefix) for f in e["files"])
+    assert [e["n"] for e in manifest] == sorted(e["n"] for e in manifest)
+
+
+def test_each_folder_zip_holds_exactly_its_files_byte_identical_to_download_all():
+    full = _bitterroots()
+    manifest = bridge._STATE["manifest"]
+    assert len(manifest) == 10
+    seen = []
+    for e in manifest:
+        one = _zip(bridge.export_folder_zip(e["n"]))
+        assert one.testzip() is None
+        assert one.namelist() == [f["path"] for f in e["files"]]
+        assert "instructions.txt" not in one.namelist()
+        for name in one.namelist():
+            assert one.read(name) == full.read(name), name
+        seen += one.namelist()
+    # Together the folder zips are Download all minus instructions.txt.
+    assert seen == full.namelist()[:-1]
+
+
+def test_folder_zip_needs_no_second_export_and_follows_the_latest_one():
+    full = _bitterroots()
+    first = bridge._STATE["manifest"][0]
+    before = _zip(bridge.export_folder_zip(first["n"]))
+    again = _zip(bridge.export_folder_zip(first["n"]))
+    assert [again.read(n) for n in again.namelist()] == [before.read(n) for n in before.namelist()]
+    # Exclude everything but one waypoint of folder 1 and export again: the
+    # folder zip follows, with no stale Tracks/Areas file left from before.
+    g = bridge._STATE["groups"][0]
+    keep = next(i for i in g["items"] if i["kind"] == "waypoints")
+    edits = {i["uid"]: {"included": False} for i in g["items"] if i is not keep}
+    bridge.apply_edits(json.dumps(edits))
+    bridge.export_zip()
+    after = _zip(bridge.export_folder_zip(first["n"]))
+    assert after.namelist() == [f"01_{first['safe']}/{first['safe']}_Waypoints.gpx"]
+    assert full.namelist() != after.namelist()
+
+
+def test_folder_numbers_are_the_screen_numbers_not_list_positions(tmp_path):
+    """A folder that wrote no file is skipped on screen but keeps its number,
+    so export_folder_zip looks folders up by n."""
+    bridge.load_files(json.dumps([{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in ONX_PAIR]))
+    bridge.export_zip()
+    (e,) = bridge._STATE["manifest"]
+    one = _zip(bridge.export_folder_zip(e["n"]))
+    assert sorted(one.namelist()) == [
+        "01_onx_dialect/onx_dialect_Areas.gpx",
+        "01_onx_dialect/onx_dialect_Tracks.gpx",
+        "01_onx_dialect/onx_dialect_Waypoints.gpx",
+    ]
+    assert e["safe"] == "onx_dialect"
+    with pytest.raises(ValueError, match="No exported folder 2"):
+        bridge.export_folder_zip(2)
+
+
+def _raw(z: zipfile.ZipFile, data: bytes, name: str) -> bytes:
+    """A member's stored (compressed) bytes, read from its local header."""
+    import struct
+    zi = z.getinfo(name)
+    nlen, xlen = struct.unpack_from("<HH", data, zi.header_offset + 26)
+    start = zi.header_offset + 30 + nlen + xlen
+    return data[start:start + zi.compress_size]
+
+
+def test_a_folder_zip_copies_its_members_without_recompressing(monkeypatch):
+    """Round 3 #9: export_folder_zip inflated each member of the kept zip and
+    deflated it again. It copies the compressed bytes as they are (no zlib
+    at all), with the same CRC, sizes, method and date."""
+    import zlib
+    _bitterroots()
+    full_bytes = bridge._STATE["zip"]
+    full = _zip(full_bytes)
+
+    def boom(*a, **k):
+        raise AssertionError("zlib used")
+    monkeypatch.setattr(zlib, "compressobj", boom)
+    monkeypatch.setattr(zlib, "decompressobj", boom)
+    outs = {e["n"]: bytes(bridge.export_folder_zip(e["n"])) for e in bridge._STATE["manifest"]}
+    monkeypatch.undo()
+    for e in bridge._STATE["manifest"]:
+        one = _zip(outs[e["n"]])
+        assert one.testzip() is None
+        assert one.namelist() == [f["path"] for f in e["files"]]
+        for name in one.namelist():
+            a, b = one.getinfo(name), full.getinfo(name)
+            assert (a.CRC, a.compress_size, a.file_size, a.compress_type, a.date_time) == \
+                   (b.CRC, b.compress_size, b.file_size, b.compress_type, b.date_time)
+            assert _raw(one, outs[e["n"]], name) == _raw(full, full_bytes, name)
+            assert one.read(name) == full.read(name)
+
+
+def test_a_non_ascii_folder_name_survives_the_raw_copy():
+    bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
+    key = next(g["key"] for g in bridge._STATE["groups"] if g["name"] == "Paddling")
+    bridge.rename_folder(key, "Kanu Zürich 日本")
+    full = _zip(bridge.export_zip())
+    e = next(e for e in bridge._STATE["manifest"] if e["folder"] == "Kanu Zürich 日本")
+    one = _zip(bridge.export_folder_zip(e["n"]))
+    assert one.namelist() == [f["path"] for f in e["files"]] and "Zürich" in one.namelist()[0]
+    assert all(one.read(n) == full.read(n) for n in one.namelist())

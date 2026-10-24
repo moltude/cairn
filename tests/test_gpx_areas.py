@@ -4,8 +4,8 @@ Verified 2026-10-22 in a real onX Web Map import: onX ignores an area's colour
 and fill in KML, but a GPX <rte> with <type>Area</type> and onX extensions
 imports as an Area with its colour; 2026-10-23 (docs/ONX_ROUND_TRIP.md
 #area-fidelity): and with its <onx:style> and <onx:weight>, never its fill. These tests pin the
-writer's output shape, the web export's switch to it, the RUNBOOK's "Holes not
-kept in onX" list, and that Cairn reads its own (and onX's) area GPX back.
+writer's output shape, the web export's switch to it, instructions.txt's
+line under an area whose hole was not kept, and that Cairn reads its own (and onX's) area GPX back.
 """
 
 from __future__ import annotations
@@ -233,23 +233,27 @@ def test_web_export_writes_areas_gpx_and_no_kml():
     assert root.find("g:rte/g:type", NS).text == "Area"
     summary = json.loads(bridge.runbook_summary_json())
     assert summary["kml_batches"] == 0
-    runbook = z.read("RUNBOOK.md").decode()
-    assert "**Zones_Areas.gpx**" in runbook
-    assert "KML" not in runbook
+    text = z.read("instructions.txt").decode("utf-8")
+    assert "\r\n    Zones_Areas.gpx\r\n        Areas\r\n            Burn\r\n" in text
+    assert "KML" not in text
 
 
-def test_runbook_lists_areas_whose_holes_were_not_kept():
+HOLE_LINE = "                (its hole is not kept: an onX area has one outline)"
+
+
+def test_instructions_mark_the_area_whose_hole_was_not_kept():
     z = _export(_doc(_poly("a", "Donut", [SQUARE, HOLE]), _poly("b", "Plain", [SQUARE])))
-    runbook = z.read("RUNBOOK.md").decode()
-    assert "### Holes not kept in onX" in runbook
-    assert "- `Donut`  (Zones)" in runbook
-    assert "`Plain`" not in runbook.split("### Holes not kept in onX")[1]
+    lines = z.read("instructions.txt").decode("utf-8").split("\r\n")
+    at = lines.index("            Donut")
+    assert lines[at + 1] == HOLE_LINE
+    assert lines.count(HOLE_LINE) == 1
+    assert lines[lines.index("            Plain") + 1] != HOLE_LINE
     assert json.loads(bridge.runbook_summary_json())["holes"] == 1
 
 
-def test_runbook_has_no_holes_section_without_holes():
+def test_instructions_have_no_hole_line_without_holes():
     z = _export(_doc(_poly("b", "Plain", [SQUARE])))
-    assert "Holes not kept" not in z.read("RUNBOOK.md").decode()
+    assert "hole" not in z.read("instructions.txt").decode("utf-8")
 
 
 def test_web_export_areas_round_trip_through_load_files():

@@ -190,3 +190,61 @@ def test_every_written_fill_is_an_onx_swatch_or_none():
             "class": "Shape", "title": "x", W.AREA_FILL_KEY: raw},
             "geometry": {"type": "Polygon", "coordinates": [SQUARE]}})
         assert W.area_onx_style(f)[3] in fills, raw
+
+
+# --- the Fill row: onX's blue is the only fill an area can be set to (2026-10-24) ---
+
+
+def _load_areas_pair() -> list:
+    files = [{"name": p.name, "text": p.read_text(encoding="utf-8")}
+             for p in (FX / "areas-after-edit.gpx", FX / "areas-after-edit.kml")]
+    data = json.loads(bridge.load_files(json.dumps(files)))
+    return [i for g in data["groups"] for i in g["items"]]
+
+
+def _area_fills() -> dict:
+    """{name: <onx:fill_color>} of every area in the export."""
+    zf = zipfile.ZipFile(io.BytesIO(bridge.export_zip()))
+    gpx = "".join(zf.read(n).decode() for n in zf.namelist() if n.endswith("_Areas.gpx"))
+    return {re.search(r"<name>(.*?)</name>", b, re.S).group(1): re.search(
+                r"<onx:fill_color>(.*?)</onx:fill_color>", b).group(1)
+            for b in re.findall(r"<rte>.*?</rte>", gpx, re.S)}
+
+
+def test_an_area_fill_can_be_set_to_onxs_default_blue_and_exports_it():
+    items = _load_areas_pair()
+    areas = [i for i in items if i["kind"] == "shapes"]
+    target = next(a for a in areas if a["fill"] != ColorMapper.DEFAULT_AREA_FILL)
+    before = _area_fills()
+    assert before[target["name"]] != ColorMapper.DEFAULT_AREA_FILL
+    res = json.loads(bridge.apply_edits(json.dumps({target["uid"]: {"fill": ColorMapper.DEFAULT_AREA_FILL}})))
+    assert res["applied"] == 1
+    item = next(i for g in bridge._STATE["groups"] for i in g["items"] if i["uid"] == target["uid"])
+    assert item["fill"] == ColorMapper.DEFAULT_AREA_FILL
+    after = _area_fills()
+    assert after[target["name"]] == ColorMapper.DEFAULT_AREA_FILL
+    assert {k: v for k, v in after.items() if k != target["name"]} == {
+        k: v for k, v in before.items() if k != target["name"]}
+
+
+@pytest.mark.parametrize("fill", ["rgba(212,83,47,0.1)", "rgba(0,0,0,0)", "#4A90E2", "blue", ""])
+def test_any_other_area_fill_is_refused_and_nothing_is_applied(fill):
+    items = _load_areas_pair()
+    area = next(i for i in items if i["kind"] == "shapes")
+    with pytest.raises(ValueError, match="onX keeps only its default"):
+        bridge.apply_edits(json.dumps({area["uid"]: {"fill": fill, "name": "changed"}}))
+    item = next(i for g in bridge._STATE["groups"] for i in g["items"] if i["uid"] == area["uid"])
+    assert item["fill"] == area["fill"] and item["name"] == area["name"]
+
+
+def test_a_fill_on_a_waypoint_or_line_is_ignored():
+    pair = [ROOT / "tests" / "fixtures" / "onx_dialect" / f"onx_dialect.{x}" for x in ("gpx", "kml")]
+    data = json.loads(bridge.load_files(json.dumps(
+        [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in pair])))
+    items = [i for g in data["groups"] for i in g["items"]]
+    others = [i for i in items if i["kind"] != "shapes"]
+    assert others
+    bridge.apply_edits(json.dumps({i["uid"]: {"fill": ColorMapper.DEFAULT_AREA_FILL} for i in others}))
+    for i in others:
+        live = next(x for g in bridge._STATE["groups"] for x in g["items"] if x["uid"] == i["uid"])
+        assert live.get("fill") == i.get("fill")
