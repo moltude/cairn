@@ -3725,3 +3725,96 @@ def test_a_drag_still_starts_from_a_note_with_its_tip_showing(loaded: Page):
     expect(page.locator("#status")).to_have_text("Moved 1 item to Paddling.")
     expect(_tip(page)).to_be_hidden()
     assert page.evaluate("NOTE_EDIT") is None
+
+
+# --- 3. Sortable Name column --------------------------------------------------
+
+AID = "2 - Aid Stations Dark Divide 100 Miler"
+SEGMENTS = "3 - Course Segments Dark Divide 100 Miler"
+
+
+def _dark_divide(page: Page) -> Page:
+    _wide(page)
+    page.set_input_files("#file", str(DARK_DIVIDE))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    return page
+
+
+def _names(page: Page, folder: str) -> list:
+    return _section(page, folder).locator("tbody .name-in").evaluate_all("els => els.map(e => e.value)")
+
+
+def _sort_states(page: Page) -> list:
+    return page.locator("th.name-th").evaluate_all("els => els.map(e => e.getAttribute('aria-sort'))")
+
+
+def test_the_name_header_cycles_ascending_descending_and_map_order(fresh_page: Page):
+    page = _dark_divide(fresh_page)
+    as_loaded = _names(page, AID)
+    assert as_loaded[:3] == ["04 - Dark Creek AS", "05 - Wilderness Crossing AS", "06 - Wright Meadow AS"]
+    seg_loaded = _names(page, SEGMENTS)
+    assert set(_sort_states(page)) == {"none"}
+    _section(page, AID).locator(".sort-btn").click()
+    # One sort for every folder, shown in every header.
+    assert set(_sort_states(page)) == {"ascending"}
+    assert _names(page, AID) == sorted(as_loaded)
+    assert [n[:2] for n in _names(page, SEGMENTS)] == [f"{i:02d}" for i in range(1, 12)]
+    expect(_section(page, AID).locator(".sort-btn")).to_be_focused()
+    _shot(page, "3a-sorted-ascending")
+    page.keyboard.press("Enter")                       # the focused header again
+    assert set(_sort_states(page)) == {"descending"}
+    assert _names(page, AID) == sorted(as_loaded, reverse=True)
+    assert [n[:2] for n in _names(page, SEGMENTS)] == [f"{i:02d}" for i in range(11, 0, -1)]
+    page.keyboard.press("Enter")
+    assert set(_sort_states(page)) == {"none"}
+    assert _names(page, AID) == as_loaded and _names(page, SEGMENTS) == seg_loaded
+    # View only: the map's order underneath never changed.
+    assert page.evaluate(f"DATA.groups.find(g => g.name === {AID!r}).items.map(i => i.name)") == as_loaded
+
+
+def test_the_name_sort_is_natural_and_case_insensitive(loaded: Page):
+    page = loaded
+    uids = _section(page, "Paddling").locator("tbody tr").evaluate_all("els => els.map(e => e.dataset.uid)")
+    for u, n in zip(uids, ["camp 10", "Camp 2", "beach", "CAMP 1", "Apple"]):
+        _set(page, u, name=n)
+    _section(page, "Paddling").locator(".sort-btn").click()
+    assert _names(page, "Paddling") == ["Apple", "beach", "CAMP 1", "Camp 2", "camp 10"]
+
+
+def test_sorting_does_not_change_the_export(fresh_page: Page):
+    page = _dark_divide(fresh_page)
+    plain = _export_zip(page)
+    page.click("#back")
+    _section(page, AID).locator(".sort-btn").click()
+    sorted_zip = _export_zip(page)
+    assert sorted_zip.namelist() == plain.namelist()
+    for n in plain.namelist():
+        assert sorted_zip.read(n) == plain.read(n), n
+
+
+def test_shift_click_drag_and_move_to_follow_the_sorted_rows(fresh_page: Page):
+    page = _dark_divide(fresh_page)
+    _section(page, AID).locator(".sort-btn").click()
+    rows = _section(page, AID).locator("tbody tr")
+    shown = rows.evaluate_all("els => els.map(e => e.dataset.uid)")
+    rows.nth(1).locator(".sel-box").click()
+    rows.nth(4).locator(".sel-box").click(modifiers=["Shift"])
+    # The range is the four rows on screen between them, not the map's order.
+    assert sorted(page.evaluate("[...SEL]")) == sorted(shown[1:5])
+    # Drag them (sorted) to another folder.
+    _drag(page, rows.nth(2).locator(".note-btn"), _rail(page, SEGMENTS))
+    expect(page.locator("#status")).to_have_text(f"Moved 4 items to {SEGMENTS}.")
+    assert set(shown[1:5]) <= set(page.evaluate(
+        f"DATA.groups.find(g => g.name === {SEGMENTS!r}).items.map(i => i.uid)"))
+    # Still sorted in their new folder (waypoints and lines together by name).
+    names = _names(page, SEGMENTS)
+    assert names == page.evaluate("ns => [...ns].sort((a, b) => NAME_ORDER.compare(a, b))", names)
+    # Move to… from the keyboard with the sort on.
+    first = _section(page, AID).locator("tbody tr").first
+    u = first.get_attribute("data-uid")
+    first.locator(".sel-box").click()
+    page.locator("#more-btn").click()
+    page.locator("#bulk-move").click()
+    page.locator(f"#move-pop .move-opt[data-key]:not([disabled])", has_text=SEGMENTS).click()
+    assert u in page.evaluate(f"DATA.groups.find(g => g.name === {SEGMENTS!r}).items.map(i => i.uid)")
+    assert set(_sort_states(page)) == {"ascending"}

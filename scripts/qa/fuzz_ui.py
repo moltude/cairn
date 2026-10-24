@@ -969,6 +969,33 @@ class Session:
             raise Violation("empty_folder_not_removed", f"{key} still there after its x ({'key' if kb else 'mouse'})")
         return ("remove_empty", key, "kb" if kb else "mouse"), kb
 
+    def a_sort_toggle(self, rng, s):
+        """Click (or Enter on) a folder's Name header: map order -> A to Z ->
+        Z to A -> map order, the same in every header. The row invariant
+        (rows == visibleItems) checks the order itself."""
+        p = self.page
+        btns = p.locator("#folders .sort-btn")
+        if not btns.count():
+            return ("sort", "none"), False
+        before = p.evaluate("SORT")
+        b = btns.nth(rng.randrange(btns.count()))
+        kb = rng.random() < 0.4
+        if kb:
+            b.evaluate("e => e.scrollIntoView({block: 'center'})"); b.focus(); p.keyboard.press("Enter")
+        else:
+            if not self.human_press(b, rng.choice([0, 60])):
+                return ("sort", "covered"), False
+        self.settle()
+        want = {None: "asc", "asc": "desc", "desc": None}[before]
+        st = p.evaluate("() => ({sort: SORT, aria: [...document.querySelectorAll('th.name-th')].map(t => t.getAttribute('aria-sort'))})")
+        if st["sort"] != want:
+            raise Violation("sort_state", f"{before} -> {st['sort']}, want {want}")
+        aria = {None: "none", "asc": "ascending", "desc": "descending"}[want]
+        if any(a != aria for a in st["aria"]):
+            raise Violation("sort_aria", f"{st['aria']} vs {aria}")
+        # Map order underneath is untouched (the bridge's layout check also holds).
+        return ("sort", before, want, "kb" if kb else "mouse"), kb
+
     def a_hover(self, rng, s):
         """Hover a row's name or note (round 4): the tip shows exactly when the
         preview hides text, with the whole value; Esc or leaving hides it, and
@@ -1173,7 +1200,7 @@ WEIGHTS = {
     "collapse": 4, "edit_name": 3, "edit_note": 3, "edit_mark": 3, "edit_line_bulk": 1,
     "bulk_icon": 1, "exclude": 5, "include_chip": 2, "export": 2,
     # Round 4: + New folder clicked, the x on an empty folder.
-    "click_new_folder": 5, "remove_empty_folder": 3, "hover": 4,
+    "click_new_folder": 5, "remove_empty_folder": 3, "hover": 4, "sort_toggle": 3,
 }
 # Second wave: the human-timing / interleaving actions (--wave 2).
 WEIGHTS2 = dict(WEIGHTS, leave_field_by_click=6, rename_then_drag=3, rename_then_export=2)
