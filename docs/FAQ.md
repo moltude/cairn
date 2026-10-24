@@ -39,7 +39,7 @@ This matters more than it sounds. Per project docs (Aug 2026), the onX Web Map f
 
 ### Which file should I export?
 
-Whichever you pick, what comes out is the same: onX-ready GPX files (waypoints, tracks, and areas as onX areas) and `instructions.txt`, a plain-text import guide. What differs is how much arrives to begin with.
+Whichever you pick, you get the same thing out: onX-ready GPX files (waypoints, tracks, and areas as onX areas) and `instructions.txt`, a plain-text import guide. What differs is how much comes in.
 
 - **GeoJSON (best).** Brings in everything: folders, icons, colors, line style and width, areas and notes. Goes out with all of it.
 - **KML.** Brings in folders, icons, colors, line width, areas and notes, but not dashed lines (every line comes in solid). Goes out with what came in.
@@ -49,11 +49,12 @@ Whichever you pick, what comes out is the same: onX-ready GPX files (waypoints, 
 
 ### What does Cairn actually do?
 
-It runs in your browser and takes a CalTopo GeoJSON export. It also opens a CalTopo KML (folders, icons, colors and notes, like the GeoJSON), a CalTopo GPX (names, notes and line colors, with no folders or icons, so it says the GeoJSON or KML would be better), or the GPX and KML you export from onX (see the round-trip question below). You can drop several files at once; each becomes one folder named after the file, and an onX GPX and KML from the same export become one folder together. It sorts every feature it recognizes into waypoints (Marker points), lines (Line or Shape linestrings) and areas (Shape polygons). Any other kind of feature is skipped without a message and isn't counted. It picks an onX icon and color for each item. You can review and edit the results, including bulk edits. Then it downloads one zip, `onx_ready.zip`, with files ready for onX:
+It runs in your browser and takes a CalTopo GeoJSON export. It also opens a CalTopo KML (folders, icons, colors and notes, like the GeoJSON), a CalTopo GPX (names, notes and line colors, with no folders or icons, so it says the GeoJSON or KML would be better), or the GPX and KML you export from onX (see the round-trip question below). Drop several files at once and each becomes a folder named after the file; an onX GPX and KML from the same export become one folder. It sorts every feature it recognizes into waypoints (Marker points), lines (Line or Shape linestrings) and areas (Shape polygons). Any other kind of feature is skipped without a message and isn't counted. It picks an onX icon and color for each item. You review and edit the results, one at a time or in bulk, and sort items into folders. Then the export screen hands you the files:
 
-- One numbered directory per CalTopo folder (`01_Name/`, `02_Name/`, …). `Name` is the folder name with punctuation removed and spaces turned into underscores.
+- **Download all** gets one zip, `onx_ready.zip`, with one numbered directory per folder (`01_Name/`, `02_Name/`, …). `Name` is the folder name with punctuation removed and spaces turned into underscores.
+- Each folder's **Download** gets just that directory, as `01_Name.zip`. Its files are byte for byte the ones in Download all.
 - In each directory, up to three kinds of file: `Name_Waypoints.gpx`, `Name_Tracks.gpx` and `Name_Areas.gpx`. A large GPX may be split into numbered parts (see below).
-- An `instructions.txt` at the top: how to import, then each numbered directory with the folder name to give it in onX, its files, and the name of every waypoint, line and area in each file. It is plain text, so it opens in Notepad or TextEdit.
+- `instructions.txt`, at the top of Download all: how to import, then each numbered directory with the folder name to give it in onX, its files, and the name of every waypoint, line and area in each file. It's plain text, so it opens in Notepad or TextEdit.
 
 Waypoints become GPX `<wpt>` with onX's own `<onx:icon>` and `<onx:color>` extensions. Lines become GPX `<trk>` with `<onx:color>`, `<onx:style>` and `<onx:weight>`. Polygons become GPX `<rte>` routes marked `<type>Area</type>` with `<onx:color>`, `<onx:style>`, `<onx:weight>` and `<onx:fill_color>`, the way onX's own GPX export writes an area (see "Why are areas in a GPX file, not KML?" below). Every file is GPX, so nothing needs the KML importer.
 
@@ -68,7 +69,7 @@ It checks in this order for each waypoint and stops at the first hit:
 
 Generic CalTopo symbols (`point`, `marker`, `pin`, `dot`, `circle`) carry no meaning, so Cairn skips steps 1 and 2 for them and goes straight to keywords. A waypoint called "Elk Hut" with a plain `point` symbol still ends up as `Shelter`. A symbol that matches always beats the keywords.
 
-The shipped tables, as the web app loads them, have 152 symbol mappings and keyword lists for 30 icons. Cairn's list of valid onX icons has 95 names, not the "~40" the README mentions. Only waypoints get icons. Tracks and areas don't take an icon in onX.
+The shipped tables, as the web app loads them, have 152 symbol mappings and keyword lists for 30 icons. Cairn's list of valid onX icons has 95 names. Only waypoints get icons. Tracks and areas don't take an icon in onX.
 
 ### What's the "Default pin" / "needs attention" thing?
 
@@ -76,7 +77,7 @@ Any waypoint that ends up as `Location` is marked "Default pin" so you can spot 
 
 Two things here are unverified:
 - That `Location` shows up in onX as onX's default pin is Cairn's assumption.
-- What onX does with an icon name it doesn't recognize isn't settled by any onX source the project cites. The README's "the default will be used" comes from the owner's own observation, and the project's decision-surface doc says the same thing without citing a test.
+- What onX does with an icon name it doesn't recognize isn't settled by any onX source the project cites. That it falls back to its default pin is the owner's own observation, and the project's decision-surface doc says the same without citing a test.
 
 There was a real bug of this kind. Cabins, huts and yurts used to map to `Cabin`, which isn't a valid onX icon. As of 2026-10-22 they map to `Shelter`.
 
@@ -86,7 +87,7 @@ onX has a fixed palette, per project docs (Aug 2026): 10 colors for waypoints an
 
 Some edge cases:
 
-- **Waypoint with no color:** Cairn writes the icon's usual color, for example Brown for `Shelter`. It uses Blue only when the icon has no usual color. This is not "onX's default blue", as the README says, because Cairn always writes an explicit color. The on-screen preview still shows such a waypoint as blue while the export uses the icon's color. If it matters to you, set the color yourself.
+- **Waypoint with no color:** Cairn writes the icon's usual color, for example Brown for `Shelter`. It uses Blue only when the icon has no usual color. Cairn always writes an explicit color, so onX's own default never applies. The on-screen preview still shows such a waypoint as blue while the export uses the icon's color. If it matters to you, set the color yourself.
 - **Line with no color, or a color Cairn can't read:** it gets Blue. Short hex like `#abc` is treated as unreadable.
 - **Areas snap to the 11-color line palette**, like lines, and export in exactly the color the screen shows (Blue when the CalTopo color is missing or unreadable). Their outline also gets a style and weight, by the same rules as a line (dashed, and 6.0 when the CalTopo width is over 4); you can change both in Cairn. The fill is written as the nearest of onX's 10 area fill colors to CalTopo's fill color (or to the outline color when CalTopo gives none), or as no fill when CalTopo's fill opacity is 0. **onX ignores it on import**: every imported area gets onX's default light blue fill, whatever the file says, even onX's own fill values (checked 2026-10-23 with eight different encodings). onX keeps the outline color, style and weight. An area from an onX export keeps its own values, including a dotted or extra-thin (2.0) outline.
 - **Line style:** see "Do dashed and dotted lines come across?" below. Width collapses to two weights, 4.0 or 6.0 (6.0 when the CalTopo width is over 4).
@@ -94,7 +95,7 @@ Some edge cases:
 
 ### Do dashed and dotted lines come across?
 
-Only a dashed line, and only from the GeoJSON or an onX export. Line styles in onX are `solid`, `dash` and `dot`, written as `<onx:style>` on a track. These three values come from the project's reading of onX's Web Map code. No real onX export containing a line has been inspected yet, so none of them is confirmed from a real file. onX's code shows no arrow style.
+Only a dashed line, and only from the GeoJSON or an onX export. Line styles in onX are `solid`, `dash` and `dot`, written as `<onx:style>` on a track. All three appear in real onX exports: `solid` and `dash` on lines, `dot` on an area outline (`tests/fixtures/onx_real/`, `tests/fixtures/onx_exports/`). onX's code shows no arrow style.
 
 CalTopo writes a line's style in the GeoJSON `pattern` property:
 - `solid` is solid.
@@ -105,9 +106,22 @@ CalTopo's KML and GPX don't carry a pattern at all, so every line read from them
 
 ### Can I bulk-edit before export?
 
-Yes. Select rows and set a color for all of them at once. A bulk icon applies to the selected waypoints, since lines and areas have no icon. The "More" menu can also exclude or re-include the selection, and can rename each selected item to its own note ("use note as name"). Excluded items are left out of the export, and your source file is never changed. You can edit names and notes one item at a time. Bulk rename with prefix/suffix or find/replace, and bulk note editing, aren't built yet.
+Yes. Tick rows, then:
+
+- **Icon & color…** sets one icon and color on all of them. The icon applies to waypoints only, since lines and areas have none. With only lines and areas ticked, the button reads **Color…**. With both, pins and lines each get their own color row, since onX gives lines one more color (Fuchsia).
+- **Line style…** sets the style (solid or dashed) and weight of the ticked lines and areas.
+- **More** moves the rows to another folder (**Move to…**), renames each to its own note (**Use note as name**), or leaves them out of the export (**Exclude**, undone by **Include**). Excluded rows stay in the list, struck through. Your source file is never changed.
+
+The search box and the **Type**, **Folders** and **Icon** lists narrow what's shown, and select-all only takes the rows you can see. You edit names and notes one item at a time. Bulk rename (prefix, suffix, find and replace) and bulk note editing aren't built yet.
 
 The reason for doing this before import: onX's own bulk tools are limited. In the onX Web Map (checked 2026-10-22), My Content's **Select** mode offers only Add to Folder, Share, Export and Delete for a selection. There is no bulk icon, color or rename, so in onX those changes are one markup at a time.
+
+### What do the marks in the list mean?
+
+- **Default pin** under a marker: Cairn found no icon for it (see above).
+- **A caution mark** before a note: onX won't keep something as is. The note is over onX's 512-byte limit and will be cut, onX will reset this area's fill to its default blue, or the item has no coordinates and won't export. Hover it, or tab to it, for the details.
+- **A name or note cut short:** hover it, or tab to it, to read all of it. The tip keeps the note's line breaks, and you can select text in it. Esc closes it.
+- **The arrow in a Name header** sorts by name: A–Z, then Z–A, then back to map order. One click sorts every folder, and numbers sort naturally ("Camp 2" before "Camp 10"). Sorting changes only the view, never the export.
 
 ### Do my notes come across?
 
@@ -119,20 +133,27 @@ Two things are unverified:
 - That onX shows `<desc>` as the markup's Notes. This is only the owner's observation.
 - **Whether onX keeps those line breaks is unknown.** It's an open item in the project's to-do list. In a real import on 2026-10-22, multi-line track notes came through intact, but onX also showed a `<desc>` written as `key=value` lines verbatim as the note, which is why Cairn's `<desc>` holds only your note text.
 
-### How do folders work? Why is there an instructions file?
+### Can I change the folders in Cairn?
+
+Yes. The **Folders** list on the left shows each folder and its count; each folder becomes one onX folder.
+
+- **Move rows:** drag a row onto a folder in the list. Tick several first to drag them together. **More → Move to…** does the same from the keyboard.
+- **New folder:** drop rows on **+ New folder**, then type its name. Clicking it does the same for the ticked rows. With nothing ticked it makes an empty folder to drop rows on; its **×** removes it.
+- **Rename:** click a folder's name above its rows. Names are up to 100 characters.
+- **Merge:** rename a folder to a name that's taken, and Cairn offers to move its items into the other folder.
+- **Empty folders:** a folder you empty by moving its rows goes away. One you made empty stays until you fill or remove it. Empty folders aren't exported.
+
+Moved items keep their edits and exclusions. Start over counts moves and renames as changes, and asks first.
+
+### How do folders work in onX? Why is there an instructions file?
 
 Per project docs (Aug 2026), from reading onX's Web Map code: when you tick "Import map data to a new folder", each import batch (one click of Import, any number of GPX and KML files) creates exactly one new folder named like `Import mm/dd/yy H:MM`. If you leave the box unticked, no folder is created. Filenames and GPX metadata don't change that name. onX folders are flat, with no nesting. Whether onX's server builds folders from KML `<Folder>` elements hasn't been tested. The docs rate "it doesn't" as a high-confidence inference.
 
-So Cairn gives you one numbered import per CalTopo folder, and the export screen and `instructions.txt` tell you how to do each one:
-
-1. Open the onX Web Map on a computer and go to My Content → Import.
-2. Drag in all the files in that folder's directory at once.
-3. Tick "Import map data to a new folder" and click Import. This is the step that creates the folder.
-4. Rename the new folder to your CalTopo folder's name.
+So Cairn gives you one numbered import per folder. On the onX Web Map, under My Content → Import, add all of one folder's files at once, tick "Import map data to a new folder", click Import, and rename the new folder. `instructions.txt` says the same and gives the name for each folder.
 
 Some details:
-- Steps are ordered by folder size, largest first.
-- Items that weren't in any CalTopo folder get their own folder called "Unorganized" (that label may still change).
+- Folders are numbered in the order of the Folders list: largest first as loaded, then any you made, in the order you made them.
+- Items that weren't in any CalTopo folder go in a folder called "Unorganized". You can rename it.
 - If your map has no folders at all, everything goes into one folder named after your file.
 - `instructions.txt` names every item in each file, so you can check a folder in onX against it. If a folder comes up short, delete it in onX and redo just that import.
 
@@ -168,7 +189,7 @@ A side effect: every file Cairn writes is now GPX, so nothing warns any more tha
 
 ### What can't Cairn do?
 
-- **Recreate your folders automatically.** You rename each one in onX after import, as described above. Nesting isn't lost: per project docs, CalTopo and onX folders are both flat.
+- **Name your folders in onX for you.** You rename each one in onX after import, as described above. Nesting isn't lost: per project docs, CalTopo and onX folders are both flat.
 - **Keep exact colors.** Waypoint and track colors snap to onX's palette, and line widths collapse to two weights.
 - **Control order in onX.** Within each file, items are sorted naturally ("Camp 2" before "Camp 10"). How onX orders them after import hasn't been checked against any onX source.
 - **Check onX's per-import cap separately.** onX allows up to 3,000 markups per import file; since that equals the account limit, Cairn's account warning covers it.
