@@ -724,6 +724,7 @@ function noteOverflow(desc) {
 const fillAlpha = f => { const m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(f || ""); return m ? parseFloat(m[1]) : 1; };
 function cautionText(it) {
   if (!it.included) return null;
+  if (it.no_coords) return "Won't export: it has no coordinates.";
   const lines = [];
   const [bytes, cutN] = noteOverflow(it.desc);
   if (bytes > NOTE_LIMIT)

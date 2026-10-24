@@ -43,6 +43,7 @@ from cairn.core.writers import (
     clear_name_changes,
     get_areas_without_holes,
     get_name_changes,
+    _polygon_rings,
     area_onx_style,
     line_onx_style_weight,
     write_gpx_areas_maybe_split,
@@ -505,6 +506,16 @@ def _group(fkey, okey, fdata, origin, resolver, cfg, catalog, features) -> dict:
             "items": items}
 
 
+def _has_coordinates(kind, feat) -> bool:
+    """Whether the writers will find something to write: the same tests they use."""
+    c = feat.coordinates
+    if kind == "waypoints":
+        return bool(c) and len(c) >= 2
+    if kind == "shapes":
+        return bool(_polygon_rings(c))
+    return bool(c)
+
+
 def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
     title = feat.title or ""
     props = feat.properties
@@ -585,6 +596,9 @@ def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
         # fill is shown, not edited: onX's importer ignores it (ONX_ROUND_TRIP.md
         # #area-fidelity), so offering it as a choice would promise nothing.
         _c, item["style"], item["weight"], item["fill"] = area_onx_style(feat)
+    if not _has_coordinates(kind, feat):
+        # The writers skip it (the export counts it as dropped); the UI says so.
+        item["no_coords"] = True
     if origin:
         # Items read by the onX readers only: the GeoJSON path's JSON is unchanged.
         # onx_id is held for roadmap Phase 6 (nothing writes it yet); subkind is

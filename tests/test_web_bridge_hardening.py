@@ -168,6 +168,17 @@ def test_items_without_coordinates_are_counted_as_dropped_not_lost():
     _check_export(zf)
 
 
+def test_items_without_coordinates_are_flagged_on_load():
+    """DQ2: the UI shows 'won't export' for exactly the items the writers drop."""
+    j = _load_text(make_map(3, seed=11, no_coords=True))
+    items = [i for g in j["groups"] for i in g["items"]]
+    flagged = sorted(i["name"] for i in items if i.get("no_coords"))
+    assert flagged == ["empty line", "empty pt"]  # a null geometry never becomes an item
+    zf = _export()
+    dropped = sum(e["dropped"] for e in bridge._STATE["manifest"])
+    assert dropped == 2 and "no_coords" not in json.dumps([i for i in items if i["name"] == "Loose"])
+
+
 def test_polygons_with_holes_and_long_notes_move_and_export():
     j = _load_text(make_map(3, seed=12, kinds="a", long_notes=True, holes=True))
     first, last = j["groups"][0], j["groups"][-1]

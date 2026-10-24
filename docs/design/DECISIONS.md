@@ -627,6 +627,11 @@ is still waypoints, then lines, then areas. Unknown uids or keys, an empty list 
 targets raise ValueError and change nothing. "Unorganized" is a folder like any other: it can
 be renamed, emptied (and so removed) and moved into.
 
+**Round 5: duplicate names at load.** The one-name-per-folder rule above covers rename, + New
+folder and Move to… only. A loaded map can already have two folders with the same name (CalTopo
+allows it); both load as they are, and export tells the twins apart by their `NN_` zip folder
+(UI-32). Nothing merges them unasked.
+
 **Round 4 (2026-10-23): an empty folder up front (UI-32).**
 - `create_folder(name=None)` → `move_items`' success shape with `"created": true, "moved": 0`:
   an empty folder at the end, named `default_folder_name()` unless a name is given; a taken
@@ -1003,6 +1008,8 @@ Status: decided 2026-10-23 (owner, round 4).
   - "onX will reset this area's fill to its default blue." UI-30's rule (an onX area, from an
     onX export, whose fill isn't onX's default), except that a transparent or none fill is not
     flagged (owner).
+- Round 5: an item with no usable coordinates (the writers skip it; the export counts it as
+  dropped) has one mark: "Won't export: it has no coordinates." (`no_coords` on the load item).
 - An excluded row has no mark (it isn't exported). The mark follows every edit: shortening a
   note removes it.
 - The export screen's long-note warning names the items (up to 8, then "and N more").

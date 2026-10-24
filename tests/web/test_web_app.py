@@ -3938,6 +3938,20 @@ def test_an_onx_area_whose_fill_onx_resets_gets_a_caution(fresh_page: Page):
     expect(page.locator("tr:has(.icon-btn) .caution")).to_have_count(0)
 
 
+def test_an_item_with_no_coordinates_says_it_will_not_export(fresh_page: Page, tmp_path):
+    from tests.hardening_maps import make_map
+    page = fresh_page
+    f = tmp_path / "nc.json"
+    f.write_text(make_map(2, seed=1, no_coords=True))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    uids = page.evaluate("allItems().filter(i => i.no_coords).map(i => i.uid)")
+    assert len(uids) == 2
+    for u in uids:
+        expect(_caution(page, u)).to_have_attribute("aria-label", "Won't export: it has no coordinates.")
+    expect(page.locator(".caution")).to_have_count(2)
+
+
 def test_no_caution_on_a_plain_caltopo_map(loaded: Page):
     long_notes = loaded.evaluate("allItems().filter(i => new TextEncoder().encode(i.desc || '').length > 512).length")
     expect(loaded.locator(".caution")).to_have_count(long_notes)
