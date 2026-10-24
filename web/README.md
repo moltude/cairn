@@ -20,8 +20,9 @@ Three things that justified moving off the terminal, all working end to end:
    `"rgba(8,122,255,1)"`.
 2. **Bulk edit.** Filter to "only items needing attention", select, set an icon on all of them at
    once, and watch the attention count fall.
-3. **The import runbook.** The missing artifact — onX creates one folder per import *batch* and
-   names it `Import <timestamp>`, so the checklist tells the user which files to drag together and
+3. **The import instructions.** The missing artifact — onX creates one folder per import *batch* and
+   names it `Import <timestamp>`, so the export screen and `instructions.txt` (plain text, since
+   2026-10-23 round 4; it was RUNBOOK.md) tell the user which files to import together and
    exactly what to rename each folder to. Every file is GPX: areas go out as onX Area routes
    (`<rte><type>Area</type>`) since 2026-10-22, because onX ignores area colours in KML
    (ENG-05). The KML-batch warning is still wired up but no web export triggers it.
@@ -51,9 +52,9 @@ What makes an item "default pin" (`needs_attention`):
 
 Notes:
 
-- The "onX imports" card and the runbook's "imports" count can differ. The card uses the folder
-  count; the runbook uses the number of folders that produced files.
-- "Dropped" items: the runbook says items "could not be exported because they have no usable
+- The "onX imports" card and the number of folders exported can differ. The card uses the folder
+  count; the export lists only the folders that produced files.
+- "Dropped" items: the export screen says items "could not be exported because they have no usable
   coordinates" (`bridge.py:353`). The count is `expected − written` per folder
   (`bridge.py:312`, `bridge.py:316`). I did not read the writers to confirm exactly which
   geometries are dropped, so that rule is inference from the message and the arithmetic.

@@ -466,6 +466,9 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 .doc ul,.doc ol{padding-left:22px}
 .doc code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:var(--card);
   border:1px solid var(--rule-soft);border-radius:2px;padding:1px 5px;overflow-wrap:anywhere}
+/* A wide diagram (the FAQ's lead): wider than the text column, centred on it; click opens it full size. */
+.doc-fig{width:min(1200px,calc(100vw - 64px));margin:4px 0 32px;position:relative;left:50%;transform:translateX(-50%)}
+.doc-fig img{display:block;width:100%;height:auto;border:1px solid var(--rule)}
 .doc-toc{background:var(--card);border:1px solid var(--rule);padding:16px 22px 12px;margin:0 0 36px}
 .doc-toc ol{list-style:none;padding:0;margin:8px 0 0}
 .doc-toc ol ol,.doc-toc ul{padding-left:18px;margin:2px 0 8px}
