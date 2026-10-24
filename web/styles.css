@@ -553,6 +553,11 @@ tbody tr.dragging{background:#E9E3D2;opacity:.45}
 .facet-x:focus-visible{opacity:1}
 body.dragging-rows .facet-x{opacity:0;pointer-events:none}
 .folder.empty-folder .folder-head{border-bottom:none}
+/* The hover tip (round 4): a row's whole name or note, line breaks kept. */
+.tip{position:fixed;z-index:55;max-width:min(480px,calc(100vw - 16px));max-height:min(320px,calc(100vh - 16px));
+  overflow-y:auto;box-sizing:border-box;padding:8px 12px;background:var(--sheet);color:var(--ink);
+  border:1px solid var(--brown);box-shadow:var(--shadow);font-size:13px;line-height:1.5;
+  white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;cursor:text}
 .facet-btn.naming{align-items:center;padding:2px 5px;background:var(--sheet);border:1px solid var(--brown)}
 .facet-btn.naming .folder-name-in{font:inherit;font-weight:700;color:var(--ink);flex:1 1 auto;min-width:0;
   border:none;background:transparent;padding:2px 4px;outline:none}

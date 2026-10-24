@@ -969,6 +969,54 @@ class Session:
             raise Violation("empty_folder_not_removed", f"{key} still there after its x ({'key' if kb else 'mouse'})")
         return ("remove_empty", key, "kb" if kb else "mouse"), kb
 
+    def a_hover(self, rng, s):
+        """Hover a row's name or note (round 4): the tip shows exactly when the
+        preview hides text, with the whole value; Esc or leaving hides it, and
+        nothing else changes."""
+        p = self.page
+        u, ctl = self._row_ctl(rng, rng.choice([".note-btn", ".name-in", ".caution"]))
+        if not ctl:
+            return ("hover", "none"), False
+        ctl.evaluate("e => e.scrollIntoView({block: 'center'})")
+        if not self.mouse_to(ctl):
+            return ("hover", "nobox"), False
+        p.wait_for_timeout(650)
+        st = p.evaluate("""([u, cls]) => {
+          const tr = document.querySelector(`tr[data-uid="${u}"]`);
+          const el = tr && tr.querySelector(cls);
+          const it = allItems().find(i => i.uid === u);
+          const tip = document.querySelector('#tip');
+          const cutw = e => !!e && e.scrollWidth > e.clientWidth + 1;
+          const desc = String(it.desc || '').trim();
+          let want = null;
+          if (!el) return {gone: true};
+          if (el.classList.contains('name-in')) want = el !== document.activeElement && cutw(el) ? el.value : null;
+          else if (el.classList.contains('caution')) want = cautionText(it);
+          else want = desc && (desc !== firstLine(desc) || cutw(el.querySelector('.note-text'))) ? desc : null;
+          const r = tip.getBoundingClientRect();
+          return {want, shown: !tip.classList.contains('hidden'), text: tip.textContent,
+                  inside: r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1,
+                  hovered: el.matches(':hover')};
+        }""", [u, ctl.evaluate("e => '.' + e.classList[0]")])
+        if st.get("gone") or not st["hovered"]:
+            return ("hover", u, "moved"), False
+        if bool(st["want"]) != st["shown"] or (st["shown"] and st["text"] != st["want"]):
+            raise Violation("hover_tip", f"{u}: want {st['want']!r:.80} shown={st['shown']} text={st['text']!r:.80}")
+        if st["shown"] and not st["inside"]:
+            raise Violation("hover_tip_outside", f"{u}: the tip is outside the window")
+        how = "away"
+        if st["shown"] and rng.random() < 0.5:
+            sel = s["sel"]
+            p.keyboard.press("Escape"); how = "Escape"
+            if p.evaluate("() => !document.querySelector('#tip').classList.contains('hidden')"):
+                raise Violation("hover_tip_escape", f"{u}: Esc left the tip up")
+            if sorted(p.evaluate("[...SEL]")) != sorted(sel):
+                raise Violation("hover_tip_escape", "Esc on the tip changed the selection")
+        p.mouse.move(120, 60, steps=2); p.wait_for_timeout(260)
+        if p.evaluate("() => !document.querySelector('#tip').classList.contains('hidden')"):
+            raise Violation("hover_tip_stuck", f"{u}: still up after the pointer left")
+        return ("hover", u, bool(st["want"]), how), False
+
     def a_export(self, rng, s):
         return self.export_and_verify(rng, s), False
 
@@ -1125,7 +1173,7 @@ WEIGHTS = {
     "collapse": 4, "edit_name": 3, "edit_note": 3, "edit_mark": 3, "edit_line_bulk": 1,
     "bulk_icon": 1, "exclude": 5, "include_chip": 2, "export": 2,
     # Round 4: + New folder clicked, the x on an empty folder.
-    "click_new_folder": 5, "remove_empty_folder": 3,
+    "click_new_folder": 5, "remove_empty_folder": 3, "hover": 4,
 }
 # Second wave: the human-timing / interleaving actions (--wave 2).
 WEIGHTS2 = dict(WEIGHTS, leave_field_by_click=6, rename_then_drag=3, rename_then_export=2)

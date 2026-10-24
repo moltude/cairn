@@ -862,9 +862,9 @@ def test_note_editor_keeps_line_breaks_and_applies_with_ctrl_enter(loaded: Page)
     desc = loaded.evaluate(f"DATA.groups.flatMap(g=>g.items).find(i=>i.uid==={uid!r}).desc")
     assert desc == "first line\nsecond line"
     assert loaded.locator(".desc-in").count() == 0
-    # The clipped one-line view shows the newline as a space.
+    # The preview shows the first line only (round 4); the rest is on hover.
     clipped = loaded.locator(f'tr[data-uid="{uid}"] .note-text').inner_text()
-    assert clipped == "first line second line"
+    assert clipped == "first line"
 
 
 def test_note_editor_apply_and_cancel_buttons(loaded: Page):
@@ -3583,3 +3583,145 @@ def test_an_empty_folders_taken_name_is_refused_without_a_merge_offer(loaded: Pa
     expect(page.locator("#confirm")).to_be_hidden()
     expect(page.locator("#status")).to_have_text("“Blodgett” already exists.")
     assert _layout(page)[-1] == ("New folder", 0)
+
+
+# --- 2. Full names and notes on hover ----------------------------------------
+
+LONG_NOTE = "Water at the spring\nBring a filter: it runs low by August.\n\nCamp 200 m north."
+
+
+def _set(page: Page, uid: str, **patch) -> None:
+    page.evaluate("([u, p]) => edit(allItems().find(i => i.uid === u), p)", [uid, patch])
+
+
+def _tip(page: Page):
+    return page.locator("#tip")
+
+
+def test_a_notes_preview_is_its_first_line_and_hover_shows_all_of_it(loaded: Page):
+    page = loaded
+    _wide(page)
+    row = _first_row(page, "Lost Trail Pass")
+    uid = row.get_attribute("data-uid")
+    _set(page, uid, desc="\n" + LONG_NOTE)
+    note = page.locator(f'tr[data-uid="{uid}"] .note-btn')
+    expect(note.locator(".note-text")).to_have_text("Water at the spring")
+    # Not the native title (it loses line breaks and can't be styled).
+    assert note.get_attribute("title") is None and note.locator(".note-text").get_attribute("title") is None
+    note.hover()
+    page.wait_for_timeout(150)
+    expect(_tip(page)).to_be_hidden()                  # a short delay first
+    expect(_tip(page)).to_be_visible()
+    assert _tip(page).inner_text() == LONG_NOTE        # whole, with its line breaks
+    expect(_tip(page)).to_have_css("white-space", "pre-wrap")
+    expect(note).to_have_attribute("aria-describedby", "tip")
+    _shot(page, "2a-note-on-hover")
+    # The pointer can move onto the tip, and its text can be selected.
+    tb = _tip(page).bounding_box()
+    nb = note.bounding_box()
+    assert tb["y"] >= nb["y"] + nb["height"]           # below the note, not over it
+    page.mouse.move(tb["x"] + 10, tb["y"] + 8, steps=4)
+    page.wait_for_timeout(400)
+    expect(_tip(page)).to_be_visible()
+    page.mouse.dblclick(tb["x"] + 20, tb["y"] + 16)    # a word on its first line
+    picked = page.evaluate("getSelection().toString()").strip()
+    assert picked and picked in LONG_NOTE
+    expect(_tip(page)).to_be_visible()
+    assert page.evaluate("SEL.size") == 0              # the click there selected no row
+    # Esc closes the tip and nothing else.
+    page.keyboard.press("Escape")
+    expect(_tip(page)).to_be_hidden()
+    assert note.get_attribute("aria-describedby") is None
+    # Leaving both hides it too.
+    note.hover()
+    expect(_tip(page)).to_be_visible()
+    page.mouse.move(700, 880)
+    expect(_tip(page)).to_be_hidden()
+
+
+def test_a_short_note_or_name_shows_no_tip(loaded: Page):
+    page = loaded
+    row = _first_row(page, "Paddling")
+    uid = row.get_attribute("data-uid")
+    _set(page, uid, desc="Short.")
+    page.locator(f'tr[data-uid="{uid}"] .note-btn').hover()
+    page.locator(f'tr[data-uid="{uid}"] .name-in').hover()
+    page.wait_for_timeout(800)
+    expect(_tip(page)).to_be_hidden()
+
+
+def test_a_cut_name_or_one_long_line_shows_whole_on_hover(loaded: Page):
+    page = loaded
+    _wide(page)
+    row = _first_row(page, "North Roots")
+    uid = row.get_attribute("data-uid")
+    long_name = "Upper North Roots saddle camp below the third false summit, east side"
+    long_line = "A single line of note that is far too long to fit in its column " * 3
+    _set(page, uid, name=long_name, desc=long_line.strip())
+    name = page.locator(f'tr[data-uid="{uid}"] .name-in')
+    name.hover()
+    expect(_tip(page)).to_be_visible()
+    assert _tip(page).inner_text() == long_name
+    page.mouse.move(700, 880)
+    expect(_tip(page)).to_be_hidden()
+    page.locator(f'tr[data-uid="{uid}"] .note-btn').hover()
+    expect(_tip(page)).to_have_text(long_line.strip())
+
+
+def test_the_tip_shows_on_keyboard_focus_and_not_on_a_click(loaded: Page):
+    page = loaded
+    row = _first_row(page, "Lost Trail Pass")
+    uid = row.get_attribute("data-uid")
+    _set(page, uid, desc=LONG_NOTE)
+    page.locator(f'tr[data-uid="{uid}"] .name-in').focus()
+    page.keyboard.press("Tab")                         # name -> note button
+    expect(page.locator(f'tr[data-uid="{uid}"] .note-btn')).to_be_focused()
+    expect(_tip(page)).to_be_visible()
+    assert _tip(page).inner_text() == LONG_NOTE
+    page.keyboard.press("Escape")
+    expect(_tip(page)).to_be_hidden()
+    expect(page.locator(f'tr[data-uid="{uid}"] .note-btn')).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    page.keyboard.press("Tab")
+    expect(_tip(page)).to_be_visible()
+    page.keyboard.press("Tab")                         # leaving it hides it
+    expect(_tip(page)).to_be_hidden()
+    # A click opens the note editor, with no tip in the way.
+    page.locator(f'tr[data-uid="{uid}"] .note-btn').click()
+    expect(page.locator(f'tr[data-uid="{uid}"] .desc-in')).to_be_focused()
+    page.wait_for_timeout(600)
+    expect(_tip(page)).to_be_hidden()
+
+
+def test_the_tip_stays_inside_the_window_and_off_its_control(loaded: Page):
+    page = loaded
+    _wide(page)
+    rows = page.locator(f"{ROW}")
+    # The last row visible at the bottom of the window: the tip goes above it.
+    uid = page.evaluate("""() => { const vh = innerHeight;
+        const r = [...document.querySelectorAll('.folder tbody tr')].filter(t => {
+          const b = t.getBoundingClientRect(); return b.bottom < vh && b.bottom > vh - 60; });
+        return r.at(-1).dataset.uid; }""")
+    _set(page, uid, desc=("Line\n" * 12).strip())
+    note = page.locator(f'tr[data-uid="{uid}"] .note-btn')
+    note.hover()
+    expect(_tip(page)).to_be_visible()
+    tb, nb = _tip(page).bounding_box(), note.bounding_box()
+    assert tb["y"] >= 0 and tb["y"] + tb["height"] <= 900 and tb["x"] + tb["width"] <= 1440
+    assert tb["y"] + tb["height"] <= nb["y"]           # above it
+    _shot(page, "2b-note-tip-above")
+    assert rows.count() > 0
+
+
+def test_a_drag_still_starts_from_a_note_with_its_tip_showing(loaded: Page):
+    page = loaded
+    row = _first_row(page, "Lost Trail Pass")
+    uid = row.get_attribute("data-uid")
+    _set(page, uid, desc=LONG_NOTE)
+    note = page.locator(f'tr[data-uid="{uid}"] .note-btn')
+    note.hover()
+    expect(_tip(page)).to_be_visible()
+    _drag(page, note, _rail(page, "Paddling"))
+    expect(page.locator("#status")).to_have_text("Moved 1 item to Paddling.")
+    expect(_tip(page)).to_be_hidden()
+    assert page.evaluate("NOTE_EDIT") is None

@@ -469,6 +469,7 @@ function renderFolders() {
   // selected row, it drops out of the selection rather than staying an
   // invisible target for the next bulk edit.
   const fk = focusedKey();
+  hideTip();                       // its control is about to be replaced
   const shownUids = new Set(shownItems().map(i => i.uid));
   const selectableUids = new Set(selectableItems().map(i => i.uid));
   for (const uid of SEL) if (!selectableUids.has(uid)) SEL.delete(uid);
@@ -557,6 +558,113 @@ const kindWord = k => k === "shapes" ? "Area" : "Line";
 const SUBKIND_WORD = { line: "Line", track: "Track", area: "Area" };
 const rowKindWord = it => SUBKIND_WORD[it.subkind] || kindWord(it.kind);
 const oneLine = s => String(s || "").replace(/\s*\n\s*/g, " ").trim();
+/** A note's preview in the list: its first line that isn't blank (round 4).
+    The rest shows on hover (the tip below). "Use note as name" still joins
+    every line (oneLine). */
+const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boolean) || "";
+
+/* ---------- the hover tip (round 4) ----------
+   One styled popup (#tip) for a row name or note preview that hides text,
+   and for a row's caution mark: shown after a short hover or on keyboard
+   focus, with line breaks kept, inside the window, selectable and copyable
+   (the pointer may move onto it), and gone on Esc. Not the native `title`:
+   it drops line breaks on some platforms and can't be styled. */
+const TIP_SRC = ".name-in, .note-btn, .caution";
+const TIP = { src: null, showT: null, hideT: null, over: false };
+let LAST_POINTER = 0;   // when the last press happened: focus right after it isn't keyboard focus
+const cut = el => !!el && el.scrollWidth > el.clientWidth + 1;
+function tipText(src, viaKey = false) {
+  const tr = src.closest("tr[data-uid]");
+  const it = tr && allItems().find(i => i.uid === tr.dataset.uid);
+  if (!it) return null;
+  if (src.classList.contains("caution")) return cautionText(it);
+  if (src.classList.contains("name-in")) {
+    // Not while typing in it (the field shows what is typed), unless it was
+    // just reached by keyboard.
+    return (viaKey || src !== document.activeElement) && cut(src) ? src.value : null;
+  }
+  const desc = String(it.desc || "").trim();
+  if (!desc) return null;
+  return desc !== firstLine(desc) || cut(src.querySelector(".note-text")) ? desc : null;
+}
+function scheduleTip(src, ms, viaKey = false) {
+  clearTimeout(TIP.showT); clearTimeout(TIP.hideT);
+  if (TIP.src === src && tipShown()) return;
+  TIP.showT = setTimeout(() => showTip(src, viaKey), ms);
+}
+const tipShown = () => !$("#tip").classList.contains("hidden");
+function showTip(src, viaKey = false) {
+  if (!src.isConnected || DRAG || CONFIRM || BULK || POP || MOVE) return;
+  // Still pointed at or focused (a scroll may have moved it from under the pointer).
+  if (!src.matches(":hover") && !src.contains(document.activeElement)) return;
+  const text = tipText(src, viaKey);
+  if (!text) { hideTip(); return; }
+  hideTip();
+  const tip = $("#tip");
+  tip.textContent = text;
+  tip.classList.remove("hidden");
+  TIP.src = src;
+  src.setAttribute("aria-describedby", "tip");
+  // Below the control, else above it; never over it (that would block the
+  // click it is waiting for), and always inside the window.
+  const r = src.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  const left = Math.max(8, Math.min(r.left, vw - w - 8));
+  let top = r.bottom + 6;
+  if (top + h > vh - 8) top = r.top - h - 6 >= 8 ? r.top - h - 6 : Math.max(8, vh - h - 8);
+  tip.style.left = `${left}px`; tip.style.top = `${top}px`;
+}
+function hideTip() {
+  clearTimeout(TIP.showT); clearTimeout(TIP.hideT);
+  TIP.over = false;
+  if (TIP.src) { TIP.src.removeAttribute("aria-describedby"); TIP.src = null; }
+  const tip = $("#tip");
+  if (tip && !tip.classList.contains("hidden")) { tip.classList.add("hidden"); tip.textContent = ""; }
+}
+/** Leaving the control or the tip: a short grace, so the pointer can cross
+    from one to the other (to select the text). */
+function laterHideTip() {
+  clearTimeout(TIP.showT); clearTimeout(TIP.hideT);
+  TIP.hideT = setTimeout(() => { if (!TIP.over) hideTip(); }, 200);
+}
+function wireTip() {
+  const host = $("#folders"), tip = $("#tip");
+  host.addEventListener("pointerover", e => {
+    if (e.pointerType === "touch" || DRAG) return;
+    const src = e.target.closest(TIP_SRC);
+    if (src) scheduleTip(src, 450);
+  });
+  host.addEventListener("pointerout", e => {
+    const src = e.target.closest(TIP_SRC);
+    if (!src || src.contains(e.relatedTarget)) return;
+    if (TIP.src === src || !tipShown()) laterHideTip();
+  });
+  host.addEventListener("focusin", e => {
+    const src = e.target.closest(TIP_SRC);
+    if (src && Date.now() - LAST_POINTER > 300) scheduleTip(src, 150, true);   // keyboard focus
+  });
+  host.addEventListener("focusout", e => { if (TIP.src && TIP.src.contains(e.target)) hideTip(); });
+  // Typing in a name it describes: the field shows the text now.
+  host.addEventListener("input", e => { if (TIP.src && TIP.src === e.target) hideTip(); });
+  tip.addEventListener("pointerenter", () => { TIP.over = true; clearTimeout(TIP.hideT); });
+  tip.addEventListener("pointerleave", () => { TIP.over = false; laterHideTip(); });
+  document.addEventListener("pointerdown", e => {
+    LAST_POINTER = Date.now();
+    if (!tip.contains(e.target)) hideTip();
+  }, true);
+  // Esc dismisses the tip and nothing else (not a name's revert, not the
+  // selection): capture, ahead of every other Esc handler.
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && tipShown()) { e.preventDefault(); e.stopPropagation(); hideTip(); }
+  }, true);
+  // A scroll moves the control from under its tip (not one that is waiting:
+  // scrolling a row into view is how a hover often starts).
+  window.addEventListener("scroll", e => { if (e.target !== tip && tipShown()) hideTip(); }, true);
+  window.addEventListener("resize", hideTip);
+}
+/** What won't carry over to onX for this item, one plain line each (item 4). */
+function cautionText(it) { return null; }
 
 function row(it) {
   const tr = document.createElement("tr");
@@ -578,7 +686,7 @@ function row(it) {
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="This row will not be exported. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
       `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
-        <span class="note-text${it.desc ? "" : " empty"}">${esc(oneLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
+        <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
           ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>`
@@ -1602,7 +1710,7 @@ function startDrag() {
   const a = document.activeElement;
   if (a && a.matches && a.matches("input, textarea") && a.closest("#folders")) a.blur();
   window.getSelection()?.removeAllRanges();
-  closePop(); closeMenu(); closeMove(false);
+  closePop(); closeMenu(); closeMove(false); hideTip();
   if (RAIL_FOLDED.has("folders")) { d.unfolded = true; RAIL_FOLDED.delete("folders"); }
   document.body.classList.add("dragging-rows");
   document.querySelectorAll("#folders tbody tr[data-uid]").forEach(tr => {
@@ -1961,6 +2069,7 @@ window.addEventListener("DOMContentLoaded", () => {
   menuAct("#bulk-move", openMoveTo);
   wireRowDrag();
   wirePointerHeld();
+  wireTip();
   menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: oneLine(it.desc) } : {}));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
@@ -2016,7 +2125,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     // Not behind anything in front: a dialog, Move to… or Help.
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && !typing && DATA &&
-        document.body.dataset.stage === "edit" && !BULK && !POP && !MOVE && !CONFIRM &&
+        document.body.dataset.stage === "edit" && !BULK && !POP && !MOVE && !CONFIRM && !TIP.over &&
         $("#help").classList.contains("hidden")) {
       e.preventDefault();
       setSelectAll(!(SEL.size && SEL.size === selectableItems().length));
