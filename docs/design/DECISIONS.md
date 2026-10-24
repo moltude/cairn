@@ -1047,14 +1047,20 @@ Status: decided 2026-10-23 (owner, round 4); the dialog awaits the owner's look 
 screenshots 5a / 5b.
 
 - **Sort.** Each folder's Name header is a button with up/down arrows: the map's order (the
-  default, nothing pre-sorted) → A to Z → Z to A → the map's order. One sort for every folder
-  at once, shown in every header and as `aria-sort`. Natural, numeric-aware and
+  default, nothing pre-sorted) → A to Z → Z to A → the map's order. **Per folder** (owner
+  feedback 2026-10-24; it was one sort for every folder): a header sorts its own folder only,
+  shown in that header and its `aria-sort`, and each folder keeps its own state. The state
+  belongs to the folder (keyed by its key): a rename keeps it; items moved in show in the
+  target's state (an unsorted target keeps the map's order); a merge's target keeps its own and
+  the merged-away folder's state goes; a removed folder's state goes; a new folder starts in
+  the map's order; loading a map or Start over clears all of it. Natural, numeric-aware and
   case-insensitive (`Intl.Collator`, numeric, base sensitivity), so "01 - …", "02 - …",
   "10 - …" (Dark Divide aid stations) come out in order; equal names keep the map's order. It
   sorts across waypoints, lines and areas together. View only: export keeps the map's order.
   Shift-click ranges and select-all follow the sorted rows; drag and Move to… are unchanged.
-  A new map starts unsorted. Option not taken: a sort per folder (one state is simpler to
-  read, and the owner's case is every folder at once).
+  A new map starts unsorted. Option not taken at first: a sort per folder (one state was
+  simpler to read); the owner asked for it on 2026-10-24, since sorting one folder sorted
+  every other one too.
 - **Icon & color… / Color….** The selection bar's button reads "Icon & color…" when waypoints
   are ticked and "Color…" when only lines and areas are. In a mixed selection the dialog shows
   a **Pin color** row (onX's 10) and a **Line color** row (11, with Fuchsia), each starting on

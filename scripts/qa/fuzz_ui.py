@@ -85,7 +85,7 @@ SNAP_JS = r"""
   out.stage = document.body.dataset.stage;
   if (!DATA) { out.data = null; return out; }
   out.groups = DATA.groups.map(g => ({key: g.key, name: g.name, safe: g.safe,
-     uids: g.items.map(i => i.uid)}));
+     unorganized: !!g.unorganized, uids: g.items.map(i => i.uid)}));
   out.items = {};
   DATA.groups.forEach(g => g.items.forEach(i => { out.items[i.uid] = {
      name: i.name, kind: i.kind, included: i.included !== false, desc: i.desc || ""}; }));
@@ -263,6 +263,15 @@ class Session:
             raise Violation("totals_folders_stale", f"{s['totals_folders']} vs {len(groups)} after {label}")
         if self._dups(s) > self.dup_names_at_load:
             raise Violation("duplicate_folder_name", f"{[g['name'] for g in groups]} after {label}")
+        # 4b. folder order (owner feedback 2026-10-24): by name, natural and
+        #     case-insensitive, the loose items last; written independently
+        #     of bridge._folder_order_key.
+        def natural(n):
+            return [(0, int(c)) if c.isdecimal() else (1, c)
+                    for c in re.findall(r"\d+|\D+", n.strip().casefold())]
+        okeys = [(g["unorganized"], natural(g["name"])) for g in groups]
+        if okeys != sorted(okeys):
+            raise Violation("folder_order", f"{[g['name'] for g in groups]} after {label}")
         # 5. rail list == DATA.groups (when no drag is live)
         rail = s["rail"]
         if not s["drag"]:
@@ -936,8 +945,9 @@ class Session:
             raise Violation("new_folder_click_lost", f"{how}: {len(before['groups'])} -> {len(st['groups'])} folders")
         named = None
         if st.get("rename") and st["rename"]["where"] == "rail":
-            if not sel and st["groups"][-1]["uids"]:
-                raise Violation("new_folder_not_empty", f"{st['groups'][-1]}")
+            made = next((g for g in st["groups"] if g["key"] == st["rename"]["key"]), None)
+            if not sel and made and made["uids"]:
+                raise Violation("new_folder_not_empty", f"{made}")
             name = self.name_pool(rng, st)
             if rng.random() < 0.85:
                 self.type_into_focused(rng, name)
@@ -974,15 +984,18 @@ class Session:
 
     def a_sort_toggle(self, rng, s):
         """Click (or Enter on) a folder's Name header: map order -> A to Z ->
-        Z to A -> map order, the same in every header. The row invariant
-        (rows == visibleItems) checks the order itself."""
+        Z to A -> map order, for THAT folder only (owner feedback 2026-10-24:
+        a sort per folder); every other folder keeps its state. The row
+        invariant (rows == visibleItems) checks the order itself."""
         p = self.page
         # Visible ones only: a collapsed folder's header row is hidden.
         btns = p.locator("#folders .sort-btn:visible")
         if not btns.count():
             return ("sort", "none"), False
-        before = p.evaluate("SORT")
         b = btns.nth(rng.randrange(btns.count()))
+        key = b.get_attribute("data-fk")[len("sort|"):]
+        others_before = p.evaluate("k => Object.fromEntries([...SORT].filter(([x]) => x !== k))", key)
+        before = p.evaluate("k => SORT.get(k) || null", key)
         kb = rng.random() < 0.4
         if kb:
             b.evaluate("e => e.scrollIntoView({block: 'center'})"); b.focus(); p.keyboard.press("Enter")
@@ -991,12 +1004,19 @@ class Session:
                 return ("sort", "covered"), False
         self.settle()
         want = {None: "asc", "asc": "desc", "desc": None}[before]
-        st = p.evaluate("() => ({sort: SORT, aria: [...document.querySelectorAll('th.name-th')].map(t => t.getAttribute('aria-sort'))})")
+        st = p.evaluate("""k => ({sort: SORT.get(k) || null,
+            others: Object.fromEntries([...SORT].filter(([x]) => x !== k)),
+            aria: [...document.querySelectorAll('#folders section.folder')].map(sec => [
+              sec.querySelector('.sort-btn')?.dataset.fk.slice(5),
+              sec.querySelector('th.name-th')?.getAttribute('aria-sort')]).filter(([x]) => x)})""", key)
         if st["sort"] != want:
             raise Violation("sort_state", f"{before} -> {st['sort']}, want {want}")
-        aria = {None: "none", "asc": "ascending", "desc": "descending"}[want]
-        if any(a != aria for a in st["aria"]):
-            raise Violation("sort_aria", f"{st['aria']} vs {aria}")
+        if st["others"] != others_before:
+            raise Violation("sort_leaked", f"{others_before} -> {st['others']} after sorting {key}")
+        word = {None: "none", "asc": "ascending", "desc": "descending"}
+        for k, a in st["aria"]:
+            if a != word[st["others"].get(k) if k != key else want]:
+                raise Violation("sort_aria", f"{k}: {a} after sorting {key} to {want}")
         # Map order underneath is untouched (the bridge's layout check also holds).
         return ("sort", before, want, "kb" if kb else "mouse"), kb
 

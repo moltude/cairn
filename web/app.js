@@ -209,7 +209,7 @@ async function handleFiles(files) {
     const raw = py.runPython("bridge.load_files(_cairn_files)");
     DATA = JSON.parse(raw); EDITS = {}; SEL.clear(); ANCHOR = null;
     resetFilters(); COLLAPSED.clear(); RAIL_FOLDED.clear(); NOTE_EDIT = null; closePop(); closeBulk();
-    SORT = null; hideTip();
+    SORT.clear(); hideTip();
     resetFolderState();
     $("#runbook").replaceChildren();
     SAVED = savedState();
@@ -294,18 +294,23 @@ function visibleItems(g) {
     (!q || i.name.toLowerCase().includes(q) || (i.desc || "").toLowerCase().includes(q)) &&
     (!FILTERS.kind || i.kind === FILTERS.kind) &&
     (!keys.size || (i.kind === "waypoints" && keys.has(iconKey(i)))));
-  return SORT ? sortByName(shown) : shown;
+  const dir = SORT.get(g.key);
+  return dir ? sortByName(shown, dir) : shown;
 }
 
-/* Name sort: one state for every folder, shown in every Name
-   header. View only: DATA.groups (and so the export) keeps the map's order.
-   Everything that reads visibleItems -- the rows, shift-click ranges,
-   select-all -- follows the sorted order. Natural and case-insensitive, so
-   "01 - …", "02 - …", "10 - …" come out in order. */
-let SORT = null;                       // null (the map's order) | "asc" | "desc"
+/* Name sort, per folder (owner feedback 2026-10-24): each folder's Name header
+   cycles ITS rows through the map's order, A to Z, Z to A; sorting one folder
+   leaves the others as they are. The state is keyed by folder key, so a
+   rename keeps it, a merge's target keeps its own, items moved in show in the
+   target's state, and a removed folder's state goes with it; a new folder
+   starts in the map's order. View only: DATA.groups (and so the export) keeps
+   the map's order. Everything that reads visibleItems -- the rows,
+   shift-click ranges, select-all -- follows the sorted order. Natural and
+   case-insensitive, so "01 - …", "02 - …", "10 - …" come out in order. */
+const SORT = new Map();                // folder key -> "asc" | "desc" (absent: the map's order)
 const NAME_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-function sortByName(items) {
-  const dir = SORT === "desc" ? -1 : 1;
+function sortByName(items, how) {
+  const dir = how === "desc" ? -1 : 1;
   // Array.prototype.sort is stable: equal names keep the map's order.
   return [...items].sort((a, b) => dir * NAME_ORDER.compare(a.name.trim(), b.name.trim()));
 }
@@ -317,8 +322,9 @@ function sortIcon(s) {
 }
 const SORT_NEXT = { null: "asc", asc: "desc", desc: null };
 const ARIA_SORT = { null: "none", asc: "ascending", desc: "descending" };
-function toggleSort() {
-  SORT = SORT_NEXT[SORT];
+function toggleSort(key) {
+  const next = SORT_NEXT[SORT.get(key) || null];
+  next ? SORT.set(key, next) : SORT.delete(key);
   renderFolders();
 }
 
@@ -520,6 +526,7 @@ function renderFolders() {
     el.className = "folder";
     el.setAttribute("aria-label", g.name);
     const collapsed = COLLAPSED.has(g.key);
+    const sort = SORT.get(g.key) || null;
     const sub = isUnorganized(g) ? "Not in any folder"
       : items.length === g.items.length ? `${g.items.length} item${g.items.length === 1 ? "" : "s"}`
       : `${items.length} of ${g.items.length} shown`;
@@ -533,7 +540,7 @@ function renderFolders() {
         <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
         <thead><tr>
           <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
-          <th class="name-th" aria-sort="${ARIA_SORT[SORT]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${SORT || "none"}" aria-label="Sort by name">Name${sortIcon(SORT)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
+          <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}" aria-label="Sort ${esc(g.name)} by name">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
         </tr></thead><tbody></tbody></table></div>`;
     const tb = el.querySelector("tbody");
     items.forEach(it => tb.appendChild(row(it)));
@@ -546,7 +553,7 @@ function renderFolders() {
       renderFolders();
     };
     wireFolderTitle(el, g);
-    el.querySelector(".sort-btn").onclick = toggleSort;
+    el.querySelector(".sort-btn").onclick = () => toggleSort(g.key);
     el.querySelector(".collapse").onclick = () => {
       COLLAPSED.has(g.key) ? COLLAPSED.delete(g.key) : COLLAPSED.add(g.key);
       renderFolders();
@@ -1415,6 +1422,7 @@ function applyLayout(res) {
   DATA.groups = groups;
   const live = new Set(groups.map(g => g.key));
   [...COLLAPSED].forEach(k => { if (!live.has(k)) COLLAPSED.delete(k); });
+  [...SORT.keys()].forEach(k => { if (!live.has(k)) SORT.delete(k); });
   let gone = null;
   if (FILTERS.folder !== null && !live.has(FILTERS.folder)) {
     gone = old.get(FILTERS.folder)?.name ?? null;
@@ -2080,7 +2088,7 @@ function resetAll() {
   closePop(); closeBulk(); resetFolderState();
   $("#runbook").replaceChildren();
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
-  SORT = null; hideTip();
+  SORT.clear(); hideTip();
   resetFilters();
   $("#file").value = "";
   showStage("drop");

@@ -3863,24 +3863,40 @@ def _sort_states(page: Page) -> list:
     return page.locator("th.name-th").evaluate_all("els => els.map(e => e.getAttribute('aria-sort'))")
 
 
+def _sort_of(page: Page, folder: str) -> str:
+    return _section(page, folder).locator("th.name-th").get_attribute("aria-sort")
+
+
 def test_the_name_header_cycles_ascending_descending_and_map_order(fresh_page: Page):
+    """Per folder (owner feedback 2026-10-24): sorting one folder leaves the
+    others as they are; each keeps its own state."""
     page = _dark_divide(fresh_page)
     as_loaded = _names(page, AID)
     assert as_loaded[:3] == ["04 - Dark Creek AS", "05 - Wilderness Crossing AS", "06 - Wright Meadow AS"]
     seg_loaded = _names(page, SEGMENTS)
     assert set(_sort_states(page)) == {"none"}
     _section(page, AID).locator(".sort-btn").click()
-    # One sort for every folder, shown in every header.
-    assert set(_sort_states(page)) == {"ascending"}
+    assert _sort_of(page, AID) == "ascending" and _sort_of(page, SEGMENTS) == "none"
     assert _names(page, AID) == sorted(as_loaded)
-    assert [n[:2] for n in _names(page, SEGMENTS)] == [f"{i:02d}" for i in range(1, 12)]
+    assert _names(page, SEGMENTS) == seg_loaded            # not sorted with it
     expect(_section(page, AID).locator(".sort-btn")).to_be_focused()
     _shot(page, "3a-sorted-ascending")
+    _shot(page, "fb-5a-one-folder-sorted")
     page.keyboard.press("Enter")                       # the focused header again
-    assert set(_sort_states(page)) == {"descending"}
+    assert _sort_of(page, AID) == "descending" and _sort_of(page, SEGMENTS) == "none"
     assert _names(page, AID) == sorted(as_loaded, reverse=True)
-    assert [n[:2] for n in _names(page, SEGMENTS)] == [f"{i:02d}" for i in range(11, 0, -1)]
-    page.keyboard.press("Enter")
+    # The other folder sorts on its own; AID keeps its state.
+    _section(page, SEGMENTS).locator(".sort-btn").click()
+    assert _sort_of(page, SEGMENTS) == "ascending" and _sort_of(page, AID) == "descending"
+    assert [n[:2] for n in _names(page, SEGMENTS)] == [f"{i:02d}" for i in range(1, 12)]
+    assert _names(page, AID) == sorted(as_loaded, reverse=True)
+    _section(page, SEGMENTS).evaluate("e => e.scrollIntoView()")
+    _shot(page, "fb-5b-two-folders-two-sorts")
+    _section(page, AID).locator(".sort-btn").click()
+    assert _sort_of(page, AID) == "none" and _sort_of(page, SEGMENTS) == "ascending"
+    assert _names(page, AID) == as_loaded
+    _section(page, SEGMENTS).locator(".sort-btn").click()
+    _section(page, SEGMENTS).locator(".sort-btn").click()
     assert set(_sort_states(page)) == {"none"}
     assert _names(page, AID) == as_loaded and _names(page, SEGMENTS) == seg_loaded
     # View only: the map's order underneath never changed.
@@ -3909,6 +3925,7 @@ def test_sorting_does_not_change_the_export(fresh_page: Page):
 
 def test_shift_click_drag_and_move_to_follow_the_sorted_rows(fresh_page: Page):
     page = _dark_divide(fresh_page)
+    _section(page, SEGMENTS).locator(".sort-btn").click()
     _section(page, AID).locator(".sort-btn").click()
     rows = _section(page, AID).locator("tbody tr")
     shown = rows.evaluate_all("els => els.map(e => e.dataset.uid)")
@@ -3921,7 +3938,8 @@ def test_shift_click_drag_and_move_to_follow_the_sorted_rows(fresh_page: Page):
     expect(page.locator("#status")).to_have_text(f"Moved 4 items to {SEGMENTS}.")
     assert set(shown[1:5]) <= set(page.evaluate(
         f"DATA.groups.find(g => g.name === {SEGMENTS!r}).items.map(i => i.uid)"))
-    # Still sorted in their new folder (waypoints and lines together by name).
+    # Shown in their new folder's sort (it is sorted A to Z too; waypoints and
+    # lines together by name).
     names = _names(page, SEGMENTS)
     assert names == page.evaluate("ns => [...ns].sort((a, b) => NAME_ORDER.compare(a, b))", names)
     # Move to… from the keyboard with the sort on.
@@ -3932,7 +3950,44 @@ def test_shift_click_drag_and_move_to_follow_the_sorted_rows(fresh_page: Page):
     page.locator("#bulk-move").click()
     page.locator(f"#move-pop .move-opt[data-key]:not([disabled])", has_text=SEGMENTS).click()
     assert u in page.evaluate(f"DATA.groups.find(g => g.name === {SEGMENTS!r}).items.map(i => i.uid)")
-    assert set(_sort_states(page)) == {"ascending"}
+    assert _sort_of(page, AID) == "ascending" and _sort_of(page, SEGMENTS) == "ascending"
+
+
+def test_a_folders_sort_follows_its_key_through_moves_renames_and_merges(loaded: Page):
+    """Owner feedback 2026-10-24 (UI-35): the state belongs to the folder.
+    Rename keeps it; items moved in show in the target's state (an unsorted
+    target keeps the map's order); a merge's target keeps its own and the
+    merged-away folder's state goes; a new folder starts unsorted."""
+    page = loaded
+    _section(page, "Paddling").locator(".sort-btn").click()
+    _section(page, "Blodgett").locator(".sort-btn").click()
+    _section(page, "Blodgett").locator(".sort-btn").click()          # Z to A
+    _section(page, "Paddling").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("Kayaks")
+    page.keyboard.press("Enter")
+    assert _sort_of(page, "Kayaks") == "ascending" and _sort_of(page, "Blodgett") == "descending"
+    # Moved into an unsorted folder: the map's order there.
+    _drag(page, _first_row(page, "Kayaks").locator(".note-btn"), _rail(page, "North Roots"))
+    assert _sort_of(page, "North Roots") == "none"
+    assert _names(page, "North Roots") == page.evaluate(
+        "DATA.groups.find(g => g.name === 'North Roots').items.map(i => i.name)")
+    # A new folder starts unsorted.
+    _drag(page, _first_row(page, "Kayaks").locator(".note-btn"), page.locator(".new-folder"))
+    page.keyboard.type("Boats")
+    page.keyboard.press("Enter")
+    assert _sort_of(page, "Boats") == "none"
+    # Merge Kayaks into Blodgett: Blodgett keeps Z to A, Kayaks' state is gone.
+    _section(page, "Kayaks").locator(".folder-name").click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.type("Blodgett")
+    page.keyboard.press("Enter")
+    page.click("#confirm-actions button:text-is('Move them')")
+    assert _sort_of(page, "Blodgett") == "descending"
+    names = _names(page, "Blodgett")
+    assert names == page.evaluate("ns => [...ns].sort((a, b) => NAME_ORDER.compare(b.trim(), a.trim()))", names)
+    keys = page.evaluate("[...SORT.keys()]")
+    assert keys == [page.evaluate("DATA.groups.find(g => g.name === 'Blodgett').key")]
 
 
 # --- 4. Per-item caution: what won't carry over --------------------------------
