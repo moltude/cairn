@@ -5,8 +5,7 @@
 ## Try it in the browser
 
 Cairn runs entirely client-side as a web app (the same Python engine, via
-[Pyodide](https://pyodide.org)) — your map file never leaves your computer. This is the only
-way to use Cairn:
+[Pyodide](https://pyodide.org)). This is the only way to use Cairn:
 
 **[quietmarch.to/cairn](https://quietmarch.to/cairn)**
 

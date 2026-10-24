@@ -47,31 +47,23 @@
     <section class="wt-step" id="before">
       <span class="step-tag">Before</span>
       <h2>What the plain export gives onX</h2>
-      <p>onX Backcountry imports only GPX and KML. CalTopo's own export page says those two formats lose line and marker
-        styles and folder organization. The one CalTopo export that keeps everything, GeoJSON, is the one onX can't open.
-        Cairn reads all three, so you can start from any of them (GeoJSON keeps the most). A CalTopo GPX carries names,
-        coordinates, notes and Garmin line-color names, and nothing onX can use for icons or folders.</p>
+      <p>onX imports only GPX and KML, and CalTopo's GPX and KML lose styles and folders. GeoJSON keeps everything,
+        but onX can't open it. Cairn reads all three; GeoJSON keeps the most.</p>
       <div class="tbl-wrap"><table class="tbl wt-cmp wt-eq">
-        <thead><tr><th>Carried by</th><th>CalTopo GPX / KML</th><th>CalTopo GeoJSON, through Cairn</th></tr></thead>
+        <thead><tr><th>Carried by</th><th>CalTopo GPX or KML, straight into onX</th><th>CalTopo GeoJSON, through Cairn</th></tr></thead>
         <tbody>
           <tr><th>Names and coordinates</th><td><span class="wt-ok">Yes</span></td><td><span class="wt-ok">Yes</span></td></tr>
           <tr><th>Marker icons</th><td><span class="wt-no">No</span></td><td><span class="wt-ok">Mapped to onX's 95 icons</span></td></tr>
           <tr><th>Colors</th><td><span class="wt-no">No</span></td><td><span class="wt-ok">Snapped to onX's palette</span></td></tr>
           <tr><th>Folders</th><td><span class="wt-no">No</span></td><td><span class="wt-ok">One import each, with its name</span></td></tr>
-          <tr><th>Notes</th><td><span class="wt-ok">Yes, in CalTopo's GPX and KML alike</span></td><td><span class="wt-ok">Written to the description field</span></td></tr>
+          <tr><th>Notes</th><td><span class="wt-no">GPX only; a KML import drops them</span></td><td><span class="wt-ok">Written to the description field</span></td></tr>
         </tbody></table></div>
-      <div class="wt-pair">
-        <div class="wt-ph"><strong>onX screenshot needed</strong><b>The map as it lands from a plain CalTopo GPX</b>
-          <span>No onX-side screenshot has been taken yet, so none is invented here. See docs/research/ONX_REIMPORT_AND_SHARING_2026-10-22.md.</span></div>
-        <div class="wt-ph"><strong>onX screenshot needed</strong><b>The same map after a Cairn import</b>
-          <span>Needs a real import into an onX account. See docs/research/ONX_REIMPORT_AND_SHARING_2026-10-22.md.</span></div>
-      </div>
     </section>
 
     <section class="wt-step" id="drop">
       <span class="step-tag">Step 1</span>
       <h2>Export from CalTopo (GeoJSON is best) and add it to Cairn</h2>
-      <p>One export, one file. Cairn runs entirely in your browser, so the map never leaves your computer.</p>
+      <p>One export, one file.</p>
       <figure class="wt-fig"><img src="walkthrough/01-landing.webp" width="1440" height="900" alt="Cairn's landing page: three steps and a drop zone for a CalTopo export">
         <figcaption>The landing page. Drop a <code>.json</code>, <code>.geojson</code>, <code>.kml</code> or <code>.gpx</code> file.</figcaption></figure>
     </section>
@@ -132,24 +124,13 @@
         as GPX tracks, areas as onX areas in GPX.</p>
       <figure class="wt-fig"><img src="walkthrough/08-export.webp" width="1440" height="900" alt="The export screen: Download all, then one box per folder with its name, its files and a Download button">
         <figcaption>The export screen (the map as loaded, 10 folders). Download all in one zip, or one folder at a time.</figcaption></figure>
-      <div class="wt-pair">
-        <div class="wt-ph"><strong>onX screenshot needed</strong><b>The import dialog with a Cairn batch</b>
-          <span>See docs/research/ONX_REIMPORT_AND_SHARING_2026-10-22.md.</span></div>
-        <div class="wt-ph"><strong>onX screenshot needed</strong><b>Imported folder in onX Web Map, filtered by icon</b>
-          <span>See docs/research/ONX_REIMPORT_AND_SHARING_2026-10-22.md.</span></div>
-      </div>
     </section>
 
     <section class="wt-step" id="unknowns">
-      <span class="step-tag">Be aware</span>
-      <h2>What this page can't show yet</h2>
-      <div class="wt-open">
-        <ul>
-          <li>The onX side of the story hasn't been captured. The placeholders above stand in for it.</li>
-          <li>What onX displays for a GPX waypoint with no onX icon hasn't been tested, so "no icon" describes the file, not what you will see in onX.</li>
-          <li>onX imports every file as new markups; it never updates existing ones. The <a href="faq.html#round-tripping-onx-data-batch-edits">FAQ</a> has the details.</li>
-        </ul>
-      </div>
+      <span class="step-tag">Good to know</span>
+      <h2>onX imports everything as new</h2>
+      <p>onX never updates existing markups. Every import adds new ones, so re-importing a map gives you duplicates.
+        The <a href="faq.html#round-tripping-onx-data-batch-edits">FAQ</a> has the details.</p>
     </section>
 
   </main>
