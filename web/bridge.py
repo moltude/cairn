@@ -1105,7 +1105,9 @@ _KIND_TAG = {"waypoints": "wpt", "tracks": "trk", "shapes": "rte"}
 def _written_items(data: bytes, kind: str) -> list:
     """[[name, note bytes]] for each item of one file Cairn just wrote, in
     file order, as onX will see it: the name as written and the UTF-8 size of
-    its <desc>. Cairn's own output, so no guard_input: it has no DTD."""
+    its <desc>. Cairn's own output (no DTD, parts under 3.75 MiB), but
+    guard_input runs anyway, as before every XML parse (AGENTS.md)."""
+    guard_input(data.decode("utf-8"))
     root = ET.fromstring(data)
     return [
         [el.findtext(_GPX + "name") or "", len((el.findtext(_GPX + "desc") or "").encode("utf-8"))]
