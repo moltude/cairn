@@ -529,13 +529,12 @@ def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path)
     warns = host.locator(".note.warn")
     expect(warns).to_have_count(3)
     expect(warns.nth(0)).to_contain_text("1 item could not be exported")
-    expect(warns.nth(1)).to_contain_text("1 note is longer than 512 bytes")
+    expect(warns.nth(1)).to_contain_text("1 note is over onX's 512-byte limit and will be cut: “Long”.")
     expect(warns.nth(2)).to_contain_text("onX accounts hold at most 3,000 markups; this map has 3,002.")
     # Every warning comes before the first folder box.
     order = host.locator(":scope > *").evaluate_all("els => els.map(e => e.className)")
     assert order[:3] == ["note warn"] * 3 and order[3:] == ["rb-step"]
     expect(host.locator(".rb-step h2")).to_have_text("Big")
-    expect(warns.nth(1)).to_contain_text("instructions.txt marks it: “Long”.")
 
 
 def test_export_screen_back_and_start_over(loaded: Page):
@@ -3864,7 +3863,7 @@ def test_a_note_over_onxs_limit_gets_a_caution_that_goes_when_it_is_shortened(lo
     uid = _first_row(page, "Lost Trail Pass").get_attribute("data-uid")
     expect(_caution(page, uid)).to_have_count(0)
     _set(page, uid, desc="x" * 600)
-    msg = "onX keeps the first 512 bytes of this note; about 88 characters will be cut."
+    msg = "Cut at 512 bytes (about 88 characters lost)."
     expect(_caution(page, uid)).to_have_attribute("aria-label", msg)
     _caution(page, uid).hover()
     expect(_tip(page)).to_have_text(msg)
@@ -3872,7 +3871,7 @@ def test_a_note_over_onxs_limit_gets_a_caution_that_goes_when_it_is_shortened(lo
     # Bytes, not characters: 300 "é" are 600 bytes, of which 256 fit.
     _set(page, uid, desc="é" * 300)
     expect(_caution(page, uid)).to_have_attribute(
-        "aria-label", "onX keeps the first 512 bytes of this note; about 44 characters will be cut.")
+        "aria-label", "Cut at 512 bytes (about 44 characters lost).")
     # Exactly 512 bytes: no caution. Shortened in the note editor: gone at once.
     _set(page, uid, desc="x" * 512)
     expect(_caution(page, uid)).to_have_count(0)
@@ -3890,7 +3889,7 @@ def test_a_note_over_onxs_limit_gets_a_caution_that_goes_when_it_is_shortened(lo
     page.wait_for_timeout(350)                         # not right after a click (pointer focus)
     _caution(page, uid).focus()
     expect(_tip(page)).to_have_text(
-        "onX keeps the first 512 bytes of this note; about 188 characters will be cut.")
+        "Cut at 512 bytes (about 188 characters lost).")
     page.keyboard.press("Escape")
     # An excluded row isn't exported: no caution.
     _set(page, uid, included=False)
