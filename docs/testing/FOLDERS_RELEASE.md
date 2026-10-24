@@ -583,9 +583,39 @@ invariant checks, 188 verified exports, 252 new-folder clicks, 146 removals, 141
 
 ### For the owner
 - [ ] Approve the mixed dialog (5a, 5b) and "Leave as is" replacing "Reset".
-- [ ] UI-30's load dialog still counts a "none" area fill; the caution mark doesn't. Align?
+- [x] UI-30's load dialog counted a "none" area fill; the caution mark didn't. Aligned in round 5 (owner).
 - [ ] An empty folder shows as a header-only "Empty" section in the list (for renaming).
 - [ ] One sort for every folder, across waypoints / lines / areas together.
+
+## Round 5: small fixes from the design and data QA (2026-10-23)
+
+Fix list from the overnight QA (D1-D2, DQ1-DQ2, DS1-DS9) and the Chrome pass (C1-C6). One
+commit each; every fix has a regression test.
+
+| Item | What changed |
+|------|--------------|
+| D1 | UI-30's load dialog skips a transparent / none fill, like the caution mark (UI-30). |
+| D2 | instructions.txt keeps no area-fill line (documented in UI-31; test added). |
+| DQ1 | Documented only: loaded duplicate folder names are allowed (ENG-07). |
+| DQ2 | An item the writers will drop (no usable coordinates) gets a caution: "Won't export: it has no coordinates." (bridge `no_coords`). |
+| DS1, DS2 | Long names: ellipsis in the line-style dialog (title has it all) and in row name boxes. |
+| DS3, C3 | Rail counts share one right edge (an empty folder's count no longer shifts); the rail's last row clears the footer, with a bottom gap and scroll padding. |
+| DS4 | A tall note tip ends on a whole line and shows "scroll for more". |
+| DS5 | Copy: "N notes are over onX's 512-byte limit and will be cut: names." and "Cut at 512 bytes (about N characters lost)." |
+| DS6 | The sort button shows its pill only on hover or keyboard focus. |
+| DS7 | The icon & color dialog's now/after list is capped at 120px, scrolling. |
+| DS8 | No "Built N folders" status on the export screen; folder names there already carry a title. |
+| DS9 | Every note cell reserves the caution slot, so note text lines up. |
+| C1, C2 | The merge dialog wraps long unbroken names; the header rename box fills the header and Esc leaves a tight focus ring. |
+| C4 | A pasted folder name over 100 characters shows the "up to 100 characters" status (paste event fallback). |
+| C5 | Esc on a just-made empty folder's name removes it; with rows in it, Esc keeps the default name (UI-32). |
+| C6 | Checked: a pointer drag's "Moved N items to ..." stays in the status line (role=status) well past 1.5 s. Could not reproduce a blank; test added, no fix. |
+
+### Automated
+`BASE_URL=http://127.0.0.1:8790/ uv run pytest`: **1317 passed** (1301 + 16 new).
+
+### Fuzzer
+`--seeds 1-6 --actions 150 --wave 1`: **6 of 6 clean**, 906 actions, 0 harness timeouts.
 
 ## Follow-ups
 
