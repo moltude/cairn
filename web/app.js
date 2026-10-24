@@ -26,6 +26,7 @@ let MOVE = null;                       // More ▸ Move to… list state
 let SAVED = null;                      // {home, names, edits} as loaded or at the last export (Start over)
 let PENDING_MERGE = null;              // a taken name, waiting for its deferred render to offer the merge
 const NEW_TARGET = "\u0000new";        // drop key of the rail's "+ New folder"
+const NO_MATCH = "\u0000none", NO_ICONS = "\u0000none";   // _key of "Nothing matches" / "No waypoints"
 
 const $ = s => document.querySelector(s);
 /* A "ready" line ("Moved 2 items to …") is a receipt, not state: it clears itself
@@ -43,13 +44,87 @@ const setStatus = (t, cls = "") => {
 /** An error that a later success has made stale ("A folder needs a name."). */
 const clearError = () => { if ($("#status").classList.contains("err")) setStatus(""); };
 
-/* Keyboard focus across re-renders. The rail and the list are rebuilt with
-   innerHTML, which drops focus to <body>. Every control they rebuild carries a
-   data-fk key that is stable across renders (row uid / folder key / facet key
-   plus which control); capture it BEFORE rebuilding -- once the node is gone,
-   activeElement is already <body> -- and focus the same key afterwards. A row's
-   note button and its open editor share one key, so Save/Cancel land back on
-   the note button. A key that no longer exists is a silent no-op. */
+/* ---------- keyed, in-place rendering ----------
+   The rail and the list are not rebuilt. Each render builds what it wants with
+   the builders below, off screen, then patches the live nodes to match: a
+   node that is still wanted is KEPT and only its attributes, text, form state
+   and on* handlers change (morph); nodes are added, moved and removed so the
+   order matches (place). Rows are keyed by their item object, folder sections
+   by their group object -- both stable: edit() changes items in place and
+   applyLayout() reuses groups and items, a new file brings new ones -- and
+   rail entries by their facet key. So an edit, move, rename, sort or filter
+   leaves the control under the pointer, and the one with focus, where it is.
+   A row whose markup is unchanged since the last render isn't touched at all.
+   Two rules for every builder, since its output may end up only as a pattern
+   for the live twin:
+   - an on* handler must not close over the element it is built on (it is
+     copied onto the live twin): use e.currentTarget / e.target;
+   - an addEventListener listener stays with the node it was added to (the
+     fresh twin's is dropped when the live node is kept), so it may close only
+     over what is the same for that node's whole life: its item, its folder key. */
+const HANDLERS = ["onclick", "onchange", "oninput", "onkeydown"];
+/* Attributes a builder never writes, set at run time: the name field's value
+   at focus (wireTextField) and the tip's link (showTip). A morph leaves them. */
+const RUNTIME_ATTRS = new Set(["data-orig", "aria-describedby"]);
+const isField = n => n.nodeName === "INPUT" || n.nodeName === "TEXTAREA";
+/** Whether live node a can be patched into fresh node b (else b replaces it). */
+const sameNode = (a, b) => a.nodeType === b.nodeType && a.nodeName === b.nodeName &&
+  a._key === b._key && (!isField(a) || a.className === b.className);
+/** Make live node a look like fresh node b, keeping a and every child of a
+    that has a twin in b at the same place. */
+function morph(a, b) {
+  if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+  for (const { name } of [...a.attributes])
+    if (!b.hasAttribute(name) && !RUNTIME_ATTRS.has(name)) a.removeAttribute(name);
+  for (const { name, value, namespaceURI } of b.attributes)
+    if (a.getAttribute(name) !== value) namespaceURI ? a.setAttributeNS(namespaceURI, name, value) : a.setAttribute(name, value);
+  for (const h of HANDLERS) if (a[h] !== b[h]) a[h] = b[h];
+  if (isField(a) && a.value !== b.value) {
+    a.value = b.value;
+    // Changed under the focus: its value-at-focus follows (wireTextField's Esc and change).
+    if (a === document.activeElement && "orig" in a.dataset) a.dataset.orig = b.value;
+  }
+  if (a.nodeName === "INPUT") {
+    if (a.checked !== b.checked) a.checked = b.checked;
+    if (a.indeterminate !== b.indeterminate) a.indeterminate = b.indeterminate;
+  }
+  if (b._own) return;              // its children are placed by their own pass (a tbody's rows)
+  const bs = [...b.childNodes];
+  bs.forEach((y, i) => {
+    const x = a.childNodes[i];
+    if (!x) a.appendChild(y);
+    else if (sameNode(x, y)) morph(x, y);
+    else a.replaceChild(y, x);
+  });
+  while (a.childNodes.length > bs.length) a.lastChild.remove();
+}
+/** The live node `old`, patched to look like `fresh`; or `fresh` when there is
+    none or it can't be. */
+function adopt(old, fresh) {
+  if (old && sameNode(old, fresh)) { morph(old, fresh); return old; }
+  return fresh;
+}
+/** Make host's children exactly `want`, in order, moving only the nodes that
+    are out of place (each move of a node takes focus out of it). */
+function place(host, want) {
+  const keep = new Set(want);
+  for (const n of [...host.childNodes]) if (!keep.has(n)) n.remove();
+  want.forEach((n, i) => { const at = host.childNodes[i]; if (at !== n) host.insertBefore(n, at || null); });
+}
+/** Live entries of host by their _key. */
+const byKey = host => new Map([...host.children].filter(c => c._key !== undefined).map(c => [c._key, c]));
+
+/* Focus across a patch. The node with focus is normally kept and keeps it.
+   Two cases lose it, and are put back here: a kept node that had to move (a
+   rename that reorders a sorted folder, a folder rename that reorders the
+   folders) -- focus it again; and a control replaced by design by another
+   with the same data-fk key (row uid / folder key / facet key plus which
+   control): a row's note button and its open editor share one, so
+   Save/Cancel land back on the note button; a folder's name button and its
+   name field share one. A key that no longer exists is a silent no-op.
+   PATCHING is set while the DOM changes: the focused folder-name field,
+   moved or replaced by a patch, fires a blur that isn't the user leaving it
+   (wireFolderName). */
 const focusedKey = () => document.activeElement?.dataset?.fk || null;
 const fkEl = k => [...document.querySelectorAll("[data-fk]")].find(e => e.dataset.fk === k) || null;
 const focusFk = k => fkEl(k)?.focus({ preventScroll: true });
@@ -57,12 +132,24 @@ function refocus(k) {
   if (!k || focusedKey() === k) return;
   focusFk(k);
 }
+let PATCHING = false;
+function patch(fn) {
+  const a = document.activeElement, k = focusedKey();
+  PATCHING = true;
+  try { fn(); } finally { PATCHING = false; }
+  if (document.activeElement === a) return;
+  if (a && a !== document.body && a.isConnected) a.focus({ preventScroll: true });
+  else refocus(k);
+}
 
 /* A render that follows leaving a field (Tab, or a click elsewhere) runs on
-   the next task, once focus has landed, so the control being focused isn't
-   rebuilt under it. With a mouse button down it waits for the release: a
-   rebuild between a button's pointerdown and pointerup replaces the button,
-   and the click is lost. Queued from pointerup, it runs after that click. */
+   the next task, once focus has landed. With a mouse button down it waits for
+   the release. A patch keeps the button being pressed, but not where it is: a
+   folder rename re-sorts the folders, a row rename re-sorts a sorted folder,
+   and the button moves out from under the pointer between pointerdown and
+   pointerup, so the click is lost; and a taken name's merge offer, opened
+   mid-press, would take the click itself. Queued from pointerup, it runs
+   after that click. */
 let POINTER_HELD = false, FLUSH_T = null;
 const DEFERRED = [];
 function deferRender(fn) {
@@ -444,8 +531,8 @@ function renderEdit() {
   renderFolders();
 }
 
-function renderRail() {
-  const fk = focusedKey();
+function renderRail() { patch(patchRail); }
+function patchRail() {
   // Type: "All", then each kind the map has (Areas, Lines, Waypoints: alphabetical,
   // fixed in index.html) with its count. A kind with none is hidden, unless it is
   // the filter in use (so it can be seen and cleared).
@@ -459,7 +546,8 @@ function renderRail() {
   syncTypeFacet();
 
   // Folders: "All" first, then each folder with its item count.
-  const fl = $("#folder-facets"); rebuild(fl);
+  const fl = $("#folder-facets"), liveFolders = byKey(fl), wantFolders = [];
+  const put = el => wantFolders.push(adopt(liveFolders.get(el._key), el));
   const facetBtn = (label, count, key, italic) => {
     const fkey = "folder|" + (key === null ? "\u0000all" : key);
     if (key !== null && naming(key, "rail")) {
@@ -468,7 +556,7 @@ function renderRail() {
       d.className = "facet-btn naming";
       d.innerHTML = `${folderNameInput(fkey)}<span class="facet-count">${count}</span>`;
       wireFolderName(d.querySelector("input"));
-      fl.appendChild(d);
+      d._key = fkey; put(d);
       return;
     }
     const b = document.createElement("button");
@@ -496,10 +584,10 @@ function renderRail() {
       x.innerHTML = UI_ICON.close;
       x.onclick = e => { e.stopPropagation(); removeEmptyFolder(key); };
       row.append(b, x);
-      fl.appendChild(row);
+      row._key = fkey; put(row);
       return;
     }
-    fl.appendChild(b);
+    b._key = fkey; put(b);
   };
   facetBtn("All", "", null, false);
   DATA.groups.forEach(g => facetBtn(g.name, g.items.length, g.key, isUnorganized(g)));
@@ -511,7 +599,8 @@ function renderRail() {
   nf.dataset.fk = "newfolder";
   nf.dataset.drop = NEW_TARGET;   // set as a property: an HTML parser turns the NUL into U+FFFD
   nf.onclick = newFolderClicked;
-  fl.appendChild(nf);
+  nf._key = "newfolder"; put(nf);
+  place(fl, wantFolders);
 
   // Icons present in the map: "Default pin" first (owner, 2026-10-24), then the
   // icons alphabetically (natural, any case).
@@ -523,8 +612,8 @@ function renderRail() {
   const keys = [...new Set([...counts.keys(), ...FILTERS.icons])].filter(k => k !== DEFAULT_PIN)
     .sort((a, b) => NAME_ORDER.compare(a, b));
   if (counts.has(DEFAULT_PIN) || FILTERS.attention) keys.unshift(DEFAULT_PIN);
-  const il = $("#icon-facets"); il.innerHTML = "";
-  keys.forEach(k => {
+  const il = $("#icon-facets"), liveIcons = byKey(il);
+  const wantIcons = keys.map(k => {
     const def = k === DEFAULT_PIN;
     const lab = document.createElement("label");
     lab.className = "icon-facet" + (def ? " default-pin" : "");
@@ -533,16 +622,22 @@ function renderRail() {
       glyphSVG(def ? "Location" : k, 15) + `<span class="facet-name">${def ? "Default pin" : esc(k)}</span><span class="facet-count">${counts.get(k) || 0}</span>`;
     const box = lab.querySelector("input");
     box.checked = def ? FILTERS.attention : FILTERS.icons.has(k);
-    box.onchange = () => {
-      if (def) FILTERS.attention = box.checked;
-      else box.checked ? FILTERS.icons.add(k) : FILTERS.icons.delete(k);
+    box.onchange = e => {
+      const on = e.target.checked;
+      if (def) FILTERS.attention = on;
+      else on ? FILTERS.icons.add(k) : FILTERS.icons.delete(k);
       renderFolders();
     };
-    il.appendChild(lab);
+    lab._key = k;
+    return adopt(liveIcons.get(k), lab);
   });
-  if (!keys.length) il.innerHTML = `<span class="facet-empty">No waypoints</span>`;
+  if (!keys.length) {
+    const none = document.createElement("span");
+    none.className = "facet-empty"; none.textContent = "No waypoints"; none._key = NO_ICONS;
+    wantIcons.push(adopt(liveIcons.get(NO_ICONS), none));
+  }
+  place(il, wantIcons);
   renderRailHeads();
-  refocus(fk);
 }
 
 function renderChips() {
@@ -578,64 +673,81 @@ function renderFolders() {
   // Selection always follows what's on screen -- if a filter change hides a
   // selected row, it drops out of the selection rather than staying an
   // invisible target for the next bulk edit.
-  const fk = focusedKey();
-  hideTip();                       // its control is about to be replaced
+  hideTip();                       // what it says may have changed with the row
   const shownUids = new Set(shownItems().map(i => i.uid));
   const selectableUids = new Set(selectableItems().map(i => i.uid));
   for (const uid of SEL) if (!selectableUids.has(uid)) SEL.delete(uid);
   if (NOTE_EDIT && !shownUids.has(NOTE_EDIT.uid)) NOTE_EDIT = null;
   renderChips();
+  patch(patchFolders);
+  updateSel();
+  syncUnloadGuard();               // every edit, move and rename redraws the list
+}
 
-  const host = $("#folders"); rebuild(host);
+function patchFolders() {
+  const host = $("#folders"), live = byKey(host);
+  // Rows by item, from every section: a row moved to another folder is moved, not rebuilt.
+  const rows = new Map([...host.querySelectorAll("tr[data-uid]")].map(tr => [tr._key, tr]));
+  const want = [], fill = [];
   DATA.groups.forEach(g => {
     const items = visibleItems(g);
     if (!items.length) {
-      if (!g.items.length && showsEmptyFolders(g)) host.appendChild(emptyFolderSection(g));
+      if (!g.items.length && showsEmptyFolders(g)) want.push(adopt(live.get(g), emptyFolderSection(g)));
       return;
     }
-    const el = document.createElement("section");
-    el.className = "folder";
-    el.setAttribute("aria-label", g.name);
-    const collapsed = COLLAPSED.has(g.key);
-    const sort = SORT.get(g.key) || null;
-    const sub = isUnorganized(g) ? "Not in any folder"
-      : items.length === g.items.length ? `${g.items.length} item${g.items.length === 1 ? "" : "s"}`
-      : `${items.length} of ${g.items.length} shown`;
-    el.innerHTML = `
-      <div class="folder-head">
-        ${folderTitleHTML(g)}
-        <span class="folder-sub">${esc(sub)}</span>
-        <button type="button" class="collapse" data-fk="collapse|${esc(g.key)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
-      </div>
-      <div class="table-wrap${collapsed ? " hidden" : ""}"><table>
-        <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
-        <thead><tr>
-          <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
-          <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}" aria-label="Sort ${esc(g.name)} by name">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
-        </tr></thead><tbody></tbody></table></div>`;
-    const tb = el.querySelector("tbody");
-    items.forEach(it => tb.appendChild(row(it)));
-    const fbox = el.querySelector(".folder-all");
-    const nsel = items.filter(i => SEL.has(i.uid)).length;
-    fbox.checked = nsel === items.length;
-    fbox.indeterminate = nsel > 0 && nsel < items.length;
-    fbox.onchange = e => {
-      items.forEach(i => e.target.checked ? SEL.add(i.uid) : SEL.delete(i.uid));
-      renderFolders();
-    };
-    wireFolderTitle(el, g);
-    el.querySelector(".sort-btn").onclick = () => toggleSort(g.key);
-    el.querySelector(".collapse").onclick = () => {
-      COLLAPSED.has(g.key) ? COLLAPSED.delete(g.key) : COLLAPSED.add(g.key);
-      renderFolders();
-    };
-    host.appendChild(el);
+    const el = adopt(live.get(g), folderSection(g, items));
+    want.push(el);
+    fill.push([el.querySelector("tbody"), items]);
   });
-  if (!host.children.length)
-    host.innerHTML = `<div class="note">Nothing matches these filters.</div>`;
-  updateSel();
-  refocus(fk);
-  syncUnloadGuard();               // every edit, move and rename redraws the list
+  if (!want.length) {
+    const none = document.createElement("div");
+    none.className = "note"; none.textContent = "Nothing matches these filters."; none._key = NO_MATCH;
+    want.push(adopt(live.get(NO_MATCH), none));
+  }
+  place(host, want);
+  fill.forEach(([tb, items]) => place(tb, items.map(it => row(it, rows.get(it)))));
+}
+
+/** A folder's section: its header and an empty tbody (patchFolders places
+    the rows). */
+function folderSection(g, items) {
+  const el = document.createElement("section");
+  el.className = "folder";
+  el.setAttribute("aria-label", g.name);
+  el._key = g;
+  const collapsed = COLLAPSED.has(g.key);
+  const sort = SORT.get(g.key) || null;
+  const sub = isUnorganized(g) ? "Not in any folder"
+    : items.length === g.items.length ? `${g.items.length} item${g.items.length === 1 ? "" : "s"}`
+    : `${items.length} of ${g.items.length} shown`;
+  el.innerHTML = `
+    <div class="folder-head">
+      ${folderTitleHTML(g)}
+      <span class="folder-sub">${esc(sub)}</span>
+      <button type="button" class="collapse" data-fk="collapse|${esc(g.key)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
+    </div>
+    <div class="table-wrap${collapsed ? " hidden" : ""}"><table>
+      <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
+      <thead><tr>
+        <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
+        <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}" aria-label="Sort ${esc(g.name)} by name">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
+      </tr></thead><tbody></tbody></table></div>`;
+  el.querySelector("tbody")._own = true;
+  const fbox = el.querySelector(".folder-all");
+  const nsel = items.filter(i => SEL.has(i.uid)).length;
+  fbox.checked = nsel === items.length;
+  fbox.indeterminate = nsel > 0 && nsel < items.length;
+  fbox.onchange = e => {
+    items.forEach(i => e.target.checked ? SEL.add(i.uid) : SEL.delete(i.uid));
+    renderFolders();
+  };
+  wireFolderTitle(el, g);
+  el.querySelector(".sort-btn").onclick = () => toggleSort(g.key);
+  el.querySelector(".collapse").onclick = () => {
+    COLLAPSED.has(g.key) ? COLLAPSED.delete(g.key) : COLLAPSED.add(g.key);
+    renderFolders();
+  };
+  return el;
 }
 
 /** An empty folder shows as a header only (so it can be renamed there), when
@@ -646,6 +758,7 @@ function emptyFolderSection(g) {
   const el = document.createElement("section");
   el.className = "folder empty-folder";
   el.setAttribute("aria-label", g.name);
+  el._key = g;
   el.innerHTML = `<div class="folder-head">
       ${folderTitleHTML(g)}
       <span class="folder-sub">Empty</span></div>`;
@@ -846,23 +959,20 @@ function fillCaution(it) {
 const cautionMark = (fk, text, cls = "") =>
   `<span class="caution${cls}" tabindex="0" role="img" data-fk="${fk}" aria-label="${esc(text)}">${UI_ICON.caution}</span>`;
 
-function row(it) {
-  const tr = document.createElement("tr");
-  tr.dataset.uid = it.uid;
+/** The row for item `it`: `old` (its live row, if it has one) when that is
+    still right or can be patched to be, else a new one. */
+function row(it, old = null) {
   const isWp = it.kind === "waypoints";
-  if (it.needs_attention) tr.classList.add("attention");
-  if (SEL.has(it.uid)) tr.classList.add("sel");
-  if (!it.included) tr.classList.add("excluded");
-  if (POP && POP.uid === it.uid) tr.classList.add("editing");
-  if (DRAG && DRAG.active && DRAG.uidSet.has(it.uid)) tr.classList.add("dragging");
   const noteOpen = NOTE_EDIT && NOTE_EDIT.uid === it.uid;
-  if (noteOpen) tr.classList.add("note-open");
+  const cls = [it.needs_attention && "attention", SEL.has(it.uid) && "sel", !it.included && "excluded",
+    POP && POP.uid === it.uid && "editing", DRAG && DRAG.active && DRAG.uidSet.has(it.uid) && "dragging",
+    noteOpen && "note-open"].filter(Boolean).join(" ");
   const cname = colorName(it.color);
   const iconLabel = it.needs_attention ? "Default pin" : it.icon;
   const fk = esc(it.uid) + "|";
   const caution = noteCaution(it);
   const fillMark = fillCaution(it);
-  tr.innerHTML = `
+  const html = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
@@ -876,13 +986,22 @@ function row(it) {
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
       : `<div class="icon-cell"><button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>${fillMark ? cautionMark(`${fk}fillcaution`, fillMark, " fill-caution") : ""}</div>`}</td>`;
+  // Unchanged since it was last drawn: leave it be. (Its classes are checked
+  // too: openPop, a tick and a drag set some directly.)
+  if (old && old._html === html && old.className === cls) return old;
+  const tr = document.createElement("tr");
+  tr.dataset.uid = it.uid;
+  if (cls) tr.className = cls;
+  tr.innerHTML = html;
+  tr._key = it;
   const selBox = tr.querySelector(".sel-box");
   selBox.onclick = e => {
     if (e.shiftKey && ANCHOR && ANCHOR !== it.uid) {
       // Range-select between the anchor and this row, in the order rows are
       // currently displayed -- so it follows the active filter and sort rather
-      // than the underlying file order.
-      e.preventDefault();
+      // than the underlying file order. Not prevented: the box keeps the
+      // state its click gave it, which is `on` (a prevented click would put
+      // the live box back after the render has set it).
       const order = selectableItems().map(i => i.uid);
       const a = order.indexOf(ANCHOR), b = order.indexOf(it.uid);
       if (a !== -1 && b !== -1) {
@@ -892,10 +1011,12 @@ function row(it) {
         renderFolders();
         return;
       }
+      e.preventDefault();          // the anchor isn't on screen: the click does nothing but move it
     }
     ANCHOR = it.uid;
   };
   selBox.onchange = e => {
+    const tr = e.target.closest("tr");
     e.target.checked ? SEL.add(it.uid) : SEL.delete(it.uid);
     tr.classList.toggle("sel", e.target.checked); updateSel();
     syncFolderBox(tr);
@@ -905,9 +1026,11 @@ function row(it) {
   else tr.querySelector(".note-btn").onclick = () => openNote(it);
   const chip = tr.querySelector(".exc-chip");
   if (chip) chip.onclick = () => edit(it, { included: true });
-  const mark = tr.querySelector(".icon-btn, .line-btn");
-  mark.onclick = e => { e.stopPropagation(); openPop(it, mark); };
-  return tr;
+  tr.querySelector(".icon-btn, .line-btn").onclick = e => { e.stopPropagation(); openPop(it, e.currentTarget); };
+  if (!old) { tr._html = html; return tr; }
+  morph(old, tr);
+  old._html = html;
+  return old;
 }
 
 /** Keep the folder's header checkbox in step after a single-row toggle
@@ -1178,7 +1301,7 @@ function syncIconGrid(grid, selected) {
 function openPop(it, anchor) {
   closeMenu(); closeBulk();
   POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor,
-          fk: anchor.dataset.fk, style: it.style, weight: it.weight, fill: null };
+          style: it.style, weight: it.weight, fill: null };
   const isWp = it.kind === "waypoints";
   const isLine = it.kind === "tracks";
   const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
@@ -1231,14 +1354,9 @@ function openPop(it, anchor) {
 }
 
 function popItem() { return POP && allItems().find(i => i.uid === POP.uid); }
-/** The marker the popover belongs to. A re-render while it is open (one that
-    waited for the click that opened it, say) replaces the row: find the new
-    marker by its focus key. */
-function popAnchor() {
-  if (!POP) return null;
-  if (!POP.anchor.isConnected) POP.anchor = fkEl(POP.fk) || POP.anchor;
-  return POP.anchor.isConnected ? POP.anchor : null;
-}
+/** The marker the popover belongs to: a re-render while it is open keeps
+    it, unless its row has left the screen. */
+const popAnchor = () => POP && POP.anchor.isConnected ? POP.anchor : null;
 
 function drawPop() {
   const it = popItem(); if (!it) return;
@@ -1673,9 +1791,9 @@ function wireFolderName(inp) {
     if (e.key === "Enter") { e.preventDefault(); finishRename(key, true); }
     else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finishRename(key, false); }
   });
-  // A re-render that replaces the input is not the user leaving it (Chrome
-  // fires blur on a focused element as it is removed).
-  inp.addEventListener("blur", () => { if (!REBUILDING && inp.isConnected) finishRename(key, true, { defer: true }); });
+  // A patch that moves or replaces the input is not the user leaving it
+  // (Chrome fires blur on a focused element as it is moved or removed).
+  inp.addEventListener("blur", () => { if (!PATCHING && inp.isConnected) finishRename(key, true, { defer: true }); });
 }
 
 function finishRename(key, save, { defer = false } = {}) {
@@ -1730,15 +1848,6 @@ function offerPendingMerge() {
   if (!m || !DATA || document.body.dataset.stage !== "edit" || CONFIRM) return;
   const src = groupByKey(m.key), dst = groupByKey(m.dup.key);
   if (src && dst) offerMerge(src, { key: dst.key, name: dst.name }, m.where, m.draft);
-}
-
-/** Empty a host before re-rendering it. Removing a focused folder-name field
-    fires its blur; REBUILDING tells that apart from the user leaving it, so a
-    re-render while a name is open keeps it open (RENAME draws it again). */
-let REBUILDING = false;
-function rebuild(host) {
-  REBUILDING = true;
-  try { host.innerHTML = ""; } finally { REBUILDING = false; }
 }
 
 /** The name is taken: offer to move this folder's items into that one.
