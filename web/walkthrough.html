@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- Hand-written static page (no JS). Screenshots and the numbers below come from
      scripts/make_walkthrough_shots.py run against tests/fixtures/bitterroots/Bitterroots__Complete_.json;
-     the raw numbers are saved in web/walkthrough/numbers.json. Re-run that script if the UI changes. -->
+     the raw numbers are saved in web/walkthrough/numbers.json. Re-run that script if the UI changes
+     (BASE_URL=http://127.0.0.1:<port>/ for a dev server on another port). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -24,15 +25,15 @@
   <main class="doc-main">
     <span class="kicker">Walkthrough</span>
     <h1>What Cairn changes between CalTopo and onX</h1>
-    <p class="wt-lede">This page follows one real map, the Bitterroots sample that ships with Cairn's tests, from a CalTopo
-      export to a set of onX-ready files. Every Cairn screenshot below is the actual app, no mock-ups. The map has
+    <p class="wt-lede">This page follows one real map, the Bitterroots sample from Cairn's tests, from a CalTopo
+      export to onX-ready files. Every screenshot is the real app. The map has
       <strong>177 markups in 10 folders</strong>: 68 waypoints, 92 lines and 17 areas.</p>
 
     <ul class="wt-stats" aria-label="The map in numbers">
       <li><b>68</b><span>waypoints that a plain CalTopo GPX or KML export would hand to onX with no icon</span></li>
       <li><b>43</b><span>of those get a specific onX icon from Cairn right away, across 12 different icons</span></li>
       <li><b>25</b><span>fall back to the default pin and are flagged for you to review</span></li>
-      <li><b>10</b><span>CalTopo folders, each turned into its own numbered import</span></li>
+      <li><b>10</b><span>CalTopo folders, each its own numbered import</span></li>
     </ul>
     <p class="wt-note">Computed by loading the fixture in the real app and reading its data
       (<code>scripts/make_walkthrough_shots.py</code>). "Would arrive with no icon" is the project's documented
@@ -41,9 +42,10 @@
     <section class="wt-step" id="before">
       <span class="step-tag">Before</span>
       <h2>What the plain export gives onX</h2>
-      <p>onX Backcountry only imports GPX and KML. CalTopo's own export page says those two formats lose line and marker
-        styles and folder organization. The one CalTopo export that keeps everything, GeoJSON, is the one onX can't open. Cairn reads GeoJSON, KML and GPX, so you can start from any of them (GeoJSON keeps the most).
-        A CalTopo GPX carries names, coordinates, notes and Garmin line-color names, and nothing onX can use for icons or folders.</p>
+      <p>onX Backcountry imports only GPX and KML. CalTopo's own export page says those two formats lose line and marker
+        styles and folder organization. The one CalTopo export that keeps everything, GeoJSON, is the one onX can't open.
+        Cairn reads all three, so you can start from any of them (GeoJSON keeps the most). A CalTopo GPX carries names,
+        coordinates, notes and Garmin line-color names, and nothing onX can use for icons or folders.</p>
       <div class="tbl-wrap"><table class="tbl wt-cmp">
         <thead><tr><th>Carried by</th><th>CalTopo GPX / KML</th><th>CalTopo GeoJSON, through Cairn</th></tr></thead>
         <tbody>
@@ -72,20 +74,20 @@
     <section class="wt-step" id="found">
       <span class="step-tag">What Cairn finds</span>
       <h2>Your folders and icons survive the trip</h2>
-      <p>The sample's 10 folders appear on the left with their counts, and every waypoint shows its onX icon name next to a
-        drawing of the marker. Cairn matched 43 of the 68 waypoints to a specific icon, such as Parking (10), Climbing (9), Summit (6) and
-        Shelter (4), from the CalTopo symbol or from words in the name. Hover any marker to see why it was chosen.</p>
+      <p>The 10 folders are on the left with their counts, and every waypoint shows its onX icon name next to a drawing
+        of the marker. Cairn matched 43 of the 68 waypoints to a specific icon, such as Parking (10), Climbing (9), Summit (6)
+        and Shelter (4), from the CalTopo symbol or words in the name. Hover a marker to see why it was chosen.</p>
       <figure class="wt-fig"><img src="walkthrough/02-loaded.webp" width="1440" height="900" alt="The loaded Bitterroots map with a folder list on the left and a table of waypoints with icons">
-        <figcaption>The Bitterroots map loaded: folders and icon filters on the left, every item editable on the right.</figcaption></figure>
+        <figcaption>The map loaded: folders and filters on the left, every item editable on the right.</figcaption></figure>
     </section>
 
     <section class="wt-step" id="flagged">
       <span class="step-tag">What Cairn flags</span>
       <h2>25 waypoints need a decision</h2>
       <p>When the CalTopo symbol is a plain <code>point</code> and the name gives no clue, Cairn doesn't guess. It marks the
-        waypoint <em>Default pin</em>. Here that is 22 plain points ("El Capitan", "Talus field", "Bridge") and 3 flags
-        that Cairn's mapping deliberately sends to the default pin. Ticking <strong>Default pin</strong> in the Icon list
-        shows only those.</p>
+        waypoint <em>Default pin</em>. Here that's 22 plain points ("El Capitan", "Talus field", "Bridge") and 3 flags
+        that Cairn's mapping sends to the default pin on purpose. Tick <strong>Default pin</strong> in the Icon list to
+        see only those.</p>
       <figure class="wt-fig"><img src="walkthrough/03-default-pins.webp" width="1440" height="900" alt="The list filtered to Default pin waypoints, 25 shown">
         <figcaption>Filtered to the 25 flagged waypoints. Many are fine as they are, like mile markers.</figcaption></figure>
     </section>
@@ -93,25 +95,38 @@
     <section class="wt-step" id="fix">
       <span class="step-tag">What you fix</span>
       <h2>One at a time, or many at once</h2>
-      <p>Click a marker to change that one item's icon and color. Pick from onX's 95 icons or its 10 waypoint colors.</p>
+      <p>Click a marker to change that item's icon and color: onX's 95 icons and 10 waypoint colors.</p>
       <figure class="wt-fig"><img src="walkthrough/04-popover.webp" width="1440" height="900" alt="The icon and color popover open on El Capitan, showing the color palette and icon grid">
         <figcaption>The icon and color popover for a single waypoint.</figcaption></figure>
       <p>For a batch, search, tick the rows and choose <strong>Icon &amp; color…</strong>. The dialog shows each item now
-        and after. Here the three Sheafman ridge flags become Summits in one step, which takes the map from 25 flagged
-        waypoints down to 22.</p>
+        and after. Here the three Sheafman ridge flags become Summits in one step, taking the map from 25 flagged
+        waypoints to 22.</p>
       <figure class="wt-fig"><img src="walkthrough/05-bulk-dialog.webp" width="1440" height="900" alt="The multi-item dialog changing three Sheafman waypoints from the default pin to Summit">
-        <figcaption>The same change for several items: a before and after for each one, then Apply.</figcaption></figure>
+        <figcaption>One change for several items: before and after for each, then Save.</figcaption></figure>
+    </section>
+
+    <section class="wt-step" id="folders">
+      <span class="step-tag">Your folders</span>
+      <h2>Sort items into folders</h2>
+      <p>Each folder becomes one onX folder, so set them up here. Drag rows onto a folder in the <strong>Folders</strong>
+        list; tick several first to move them together. Here the six Sheafman rows go onto <strong>+ New folder</strong>.</p>
+      <figure class="wt-fig"><img src="walkthrough/06-folders-drag.webp" width="1440" height="900" alt="Six ticked Sheafman rows being dragged onto + New folder in the Folders list">
+        <figcaption>Dragging six rows onto + New folder.</figcaption></figure>
+      <p>Type the new folder's name and press Enter. Click a folder's name to rename it; a name that's taken offers to
+        merge the two. <strong>More → Move to…</strong> does the same from the keyboard.</p>
+      <figure class="wt-fig"><img src="walkthrough/07-folders-named.webp" width="1440" height="900" alt="The new folder, Sheafman day trip, with its six items, at the end of the Folders list">
+        <figcaption>The new folder, named. Sheafman ridge keeps its other 3 items.</figcaption></figure>
     </section>
 
     <section class="wt-step" id="import">
       <span class="step-tag">What you import</span>
       <h2>Ten imports, one per folder</h2>
-      <p>onX makes one folder per import and names it by date, so Cairn gives you one set of files per CalTopo
-        folder: a box with its name, its files and a Download button. Import each folder's files together, tick the
-        new-folder box, and rename the folder; <code>instructions.txt</code> in the zip says the same and lists every
-        item. Lines go out as GPX tracks and areas as onX areas in GPX.</p>
-      <figure class="wt-fig"><img src="walkthrough/06-export.webp" width="1440" height="900" alt="The export screen: Download all, then one box per folder with its name, its files and a Download button">
-        <figcaption>The export screen. Download all in one zip, or one folder at a time.</figcaption></figure>
+      <p>onX makes one folder per import and names it by date, so Cairn gives you one set of files per folder: a box
+        with its name, its files and a Download button. Import each folder's files together, tick the new-folder box,
+        and rename the folder. <code>instructions.txt</code> in the zip says the same and lists every item. Lines go out
+        as GPX tracks, areas as onX areas in GPX.</p>
+      <figure class="wt-fig"><img src="walkthrough/08-export.webp" width="1440" height="900" alt="The export screen: Download all, then one box per folder with its name, its files and a Download button">
+        <figcaption>The export screen (the map as loaded, 10 folders). Download all in one zip, or one folder at a time.</figcaption></figure>
       <div class="wt-pair">
         <div class="wt-ph"><strong>onX screenshot needed</strong><b>The import dialog with a Cairn batch</b>
           <span>See docs/research/ONX_REIMPORT_AND_SHARING_2026-10-22.md.</span></div>
