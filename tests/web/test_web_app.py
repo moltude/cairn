@@ -3090,6 +3090,18 @@ def test_cancel_on_a_new_folders_taken_name_reopens_its_name(loaded: Page):
     inp = page.locator("#folder-facets .folder-name-in")
     expect(inp).to_be_focused()
     expect(inp).to_have_value("Blodgett")
+    # Leaving it unchanged keeps "New folder" and doesn't ask again (else
+    # Cancel, reopen, leave, ask... never ends; the fuzzer found it via Export).
+    page.click("#export")
+    expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
+    expect(page.locator("#confirm")).to_be_hidden()
+    assert _layout(page)[-1] == ("New folder", 1)
+    page.click("#back")
+    _drag(page, _first_row(page, "New folder").locator(".note-btn"), page.locator(".new-folder"))
+    page.keyboard.type("Blodgett")
+    page.keyboard.press("Enter")
+    page.keyboard.press("Escape")
+    expect(inp).to_have_value("Blodgett")
     page.keyboard.press("ControlOrMeta+a")
     page.keyboard.type("Kayaks")
     page.keyboard.press("Enter")

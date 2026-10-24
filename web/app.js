@@ -20,7 +20,7 @@ let BULK = null;                       // several-items dialog state
 /* Folders (UI-32). The bridge owns membership and names (ENG-07); after each
    move, rename or merge DATA.groups is rebuilt from the layout it returns,
    keeping the same JS item objects (they carry the unexported edits). */
-let RENAME = null;                     // {key, draft, where: "head"|"rail"} -- the one folder name being edited
+let RENAME = null;                     // {key, draft, where: "head"|"rail", declined?} -- the one folder name being edited
 let DRAG = null;                       // row drag in progress (pointer events)
 let MOVE = null;                       // More ▸ Move to… list state
 let LOADED = null;                     // {home: uid -> folder key, names: key -> name} as loaded (Start over)
@@ -1226,10 +1226,10 @@ function moveTo(uids, key) {
   return res;
 }
 
-function startRename(key, where, draft = null) {
+function startRename(key, where, draft = null, declined = null) {
   const g = groupByKey(key); if (!g) return;
   clearError();
-  RENAME = { key, draft: draft ?? g.name, where };
+  RENAME = { key, draft: draft ?? g.name, where, declined };
   if (where === "rail") RAIL_FOLDED.delete("folders");
   where === "head" ? renderFolders() : renderRail();
   focusRename();
@@ -1265,10 +1265,13 @@ function wireFolderName(inp) {
 
 function finishRename(key, save, { defer = false } = {}) {
   if (!RENAME || RENAME.key !== key || !DATA) return;
-  const { draft, where } = RENAME;
+  const { draft, where, declined } = RENAME;
   RENAME = null;
   const g = groupByKey(key);
   let reopen = false, failed = false;
+  // Left unchanged after Cancel on its merge offer: keep the name it has,
+  // don't ask again (or Cancel, reopen, leave, ask... would never end).
+  if (declined && draft.trim().toLowerCase() === declined.toLowerCase()) save = false;
   if (save && g) {
     const name = draft.trim();
     if (!name) {
@@ -1329,7 +1332,7 @@ function rebuild(host) {
 function offerMerge(src, dup, where, draft = null) {
   const ret = fkEl(where === "head" ? "fname|" + src.key : "folder|" + src.key);
   const cancel = where === "rail"
-    ? () => { closeConfirm(false); startRename(src.key, "rail", draft); }
+    ? () => { closeConfirm(false); startRename(src.key, "rail", draft, draft); }
     : () => closeConfirm();
   openConfirm({
     title: `“${dup.name}” already exists`,
