@@ -4128,3 +4128,32 @@ def test_a_tall_note_tip_ends_on_a_whole_line_and_says_there_is_more(loaded: Pag
     page.locator(f'tr[data-uid="{uid}"] .note-btn').hover()
     expect(_tip(page)).to_be_visible()
     assert "scrolls" not in (_tip(page).get_attribute("class") or "")
+
+
+def test_rail_counts_share_one_right_edge_even_for_an_empty_folder(fresh_page: Page, tmp_path):
+    from tests.hardening_maps import make_map
+    page = fresh_page
+    _wide(page)
+    f = tmp_path / "e.json"
+    f.write_text(make_map(3, seed=2, empty=1, names=["Empty one", "B", "C"]))
+    page.set_input_files("#file", str(f))
+    page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
+    edges = page.locator("#folder-facets .facet-count, #type-filter .facet-count").evaluate_all(
+        "els => els.filter(e => e.textContent && e.offsetWidth).map(e => Math.round(e.getBoundingClientRect().right))")
+    assert len(edges) >= 6 and len(set(edges)) == 1, edges
+    assert page.locator("#folder-facets .facet-row.empty").count() == 1
+
+
+def test_the_rails_last_row_clears_the_footer_when_scrolled_to_the_end(loaded: Page):
+    page = loaded
+    page.set_viewport_size({"width": 1280, "height": 560})
+    page.evaluate("document.querySelector('.rail').scrollTop = 1e6")
+    gap = page.evaluate("""document.querySelector('.rail-foot').getBoundingClientRect().top
+        - [...document.querySelectorAll('#icon-facets .icon-facet')].pop().getBoundingClientRect().bottom""")
+    assert gap >= 8, gap
+    # Keyboard focus on the last icon filter scrolls it clear of the footer too.
+    page.evaluate("document.querySelector('.rail').scrollTop = 0")
+    page.locator("#icon-facets .icon-facet input").last.focus()
+    gap = page.evaluate("""document.querySelector('.rail-foot').getBoundingClientRect().top
+        - [...document.querySelectorAll('#icon-facets .icon-facet')].pop().getBoundingClientRect().bottom""")
+    assert gap >= 0, gap
