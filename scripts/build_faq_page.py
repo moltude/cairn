@@ -231,9 +231,6 @@ def render(md: str) -> str:
     {"".join(body)}
   </main>
 </div>
-<footer class="site-foot">
-  {site_nav("faq", "Site links")}
-</footer>
 </body>
 </html>
 """

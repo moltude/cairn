@@ -68,7 +68,7 @@ h1,h2,h3{font-weight:700;margin:0}
 
 /* ---------- top bar (drop + done screens) ---------- */
 .topbar{border-bottom:1px solid var(--rule);padding:14px 32px;display:flex;align-items:center;gap:16px;
-  flex-wrap:wrap;background:var(--paper)}
+  flex-wrap:wrap;background:var(--paper);position:sticky;top:0;z-index:40}
 .topbar .status-slot{margin-left:auto}
 body[data-stage=edit] .topbar{display:none}
 .wordmark{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700}
@@ -150,7 +150,8 @@ body[data-stage=edit]{font-size:13px}
 .rail-foot .status{font-size:12px}
 
 .content{flex:999 1 560px;min-width:0;padding:18px 26px 40px;display:flex;flex-direction:column;gap:10px}
-.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;position:sticky;top:0;z-index:25;background:var(--paper);
+  padding:8px 0;margin:-8px 0 0;border-bottom:1px solid var(--rule)}
 .search{flex:1 1 280px;display:flex;align-items:center;gap:8px;background:var(--card);
   border:1px solid var(--control);border-radius:2px;padding:0 12px;min-height:34px}
 .search svg{width:16px;height:16px;flex:none}
@@ -171,7 +172,7 @@ body[data-stage=edit]{font-size:13px}
 .chips .linkbtn{font-size:13px;min-height:24px}
 
 .selbar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--rail);
-  border:1px solid var(--rule);flex-wrap:wrap;position:sticky;top:0;z-index:20}
+  border:1px solid var(--rule);flex-wrap:wrap;position:sticky;top:var(--toolbar-h,52px);z-index:20}
 .selcount{font-style:italic;margin-right:6px;font-variant-numeric:tabular-nums}
 .selbar .push{margin-left:auto;min-height:30px}
 .menu-wrap{position:relative}
@@ -487,8 +488,8 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
   font-weight:400;color:var(--brown);text-decoration:none}
 .doc-toc ul a{font-size:14px;color:var(--ink);text-decoration:none;text-underline-offset:3px}
 .doc-toc a:hover,.doc-toc a:focus-visible{color:var(--link-hover);text-decoration:underline}
-.faq-sec{margin:0 0 44px;scroll-margin-top:16px}
-.faq-q{padding:20px 0 6px;border-bottom:1px dotted var(--rule);scroll-margin-top:16px}
+.faq-sec{margin:0 0 44px;scroll-margin-top:72px}
+.faq-q{padding:20px 0 6px;border-bottom:1px dotted var(--rule);scroll-margin-top:72px}
 .faq-q:last-child{border-bottom:none}
 .faq-q .anchor{position:absolute;left:-22px;color:var(--rule);text-decoration:none;font-weight:400}
 .faq-q h3:hover .anchor,.faq-q .anchor:focus-visible{color:var(--brown)}
@@ -502,13 +503,14 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 
 /* walkthrough */
 .wt-lede{font-size:18px;line-height:1.55}
-.wt-try{margin:10px 0 0}
 .doc .wt-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:28px 0 8px;padding:0;list-style:none}
 .wt-stats li{background:var(--card);border:1px solid var(--rule);padding:14px 16px;margin:0}
 .wt-stats b{display:block;font-size:34px;line-height:1.1;color:var(--green)}
 .wt-stats span{font-size:13px;color:var(--muted);line-height:1.35;display:block;margin-top:4px}
 .wt-note{font-size:13px;color:var(--muted);font-style:italic;margin:6px 0 40px}
-.wt-step{margin:0 0 56px;scroll-margin-top:16px}
+.wt-step{margin:0 0 56px;scroll-margin-top:72px}
+.wt-foot{scroll-margin-top:72px;margin:0 0 24px}
+.wt-lede sup{font-size:.7em;line-height:0}
 .wt-step .step-tag{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--brown)}
 .wt-step h2{border-bottom:none;padding-bottom:0;margin:2px 0 8px;font-size:28px}
 .wt-fig{margin:18px 0 0;background:var(--sheet);border:1px solid var(--rule);box-shadow:var(--shadow)}
@@ -537,8 +539,7 @@ a.plain-link:focus-visible{outline:2px solid var(--link);outline-offset:2px;bord
 a.linkbtn{display:inline-flex;align-items:center;text-decoration:underline}
 .wt-ph{min-width:0}.wt-ph span,.wt-ph b{overflow-wrap:anywhere}
 
-/* ---------- page footer (every page) ---------- */
-.site-foot{padding:24px 32px;text-align:center;font-size:12px;color:var(--muted)}
+/* ---------- site nav ---------- */
 /* The site nav (owner feedback 2026-10-24, UI-38): App · Help · FAQ ·
    Walkthrough · GitHub, the same at the top and the bottom of every page, in
    the kicker style of "EXPORT" (small, letter-spaced capitals in brown). The

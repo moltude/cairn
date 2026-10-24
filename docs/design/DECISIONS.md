@@ -1140,12 +1140,13 @@ Status: decided 2026-10-24 (owner-approved, feedback item 14).
   then.
 - Help says it in one line ("Good to know").
 
-### UI-38 — One site nav, top and bottom; doc pages without head text, on paper
+### UI-38 — One sticky site nav; doc pages without head text, on paper
 Status: decided 2026-10-24 (owner feedback items 13, 15–18). Supersedes UI-27's footer line
 and the doc pages' own top links.
 
 - **One nav, everywhere:** **App · Help · FAQ · Walkthrough · GitHub**, the same links in the
-  same order at the top and the bottom of index.html, faq.html and walkthrough.html. Kicker
+  same order at the top of index.html, faq.html and walkthrough.html (no bottom copy: the top
+  bar is sticky, so the nav is always in reach). Kicker
   style (the "EXPORT" label: 11px, uppercase, letter-spaced, brown) with middots between; the
   current page underlined (App on the app, FAQ on the FAQ, …); hover and keyboard focus
   underline the others. "Back to the app" is now **App**.
@@ -1155,7 +1156,11 @@ and the doc pages' own top links.
   link opens in place, GitHub in a new tab.
 - **Where it sits:** the right end of the top bar on the drop and export screens and on the
   doc pages; on the edit screen, which has no top bar (the rail carries the wordmark), at the
-  right end of the search row, compact; and in the footer of every page.
+  right end of the search row, compact. The top bar (every page, the export screen included)
+  and the edit stage's search row are `position: sticky; top: 0` on a solid paper background
+  with a bottom rule, so content scrolls under them; the selection bar sticks just below the
+  search row. In-page anchors (FAQ TOC, the walkthrough footnote) use `scroll-margin-top` so
+  they land clear of the bar. There is no footer nav (owner, 2026-10-24).
 - **Built once:** `scripts/build_faq_page.py` has `site_nav()` for faq.html; index.html and
   walkthrough.html carry the same markup by hand (no JS includes, CSP). The e2e suite checks
   the three pages' navs agree (labels, targets, the current page).

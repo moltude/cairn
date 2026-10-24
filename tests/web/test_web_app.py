@@ -228,21 +228,21 @@ def _navs(page: Page) -> list:
 
 
 @pytest.mark.parametrize("path", ["index.html", "faq.html", "walkthrough.html"])
-def test_one_site_nav_at_the_top_and_the_bottom_of_every_page(context, path):
+def test_one_site_nav_at_the_top_of_every_page(context, path):
     """Owner feedback 2026-10-24 (UI-38): App · Help · FAQ · Walkthrough ·
-    GitHub, the same at the top and the bottom of every page, the current page
-    marked; no "Back to the app" or other inline duplicates."""
+    GitHub in the sticky top bar of every page, the current page marked; no
+    bottom copy, no "Back to the app" or other inline duplicates."""
     page = context.new_page()
     page.goto(f"{BASE_URL}/{path}")
     navs = _navs(page)
-    assert [n["top"] for n in navs].count(False) == 1          # the footer's
+    assert [n["top"] for n in navs].count(False) == 0          # no footer nav
     assert any(n["top"] for n in navs)
     for n in navs:
         assert n["labels"] == NAV_LINKS, n
         assert n["current"] == [NAV_CURRENT[path]], n
         assert n["hrefs"][0] == "./" and n["hrefs"][2:] == ["faq.html", "walkthrough.html",
                                                            "https://github.com/moltude/cairn"]
-    assert "·" in page.locator("footer.site-foot").inner_text()
+    assert page.locator("footer").count() == 0
     body = page.locator("body").inner_text().lower()
     assert "back to the app" not in body and "read the faq" not in body and "see the walkthrough" not in body
     assert page.locator(".topnav, .doc-foot").count() == 0
@@ -277,7 +277,7 @@ def test_nav_links_use_the_small_caps_kicker_style(context, path):
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(f"{BASE_URL}/{path}")
     links = page.locator("nav.site-nav a:visible, nav.site-nav button:visible")
-    assert links.count() == 10
+    assert links.count() == 5
     kicker = page.evaluate("""() => { const k = document.createElement('span'); k.className = 'kicker';
         document.body.appendChild(k); const c = getComputedStyle(k);
         const r = {color: c.color, tt: c.textTransform}; k.remove(); return r; }""")
@@ -296,8 +296,6 @@ def test_nav_links_use_the_small_caps_kicker_style(context, path):
     page.keyboard.press("Shift+Tab")                                   # keyboard focus (focus-visible)
     assert other.evaluate("e => getComputedStyle(e).textDecorationLine") == "underline"
     _shot(page, f"fb-15-nav-{path.split('.')[0]}-top")
-    page.locator("footer.site-foot").scroll_into_view_if_needed()
-    _shot(page, f"fb-15-nav-{path.split('.')[0]}-bottom")
     page.close()
 
 
@@ -309,18 +307,15 @@ def test_every_help_in_the_app_opens_the_help_dialog(loaded: Page):
     expect(top).to_be_visible()
     expect(page.locator("#topbar")).to_be_hidden()
     _shot(page, "fb-15-nav-edit-stage")
-    for btn in (top.locator(".help-open"), page.locator("#help-link")):
+    for btn in (top.locator(".help-open"),):
         btn.click()
         expect(page.locator("#help")).to_be_visible()
         page.click("#help-close")
         expect(page.locator("#help")).to_be_hidden()
 
 
-def test_footer_help_opens_help_from_the_app(fresh_page: Page):
+def test_top_bar_help_opens_help_from_the_app(fresh_page: Page):
     expect(fresh_page.locator("#help")).to_be_hidden()
-    fresh_page.click("footer.site-foot >> text=Help")
-    expect(fresh_page.locator("#help")).to_be_visible()
-    fresh_page.click("#help-close")
     fresh_page.click("#topbar >> text=Help")
     expect(fresh_page.locator("#help")).to_be_visible()
 
@@ -335,10 +330,10 @@ def test_the_app_chrome_has_only_the_site_nav(fresh_page: Page):
 
 
 @pytest.mark.parametrize("path", ["faq.html", "walkthrough.html"])
-def test_footer_help_on_doc_pages_links_to_the_app_help(context, path):
+def test_top_help_on_doc_pages_links_to_the_app_help(context, path):
     page = context.new_page()
     page.goto(f"{BASE_URL}/{path}")
-    assert page.get_attribute("footer.site-foot >> text=Help", "href") == "./#help"
+    assert page.get_attribute("header.topbar >> text=Help", "href") == "./#help"
     page.close()
 
 
@@ -4912,6 +4907,12 @@ def test_walkthrough_sample_links_are_served_downloads():
     page = urllib.request.urlopen(f"{BASE_URL}/walkthrough.html", timeout=10).read().decode()
     links = _re.findall(r'<a href="(samples/[^"]+)" download>', page)
     assert sorted(links) == sorted(f"samples/{n}" for n in SAMPLES)
+    assert 'href="https://caltopo.com/m/1KLNT" target="_blank" rel="noopener noreferrer">Bitterroots<' in page
+    # the footnote: a superscript link to it, its two source links, a back-link
+    assert 'href="#fn-map"' in page and 'id="fn-map"' in page and 'href="#fnref-map"' in page
+    for url in ("https://mt-adventures.blogspot.com/", "https://www.tenpeaksbeforelunch.com/"):
+        assert f'href="{url}" target="_blank" rel="noopener noreferrer"' in page
+    assert "Nate Bender" not in page and "never leaves" not in page and "177 markups" not in page
     for link in links:
         with urllib.request.urlopen(f"{BASE_URL}/{link}", timeout=10) as r:
             assert r.status == 200 and len(r.read()) > 100_000, link
@@ -4925,3 +4926,49 @@ def test_walkthrough_sample_loads_in_cairn(fresh_page: Page, name: str):
     totals = fresh_page.evaluate("DATA.totals")
     print(name, totals)
     assert totals["items"] == 177, totals  # what the walkthrough says
+
+
+@pytest.mark.parametrize("path", ["index.html", "faq.html", "walkthrough.html"])
+def test_top_bar_is_sticky_and_anchors_clear_it(context, path):
+    """Owner feedback 2026-10-24: the top bar stays put while the page scrolls
+    (solid paper, bottom rule), and in-page anchors land below it."""
+    page = context.new_page()
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(f"{BASE_URL}/{path}")
+    bar = page.locator("header.topbar")
+    st = bar.evaluate("e => { const c = getComputedStyle(e); return {p: c.position, t: c.top, bg: c.backgroundColor, b: c.borderBottomWidth}; }")
+    paper = page.evaluate("getComputedStyle(document.body).backgroundColor")
+    assert st["p"] == "sticky" and st["t"] == "0px" and st["bg"] == paper and st["b"] == "1px", st
+    if path != "index.html":
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+        assert bar.evaluate("e => e.getBoundingClientRect().top") == 0
+        _shot(page, f"sticky-{path.split('.')[0]}-mid")
+        target = "#fn-map" if path == "walkthrough.html" else page.locator(".doc-toc a").nth(3).get_attribute("href")
+        page.evaluate("t => { location.hash = t }", target)
+        page.wait_for_timeout(200)
+        top = page.evaluate("t => document.querySelector(t).getBoundingClientRect().top", target)
+        height = bar.evaluate("e => e.getBoundingClientRect().height")
+        assert top >= height, (top, height)
+    page.close()
+
+
+def test_edit_search_row_and_export_top_bar_stay_put_on_scroll(loaded: Page):
+    """Owner feedback 2026-10-24: the edit stage's search row (it carries the
+    site nav) sticks to the top while the rows scroll, and the selection bar
+    sits just under it; the export stage's top bar is sticky too."""
+    page = loaded
+    _wide(page)
+    page.evaluate("window.scrollTo(0, 600)")
+    bar = page.locator(".toolbar")
+    box = bar.bounding_box()
+    assert box["y"] == 0, box
+    assert bar.evaluate("e => getComputedStyle(e).backgroundColor") == page.evaluate("getComputedStyle(document.body).backgroundColor")
+    page.locator("tbody tr input[type=checkbox]").first.check()
+    sel = page.locator(".selbar").bounding_box()
+    assert sel["y"] >= box["height"] - 1, (sel, box)
+    _shot(page, "sticky-edit-stage")
+    _done(page)
+    assert page.locator("#topbar").evaluate("e => getComputedStyle(e).position") == "sticky"
+    page.evaluate("window.scrollTo(0, 300)")
+    assert page.locator("#topbar").bounding_box()["y"] == 0
+    _shot(page, "sticky-export-stage")
