@@ -117,6 +117,8 @@
         <button id="more-btn" type="button" class="btn small" aria-haspopup="menu" aria-expanded="false" disabled>More<span data-ui-icon="chevron"></span></button>
         <div id="more-menu" class="menu hidden" role="menu" aria-label="More actions">
           <button id="bulk-move" type="button" role="menuitem" aria-haspopup="dialog">Move to…</button>
+          <button id="bulk-rename" type="button" role="menuitem" aria-haspopup="dialog">Rename…</button>
+          <button id="bulk-note" type="button" role="menuitem" aria-haspopup="dialog">Change note…</button>
           <button id="bulk-desc" type="button" role="menuitem">Use note as name</button>
           <button id="bulk-exclude" type="button" role="menuitem">Exclude</button>
           <button id="bulk-include" type="button" role="menuitem">Include</button>
@@ -154,7 +156,7 @@
 <!-- More ▸ Move to…: the folders to move the selection to (filled by app.js) -->
 <div id="move-pop" class="move-pop hidden" role="dialog" aria-label="Move to folder"></div>
 
-<!-- several-items icon & color dialog (filled by app.js) -->
+<!-- several-items dialog: Icon & color…, More ▸ Rename… and Change note… (filled by app.js) -->
 <div id="mark-modal" class="modal hidden"><div id="mark-dialog" class="modal-card mark-dialog" role="dialog" aria-modal="true"></div></div>
 
 <!-- confirmation (Start over, unsaved note; filled by app.js) -->
@@ -257,6 +259,7 @@
         integrity="sha384-VR47TfKeAmT7vMej7bwOVg0tHTQLLGMSIpsXtFMCZG5OpKZSIXoSLtGY//qHcxc6"
         crossorigin="anonymous"></script>
 <script src="icons.js"></script>
+<script src="rename.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

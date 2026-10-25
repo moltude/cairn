@@ -139,8 +139,10 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | More | menu button | idx:117 | `#more-btn` |
 | More actions | menu aria-label | idx:118 | `#more-menu` |
 | Move to… | menu item | idx:119 | `#bulk-move` |
-| Use note as name | menu item | idx:120 | `#bulk-desc` |
-| Exclude · Include | menu items | idx:121-122 | `#bulk-exclude`, `#bulk-include` |
+| Rename… | menu item; opens the Rename dialog (§5.1) | idx:120 | `#bulk-rename` |
+| Change note… | menu item; opens the Change note dialog (§5.1) | idx:121 | `#bulk-note` |
+| Use note as name | menu item | idx:122 | `#bulk-desc` |
+| Exclude · Include | menu items | idx:123-124 | `#bulk-exclude`, `#bulk-include` |
 | Clear | link button; clears the selection | idx:125 | `#clear-sel` |
 
 ---
