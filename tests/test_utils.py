@@ -253,3 +253,23 @@ class TestStripHtmlKeepsPlainTextAngleBrackets:
         from cairn.utils.utils import strip_html
         assert strip_html('<b>Camp</b> at <a href="x">lake</a><br/>next') == "Camp at lake\nnext"
         assert strip_html("<p>One</p><div class='x'>Two</div>") == "One\nTwo"
+
+    def test_a_tag_shaped_word_is_not_a_tag(self):
+        # Only HTML's own tag names are tags. "<Lake>" in a note is a word in
+        # angle brackets, as is "<desc>" (XML, not HTML) and "<RRGGBB>".
+        from cairn.utils.utils import strip_html
+        assert strip_html("Meet at <Lake> trailhead") == "Meet at <Lake> trailhead"
+        assert strip_html("Plain text: <desc> and <Lake> survive.") == "Plain text: <desc> and <Lake> survive."
+        assert strip_html("colour as <RRGGBB>") == "colour as <RRGGBB>"
+        assert strip_html("<outline> then </outline>") == "<outline> then </outline>"
+        # A real tag's name is matched whole: "<pa>" is not "<p>".
+        assert strip_html("<pa> x") == "<pa> x"
+        assert strip_html("<bold> x") == "<bold> x"
+
+    def test_real_tags_are_matched_case_insensitively_with_attributes(self):
+        from cairn.utils.utils import strip_html
+        assert strip_html("<B>Camp</B> <I>x</I> <SPAN style='a'>y</SPAN>") == "Camp x y"
+        assert strip_html("a<BR>b</P>c") == "a\nb\nc"
+        assert strip_html('<img src="x.png"/>after') == "after"
+        assert strip_html("<h2>Title</h2><ul><li>one</li></ul><table><tr><td>c</td></tr></table>") == "Titleone\nc"
+        assert strip_html("<font color=red>r</font> <em>e</em> <strong>s</strong> <u>u</u>") == "r e s u"

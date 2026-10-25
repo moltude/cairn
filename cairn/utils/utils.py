@@ -99,6 +99,22 @@ def clean_notes(text: str, plain: bool = False) -> str:
     return (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
+# The tag names strip_html removes: what CalTopo's rich-text notes and pasted
+# HTML actually use. Anything else in angle brackets is a word in a note
+# ("<Lake>", "<desc>", "<RRGGBB>") and stays.
+_HTML_TAG_NAMES = (
+    "a", "abbr", "b", "big", "blockquote", "br", "center", "code", "dd", "del",
+    "div", "dl", "dt", "em", "font", "h1", "h2", "h3", "h4", "h5", "h6", "hr",
+    "i", "img", "ins", "li", "mark", "ol", "p", "pre", "s", "small", "span",
+    "strike", "strong", "sub", "sup", "table", "tbody", "td", "tfoot", "th",
+    "thead", "tr", "tt", "u", "ul",
+)
+_HTML_TAG_RE = re.compile(
+    r"</?(?:" + "|".join(_HTML_TAG_NAMES) + r")(?=[\s/>])(?:\s[^<>]*)?/?>",
+    re.IGNORECASE,
+)
+
+
 def strip_html(text: str) -> str:
     """
     Remove HTML tags from text.
@@ -127,11 +143,13 @@ def strip_html(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"<br\s*/?>|</(?:p|div|li)\s*>", "\n", text, flags=re.IGNORECASE)
 
-    # Remove HTML tags -- only things that look like a real tag: "<" (or "</")
-    # immediately followed by a letter, and no "<" inside. A bare "<[^>]+>"
-    # also ate plain-text notes such as "< 2 mi from the TH ... > the rest" or
-    # "Bring <2L water>", which onX and CalTopo notes contain as ordinary text.
-    text = re.sub(r"</?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?/?>", "", text)
+    # Remove HTML tags -- only a tag HTML has: "<" (or "</"), one of the names
+    # in _HTML_TAG_NAMES as a whole word, optional attributes with no "<"
+    # inside, ">". A bare "<[^>]+>" also ate plain-text notes such as "< 2 mi
+    # from the TH ... > the rest" or "Bring <2L water>", and "</?[A-Za-z]..."
+    # still ate a word in angle brackets, "Meet at <Lake> trailhead", which
+    # onX and CalTopo notes contain as ordinary text.
+    text = _HTML_TAG_RE.sub("", text)
 
     # Decode common HTML entities
     html_entities = {

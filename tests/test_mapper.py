@@ -6,6 +6,9 @@ from cairn.core.mapper import (
     map_color,
 )
 from cairn.core.config import load_config
+from pathlib import Path
+
+REPO_CONFIG = Path(__file__).resolve().parents[1] / "cairn_config.yaml"
 
 
 class TestMapIcon:
@@ -140,8 +143,9 @@ class TestSymbolMappingsWithConfig:
 
     @pytest.fixture
     def config(self):
-        """Load the actual config file."""
-        return load_config()
+        """Load the repo's cairn_config.yaml, by path: load_config(None) is
+        the built-in defaults, it no longer reads the working directory."""
+        return load_config(REPO_CONFIG)
 
     # -------------------------------------------------------------------------
     # HAZARD SYMBOLS
@@ -292,8 +296,9 @@ class TestKeywordMappingsWithConfig:
 
     @pytest.fixture
     def config(self):
-        """Load the actual config file."""
-        return load_config()
+        """Load the repo's cairn_config.yaml, by path: load_config(None) is
+        the built-in defaults, it no longer reads the working directory."""
+        return load_config(REPO_CONFIG)
 
     # -------------------------------------------------------------------------
     # CAMPING KEYWORDS

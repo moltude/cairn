@@ -300,8 +300,17 @@ def test_load_config_with_file(tmp_path):
     assert config.default_icon == "Summit"
 
 
-def test_load_config_without_file():
-    """Test load_config function without a config file."""
+def test_load_config_without_file(tmp_path, monkeypatch):
+    """load_config(None) is the built-in defaults, whatever the working
+    directory holds. It used to pick up ./cairn_config.yaml, so the same call
+    gave different mappings in the browser (CWD /home/pyodide) and in a
+    checkout (CWD = repo root)."""
+    (tmp_path / "cairn_config.yaml").write_text(
+        yaml.safe_dump({"default_icon": "Summit"}), encoding="utf-8")
+    (tmp_path / "cairn_config.yml").write_text(
+        yaml.safe_dump({"default_icon": "Summit"}), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
     config = load_config(None)
 
     assert config.default_icon == "Location"  # Default value
@@ -491,3 +500,25 @@ def test_keyword_mappings_invalid_structure(tmp_path):
     # Invalid structure should raise an error
     with pytest.raises(ValueError):
         IconMappingConfig(config_file=config_path)
+
+
+def test_no_dict_literal_in_config_has_duplicate_keys():
+    """Python keeps the LAST of two equal keys in a dict literal and says
+    nothing. "Camp" was listed twice in ICON_COLOR_MAP and DEFAULT_KEYWORD_MAP,
+    so the first keyword list was dead and whoever edited it changed nothing."""
+    import ast
+    import inspect
+    import cairn.core.config as config_module
+
+    tree = ast.parse(inspect.getsource(config_module))
+    duplicates = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Dict):
+            continue
+        seen = set()
+        for key in node.keys:
+            if isinstance(key, ast.Constant):
+                if key.value in seen:
+                    duplicates.append((key.value, key.lineno))
+                seen.add(key.value)
+    assert duplicates == []

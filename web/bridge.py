@@ -100,6 +100,7 @@ LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 # an item is in and where it sits. export_zip reads nothing else. doc.folders
 # stays as parsed (the folders as loaded).
 _STATE: dict = {"doc": None, "groups": [], "features": {}, "config": None,
+                "from_onx": False,
                 "edited": set(), "color_edited": set(), "next_folder": 1, "loose": set()}
 
 # What export_zip leaves in _STATE for the export screen and export_folder_zip.
@@ -110,14 +111,15 @@ CONFIG_PATH = Path("/cairn_config.yaml")
 
 
 def _config():
-    """Load mappings from an EXPLICIT path, never the working directory.
+    """Load mappings from the user's config if the UI wrote one, else defaults.
 
-    load_config(None) looks for ./cairn_config.yaml relative to the process CWD.
-    In Pyodide the CWD is /home/pyodide, so the browser silently loaded 144
-    default mappings while the CLI (run from the repo) loaded 152 -- and the two
-    then produced DIFFERENT icons for the same map. Verified: `circle-p` mapped
-    to Parking on the CLI and to nothing in the browser, so five waypoint files
-    diverged. Passing the path explicitly removes the ambient dependency.
+    load_config(None) used to look for ./cairn_config.yaml relative to the
+    process CWD. In Pyodide the CWD is /home/pyodide, so the browser silently
+    loaded 144 default mappings while the CLI (run from the repo) loaded 152 --
+    and the two then produced DIFFERENT icons for the same map. Verified:
+    `circle-p` mapped to Parking on the CLI and to nothing in the browser, so
+    five waypoint files diverged. The CWD lookup is gone (None is defaults
+    only); the path is still passed explicitly.
     """
     return load_config(CONFIG_PATH if CONFIG_PATH.exists() else None)
 
@@ -218,6 +220,10 @@ _ROUTE_ONX_KML = "onx-kml"          # read_onx_kml -> to_parsed_data
 _EXT = {input_check.GEOJSON: ".json", input_check.GPX: ".gpx", input_check.KML: ".kml"}
 
 
+# What Cairn opens, said the same way by every "can't read this" message.
+_READS = "Cairn reads CalTopo GeoJSON, and GPX or KML exported from onX or CalTopo."
+
+
 def _route(kind: str, dialect: str) -> str:
     """Which reader a detected file goes to.
 
@@ -237,8 +243,7 @@ def _route(kind: str, dialect: str) -> str:
         return _ROUTE_CALTOPO_KML if dialect == input_check.CALTOPO else _ROUTE_ONX_KML
     if kind == input_check.UNKNOWN and dialect == input_check.NOT_A_MAP:
         raise ValueError(
-            "This isn't a map file Cairn can read. Cairn opens CalTopo GeoJSON, "
-            "and GPX or KML exported from onX or CalTopo."
+            "This isn't a map file Cairn can read. " + _READS
         )
     return _ROUTE_GEOJSON
 
@@ -264,9 +269,8 @@ def _kept_why(origin: str) -> str:
 
 def _unknown_icon_why(icon: str, origin: str) -> str:
     where = "Your onX file" if origin == "onx" else "The file you loaded"
-    return (f"{where} uses the icon “{icon}”, which isn’t in Cairn’s "
-            f"list of onX icons. It will be exported unchanged; pick an icon from "
-            f"the list if onX doesn’t show it.")
+    return (f"{where} uses the icon “{icon}”, which Cairn doesn’t know. It goes "
+            f"out unchanged; pick one from the list if onX doesn’t show it.")
 
 
 def _read_one(path: Path, route: str, display_name: str):
@@ -335,8 +339,7 @@ def _require_items(parsed: ParsedData, unit: list) -> None:
         return
     names = " or ".join(e["name"] or "the file" for e in unit)
     raise ValueError(
-        f"Cairn found no waypoints, lines or areas in {names}. It reads GPX 1.1 "
-        f"and KML 2.2 as exported by onX and CalTopo."
+        f"Cairn found no waypoints, lines or areas in {names}. " + _READS
     )
 
 
@@ -442,6 +445,10 @@ def load_files(files_json: str) -> str:
             groups.append(_group(fkey, okey, fdata, origin, resolver, cfg, catalog, features))
 
     _STATE.update(doc=doc, groups=groups, features=features, config=cfg,
+                  # Any file of this load from onX: instructions.txt then opens
+                  # with the replace steps (onX imports everything as new
+                  # markups). A Cairn-made or generic file is not an onX export.
+                  from_onx=any(origin == "onx" for _, origin in sources),
                   edited=set(), color_edited=set(), next_folder=1,
                   loose={g["key"] for g in groups if g["unorganized"]})
     _sort_folders()
@@ -1047,7 +1054,7 @@ def export_zip() -> bytes:
                 rel = f"{dirname}/{p.name}"
                 data = p.read_bytes()
                 zf.writestr(rel, data)
-                entry["files"].append({"path": rel, "count": cnt, "kml": p.suffix == ".kml",
+                entry["files"].append({"path": rel, "count": cnt,
                                        "kind": kind, "items": _written_items(data, kind)})
                 entry["count"] += cnt
             entry["expected"] = len(wps) + len(trks) + len(shapes)
@@ -1076,7 +1083,7 @@ def export_zip() -> bytes:
             else:
                 unlisted_dropped += entry["dropped"]
 
-        instructions = build_instructions(manifest)
+        instructions = build_instructions(manifest, from_onx=_STATE.get("from_onx", False))
         zf.writestr(INSTRUCTIONS_NAME, instructions.encode("utf-8"))
 
     _STATE["manifest"] = manifest
@@ -1159,7 +1166,6 @@ def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
         "holes": sum(len(e.get("holes", ())) for e in manifest),
         "long_notes": sum(len(e.get("long_notes", ())) for e in manifest),
         "note_limit": ONX_IMPORT_NOTE_LIMIT,
-        "kml_batches": sum(1 for e in manifest if any(f["kml"] for f in e["files"])),
     }
 
 
@@ -1201,7 +1207,7 @@ def _plain(text) -> str:
     return _one_line(str(text or "")) or "(no name)"
 
 
-def build_instructions(manifest) -> str:
+def build_instructions(manifest, *, from_onx: bool = False) -> str:
     """instructions.txt: how to get this INTO onX, and what is in each folder.
 
     onX creates one folder per import BATCH, and a batch accepts several files
@@ -1213,10 +1219,25 @@ def build_instructions(manifest) -> str:
     two warnings that belong to one item are written, under it: a note onX
     will cut, an area hole onX can't keep. Totals, dropped items and the
     account limit are on the export screen.
+
+    from_onx: the map was loaded from an onX export. onX imports everything as
+    new markups, ids or not (docs/ONX_ROUND_TRIP.md), so the replace steps
+    come first: back up, delete the originals, then import. Off by default,
+    so a CalTopo export's file is byte-identical to before (2026-10-25).
     """
     L = [
         "How to import these files into onX",
         "",
+    ]
+    if from_onx:
+        L += [
+            "These files came from onX. onX imports them as new markups; it doesn't update the originals.",
+            "Keep your onX export as a backup.",
+            "In onX, delete the original markups first, then their folders. Deleting a folder doesn't delete its markups.",
+            "Then import as below.",
+            "",
+        ]
+    L += [
         "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
         "In onX, choose Import and add all of that folder's files together.",
         'Tick "Import map data to a new folder".',
@@ -1224,8 +1245,7 @@ def build_instructions(manifest) -> str:
         "Rename it to the name shown for that folder below.",
         "Importing needs onX Premium or Elite.",
     ]
-    note_cut = (f"(onX keeps only the first {ONX_IMPORT_NOTE_LIMIT} bytes of this note, "
-                f"about {ONX_IMPORT_NOTE_LIMIT} characters)")
+    note_cut = "(over the length limit; onX will cut this note)"
     for e in manifest:
         long_notes = {name for name, _ in e.get("long_notes", ())}
         holes = set(e.get("holes", ()))

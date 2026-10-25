@@ -74,11 +74,12 @@ map into one already loaded (DECISIONS UI-12). Open ideas are in [`TODO.md`](../
 ## Engine bugs the prototype found (2026-08-30)
 
 Building the web app surfaced engine defects that reading the code had not. All are fixed or
-moot now except the first, which the web app sidesteps:
+moot now:
 
-- **`load_config(None)` reads `cairn_config.yaml` from the current directory**
+- **`load_config(None)` read `cairn_config.yaml` from the current directory**
   (`cairn/core/config.py:load_config`). In the browser that silently loaded 144 symbol mappings
-  instead of 152. `bridge.py` passes an explicit path; the fallback is still open in `TODO.md`.
+  instead of 152. `bridge.py` passes an explicit path; the CWD lookup was removed on 2026-10-25
+  (None is the built-in defaults only).
 - KML areas came out in a different order than the CLI's. Moot: export writes no KML now.
 - Colour edits were discarded: no writer read the override. Fixed in `bridge.py`.
 - A CalTopo export with no folders got a folder named after the temp file (`in`). Fixed.

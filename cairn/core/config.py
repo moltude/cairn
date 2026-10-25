@@ -176,7 +176,6 @@ ICON_COLOR_MAP = {
     "Barrier": "rgba(255,0,0,1)",  # Red
     # Camping (no true "orange" in waypoint palette; closest is Red-Orange)
     "Camp": "rgba(255,51,0,1)",  # Red-Orange
-    "Camp": "rgba(255,51,0,1)",  # Red-Orange
     "Camp Area": "rgba(255,51,0,1)",  # Red-Orange
     "Camp Backcountry": "rgba(255,51,0,1)",  # Red-Orange
     "Campground": "rgba(0,0,0,1)",  # Black
@@ -412,7 +411,6 @@ DEFAULT_SYMBOL_MAP = {
 # Based on actual OnX icon names from GPX analysis
 DEFAULT_KEYWORD_MAP = {
     # Camping
-    "Camp": ["tent", "camp", "sleep", "overnight", "camping"],
     "Camp": ["camp", "camping"],
     "Camp Area": ["camp area", "camping area"],
     "Camp Backcountry": ["backcountry camp", "bivy", "bivouac"],
@@ -918,21 +916,14 @@ def load_config(config_file: Optional[Path] = None) -> IconMappingConfig:
 
     Args:
         config_file: Optional path to user config file (.yaml or .yml).
-                    If None, looks for 'cairn_config.yaml' in current directory.
+                    None means the built-in defaults only. The working
+                    directory is never consulted: it used to be, and the same
+                    call then gave different mappings in the browser (CWD
+                    /home/pyodide) and in a checkout (CWD = repo root).
 
     Returns:
         IconMappingConfig instance
     """
-    # Check for default config file if none specified
-    if config_file is None:
-        yaml_config = Path("cairn_config.yaml")
-        yml_config = Path("cairn_config.yml")
-
-        if yaml_config.exists():
-            config_file = yaml_config
-        elif yml_config.exists():
-            config_file = yml_config
-
     return IconMappingConfig(config_file)
 
 

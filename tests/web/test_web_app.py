@@ -521,9 +521,9 @@ def test_instructions_name_each_folder_and_have_no_kml_warning(loaded: Page):
             assert "    " + f["path"].split("/")[-1] in lines
     assert "**" not in text and "#" not in text.split("\r\n\r\n", 1)[0]
 
-    # Areas no longer go out as KML (ENG-05), so nothing triggers the
-    # Web-Map-only KML warning, in instructions.txt or on screen.
-    assert not any(f["kml"] for e in manifest for f in e["files"])
+    # Areas no longer go out as KML (ENG-05), so there is no KML flag in the
+    # manifest and no KML warning, in instructions.txt or on screen.
+    assert not any("kml" in f for e in manifest for f in e["files"])
     assert "KML" not in text
     assert "KML" not in loaded.locator("#runbook").inner_text()
 
@@ -2198,7 +2198,7 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
     # The fixture's "Campsite" isn't in onX's icon list: kept, but marked and explained.
     expect(page.locator(f"{ROW} .icon-name.unknown-icon")).to_have_text(["Campsite"])
     expect(page.locator(f"{ROW} .icon-btn").nth(1)).to_have_attribute(
-        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which isn’t in"))
+        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn’t know"))
     # The lines' color came from the file too.
     expect(page.locator(f"{ROW} .line-btn").first).to_have_attribute(
         "title", re.compile(r"Kept from your onX file\.$"))
