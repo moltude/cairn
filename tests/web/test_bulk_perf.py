@@ -21,12 +21,14 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from tests.hardening_maps import make_map
-from tests.web.helpers import BASE_URL, _menu_action, _select_all_shown
+from tests.web.helpers import (
+    BASE_URL, _open_bulk, _preview_seq, _save_bulk, _select_all_shown, _set_mode, _status_count,
+    _type_spec, _wait_preview_past,
+)
 
 SCALE = 3 if os.environ.get("CI") else 1
 TRANSFORM_MS, PREVIEW_MS, SAVE_MS = 10 * SCALE, 50 * SCALE, 500 * SCALE
 TYPED = "Base 12 "   # 8 characters: one list render each
-SEQ = "Number(document.querySelector('#mark-dialog').dataset.previewSeq)"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -37,35 +39,6 @@ def _require_rename_dialog(_require_server):
         html = resp.read().decode("utf-8")
     if 'id="bulk-rename"' not in html:
         pytest.skip("the bulk rename dialog (#bulk-rename) is not built yet")
-
-
-# Private copies of the bulk helpers of plan 6.3, under the names Track C gives
-# them in tests/web/helpers.py; once those are merged this file imports them.
-def _preview_seq(page: Page) -> int:
-    return page.evaluate(f"() => {SEQ}")
-
-
-def _wait_preview_after(page: Page, seq: int) -> None:
-    page.wait_for_function(f"n => {SEQ} > n", arg=seq, timeout=10_000)
-
-
-def _open_bulk(page: Page, which: str) -> None:
-    """which: "rename" (Rename...) or "note" (Change note...)."""
-    _menu_action(page, "#bulk-rename" if which == "rename" else "#bulk-note")
-    expect(page.locator("#mark-dialog")).to_have_attribute("data-bulk", which)
-
-
-def _set_mode(page: Page, mode: str) -> None:
-    page.click(f'#mark-dialog .mode-tog[data-mode="{mode}"]')
-    expect(page.locator(f'#mark-dialog .mode-tog[data-mode="{mode}"]')).to_have_attribute("aria-pressed", "true")
-
-
-def _type_spec(page: Page, **fields: str) -> None:
-    """Fill #bulk-<name> for each field (text, find, repl), waiting for the list each time."""
-    for name, value in fields.items():
-        seq = _preview_seq(page)
-        page.fill(f"#bulk-{name}", value)
-        _wait_preview_after(page, seq)
 
 
 def _perf(page: Page) -> dict:
@@ -97,13 +70,11 @@ def _prefix_every_row(page: Page, tmp_path, n_folders: int):
     for ch in TYPED:
         seq = _preview_seq(page)
         field.press_sequentially(ch)
-        _wait_preview_after(page, seq)
+        _wait_preview_past(page, seq)
         p = _perf(page)
         transforms.append(p["lastTransformMs"]); previews.append(p["lastPreviewMs"])
     expect(page.locator("#bulk-summary")).to_have_text(f"{n:,} will change · 0 unchanged")
-    page.click("#bulk-apply")
-    expect(page.locator("#mark-modal")).to_be_hidden()
-    expect(page.locator("#status")).to_have_text(f"Changed {n:,} items.")
+    assert _status_count(_save_bulk(page)) == n
     save = _perf(page)["lastSaveMs"]
     print(f"\n[bulk perf] {n:,} rows, prefix {TYPED!r} typed a key at a time, then Save "
           f"(budgets: transform {TRANSFORM_MS} ms, list {PREVIEW_MS} ms, Save {SAVE_MS} ms)\n"
