@@ -246,6 +246,7 @@ def test_empty_find_and_empty_replace_is_a_noop(fresh_page: Page):
         rows = _preview_rows(page)
         assert len(rows) == n and all(f == {"unchanged"} for *_x, f in rows), mode
         assert all(b == a for _u, b, a, _f in rows), mode
+        assert page.locator("#mark-dialog .na-row .hit").count() == 0, mode
         assert _summary(page) == f"0 will change · {n} unchanged"
         expect(page.locator("#bulk-apply")).to_be_disabled()
 
@@ -279,6 +280,8 @@ def test_empty_find_with_a_whitespace_only_replacement_saves_blank_names(fresh_p
     rows = _preview_rows(page)
     assert [(a, f) for _u, _b, a, f in rows] == [("", frozenset())] * 5
     assert _placeholders(page, ".na-after") == 5
+    assert page.locator("#mark-dialog .na-row .is-placeholder .hit, "
+                        "#mark-dialog .na-row .hit .is-placeholder").count() == 0
     expect(page.locator("#mark-dialog .na-row .na-after.is-placeholder, "
                         "#mark-dialog .na-row .na-after .is-placeholder").first).to_have_text("Untitled")
     assert _summary(page) == "5 will change · 0 unchanged"
@@ -1481,11 +1484,12 @@ def test_keyboard_only_flow(fresh_page: Page):
     page.focus("#more-btn")
     page.keyboard.press("Enter")
     expect(page.locator("#more-menu")).to_be_visible()
-    for _ in range(6):
-        if page.evaluate("document.activeElement.id") == "bulk-rename":
-            break
-        page.keyboard.press("Tab")
-    assert page.evaluate("document.activeElement.id") == "bulk-rename"
+    expect(page.locator("#bulk-move")).to_be_focused()       # the menu opens on its first item
+    page.keyboard.press("ArrowDown")
+    expect(page.locator("#bulk-rename")).to_be_focused()     # Rename... comes right after Move to...
+    page.keyboard.press("ArrowUp")
+    expect(page.locator("#bulk-move")).to_be_focused()
+    page.keyboard.press("ArrowDown")
     page.keyboard.press("Enter")
     expect(page.locator("#mark-dialog")).to_have_attribute("data-bulk", "rename")
     expect(page.locator("#bulk-text")).to_be_focused()
