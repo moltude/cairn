@@ -128,7 +128,7 @@ def notes(x, y, lines, gap=22):
     return s
 
 
-FILES = (("pin", "Folder_Waypoints.gpx"), ("poly", "Folder_Tracks.gpx"), ("area", "Folder_Areas.gpx"), ("txt", "instructions.txt"))
+FILES = (("pin", "Waypoints.gpx"), ("poly", "Lines.gpx"), ("area", "Areas.gpx"))
 
 
 def tag(x, y, text, color="b", w=None):
@@ -136,9 +136,11 @@ def tag(x, y, text, color="b", w=None):
     return f'<rect x="{x}" y="{y}" width="{w}" height="18" rx="9" fill="{C[color]}"/>' + T(x + w / 2, y + 13, text, 11.5, "#fff", 700)
 
 
-def lost(x, y, w=180):
-    return (rect(x, y, w, 48, "r", "rl", dash=True, rx=8, sw=1.4)
-            + T(x + w / 2, y + 20, "Lost in onX", 13, "ink", 700) + T(x + w / 2, y + 38, "area fill · long notes", 12, "sub"))
+def lost(x, y, w=210):
+    return (rect(x, y, w, 66, "r", "rl", dash=True, rx=8, sw=1.4)
+            + T(x + w / 2, y + 21, "Cairn warns you about", 13, "ink", 700)
+            + T(x + w / 2, y + 38, "what the onX import loses:", 13, "ink", 700)
+            + T(x + w / 2, y + 56, "area fill · long notes", 12, "sub"))
 
 
 def export_box(x, y, w, h, sub=None, rows_gap=22, card_h=None):
@@ -149,11 +151,14 @@ def export_box(x, y, w, h, sub=None, rows_gap=22, card_h=None):
         s += T(x + w / 2, y + 52, sub, 13, "#E6F4EC")
         top = y + 68
     ch = card_h or (h - (top - y) - 40)
-    s += f'<rect x="{x+21}" y="{top+6}" width="{w-34}" height="{ch}" rx="6" fill="#fff" opacity="0.5"/>'
-    s += folder(x + 14, top, w - 34, ch, color="g")
-    s += T(x + 40, top + 24, "Folder", 12.5, "g", 700, "start")
+    # a second folder behind, then the open one in front
+    s += folder(x + 70, top, w - 84, ch, color="g", fill="#fff")
+    s += T(x + 84, top + 20, "Wind River", 12, "g", 700, "start")
+    top += 30
+    s += folder(x + 14, top, w - 34, ch - 30, color="g")
+    s += T(x + 30, top + 24, "Chinese Wall", 12.5, "g", 700, "start")
     for i, (gl, n) in enumerate(FILES):
-        s += filerow(x + 26, top + 50 + i * rows_gap, gl, n, size=12.5)
+        s += filerow(x + 26, top + 56 + i * rows_gap, gl, n, size=12.5)
     s += T(x + w / 2, y + h - 14, "Splits files over onX's import limit", 12, "#fff")
     return s
 
@@ -173,9 +178,7 @@ def step3(x, y, w, h, label, subs, kind, color):
 def final2():
     W, H = 1600, 660
     L = [T(30, 46, "How Cairn gets a map into onX Backcountry", 28, "ink", 700, "start")]
-    L.append(T(170, 106, "Your export", 14, "a", 700))
     L.append(f'<rect x="450" y="88" width="890" height="26" rx="13" fill="{C["gl"]}"/>' + T(895, 106, "Cairn (in your browser)", 14, "g", 700))
-    L.append(T(1475, 106, "In onX Backcountry", 14, "b", 700))
     cy = 270
     for y, t, st, c, dash in ((146, "CalTopo", "GeoJSON (best), KML or GPX", "a", False),
                               (236, "onX Backcountry", "GPX and/or KML, one folder", "b", True),
@@ -195,7 +198,7 @@ def final2():
     L.append(export_box(1130, 140, 210, 330, sub="one zip, every folder inside", rows_gap=34))
     L.append(arrow([(1340, cy), (1406, cy)], "b", w=2.4) + T(1373, cy - 10, "GPX files", 12, "sub", 700))
     L.append(step(1410, cy - 45, 160, 90, "Import", None, "out", "b"))
-    L.append(lost(1400, 152, 180))
+    L.append(lost(1362, 130, 210))
     L.append(step(1360, 424, 220, 66, "Delete originals", "onX adds copies, never updates", "out", "b", dash=True))
     L.append(f'<circle cx="1570" cy="432" r="10" fill="{C["b"]}"/>' + T(1570, 437, "2", 12, "#fff", 700))
     L.append(arrow([(1340, 457), (1356, 457)], dash=True))
