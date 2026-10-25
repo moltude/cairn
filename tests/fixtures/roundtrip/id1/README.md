@@ -10,4 +10,4 @@ Only this README is tracked. The raw files are gitignored and kept locally:
 - `a_originals/`: upload and onX exports.
 - `b_v1/` and `b_v2/`: Cairn's copy and the same-id variants.
 - `d_reexport/`: onX re-exports.
-- `net_id1/`: the id1 records from the Web Map's API traffic.
+- `net_id1/`: the id1 records from the API traffic of onX's web app.

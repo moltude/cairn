@@ -1,6 +1,6 @@
 # `area-fidelity`: what onX keeps of an area's line colour, fill, style and weight
 
-Run 2026-10-23, 16:29–17:00 UTC, onX Backcountry Web Map, in the owner's account. Findings,
+Run 2026-10-23, 16:29–17:00 UTC, in onX Backcountry's web app, in the owner's account. Findings,
 the per-area tables and the list of everything created are in
 [`docs/ONX_ROUND_TRIP.md`](../../../../docs/ONX_ROUND_TRIP.md#area-fidelity).
 
