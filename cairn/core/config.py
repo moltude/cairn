@@ -937,16 +937,15 @@ def get_all_onx_icons() -> List[str]:
     return list(ONX_ICON_NAMES_CANONICAL)
 
 
-def save_user_mapping(
-    symbol: str, icon: str, config_path: Path = Path("cairn_config.yaml")
-):
+def save_user_mapping(symbol: str, icon: str, config_path: Path):
     """
     Save user's manual mapping to config file.
 
     Args:
         symbol: CalTopo symbol to map
         icon: OnX icon name to map to
-        config_path: Path to YAML config file
+        config_path: Path to YAML config file. Required: there is no
+            current-directory default (the same trap load_config had).
     """
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:
