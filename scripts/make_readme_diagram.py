@@ -185,14 +185,14 @@ def final2():
                               (326, "Any other app", "GeoJSON, KML or GPX", "a", False)):
         L.append(step(40, y, 260, 70, t, st, "out", c, dash=dash))
         L.append(arrow([(300, y + 35), (370, y + 35), (370, cy)], head=False))
-    L.append(tag(52, 227, "Round trip"))
+    L.append(tag(52, 227, "onX round trip only"))
     L.append(arrow([(370, cy), (446, cy)]))
     # Load: two separate things, as bullets
     L.append(rect(450, cy - 50, 260, 100, "g", "g") + T(580, cy - 18, "Load", 17, "#fff", 700))
     for i, line in enumerate(("Best-effort glyph and color match", "onX files come in 1:1")):
         y = cy + 8 + i * 22
         L.append(f'<circle cx="474" cy="{y - 4.5}" r="2.6" fill="#E6F4EC"/>' + T(484, y, line, 13.5, "#E6F4EC", 400, "start"))
-    L.append(step3(735, cy - 50, 180, 100, "Edit", ["waypoint · line · area", "color, style and glyph"], "out", "g"))
+    L.append(step3(735, cy - 55, 180, 110, "Edit", ["waypoint · line · area", "color, style and glyph", "name and notes"], "out", "g"))
     L.append(pin(785, 350) + poly(825, 350) + area(865, 350))
     L.append(step3(940, cy - 50, 170, 100, "Group into folders", ["drag and drop"], "out", "g"))
     L.append(f'<circle cx="1102" cy="{cy-42}" r="10" fill="{C["g"]}"/>' + T(1102, cy - 37, "1", 12, "#fff", 700))
@@ -209,8 +209,8 @@ def final2():
     L.append(arrow([(1490, 424), (1490, cy + 49)], dash=True))
     L.append(T(1470, 512, "Round trip · clean up what's already in onX", 12.5, "sub", 400, italic=True))
     L.append(notes(30, 572, [("1", "Each Cairn folder becomes one onX folder. onX names it by date; instructions.txt gives the name to rename it to."),
-                             ("2", "Round trip only. Keep the onX export as a backup before deleting.")]))
-    L.append(key(1240, 630, [("solid", "Every map"), ("dash", "Round trip only")]))
+                             ("2", "onX round trip only. Keep the onX export as a backup before deleting.")]))
+    L.append(key(1200, 630, [("solid", "Every map"), ("dash", "onX round trip only")]))
     return svg(W, H, "".join(L)), W, H
 
 
