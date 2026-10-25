@@ -228,6 +228,33 @@ def test_unicode_names_render_as_text_in_the_preview_not_html(fresh_page: Page):
 
 
 # =====================================================================================
+# 5.3 XML-hostile
+# =====================================================================================
+
+
+def test_a_bulk_note_with_html_looking_text_on_a_caltopo_map_exports_verbatim(loaded: Page):
+    """Bitterroots is a CalTopo map (strip_html ran at load). Replace the note with
+    HTML-looking text: the preview shows it as text, Save stores it, and the export's
+    <desc> holds it verbatim (escaped), <b> kept: preview == stored == exported."""
+    page = loaded
+    note = "see <b>north</b> of <Lake>"
+    uids = _bitterroots_rows(page, 4)
+    names = _names(page, uids)
+    _open_bulk(page, "note")
+    _set_mode(page, "set")
+    _type_spec(page, text=note)
+    assert [a for _u, _b, a, _f in _preview_rows(page)] == [note] * 4
+    assert page.locator("#mark-dialog .na-row b").count() == 0
+    _save_bulk(page)
+    assert _descs(page, uids) == [note] * 4
+    zf = _export_zip(page)
+    got = Counter(d for _k, n, d in _gpx_items(zf) if n in names)
+    assert got[note] == 4
+    raw = b"".join(zf.read(n) for n in zf.namelist() if n.endswith(".gpx"))
+    assert raw.count(b"<desc>see &lt;b&gt;north&lt;/b&gt; of &lt;Lake&gt;</desc>") == 4
+
+
+# =====================================================================================
 # 5.4 Replacement-pattern and find traps
 # =====================================================================================
 
