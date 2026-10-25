@@ -383,7 +383,7 @@ async function handleFiles(files) {
     // message and the engine's messages are already user-friendly ("No features
     // found... make sure this is a CalTopo export"); the stack above it is noise
     // to a hiker. Keep the full thing in the console for us.
-    setStatus("Couldn't read that file — " + humanError(e), "err");
+    setStatus((files.length === 1 ? "Couldn't read that file — " : "Couldn't read those files — ") + humanError(e), "err");
     console.error(e);
   }
 }

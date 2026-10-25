@@ -2198,7 +2198,7 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
     # The fixture's "Campsite" isn't in onX's icon list: kept, but marked and explained.
     expect(page.locator(f"{ROW} .icon-name.unknown-icon")).to_have_text(["Campsite"])
     expect(page.locator(f"{ROW} .icon-btn").nth(1)).to_have_attribute(
-        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which isn’t in"))
+        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn’t know"))
     # The lines' color came from the file too.
     expect(page.locator(f"{ROW} .line-btn").first).to_have_attribute(
         "title", re.compile(r"Kept from your onX file\.$"))

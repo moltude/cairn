@@ -220,6 +220,10 @@ _ROUTE_ONX_KML = "onx-kml"          # read_onx_kml -> to_parsed_data
 _EXT = {input_check.GEOJSON: ".json", input_check.GPX: ".gpx", input_check.KML: ".kml"}
 
 
+# What Cairn opens, said the same way by every "can't read this" message.
+_READS = "Cairn reads CalTopo GeoJSON, and GPX or KML exported from onX or CalTopo."
+
+
 def _route(kind: str, dialect: str) -> str:
     """Which reader a detected file goes to.
 
@@ -239,8 +243,7 @@ def _route(kind: str, dialect: str) -> str:
         return _ROUTE_CALTOPO_KML if dialect == input_check.CALTOPO else _ROUTE_ONX_KML
     if kind == input_check.UNKNOWN and dialect == input_check.NOT_A_MAP:
         raise ValueError(
-            "This isn't a map file Cairn can read. Cairn opens CalTopo GeoJSON, "
-            "and GPX or KML exported from onX or CalTopo."
+            "This isn't a map file Cairn can read. " + _READS
         )
     return _ROUTE_GEOJSON
 
@@ -266,9 +269,8 @@ def _kept_why(origin: str) -> str:
 
 def _unknown_icon_why(icon: str, origin: str) -> str:
     where = "Your onX file" if origin == "onx" else "The file you loaded"
-    return (f"{where} uses the icon “{icon}”, which isn’t in Cairn’s "
-            f"list of onX icons. It will be exported unchanged; pick an icon from "
-            f"the list if onX doesn’t show it.")
+    return (f"{where} uses the icon “{icon}”, which Cairn doesn’t know. It goes "
+            f"out unchanged; pick one from the list if onX doesn’t show it.")
 
 
 def _read_one(path: Path, route: str, display_name: str):
@@ -337,8 +339,7 @@ def _require_items(parsed: ParsedData, unit: list) -> None:
         return
     names = " or ".join(e["name"] or "the file" for e in unit)
     raise ValueError(
-        f"Cairn found no waypoints, lines or areas in {names}. It reads GPX 1.1 "
-        f"and KML 2.2 as exported by onX and CalTopo."
+        f"Cairn found no waypoints, lines or areas in {names}. " + _READS
     )
 
 
@@ -1244,8 +1245,7 @@ def build_instructions(manifest, *, from_onx: bool = False) -> str:
         "Rename it to the name shown for that folder below.",
         "Importing needs onX Premium or Elite.",
     ]
-    note_cut = (f"(onX keeps only the first {ONX_IMPORT_NOTE_LIMIT} bytes of this note, "
-                f"about {ONX_IMPORT_NOTE_LIMIT} characters)")
+    note_cut = "(over the length limit; onX will cut this note)"
     for e in manifest:
         long_notes = {name for name, _ in e.get("long_notes", ())}
         holes = set(e.get("holes", ()))
