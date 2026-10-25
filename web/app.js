@@ -2387,7 +2387,9 @@ window.addEventListener("DOMContentLoaded", () => {
   wireRowDrag();
   wirePointerHeld();
   wireTip();
-  menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: oneLine(it.desc) } : {}));
+  // A note of only spaces and line breaks would give an empty name, which the
+  // name field refuses: leave that row alone.
+  menuAct("#bulk-desc", () => bulk(it => { const n = oneLine(it.desc || ""); return n ? { name: n } : {}; }));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
   // Every nav's Help (top bar, search row, footer) opens the dialog here.

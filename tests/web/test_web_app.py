@@ -5130,3 +5130,16 @@ def test_popover_and_note_edits_keep_the_row_and_its_controls(loaded: Page):
     expect(row.locator(".note-btn")).to_be_focused()
     expect(row.locator(".note-text")).to_have_text("A new note")
     assert _is_marked(row) and _is_marked(row.locator(".icon-btn"))
+
+
+def test_use_note_as_name_leaves_a_blank_note_row_alone(loaded: Page):
+    # "Use note as name" on a note of only spaces and line breaks gave the row an
+    # empty name, which the name field itself refuses (2026-10-25).
+    blank, real = page_uids = loaded.evaluate("allItems().slice(0, 2).map(i => i.uid)")
+    before = loaded.evaluate("u => allItems().find(i => i.uid === u).name", blank)
+    _set(loaded, blank, desc="   \n  ")
+    _set(loaded, real, desc="Real note\nsecond line")
+    _tick(loaded, page_uids)
+    _menu_action(loaded, "#bulk-desc")
+    names = loaded.evaluate("us => us.map(u => allItems().find(i => i.uid === u).name)", page_uids)
+    assert names == [before, "Real note second line"]

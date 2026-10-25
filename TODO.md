@@ -12,15 +12,7 @@ roadmap and the 2026-08-29 audits are archived (`git show cdd25f3:docs/<name>`).
 
 ## Open: can be built now
 
-Small engine fixes:
-
-* **Raw tracebacks in the status line.** `web/app.js` shows `e.message` (a full Pyodide
-  traceback) on three error paths, where load and rename use `humanError(e)`.
-* **`save_user_mapping` defaults to `./cairn_config.yaml`** (`cairn/core/config.py`), the same
-  current-directory trap `load_config` had. The web app never calls it.
-* **`MultiLineString` and `GeometryCollection` are dropped at parse time**
-  (`core/parser.py`), without counting as dropped. `MultiPolygon` is split; these aren't. No
-  CalTopo export seen so far contains them.
+Small engine fixes: none open (the last ones shipped 2026-10-25, below).
 
 Web app features:
 
@@ -81,6 +73,12 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
 
 Newest first. Details are in DECISIONS and `docs/testing/FOLDERS_RELEASE.md`.
 
+* **2026-10-25 leftovers:** `MultiPoint`, `MultiLineString` and `GeometryCollection` split into
+  one markup per part instead of being dropped; characters XML forbids are dropped from every
+  written name and note (one control character used to break a whole GPX); `instructions.txt`
+  marks long notes and lost holes on the very item, not every item with that name; "Use note
+  as name" leaves a blank-note row alone; `save_user_mapping` needs an explicit path; boot,
+  export and download errors show a plain message, not a traceback.
 * **2026-10-25 maintenance:** `Camp2`-style numbered names find their icon; the duplicate
   `Camp` config entries are gone; `load_config(None)` no longer reads the current directory; the
   dead KML warning is removed; `<Lake>` survives in notes; `instructions.txt` gives onX-sourced
