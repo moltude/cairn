@@ -299,6 +299,7 @@ function onPopState(e) {
 /** Back to the drop screen from `from` (history is already there). */
 function leaveMap(from) {
   flushDeferred();
+  closeBulk();                     // an open dialog never outlives its screen (nothing saved)
   if (CONFIRM) closeConfirm(false);
   const n = unexportedChanges();
   if (!n) { resetAll({ history: false }); return; }
