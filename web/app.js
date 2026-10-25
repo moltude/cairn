@@ -1723,6 +1723,35 @@ function textCell(cls, v, names) {
   if (names && !v) return `<span class="${cls} is-placeholder">Untitled</span>`;
   return `<span class="${cls}"${v ? ` title="${esc(v)}"` : ""}>${esc(v)}</span>`;
 }
+/** after as HTML, its new part marked (.hit, the mockups' highlight): what
+    lies between the start and the end it shares with before, compared by
+    code point so a surrogate pair is never split. One span from the first
+    change to the last. The boundaries widen to keep a combining mark, a
+    variation selector, a skin tone, a ZWJ sequence or a flag whole. A pure
+    deletion has nothing new to mark. The text is after's, exactly. */
+const JOINS = /[\p{M}‍︀-️\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u;
+const isRI = c => c >= "\u{1F1E6}" && c <= "\u{1F1FF}";
+function markChange(before, after) {
+  const a = Array.from(before), b = Array.from(after);
+  let s = 0;
+  while (s < a.length && s < b.length && a[s] === b[s]) s++;
+  let e = 0;
+  while (e < a.length - s && e < b.length - s && a[a.length - 1 - e] === b[b.length - 1 - e]) e++;
+  let t = b.length - e;
+  if (t <= s) return esc(after);
+  const odd = (i, step) => { let k = 0; while (b[i] && isRI(b[i])) { k++; i += step; } return k % 2 === 1; };
+  while (s > 0 && (JOINS.test(b[s]) || b[s - 1] === "‍" || (isRI(b[s]) && odd(s - 1, -1)))) s--;
+  while (t < b.length && (JOINS.test(b[t]) || b[t - 1] === "‍" || (isRI(b[t]) && odd(t - 1, -1)))) t++;
+  return esc(b.slice(0, s).join("")) + `<span class="hit">${esc(b.slice(s, t).join(""))}</span>` + esc(b.slice(t).join(""));
+}
+/** A changed row's After cell, its new part marked; an empty name is the
+    "Untitled" placeholder. A note is compared in its written form (the form
+    after is in), so trimmed space or a CR isn't counted as new. */
+function afterCell(r, names) {
+  if (!r.after) return textCell("na-after", r.after, names);
+  const base = names ? r.before : writtenNote(r.before);
+  return `<span class="na-after" title="${esc(r.after)}">${markChange(base, r.after)}</span>`;
+}
 /** The sentence under a row: "No change", or the long-note caution (UI-34). */
 function textFlag(r) {
   if (r.flags.includes("unchanged")) return "No change";
@@ -1754,7 +1783,7 @@ function drawTextBulk() {
     }
     const flag = textFlag(r);
     return `<div class="na-row" data-uid="${esc(r.uid)}" data-flags="${esc(r.flags.join(" "))}">${src}${UI_ICON.arrow}` +
-      `${textCell("na-after", r.after, names)}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
+      `${same(r) ? textCell("na-after", r.after, names) : afterCell(r, names)}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
   }).join("") + (more > 0 ? `<div class="na-more">and ${more.toLocaleString("en-US")} more</div>` : "");
   const d = $("#mark-dialog");
   d.querySelector(".na-rows").innerHTML = html;
@@ -2607,7 +2636,7 @@ function askToSaveNote(go, ret) {
   const it = allItems().find(i => i.uid === uid);
   openConfirm({
     title: "Save your note?",
-    body: `Your note for \u201c${it.name}\u201d hasn't been saved.`,
+    body: `Your note for \u201c${it.name || "Untitled"}\u201d hasn't been saved.`,
     ret,
     buttons: [
       { label: "Keep editing", cancel: true, run: () => {
