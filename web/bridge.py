@@ -110,14 +110,15 @@ CONFIG_PATH = Path("/cairn_config.yaml")
 
 
 def _config():
-    """Load mappings from an EXPLICIT path, never the working directory.
+    """Load mappings from the user's config if the UI wrote one, else defaults.
 
-    load_config(None) looks for ./cairn_config.yaml relative to the process CWD.
-    In Pyodide the CWD is /home/pyodide, so the browser silently loaded 144
-    default mappings while the CLI (run from the repo) loaded 152 -- and the two
-    then produced DIFFERENT icons for the same map. Verified: `circle-p` mapped
-    to Parking on the CLI and to nothing in the browser, so five waypoint files
-    diverged. Passing the path explicitly removes the ambient dependency.
+    load_config(None) used to look for ./cairn_config.yaml relative to the
+    process CWD. In Pyodide the CWD is /home/pyodide, so the browser silently
+    loaded 144 default mappings while the CLI (run from the repo) loaded 152 --
+    and the two then produced DIFFERENT icons for the same map. Verified:
+    `circle-p` mapped to Parking on the CLI and to nothing in the browser, so
+    five waypoint files diverged. The CWD lookup is gone (None is defaults
+    only); the path is still passed explicitly.
     """
     return load_config(CONFIG_PATH if CONFIG_PATH.exists() else None)
 

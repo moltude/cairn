@@ -300,8 +300,17 @@ def test_load_config_with_file(tmp_path):
     assert config.default_icon == "Summit"
 
 
-def test_load_config_without_file():
-    """Test load_config function without a config file."""
+def test_load_config_without_file(tmp_path, monkeypatch):
+    """load_config(None) is the built-in defaults, whatever the working
+    directory holds. It used to pick up ./cairn_config.yaml, so the same call
+    gave different mappings in the browser (CWD /home/pyodide) and in a
+    checkout (CWD = repo root)."""
+    (tmp_path / "cairn_config.yaml").write_text(
+        yaml.safe_dump({"default_icon": "Summit"}), encoding="utf-8")
+    (tmp_path / "cairn_config.yml").write_text(
+        yaml.safe_dump({"default_icon": "Summit"}), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
     config = load_config(None)
 
     assert config.default_icon == "Location"  # Default value

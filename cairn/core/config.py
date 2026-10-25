@@ -918,21 +918,14 @@ def load_config(config_file: Optional[Path] = None) -> IconMappingConfig:
 
     Args:
         config_file: Optional path to user config file (.yaml or .yml).
-                    If None, looks for 'cairn_config.yaml' in current directory.
+                    None means the built-in defaults only. The working
+                    directory is never consulted: it used to be, and the same
+                    call then gave different mappings in the browser (CWD
+                    /home/pyodide) and in a checkout (CWD = repo root).
 
     Returns:
         IconMappingConfig instance
     """
-    # Check for default config file if none specified
-    if config_file is None:
-        yaml_config = Path("cairn_config.yaml")
-        yml_config = Path("cairn_config.yml")
-
-        if yaml_config.exists():
-            config_file = yaml_config
-        elif yml_config.exists():
-            config_file = yml_config
-
     return IconMappingConfig(config_file)
 
 
