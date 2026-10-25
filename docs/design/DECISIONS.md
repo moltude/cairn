@@ -547,7 +547,7 @@ Decision:
   writers. File: `<Folder>_Areas.gpx`. The KML area writer writes the same four values as
   ExtendedData (and the fill as its PolyStyle).
 - The web export (`web/bridge.py:export_zip`) uses it; no web export writes KML any more, so the
-  runbook's "contains KML" warning (computer only) is no longer triggered. The KML area writer is
+  runbook's "contains KML" warning (no phone import) is no longer triggered. The KML area writer is
   kept for its other callers and tests.
 - Area line style and weight are written and edited like a line's (UI-25). (Until 2026-10-23
   they were not, on the mistaken belief that onX's area export carried only color and fill.)
