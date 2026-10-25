@@ -25,12 +25,18 @@ from xml.sax.saxutils import escape as _sax_escape
 # surrogates; one of them anywhere makes the whole file unparseable. Names and
 # notes can carry them (a pasted control character, a bulk edit), so every text
 # the writers emit drops them first. Everything XML allows passes unchanged.
-_XML_INVALID = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff\ud800-\udfff]")
+# A translate table, not a regex: the set is listed outright, so no character
+# range can be wider than meant (CodeQL py/overly-large-range, 2026-10-25).
+_XML_INVALID = dict.fromkeys(
+    [c for c in range(0x20) if c not in (0x09, 0x0A, 0x0D)]   # C0 controls but tab, LF, CR
+    + [0xFFFE, 0xFFFF]
+    + list(range(0xD800, 0xE000))                             # surrogates: only lone ones occur in a str
+)
 
 
 def xml_safe(text: str) -> str:
     """text without the characters XML 1.0 forbids."""
-    return _XML_INVALID.sub("", text)
+    return text.translate(_XML_INVALID)
 
 
 def xml_text(text: str) -> str:
