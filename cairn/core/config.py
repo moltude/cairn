@@ -176,7 +176,6 @@ ICON_COLOR_MAP = {
     "Barrier": "rgba(255,0,0,1)",  # Red
     # Camping (no true "orange" in waypoint palette; closest is Red-Orange)
     "Camp": "rgba(255,51,0,1)",  # Red-Orange
-    "Camp": "rgba(255,51,0,1)",  # Red-Orange
     "Camp Area": "rgba(255,51,0,1)",  # Red-Orange
     "Camp Backcountry": "rgba(255,51,0,1)",  # Red-Orange
     "Campground": "rgba(0,0,0,1)",  # Black
@@ -412,7 +411,6 @@ DEFAULT_SYMBOL_MAP = {
 # Based on actual OnX icon names from GPX analysis
 DEFAULT_KEYWORD_MAP = {
     # Camping
-    "Camp": ["tent", "camp", "sleep", "overnight", "camping"],
     "Camp": ["camp", "camping"],
     "Camp Area": ["camp area", "camping area"],
     "Camp Backcountry": ["backcountry camp", "bivy", "bivouac"],
