@@ -383,7 +383,9 @@ async function handleFiles(files) {
     // message and the engine's messages are already user-friendly ("No features
     // found... make sure this is a CalTopo export"); the stack above it is noise
     // to a hiker. Keep the full thing in the console for us.
-    setStatus((files.length === 1 ? "Couldn't read that file — " : "Couldn't read those files — ") + humanError(e), "err");
+    { const why = humanError(e);
+      setStatus(why.startsWith("Failed:") ? why
+        : (files.length === 1 ? "Couldn't read that file — " : "Couldn't read those files — ") + why, "err"); }
     console.error(e);
   }
 }
@@ -974,7 +976,7 @@ function row(it, old = null) {
   const fillMark = fillCaution(it);
   const html = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
-    <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
+    <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name || "Untitled")}" placeholder="Untitled" value="${esc(it.name)}">${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
       `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
@@ -1021,7 +1023,7 @@ function row(it, old = null) {
     tr.classList.toggle("sel", e.target.checked); updateSel();
     syncFolderBox(tr);
   };
-  wireTextField(tr.querySelector(".name-in"), it, "name", { required: true });
+  wireTextField(tr.querySelector(".name-in"), it, "name");
   if (noteOpen) wireNoteEditor(tr, it);
   else tr.querySelector(".note-btn").onclick = () => openNote(it);
   const chip = tr.querySelector(".exc-chip");
@@ -1050,8 +1052,8 @@ function syncFolderBox(tr) {
  *  original value before blurring means the browser sees no change at all, so no
  *  commit happens.
  *
- *  `required` fields (the name) also refuse to commit empty: a nameless markup
- *  is unusable in onX, where the name is the only searchable field.
+ *  `required` fields refuse to commit empty. No field uses it since names became
+ *  optional (owner, 2026-10-25): an empty name shows as "Untitled".
  */
 function wireTextField(el, it, key, { required = false } = {}) {
   el.addEventListener("focus", () => { el.dataset.orig = el.value; });
@@ -1059,7 +1061,7 @@ function wireTextField(el, it, key, { required = false } = {}) {
     const v = el.value;
     if (required && !v.trim()) {
       el.value = el.dataset.orig ?? "";
-      setStatus("A name is required. onX searches by name only.", "err");
+      setStatus("An item needs a name.", "err");
       return;
     }
     if (v === el.dataset.orig) return;
@@ -1194,7 +1196,7 @@ function updateSel() {
   ["#bulk-icon", "#more-btn"].forEach(sel => {
     const el = $(sel);
     el.disabled = n === 0;
-    el.title = n === 0 ? "Select rows first" : "";
+    el.title = n === 0 ? "Select items first" : "";
   });
   const sel = selectedItems();
   // One button, one dialog (UI-36). Lines and areas take a colour and a line
@@ -1259,7 +1261,7 @@ function syncLineOpts(root, style, weight) {
    its default blue, whatever the file says, so the one fill on offer is that
    blue ("Leave as is" or it). Picking it clears the area's fill caution and is
    what the export writes; the bridge refuses any other fill. */
-const FILL_LABEL = "Use onX's blue fill";
+const FILL_LABEL = "Blue";
 function fillRowHTML() {
   return `<div class="pop-sec fill-sec" data-row="fill">
       ${secHead("Fill", leaveChip("fill-reset", true))}
@@ -1422,7 +1424,7 @@ function closePop() {
 }
 
 /* ---------- several items: ONE dialog from the selection bar (UI-36) ----------
-   Waypoints get Pin color and Icon; lines and areas get Color, Style and
+   Waypoints get Waypoint color and Icon; lines and areas get Color, Style and
    Weight, and Fill when there are areas. Every row starts on "Leave as is",
    which leaves each item its own value. A mixed selection gets both sets, the
    pin and line colours apart (onX's 10 and 11). */
@@ -1448,7 +1450,7 @@ function openBulk() {
         <div class="na-rows"></div>
       </div>
     </div>
-    ${hasWp ? colorRowHTML("pin", mixed ? "Pin color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons">
+    ${hasWp ? colorRowHTML("pin", mixed ? "Waypoint color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons">
       ${secHead("Icon", leaveChip("icon-reset", true))}
       <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
@@ -1539,7 +1541,7 @@ function applyBulk() {
   refreshAfterEdit();
   const n = changed.length;
   const word = changed.every(i => i.kind === "shapes") ? "area" : changed.every(i => i.kind === "tracks") ? "line" : "item";
-  setStatus(`Changed ${plural(n, word)}`, "ready");
+  setStatus(`Changed ${plural(n, word)}.`, "ready");
 }
 
 function closeBulk() {
@@ -1870,8 +1872,8 @@ function offerMerge(src, dup, where, draft = null) {
     body: `Move the ${plural(src.items.length, "item")} in “${src.name}” into it?`,
     ret,
     buttons: [
-      { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
       { label: "Cancel", initial: true, cancel: true, run: cancel },
+      { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
     ],
   });
 }
@@ -1903,7 +1905,7 @@ function openMoveTo() {
         `<span class="facet-name">${esc(g.name)}${h ? " · here now" : ""}</span>` +
         // The count tells apart two folders a file named alike ("Camp", "camp").
         `<span class="facet-count">${h ? "" : g.items.length}</span></button>`;
-    }).join("")}<button type="button" class="move-opt move-new">+ New folder…</button></div>`;
+    }).join("")}<button type="button" class="move-opt move-new">+ New folder</button></div>`;
   p.querySelectorAll(".move-opt[data-key]").forEach(b => b.onclick = () => {
     const k = b.dataset.key; closeMove(false);
     moveTo(uids, k);
@@ -2124,7 +2126,7 @@ async function doExport() {
     quotes, up to LONG_NOTES_SHOWN, then "and N more". */
 const LONG_NOTES_SHOWN = 8;
 function longNoteWarning() {
-  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `'${n || "(no name)"}'`));
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `\u201c${n || "Untitled"}\u201d`));
   const n = LONG_NOTES_SHOWN;
   const list = names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
   return names.length === 1 ? `Item ${list} is over the length limit and will be truncated by onX.`
@@ -2253,15 +2255,15 @@ function warnFillLoss() {
   const n = hit.length;
   if (!n) return;
   openConfirm({
-    title: n === 1 ? "1 area will lose its fill." : `${n} areas will lose their fill.`,
+    title: n === 1 ? "1 area will lose its fill" : `${n} areas will lose their fill`,
     body: "onX resets area fills to blue on import.",
     buttons: [
+      { label: n === 1 ? "Keep it" : "Keep them", initial: true, cancel: true, run: () => closeConfirm() },
       { label: n === 1 ? "Leave this out" : `Leave these ${n} out`, run: () => {
           closeConfirm();
           hit.forEach(it => edit(it, { included: false }, { render: false }));
           refreshAfterEdit();
         } },
-      { label: n === 1 ? "Keep it" : "Keep them", initial: true, cancel: true, run: () => closeConfirm() },
     ],
   });
 }
@@ -2352,7 +2354,7 @@ function requestExport() {
     body: `Your note for \u201c${it.name}\u201d hasn't been saved.`,
     ret,
     buttons: [
-      { label: "Cancel", cancel: true, run: () => {
+      { label: "Keep editing", cancel: true, run: () => {
           closeConfirm(false);
           const ta = document.querySelector(`tr[data-uid="${CSS.escape(uid)}"] .desc-in`);
           if (ta) ta.focus({ preventScroll: true });

@@ -959,7 +959,7 @@ def test_remove_empty_folder_removes_only_an_empty_folder():
     assert res == {"ok": True, "removed": [key], "folders": res["folders"]}
     assert [f["key"] for f in res["folders"]] == [g["key"] for g in _groups()] and len(_groups()) == 10
     before = _layout()
-    with pytest.raises(ValueError, match="isn’t empty"):
+    with pytest.raises(ValueError, match="isn't empty"):
         bridge.remove_empty_folder(_key("Paddling"))
     with pytest.raises(ValueError, match="no folder"):
         bridge.remove_empty_folder(key)          # already gone
