@@ -37,8 +37,8 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-25 (small engine fixes: numbered names keep their icon, duplicate config keys, load_config(None) is defaults only, dead KML warning removed, strip_html strips HTML tag names only, onX replace steps in instructions.txt): **1377 passed** with the web dev server up; without
-it the `tests/web` tests skip. (The small engine fixes added 10 tests; before them 1367.)
+Baseline as of 2026-10-25 (leftovers: multi-geometries split, XML-forbidden characters dropped by the writers, instructions.txt marks by item not name, note-as-name blank guard, save_user_mapping path required): **1387 passed** with the web dev server up; without
+it the `tests/web` tests skip. (The leftovers added 10 tests; before them 1377, and 1367 before the small engine fixes.)
 
 Baseline as of 2026-10-24 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup, owner feedback 2026-10-24 UI-36..38, public copy cleanup and sticky top bar, keyed in-place rendering, icon keyword ties ENG-08): 1367 passed. (Keyed rendering added 7 identity tests and ENG-08 added 3; before them 1357. Copy cleanup and sticky bar took it from 1349. Owner feedback 2026-10-24 added 32; before it 1317. The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
@@ -254,6 +254,7 @@ Docs that are current:
 - `docs/DEPLOY.md` — Vercel + the Cloudflare Worker, shipping an engine change, checking a deploy
 - `docs/testing/FOLDERS_RELEASE.md` — the folders release log (PRs #44, #45)
 - `docs/research/*_2026-10-22.md` — dated research, cited by code comments and fixtures
+- `docs/plans/*.md` — plans for work not yet built (bulk rename); archive a plan once it ships
 
 Expired plans and audits (the 2026-08-29 audits, the TUI-era designs, the GPX/KML input
 roadmap, the first deploy plan) were moved on 2026-10-25 to `docs/archive/`, which is

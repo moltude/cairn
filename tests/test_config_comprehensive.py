@@ -522,3 +522,10 @@ def test_no_dict_literal_in_config_has_duplicate_keys():
                     duplicates.append((key.value, key.lineno))
                 seen.add(key.value)
     assert duplicates == []
+
+
+def test_save_user_mapping_needs_an_explicit_path():
+    """No current-directory default: a caller must say which file to write (2026-10-25)."""
+    import inspect
+    param = inspect.signature(save_user_mapping).parameters["config_path"]
+    assert param.default is inspect.Parameter.empty

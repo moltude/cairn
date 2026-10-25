@@ -19,6 +19,29 @@ import math
 import re
 
 from cairn.core.parser import ParsedFeature
+from xml.sax.saxutils import escape as _sax_escape
+
+# XML 1.0 forbids C0 controls other than tab/LF/CR, U+FFFE/U+FFFF and lone
+# surrogates; one of them anywhere makes the whole file unparseable. Names and
+# notes can carry them (a pasted control character, a bulk edit), so every text
+# the writers emit drops them first. Everything XML allows passes unchanged.
+# A translate table, not a regex: the set is listed outright, so no character
+# range can be wider than meant (CodeQL py/overly-large-range, 2026-10-25).
+_XML_INVALID = dict.fromkeys(
+    [c for c in range(0x20) if c not in (0x09, 0x0A, 0x0D)]   # C0 controls but tab, LF, CR
+    + [0xFFFE, 0xFFFF]
+    + list(range(0xD800, 0xE000))                             # surrogates: only lone ones occur in a str
+)
+
+
+def xml_safe(text: str) -> str:
+    """text without the characters XML 1.0 forbids."""
+    return text.translate(_XML_INVALID)
+
+
+def xml_text(text: str) -> str:
+    """text made safe for XML character data: forbidden characters dropped, then escaped."""
+    return _sax_escape(xml_safe(text))
 from cairn.core.mapper import map_icon
 from cairn.utils.utils import PLAIN_NOTES_KEY, clean_notes, strip_html, natural_sort_key, sanitize_name_for_onx
 from cairn.core.config import IconMappingConfig, resolve_waypoint_color
@@ -414,7 +437,7 @@ def write_gpx_waypoints_maybe_split(
     if sort:
         features = sorted(features, key=lambda f: natural_sort_key(f.title))
 
-    from xml.sax.saxutils import escape
+    escape = xml_text
 
     header_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -674,7 +697,7 @@ def write_gpx_tracks_maybe_split(
 
     Returns list of (path, size_bytes, written_track_count) for manifest.
     """
-    from xml.sax.saxutils import escape
+    escape = xml_text
 
     if sort:
         features = sorted(features, key=lambda f: natural_sort_key(f.title))
@@ -896,7 +919,7 @@ def write_gpx_waypoints(
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:onx="https://wwww.onxmaps.com/" version="1.1" creator="Cairn - CalTopo to OnX Migration Tool">',
         "  <metadata>",
-        f"    <name>{folder_name}</name>",
+        f"    <name>{xml_text(folder_name)}</name>",
         "  </metadata>",
     ]
 
@@ -936,7 +959,7 @@ def write_gpx_waypoints(
         sanitized_titles.append(formatted_name)
 
         # Escape XML special characters
-        from xml.sax.saxutils import escape
+        escape = xml_text
 
         formatted_name = escape(formatted_name)
 
@@ -1052,7 +1075,7 @@ def write_gpx_tracks(
     Note:
         OnX displays items in the same order as the GPX file.
     """
-    from xml.sax.saxutils import escape
+    escape = xml_text
 
     # Sort features by title using natural sort
     if sort:
@@ -1309,12 +1332,12 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
     sanitized, was_changed = sanitize_name_for_onx(feature.title)
     if was_changed:
         track_name_change("shapes", feature.title, sanitized)
-    name_elem.text = sanitized
+    name_elem.text = xml_safe(sanitized)
 
     notes_text = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))
     if notes_text:
         desc = ET.SubElement(placemark, "description")
-        desc.text = notes_text
+        desc.text = xml_safe(notes_text)
 
     # Style. VERIFIED 2026-10-22 (ENG-05): onX's importer IGNORES this style --
     # a real Web Map import of these Placemarks (inline Style, a shared styleUrl
@@ -1363,7 +1386,7 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
     for key, value in onx_data:
         data = ET.SubElement(extended, "Data")
         data.set("name", key)
-        ET.SubElement(data, "value").text = value
+        ET.SubElement(data, "value").text = xml_safe(value)
 
     polygon = ET.SubElement(placemark, "Polygon")
     for i, ring in enumerate(rings):
@@ -1382,7 +1405,7 @@ def _kml_document(folder_name: str, placemarks: List[ET.Element]) -> str:
     kml = ET.Element("kml")
     kml.set("xmlns", "http://www.opengis.net/kml/2.2")
     document = ET.SubElement(kml, "Document")
-    ET.SubElement(document, "name").text = folder_name
+    ET.SubElement(document, "name").text = xml_safe(folder_name)
     # Generator marker, so cairn/io/input_check.detect can tell Cairn's KML
     # from CalTopo's or Google Earth's (KG section 5.1). Document-level
     # ExtendedData is valid KML 2.2 and sits outside every Placemark, so it
@@ -1500,6 +1523,9 @@ def write_kml_shapes(
 
 # Titles of areas whose holes were not written, since the last clear.
 _areas_without_holes: List[str] = []
+# The same areas by position among the areas written (0-based, in file order
+# across split parts), so a report can mark the very area when names repeat.
+_area_hole_positions: List[int] = []
 
 
 def get_areas_without_holes() -> List[str]:
@@ -1507,9 +1533,15 @@ def get_areas_without_holes() -> List[str]:
     return list(_areas_without_holes)
 
 
+def get_area_hole_positions() -> List[int]:
+    """Positions (0-based, in written order) of the areas get_areas_without_holes names."""
+    return list(_area_hole_positions)
+
+
 def clear_areas_without_holes() -> None:
     """Reset the holes record (call before processing a new folder)."""
     _areas_without_holes.clear()
+    _area_hole_positions.clear()
 
 
 def write_gpx_areas_maybe_split(
@@ -1536,7 +1568,7 @@ def write_gpx_areas_maybe_split(
     outer ring are skipped and NOT counted, so callers can report them as
     dropped.
     """
-    from xml.sax.saxutils import escape
+    escape = xml_text
 
     if sort:
         features = sorted(features, key=lambda f: natural_sort_key(f.title or ""))
@@ -1560,6 +1592,7 @@ def write_gpx_areas_maybe_split(
             track_name_change("shapes", feature.title, sanitized)
         if len(rings) > 1:
             _areas_without_holes.append(sanitized)
+            _area_hole_positions.append(len(item_blocks))
 
         area_rgba, area_style, area_weight, fill_rgba = area_onx_style(feature)
         notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))

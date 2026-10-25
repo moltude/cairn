@@ -148,27 +148,55 @@ class ParsedData:
         return [(fid, data["name"]) for fid, data in self.folders.items()]
 
 
-def _split_multipolygon(feature_dict: Dict[str, Any]) -> List[ParsedFeature]:
-    """One Polygon ParsedFeature per part of a MultiPolygon feature.
+_SINGLE = {"MultiPoint": "Point", "MultiLineString": "LineString", "MultiPolygon": "Polygon"}
+_CLASS_FOR = {"Point": "Marker", "LineString": "Line", "Polygon": "Shape"}
+_MULTI_TYPES = (*_SINGLE, "GeometryCollection")
 
-    Nothing downstream handles MultiPolygon (is_shape() wants a Polygon, and onX
-    areas are single polygons), so it used to be dropped without a count. Each part
-    keeps the feature's properties and title (so it stays in the same folder with
-    the same name, colour and notes); the first part keeps the id, later parts get
-    "<id>:part<n>". A part with no rings is skipped; a non-list coordinates value
-    yields nothing.
-    """
-    coords = (feature_dict.get("geometry") or {}).get("coordinates")
-    if not isinstance(coords, list):
+
+def _single_geometries(geometry: Any, depth: int = 0) -> List[Dict[str, Any]]:
+    """The simple geometries inside a Multi* or GeometryCollection, in order.
+
+    Malformed parts (a non-list, an empty part) are skipped; collections nest at
+    most a few levels deep, which is more than any real export uses."""
+    if not isinstance(geometry, dict) or depth > 4:
         return []
+    gtype = geometry.get("type")
+    if gtype == "GeometryCollection":
+        members = geometry.get("geometries")
+        if not isinstance(members, list):
+            return []
+        return [g for m in members for g in _single_geometries(m, depth + 1)]
+    if gtype in _SINGLE:
+        coords = geometry.get("coordinates")
+        if not isinstance(coords, list):
+            return []
+        return [{"type": _SINGLE[gtype], "coordinates": c}
+                for c in coords if isinstance(c, list) and c]
+    if gtype in _CLASS_FOR and geometry.get("coordinates") not in (None, []):
+        return [{"type": gtype, "coordinates": geometry["coordinates"]}]
+    return []
+
+
+def _split_parts(feature_dict: Dict[str, Any]) -> List[ParsedFeature]:
+    """One ParsedFeature per simple geometry of a MultiPoint, MultiLineString,
+    MultiPolygon or GeometryCollection feature.
+
+    Nothing downstream handles these (is_marker/is_line/is_shape want simple
+    geometries, and onX markups are single), so they used to be dropped without a
+    count. Each part keeps the feature's properties and title (same folder, name,
+    colour and notes); the first part keeps the id, later parts get "<id>:part<n>".
+    A GeometryCollection mixes kinds, so each of its parts takes the class its
+    geometry needs (Point -> Marker, LineString -> Line, Polygon -> Shape)."""
+    geometry = feature_dict.get("geometry") or {}
+    mixed = geometry.get("type") == "GeometryCollection"
     base_id = feature_dict.get("id", "")
     out: List[ParsedFeature] = []
-    for polygon in coords:
-        if not isinstance(polygon, list) or not polygon:
-            continue
+    for single in _single_geometries(geometry):
         part = dict(feature_dict)
         part["properties"] = dict(feature_dict.get("properties") or {})
-        part["geometry"] = {"type": "Polygon", "coordinates": polygon}
+        if mixed:
+            part["properties"]["class"] = _CLASS_FOR[single["type"]]
+        part["geometry"] = single
         if out:
             part["id"] = f"{base_id}:part{len(out) + 1}"
         out.append(ParsedFeature(part))
@@ -255,8 +283,8 @@ def parse_geojson(filepath: Path) -> ParsedData:
         if feature.is_folder():
             folder_features.append(feature)
             parsed_data.add_folder(feature.id, feature.title)
-        elif feature.geometry_type == "MultiPolygon":
-            non_folder_features.extend(_split_multipolygon(feature_dict))
+        elif feature.geometry_type in _MULTI_TYPES:
+            non_folder_features.extend(_split_parts(feature_dict))
         else:
             non_folder_features.append(feature)
 

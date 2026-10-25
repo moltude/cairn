@@ -59,7 +59,7 @@ from cairn.core.parser import (
     UNORGANIZED_FOLDER_NAME,
     ParsedData,
     ParsedFeature,
-    _split_multipolygon,
+    _split_parts,
 )
 
 FOLDER_PATH_SEPARATOR = " / "
@@ -361,7 +361,7 @@ def _features(pm: ET.Element, idx: int, shared: Dict[str, ET.Element]) -> List[P
     if len(polygons) > 1:
         # The GeoJSON of the same map has ONE MultiPolygon feature; split it by
         # the very function parse_geojson uses, so ids and titles match.
-        out.extend(_split_multipolygon({
+        out.extend(_split_parts({
             "id": base_id, "properties": props("Polygon"),
             "geometry": {"type": "MultiPolygon", "coordinates": polygons},
         }))

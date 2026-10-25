@@ -236,7 +236,7 @@ async function boot() {
     if (PENDING_FILES) { const f = PENDING_FILES; PENDING_FILES = null; handleFiles(f); }
   } catch (e) {
     PENDING_FILES = null; showDropWait(false);
-    setStatus("Failed: " + e.message, "err");
+    setStatus("Failed: " + humanError(e), "err");
     window.__cairnError = String(e);
     console.error(e);
   }
@@ -2115,7 +2115,7 @@ async function doExport() {
     setStatus("");   // the screen says it: no "Built N folders" up top
     window.__cairnExported = true;
   } catch (e) {
-    setStatus("Export failed: " + e.message, "err"); console.error(e);
+    setStatus("Export failed: " + humanError(e), "err"); console.error(e);
   }
 }
 
@@ -2188,7 +2188,7 @@ function downloadFolder(e) {
     // sanitize alike, their numbers can't.
     downloadBlob(new Blob([bytes], { type: "application/zip" }), e.dir + ".zip");
   } catch (err) {
-    setStatus("Download failed: " + err.message, "err"); console.error(err);
+    setStatus("Download failed: " + humanError(err), "err"); console.error(err);
   }
 }
 
@@ -2387,7 +2387,9 @@ window.addEventListener("DOMContentLoaded", () => {
   wireRowDrag();
   wirePointerHeld();
   wireTip();
-  menuAct("#bulk-desc", () => bulk(it => it.desc ? { name: oneLine(it.desc) } : {}));
+  // A note of only spaces and line breaks would give an empty name, which the
+  // name field refuses: leave that row alone.
+  menuAct("#bulk-desc", () => bulk(it => { const n = oneLine(it.desc || ""); return n ? { name: n } : {}; }));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
   // Every nav's Help (top bar, search row, footer) opens the dialog here.
