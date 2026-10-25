@@ -25,10 +25,10 @@ GPX = "{http://www.topografix.com/GPX/1/1}"
 HEAD = [
     "How to import these files into onX",
     "",
-    "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
+    "Import each folder below into onX on a computer (webmap.onxmaps.com), one at a time.",
     "In onX, choose Import and add all of that folder's files together.",
     'Tick "Import map data to a new folder".',
-    "onX names the new folder with a date and time stamp.",
+    "onX names the new folder with a datetime stamp.",
     "Rename it to the name shown for that folder below.",
     "Importing needs onX Premium or Elite.",
 ]
@@ -110,7 +110,7 @@ def test_folder_file_kind_and_item_names_are_nested_as_written():
         assert [x["name"] for x in f["files"]] == [p["path"].split("/")[-1] for p in e["files"]]
         for x, p in zip(f["files"], e["files"]):
             root = ET_fromstring(zf.read(p["path"]))
-            want = [el.findtext(GPX + "name") or "(no name)" for el in root.iter(GPX + tag[x["kind"]])]
+            want = [el.findtext(GPX + "name") or "Untitled" for el in root.iter(GPX + tag[x["kind"]])]
             assert x["items"] == want and len(want) == p["count"]
             assert x["name"].endswith({"Waypoints": "_Waypoints.gpx", "Lines": "_Tracks.gpx",
                                        "Areas": "_Areas.gpx"}[x["kind"]])

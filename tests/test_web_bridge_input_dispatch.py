@@ -154,6 +154,12 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     trapper = [i for g in loaded["groups"] for i in g["items"] if i["name"] == "Trapper"]
     assert [i["why"] for i in trapper] == ["Matched \u201cpeak\u201d in the note."]
     trapper[0]["why"] = "Matched \u201cpeak\u201d in the name."
+    # Straight apostrophes in every message since 2026-10-25 (owner): the baseline's
+    # line and area why-text has the curly one. Put it back so nothing else may move.
+    straight = [i for g in loaded["groups"] for i in g["items"] if "don't take an icon" in i["why"]]
+    assert straight
+    for i in straight:
+        i["why"] = i["why"].replace("don't take an icon", "don\u2019t take an icon")
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
     zf = _zip(bridge.export_zip())
     assert zf.namelist() == list(baseline["members"])
@@ -300,7 +306,7 @@ def test_icon_not_in_onx_list_is_kept_but_flagged():
     assert item["icon"] == "Campsite"
     assert item["unknown_icon"] is True
     assert item["confirmed"] is False
-    assert "“Campsite”" in item["why"] and "which Cairn doesn’t know" in item["why"]
+    assert "“Campsite”" in item["why"] and "which Cairn doesn't know" in item["why"]
     others = [i for i in _items(data) if i["kind"] == "waypoints" and i is not item]
     assert all(i["unknown_icon"] is False for i in others)
     # Kept means exported unchanged, too.
@@ -472,15 +478,17 @@ def test_unparseable_gpx_error_is_one_line_without_the_temp_path():
     with pytest.raises(ValueError) as e:
         bridge.load_document((FX / "edge_cases" / "malformed.gpx").read_text(), "malformed.gpx")
     msg = str(e.value)
-    assert msg.startswith("malformed.gpx couldn’t be read: Invalid GPX file")
+    assert msg.startswith("malformed.gpx couldn't be read: Invalid GPX file")
     assert "\n" not in msg and "/tmp" not in msg
 
 
-def test_empty_and_invalid_json_keep_their_geojson_errors():
-    with pytest.raises(ValueError, match="GeoJSON file is empty"):
-        bridge.load_document("", "empty.json")
-    with pytest.raises(ValueError, match="Invalid GeoJSON file"):
-        bridge.load_document("{ not json", "bad.json")
+def test_unreadable_geojson_says_one_plain_line():
+    # The parser's messages named a /tmp path; the owner chose one generic line (2026-10-25).
+    for text, name in (("", "empty.json"), ("{ not json", "bad.json"), ('{"features": 3}', "odd.json"),
+                       ('{"type": "FeatureCollection", "features": []}', "none.json")):
+        with pytest.raises(ValueError) as e:
+            bridge.load_document(text, name)
+        assert str(e.value) == "Failed: Could not load file"
 
 
 def test_dtd_is_refused_before_any_reader_runs_in_a_multi_file_load():
@@ -509,7 +517,7 @@ _DTD_KML = ('<?xml version="1.0"?>\n<!DOCTYPE kml [<!ENTITY a "aaaa">]>\n'
 ])
 def test_a_gpx_or_kml_with_nothing_readable_is_refused_by_name(name, text):
     """It used to open as a map of 0 items (an empty folder, an export that writes
-    nothing), where an empty GeoJSON already says "No features found"."""
+    nothing), where an empty GeoJSON already says it could not be loaded."""
     with pytest.raises(ValueError, match=rf"^Cairn found no waypoints, lines or areas in {name}\."):
         bridge.load_document(text, name)
 
