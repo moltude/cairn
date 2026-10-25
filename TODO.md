@@ -57,6 +57,10 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   extensions and `<desc>` lines, or only name and location? Decides whether the round trip
   works from a phone or only from the Web Map.
 * **Track times and waypoint elevation** (P7): does onX read `<time>` and `<ele>` on import?
+* **Bulk rename onX probe** (UI-39, owner-run only): import one GPX with a 300-character name, a
+  513-byte note ending in a 4-byte emoji, an RTL name, two identical names, an emoji-only name, a
+  name with NBSP and ZWSP, and a markup with an empty `<name>`. Does each import, and how does onX
+  list and show it? The empty `<name>` decides whether blanking names in bulk needs a warning.
 * **One styled CalTopo export** (GeoJSON + KML + GPX of one small map with a dotted line, an
   arrow line, an unfoldered marker, a multi-part area and an area with a hole). Answers:
   * CalTopo's `pattern` values for dotted and arrow lines (only solid and one dash are known;
@@ -76,10 +80,11 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
 
 ## Next feature: bulk rename and note change
 
-* **Rename… and Change note…** in More (UI-17), with a live before/after preview. Phased,
-  red-teamed plan for parallel implementation agents: [`docs/plans/BULK_RENAME.md`](docs/plans/BULK_RENAME.md).
-  Phase 0 needs the owner: pick the dialog mockup, say yes/no to the duplicate-name flag, approve
-  the wording.
+* **Rename… and Change note…** in More (UI-39), with a live Now → After preview: built on branch
+  `feat/bulk-rename` (2026-10-25), waiting for the owner's review on localhost. Plan:
+  [`docs/plans/BULK_RENAME.md`](docs/plans/BULK_RENAME.md); build log, decision status and open
+  questions: [`docs/plans/BULK_RENAME_PROGRESS.md`](docs/plans/BULK_RENAME_PROGRESS.md). After
+  merge: rerun the bulk-edit timing on the Vercel deployment at 1,500 / 3,000 / 10,000 items.
 
 ## Major feature: investigate, then build
 

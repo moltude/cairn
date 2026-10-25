@@ -7,6 +7,10 @@ on the selected rows (UI-17). Three of the four engine prerequisites of revision
 so Track A is now `web/rename.js` only. Phase 0 is done; the mockups are on the Phase 0 canvas
 (https://claude.ai/artifact/5F9oPZLuGRuqU2TaNY8rCN). Agent rules are in §4.
 
+**Status 2026-10-25: built** on branch `feat/bulk-rename` (Phases 1–3 and Track D; Phase 4 waits for the
+owner's review on localhost). Where the build departed from this plan, and why, is logged in
+`docs/plans/BULK_RENAME_PROGRESS.md` (sections 4 and 5); that file wins where the two disagree.
+
 ---
 
 ## 1. Goal and non-goals
