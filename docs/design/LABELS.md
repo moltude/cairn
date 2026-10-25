@@ -114,13 +114,13 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 
 | Text | Kind | Source | Selector |
 |---|---|---|---|
-| Select {name} | checkbox aria-label | app:976 | `.sel-box` |
+| Select {name} (Untitled when it has none) | checkbox aria-label | app:976 | `.sel-box` |
 | Name of {name} | aria-label of the name field | app:977 | `.name-in` |
 | Excluded | state label | app:978 | `.exc-label` |
-| Include / Include {name} | button / aria-label on an excluded row | app:978 | `.exc-chip` |
+| Include / Include {name} (Untitled when it has none) | button / aria-label on an excluded row | app:978 | `.exc-chip` |
 | Left out of the export. Click to put it back. | tooltip | app:978 | `.exc-chip` |
 | Add a note | empty-note button text | app:981 | `.note-text.empty` |
-| {first line of note} · Open note for {name} | button text · aria-label | app:980-981 | `.note-btn` |
+| {first line of note} · Open note for {name} (Untitled when it has none) | button text · aria-label | app:980-981 | `.note-btn` |
 | {icon name} or "Default pin" | text under the marker | app:984-987 | `.icon-name`, `.whymark` |
 | {Icon}, {Color}. Change icon or color | marker aria-label | app:983 | `.icon-btn` |
 | Line / Track / Area | text on line and area rows ("Track" for onX-file tracks) | app:793-794 | `.icon-name.kind` |
@@ -151,7 +151,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 
 | Text | Kind | Source | Selector |
 |---|---|---|---|
-| Change icon and color for {name} / Change line for {name} / Change area for {name} | dialog aria-label | app:1310 | `#mark-pop` |
+| Change icon and color for {name} / Change line for {name} / Change area for {name} ({name}: Untitled when it has none) | dialog aria-label | app:1310 | `#mark-pop` |
 | {item name} or Untitled | popover title | app:1314 | `.pop-name` |
 | Color · Icon · N icons | section labels / count | app:1317-1319 | — |
 | Find an icon | search placeholder and aria-label | app:1320 | `.icon-search` |

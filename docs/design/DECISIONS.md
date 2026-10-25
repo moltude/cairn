@@ -1273,7 +1273,16 @@ Not verified in onX (owner-run only, never an agent): how onX lists and shows an
 with an **empty `<name>`**, a 300-character name, a 513-byte note ending in a four-byte emoji,
 right-to-left names, emoji-only names, names with NBSP or zero-width spaces. Until then a bulk
 blank-out is unverified in onX; if onX drops or mangles such items, the owner decides whether a
-warning earns its place. The single name field still saves untrimmed (out of scope here).
+warning earns its place.
+
+**One rule set for every text edit** (owner, 2026-10-25, after the build). An edited name (the row's
+name field, Use note as name, Rename…) goes through `CairnRename.cleanName`: characters XML forbids
+dropped, a whitespace run holding a tab or line break made one space, trimmed. An edited note (the note
+editor's Save, Change note…) goes through `cleanNote`: characters XML forbids dropped, line endings made
+"\n", trimmed outside, inner line breaks kept. Silently: no sentence, no warning. A value left untouched
+is never cleaned (a dirty loaded value stays as loaded; the writers are the net). After a commit the field
+shows the cleaned value. An edit that cleans back to the stored value (for a note, its written form) is no
+edit. Folder names keep their own one-line rule: they also name the export's folders and files.
 
 ### ENG-09 — Characters XML forbids are dropped, in the writers and in the bulk transform
 Status: decided 2026-10-25 (engine work shipped before the dialogs, for UI-39).
@@ -1283,7 +1292,8 @@ Status: decided 2026-10-25 (engine work shipped before the dialogs, for UI-39).
   other than tab, LF and CR, U+FFFE, U+FFFF and lone surrogates (`cairn/core/writers.py`
   `_XML_INVALID`, `xml_safe`, `xml_text`). One such character anywhere made a whole file unparseable.
 - **The bulk transform** (`web/rename.js`, `CairnRename.xmlSafe`) drops exactly the same set from a
-  value it changes, so the dialog's After column is what Save stores and what the file carries. A
+  value it changes, so the dialog's After column is what Save stores and what the file carries; so do
+  the row's name field, Use note as name and the note editor (UI-39's one rule set). A
   value the user didn't change is left as loaded; the writers are the net under it.
 - **Nothing else is touched.** Printable punctuation, NBSP, zero-width space, BOM and C1 controls
   are legal XML and user data: they pass unchanged, as ENG-06 requires for names.
