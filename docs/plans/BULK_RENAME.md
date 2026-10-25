@@ -1,7 +1,8 @@
 # Bulk rename and bulk note change — implementation and red-team plan
 
-Revision 3, 2026-10-25, against HEAD `2f92e4b` (file:line references re-verified in that tree for revision 2),
-after the owner's Phase 0 decisions (§2). Scope: **More ▸ Rename…** (names) and **More ▸ Change note…** (notes)
+Revision 4, 2026-10-25, against HEAD `2f92e4b` (file:line references re-verified in that tree for revision 2),
+after the owner's Phase 0 decisions and a second round the same day (§2, decisions 17–22: names are optional,
+so an empty result never blocks Save). Scope: **More ▸ Rename…** (names) and **More ▸ Change note…** (notes)
 on the selected rows (UI-17). Three of the four engine prerequisites of revision 1 have since shipped (§3.7),
 so Track A is now `web/rename.js` only. Phase 0 is done; the mockups are on the Phase 0 canvas
 (https://claude.ai/artifact/5F9oPZLuGRuqU2TaNY8rCN). Agent rules are in §4.
@@ -16,14 +17,16 @@ so Track A is now `web/rename.js` only. Phase 0 is done; the mockups are on the 
   after* (suffix), *Find and replace* (plain text, "Match case" toggle, all occurrences; **an empty Find
   replaces the whole name**, so Find "" + Replace with "Campsite" normalises "Campsite - Oct 9th (rainy)",
   "Campsite - Oct 10th" and "Campsite - Oct 11th-12th (stay two days)" to three "Campsite"s). A live Now →
-  After list with a per-row flag; Save applies through `edit()`; status reads "Changed N items".
+  After list with a per-row flag; Save applies through `edit()`; status reads "Changed N items." Names are
+  optional: a result that is empty is saved as an empty name and shown as "Untitled"; no row blocks Save.
 - **Change note…**: the same dialog shape for notes, four modes in this order — *Add before* / *Add after*
   (joined with a line break), *Find and replace* (identical layout and rules to names, multi-line fields),
   *Replace the note* (set every selected note to the text). Per-row 512-byte flag (warn, never cut: UI-34's
-  rule). Duplicate names are allowed and never flagged (onX imports them).
+  rule). Duplicate names are allowed and never flagged (onX imports them). A missing note is simply blank
+  (decision 18).
 - One pure transform core (`web/rename.js`) used by preview and Save. **Headline invariant: the preview's
   After column == the value stored by Save == the GPX `<name>` / `<desc>` Cairn exports** (scoped in §3.1
-  "Invariant scope").
+  "Invariant scope"; the greyed "Untitled" shown for an empty name is display only, never stored or exported).
 - Tests: unit/property on the core (seeded generators from Python, the browser runs the function), bridge,
   e2e under both CSP contexts, fuzz actions and invariants, a naughty-strings module, an accessibility
   snapshot per dialog state.
@@ -50,58 +53,64 @@ so Track A is now `web/rename.js` only. Phase 0 is done; the mockups are on the 
    (stay two days)" into "Campsite" (normalising someone else's map to your own standards). This replaces
    revision 2's "find === '' → no-op" rule. Consequences, all pinned in §3.1 and §5.4: while **both** Find
    and Replace with are empty the spec is a no-op (every row "No change", Save disabled) — so the mode
-   opened with nothing typed shows no change, not a page of empty names; as soon as Replace with has text
+   opened with nothing typed shows no change, not a page of blank names; as soon as Replace with has text
    and Find is empty, every row's After is the Replace with text (a row already equal to it reads "No
-   change"); Find "" + Replace with whitespace-only cleans to "" ⇒ every row `empty`, Save disabled ("Name
-   can't be empty"). Match case has no effect while Find is empty (the toggle stays as it is). The no-op
-   rule raw === before ⇒ `unchanged` stays.
+   change"); Find "" + Replace with whitespace-only cleans to "" ⇒ every row's After is blank and shown
+   "Untitled", Save enabled (names are optional, decision 17). Match case has no effect while Find is empty
+   (the toggle stays as it is). The no-op rule raw === before ⇒ `unchanged` stays.
 2. **Modes in Change note…: option A** — four toggles in this order: **Add before · Add after · Find and
    replace · Replace the note**. Add before/after join with a line break (notes are multi-line, UI-13).
    **Parity with names**: the Find and replace layout is identical to the names one (Find and Replace with
    side by side, Match case below, the same rules including empty Find = replace the whole note), except the
    note fields are multi-line textareas (Enter adds a line, Ctrl/Cmd+Enter saves). Replace the note stays as
    its own toggle. Empty Find + empty Replace with: the same no-op rule while both are empty. Replace the
-   note with empty text clears every selected note (allowed; previewed; notes are never blocked on empty).
+   note with empty text clears every selected note (allowed; previewed as blank cells; nothing is blocked on
+   empty, names included, decision 17).
 3. **Duplicate names: option B, no warning.** No `duplicate` flag, no `ctx.otherNames`, no twin detection
    anywhere in the dialog. Twins are common in the owner's maps and onX imports them (ENG-06 probe). The
    Campsite normalisation above is the positive test: three identical names, no flag, Save enabled, three
    items exported (§5.5).
-4. **Wording**: existing labels across the app are the default (Cancel, Save, "Changed N items", the
-   long-note caution sentence); new labels use these approved values —
+4. **Wording**: existing labels across the app are the default (Cancel, Save, "Untitled", "Changed N
+   items.", the long-note caution sentence); new labels use these approved values —
    menu **"Rename…"** / **"Change note…"**; titles **"Rename N items"** / **"Change the note on N items"**;
    modes **"Add before"**, **"Add after"**, **"Find and replace"**, **"Replace the note"**; fields
-   **"Find"**, **"Replace with"**, **"Text"**; toggle **"Match case"**; row sentences **"No change"** and
-   **"Name can't be empty"**; long-note row: the app's existing caution-mark sentence (app.js:950, "onX
+   **"Find"**, **"Replace with"**, **"Text"**; toggle **"Match case"**; row sentence **"No change"**
+   (and no sentence for an empty result: its After cell shows the existing placeholder **"Untitled"**,
+   decision 17); long-note row: the app's existing caution-mark sentence (app.js:950, "onX
    imports only the first 512 bytes of a note. About N characters will be cut."); summary **"N will change ·
-   M unchanged"**; status after Save: the existing **"Changed N items"**; buttons: the existing **"Cancel"**
-   / **"Save"**; Help line **"Rename… changes many names at once; Change note… does the same for notes."**;
+   M unchanged"**; status after Save: **"Changed N items."** (with a period, decision 19); buttons: the
+   existing **"Cancel"** / **"Save"**; Help line **"Rename… changes many names at once; Change note… does the same for notes."**;
    FAQ Q **"Can I rename many items at once?"** A **"Yes. Tick them, then More → Rename…. Find and replace
    changes part of each name; Add before and Add after add text to every name."** A persistent inventory of
    every label and action is being created as `docs/design/LABELS.md` with a drift test; every new string
    from this feature is added to it **in the same commit** that introduces it (Track B, DoD 6).
 
-**Stated defaults (not asked; unchanged by the decisions):**
+**Stated defaults (not asked; default 7 is amended by decision 17, the rest are unchanged):**
 
 5. One "Match case" toggle, off by default, in Find and replace only.
 6. The transform lives in JavaScript (`web/rename.js`); Python keeps only the writer-side drop (§3.7(a)).
-7. **Empty result name blocks Save**: the row shows the empty result with the flag `empty` and the sentence
-   "Name can't be empty"; Save is disabled while any row is flagged; `empty` rows render first in the list so
-   the reason is never off-screen. The summary stays "N will change · M unchanged" (decision 4), where N =
-   `changed` and M = rows flagged `unchanged`; blocked rows are counted by neither (so Find "" + Replace with
-   "  " reads "0 will change · 0 unchanged" over a list of "Name can't be empty" rows). Same rule as
-   the single editor (app.js:1056-1063: `required` fields refuse an empty commit).
+7. **An empty result name is allowed, never blocked** (amended by decision 17; revision 3 blocked it). The
+   core returns `after === ""` as an ordinary changed row with no flag of its own; the dialog shows the
+   placeholder "Untitled" (greyed, like the single field's placeholder) in the After cell; Save is enabled
+   whenever at least one row changes. The summary stays "N will change · M unchanged" (decision 4), where N =
+   `changed` and M = rows flagged `unchanged`; every row is counted by exactly one of the two (so Find "" +
+   Replace with "  " on five named rows reads "5 will change · 0 unchanged" over five "Untitled" cells).
+   Same rule as the single editor, which accepts an empty name too (app.js:1056-1063: no field uses
+   `required` any more).
 8. **No long-name flag.** No onX limit is known, and UI-26 forbids a warning with no consequence. The
    owner may run a 300-char name probe on their onX account — **owner-run only, never an agent** (§7).
 9. Notes over 512 bytes: warn per row with the existing caution sentence (UI-34), never truncate; Save
    stays enabled.
 10. Rows that leave the search filter after Save: leave the filter alone; `renderFolders()` prunes them from
-    SEL as for a single rename (app.js:677-679); the status "Changed N items" is the receipt. Pinned by e2e.
+    SEL as for a single rename (app.js:677-679); the status "Changed N items." is the receipt. Pinned by e2e.
 11. An open note editor on a selected row with changes: UI-22's "Save your note?" first (§3.5).
 12. "Use note as name" **shipped** in `2f92e4b` (app.js:2390-2392, `oneLine`, blank note → row left alone,
     pinned by `test_use_note_as_name_leaves_a_blank_note_row_alone`). Not routed through the core: `oneLine`
-    collapses `\s*\n\s*` to one space, the core keeps internal runs; changing it is out of scope.
-13. No selection-size cap; the preview renders `empty` rows, then changed rows, then the rest, and caps the
-    list at 200 rows (§6.5).
+    collapses `\s*\n\s*` to one space, the core keeps internal runs; changing it is out of scope. Owner
+    2026-10-25: it stays as shipped, so a blank note still leaves its row alone (names being optional does
+    not turn a blank note into a blank name).
+13. No selection-size cap; the preview renders changed rows first, then the rest, and caps the list at 200
+    rows (§6.5).
 14. Search/sort while open: unreachable (modal); uids are captured at open. After Save a sorted folder
     reorders (UI-35); focus returns to the More button, or to the search field when the selection emptied.
 15. XML-forbidden characters are dropped in the core **and** in the writer, with exactly the same set (§3.1).
@@ -109,6 +118,30 @@ so Track A is now `web/rename.js` only. Phase 0 is done; the mockups are on the 
 16. The dialog opens on the first toggle (Add before) with an empty field: every row "No change", summary
     "0 will change · N unchanged", Save disabled. Switching to Find and replace with both fields empty shows
     the same.
+
+**Decided by the owner later on 2026-10-25 (revision 4).** These amend decisions 1 and 4 and default 7:
+
+17. **Names are optional, everywhere.** An empty name is legal: the single name field accepts it, the app
+    shows "Untitled" as that field's placeholder and wherever a name is displayed, and the export writes an
+    empty `<name>`. In bulk rename an empty result is therefore **not** blocked: there is no `empty` flag, no
+    "can't be empty" sentence and no `blocked` count; Save is enabled whenever at least one row changes. A
+    row whose result is empty shows "Untitled" in the After column, greyed like a placeholder (a display rule
+    of the dialog; the core returns `""`, and "Untitled" is never stored or exported). Whitespace-only
+    results are still trimmed to `""`, so they show "Untitled" too. Find "" + Replace with "" stays a no-op
+    while both are empty (raw === before ⇒ `unchanged`). "Use note as name" keeps leaving blank-note rows
+    alone (shipped behaviour, default 12).
+18. **A missing note shows as blank**, never "No note": the Before and After cells of Change note… are empty
+    for a row with no note, and nothing is put in their place (no "Untitled", no "(none)").
+19. **Strings**: the status after Save is **"Changed N items."** (with a period); title text has no period
+    ("Rename N items"); every new string uses straight apostrophes (') and says "You will", never "You'll".
+20. **Confirm dialogs: the safe choice first, the action last.** The one confirm this plan opens is the
+    reused "Save your note?" (§3.5), in its existing order Keep editing · Discard · Save; the dialogs'
+    own footers read Cancel · Save. Any other confirm B adds follows the same order.
+21. **"Web Map" is not used anywhere** (code, copy, docs, tests, new comments). Where the destination has to
+    be named, say "onX on a computer".
+22. **Owner-run onX probe**: how onX shows an imported markup with an empty `<name>` joins the
+    "untestable locally" list (§7). Until the owner runs it, what a bulk blank-out does to an onX import is
+    unverified, and UI-39 says so.
 
 ---
 
@@ -141,11 +174,13 @@ app it loads from its own `<script src="rename.js">` tag before `app.js` (same-o
  *        }} spec
  * @param {{ noteLimit:number }} ctx                      // bridge.ONX_IMPORT_NOTE_LIMIT (512), app.js NOTE_LIMIT
  * @returns {{ rows: Array<{uid, before:string, after:string, flags:string[]}>,
- *             changed:number, blocked:number }}
+ *             changed:number }}                          // no `blocked`: no result ever blocks Save (decision 17)
  */
 function transform(rows, spec, ctx) {...}
 // Also exported: xmlSafe(s), cleanName(s), cleanNote(s), noteBytes(s), XML_INVALID (the RegExp).
 // No name-collision input: duplicate names are allowed and never flagged (decision 3).
+// A name's `before`/`after` may be "" (names are optional, decision 17). "Untitled" is a display placeholder
+// added by the dialog; the core never returns it, and it is never stored or exported.
 ```
 
 **The drop set — one literal, shared with the writer.** `cairn/core/writers.py:28`:
@@ -185,27 +220,28 @@ same  = field === "name" ? after === before : after === writtenNote(before)
                                          // compare against the written form so nothing is saved when the
                                          // file would not differ, and the stored whitespace stays
 if same                  → flags ["unchanged"]
-if field === "name" && after === ""
-                         → flags ["empty"] (+ "chars-removed" iff xmlSafe(raw) !== raw); blocked++; not counted in changed
-                                         // reached by Find "" + Replace with "  " (whitespace-only) on every row,
-                                         // and by a find that consumes the whole name
 else                     → changed++; flags += "chars-removed" iff xmlSafe(raw) !== raw
+                                         // after === "" is an ordinary result for a name (names are optional,
+                                         // decision 17): reached by Find "" + Replace with "  " (whitespace-only)
+                                         // on every named row, and by a find that consumes the whole name. It is
+                                         // a changed row with no flag of its own; the dialog shows "Untitled".
 ```
 
 For notes, Find "" + Replace with text is the same operation as Replace the note with that text (both set
-`raw = text`); Replace the note with "" clears a note (`after === ""`, changed, never `empty` — notes are
-not blocked on empty) and is `unchanged` on a row whose note is already blank.
+`raw = text`); Replace the note with "" clears a note (`after === ""`, changed; nothing is blocked on
+empty) and is `unchanged` on a row whose note is already blank.
 
 Per-row `flags` (string enum; the dialog maps each to one approved sentence and a CSS class):
 
 | flag | when | effect |
 |---|---|---|
 | `unchanged` | by the rule above | row greyed, not counted in `changed` |
-| `empty` | names only: `after === ""` after cleaning | **blocks Save** (`blocked++`); row shows the empty result with the flag |
 | `note-over-limit` | notes: `noteBytes(after) > ctx.noteLimit` (UTF-8 bytes of `after`, which is already in written form) | warn; Save enabled |
 | `chars-removed` | `xmlSafe(raw) !== raw` (exactly the writer's drop set; line-break collapse and trim are silent, the preview shows them) | warn |
 
-There is **no duplicate flag** (decision 3). The dialog never reads other items' names, `nameKey`
+The enum is exactly {`unchanged`, `note-over-limit`, `chars-removed`}: there is **no `empty` flag**
+(decision 17; revision 3 had one that blocked Save) and **no duplicate flag** (decision 3), so no result can
+block Save. The dialog never reads other items' names, `nameKey`
 (app.js:1575) stays a folder-only helper, and the bridge has no item-name rule either (`_name_taken`,
 bridge.py:754-758, is folders only). Twins created by a rename are ordinary changed rows.
 
@@ -217,7 +253,8 @@ Rules inside `transform` (each is a unit/property test in §5):
   string; never lowercase-then-offset. Replacement is a **function replacer** so `$&`, `$1`, `$$`, `` $` ``,
   `$'` stay literal. Matches are left-to-right non-overlapping (`replaceAll` semantics). `matchCase` is
   ignored when `find === ""`.
-- **Names**: `cleanName` as above. No length cut, no collapsing of pure space runs.
+- **Names**: `cleanName` as above. No length cut, no collapsing of pure space runs. An empty result is
+  legal: a result that is whitespace-only (or control-only) trims to `""` and is returned as `""`.
 - **Notes**: `cleanNote` as above; line breaks kept (UI-13); **no truncation** (flag instead). Prefix/suffix
   join with `"\n"`; a whitespace-only prefix/suffix is a no-op after `writtenNote`.
 - **Idempotence** holds for `cleanName` / `cleanNote` (property); prefix/suffix are not idempotent and no
@@ -228,7 +265,9 @@ Rules inside `transform` (each is a unit/property test in §5):
 **Invariant scope.** Names: `after` == `it.name` after Save == GPX `<name>` text == the onX reader's title
 (the writer's `xml_text` drop is a no-op on core output; `apply_edits` copies `name` verbatim,
 bridge.py:665-667; `sanitize_name_for_onx` is still called at writers.py:261/731/1093/1326/1584 but has been
-an identity since ENG-06, writers.py:154). Notes: `after` == `it.desc` after Save
+an identity since ENG-06, writers.py:154). For `after === ""` the GPX `<name>` is empty (decision 17), and
+the reader's title for an empty `<name>` is whatever the reader makes of it: the round-trip test records it,
+nothing assumes it. Notes: `after` == `it.desc` after Save
 == GPX `<desc>` text. This holds on **every** map, CalTopo-origin included: `strip_html` runs at **load**
 (cairn/core/parser.py:40 `clean_notes(plain=False)`; caltopo_gpx.py:140), and `export_zip` sets
 `PLAIN_NOTES_KEY = True` on every feature (bridge.py:959-960, "Already cleaned at load (or typed by the
@@ -251,18 +290,18 @@ by construction.
 - **Spec is synchronous, render is debounced.** Every `input` event (not `change`: Playwright `fill()` and
   real typing both fire `input`) writes `BULK.text.spec` from the fields immediately; `drawTextBulk()`
   (new, sibling of `drawBulk` app.js:1494) runs ~60 ms later, runs `transform(BULK.rows, BULK.text.spec,
-  BULK.ctx)`, rebuilds the Now → After rows (`empty` rows first, then changed, then "No change"), the
-  summary line ("N will change · M unchanged", decision 4; a blocked row carries its own "Name can't be
-  empty"), sets Save `disabled = !(blocked === 0 && changed > 0)`, and increments
+  BULK.ctx)`, rebuilds the Now → After rows (changed rows first, then "No change"; cell text per §3.3), the
+  summary line ("N will change · M unchanged", decision 4), sets Save `disabled = !(changed > 0)` (no result
+  ever blocks it, decision 17), and increments
   `#mark-dialog[data-preview-seq]` (tests wait on it, §6.3). `input` events with `isComposing` re-render
   only; `compositionend` re-renders.
 - `applyTextBulk()` (sibling of `applyBulk` app.js:1521) **re-reads the fields**, runs `transform` once more
   on the rows as they are at Save time (re-read `it.name`/`it.desc` by uid), and **refuses when
-  `blocked > 0` or `changed === 0`** (so Enter right after an emptying keystroke, inside the debounce
+  `changed === 0`** (so Enter right after the text was deleted back to nothing, inside the debounce
   window, saves nothing; and Save clicked inside the window uses the final text). Then `closeBulk()`, then
-  for each row not `unchanged`/`empty`: `edit(it, { [field]: after }, { render: false })`;
-  `refreshAfterEdit()`; `setStatus(\`Changed ${plural(n, "item")}\`, "ready")`; then the focus fallback
-  (§3.4).
+  for each row not `unchanged`: `edit(it, { [field]: after }, { render: false })` (an empty `after` is
+  stored as `""`, never as "Untitled"); `refreshAfterEdit()`; `setStatus(\`Changed ${plural(n, "item")}.\`,
+  "ready")` (a period, decision 19); then the focus fallback (§3.4).
 - Going through `edit()` (app.js:1140-1155) means `EDITS[uid]`, `unexportedChanges()` (2304-2318), the
   leave prompt and beforeunload (UI-37), Start over's count (UI-21), `stageValid` and the caution marks all
   follow for free. `doExport` (2099-2110) sends EDITS to `apply_edits` (bridge.py:631), which copies
@@ -312,6 +351,12 @@ open, as `openBulk` does (1429-1434). `applyTextBulk` iterates `BULK.rows`, not 
 **Mixed kinds.** Names and notes exist on every kind; no per-kind branching. Excluded rows that are ticked
 are renamed too ("fix it, then Include").
 
+**Before and After cells.** Each `.na-row` holds a `.na-before` and a `.na-after` cell. Names: an empty
+name, in either cell, renders the existing placeholder "Untitled" (the `it.name || "Untitled"` pattern of
+app.js:1508) in a greyed `.is-placeholder` span; a real name typed as "Untitled" is plain text and not greyed.
+Notes: an empty or missing note renders a **blank** cell, never "No note", "Untitled" or "(none)"
+(decision 18). Text always goes in as text (`esc`), never HTML.
+
 **Modes and fields.** The mode row is `.tog` toggles in the decided order: Rename… = Add before · Add
 after · Find and replace; Change note… = Add before · Add after · Find and replace · Replace the note. The
 first toggle is selected at open (default 16). Add before / Add after / Replace the note show one field
@@ -340,9 +385,11 @@ flag).
 ### 3.5 Open NOTE_EDIT conflict
 
 At open: if `NOTE_EDIT` and `NOTE_EDIT.uid ∈ uids`: `noteIsChanged()` (app.js:2269) → `openConfirm`
-(2215) with Save / Discard / Cancel; Save → `closeNote(it, true)` then open; Discard → `closeNote(it, false)`
-then open; Cancel → focus the textarea. Not changed → `closeNote(it, false)` and open. `NOTE_EDIT` on an
-unselected row stays open under the modal (`keepNoteDraft` 1674 is not involved).
+(2215) titled "Save your note?", with the buttons in the order of the export-time confirm of the same title
+(safe choice first, action last, decision 20): **Keep editing** (the cancel: focus the textarea) ·
+**Discard** (`closeNote(it, false)` then open) · **Save** (`closeNote(it, true)` then open; the primary,
+initially focused button). It is the only confirm this feature opens. Not changed → `closeNote(it, false)`
+and open. `NOTE_EDIT` on an unselected row stays open under the modal (`keepNoteDraft` 1674 is not involved).
 
 ### 3.6 Menu and markup
 
@@ -364,6 +411,7 @@ the same commit.
 | (c) | "Use note as name" leaves a blank-note row alone | **DONE** `2f92e4b` | app.js:2390-2392; `test_use_note_as_name_leaves_a_blank_note_row_alone` (test_web_app.py:5135). Nothing remains; default 12 closed. |
 | (d) | legacy `write_gpx_waypoints` folder name unescaped | **DONE** `edc284b` | writers.py:916 `xml_text(folder_name)`. |
 | (e) | the single name editor doesn't trim (app.js:1056-1066); the core trims | **open, out of scope** | note in DECISIONS UI-39 only. |
+| (f) | names are optional (decision 17): the single name field accepts an empty name; "Untitled" is its placeholder and the display text for a nameless item; the export writes an empty `<name>`; instructions.txt prints "Untitled" (`_plain`); the status after a bulk mark reads "Changed N items."; "onX on a computer" replaces the retired name | **decided 2026-10-25; in the working tree, uncommitted when this revision was written** | app.js:979/1056/1508/1544, bridge.py:1217 (`_plain`), LABELS.md:315-359. A dependency, not one of this plan's tracks: B and C start from the commit that lands it (checked at the Phase 1 branch point). **Remains (C):** a bridge-level test — `apply_edits` with name `""` → `export_zip` → every GPX parses, the item's `<name>` is empty, `_written_items` doesn't raise, instructions.txt prints "Untitled" for it. |
 | — | DOM twin for "loaded" under the enforced CSP | **already exists** | `body[data-stage]` is set at app.js:250; tests already use `to_have_attribute("data-stage", "edit")`. |
 
 Net: **no `cairn/` change, no wheel rebuild**. ENG-09 records what shipped (§7 DoD 5).
@@ -384,13 +432,18 @@ for Phase 1 and the concurrency cap) → D's real fuzz and perf runs after B. Me
 Rules for every agent: never `git add -A`
 (four scratch files sit untracked at the repo root: `basecamp.gpx`, `gpx10.gpx`, `plain11.gpx`, `run.py`);
 commit early and often in your own worktree; model set explicitly; no nested spawning; ≤ 3 agents concurrent.
+Every new string (UI, docs, tests): straight apostrophes, "You will" not "You'll", the status "Changed N
+items." with its period, titles without one, never "Web Map" (say "onX on a computer"), never "No note"
+(a missing note is blank), and no confirm that puts its action before its safe choice (decisions 18–21).
 
 ### Phase 0 — Owner decisions and mockups (orchestrator) — **DONE 2026-10-25**
 
 - Done: the owner decided modes, empty-Find semantics, no duplicate warning and every string (§2) on the
   Phase 0 canvas, https://claude.ai/artifact/5F9oPZLuGRuqU2TaNY8rCN (the two dialogs over real Bitterroots
   rows in the field-guide theme using the existing `.mark-dialog` look: prefix, find "Trail"→"Tr.", the
-  Campsite normalisation, a 600-byte note, an empty result, a removed control character).
+  Campsite normalisation, a 600-byte note, an empty result, a removed control character). Revision 4:
+  the canvas's blocked empty-result state is superseded by decision 17 (the After cell shows a greyed
+  "Untitled" and Save stays enabled); the mockup is not redrawn, the localhost build is the check.
 - Remaining: only the owner's review of the localhost build, which is Phase 4. The `DECISIONS.md` UI-39
   entry is written by B (it owns that file) from §2, status "decided 2026-10-25".
 - A, C, D start on §3.1 alone; B is no longer gated on this phase.
@@ -415,8 +468,12 @@ commit early and often in your own worktree; model set explicitly; no nested spa
   `cleanNote`, `noteBytes`; the DOM selector contract: `#bulk-rename`, `#bulk-note`,
   `#mark-dialog[data-bulk="rename"|"note"][data-preview-seq]`, `.mode-tog[data-mode]`, `#bulk-text`,
   `#bulk-find`, `#bulk-repl`, `#bulk-match-case`, `.na-row[data-uid][data-flags="…"]` (space-separated),
-  `.na-flag` (text), `#bulk-summary[aria-live=polite]`, `#bulk-apply` (reused id), `.bulk-cancel`; the
-  status string; the `tests/naughty_strings.py` module name.
+  `.na-before` / `.na-after` (the cells; a cell showing the "Untitled" placeholder also carries
+  `.is-placeholder`, and notes never do, §3.3), `.na-flag` (text), `#bulk-summary[aria-live=polite]`,
+  `#bulk-apply` (reused id), `.bulk-cancel`; the status string ("Changed N items."); the
+  `tests/naughty_strings.py` module name.
+- Precondition: the optional-names change (§3.7(f): empty names accepted and shown as "Untitled", empty
+  `<name>` exported, "Changed N items.") is committed on the branch the tracks start from; Phase 1 checks it.
 - Port: the dev server and the tests default to **8765** (serve.py:36, test_web_app.py:36). Only when 8765
   is busy: `PORT=8779 uv run python web/serve.py` **and** `BASE_URL=http://127.0.0.1:8779` on every pytest
   and fuzz run, together.
@@ -434,10 +491,11 @@ commit early and often in your own worktree; model set explicitly; no nested spa
 - Until B lands the e2e tests **skip** on `page.locator("#bulk-rename").count() == 0` (a module-level
   helper), not `xfail(strict=True)` (an xfail waits out a Playwright timeout per test). Remove the skip in
   the commit that flips them green.
-- Every string is approved (§2 decision 4), so C asserts on the sentences from the start ("No change",
-  "Name can't be empty", "N will change · M unchanged", "Rename N items", "Change the note on N items",
-  "Changed N items") as well as on structure: `data-flags`, `.na-row` counts, Save's `disabled`, `EDITS`,
-  GPX text.
+- Every string is approved (§2 decisions 4, 17, 19), so C asserts on the sentences from the start ("No
+  change", "Untitled", "N will change · M unchanged", "Rename N items", "Change the note on N items",
+  "Changed N items.") as well as on structure: `data-flags`, `.na-row` counts, `.is-placeholder`, Save's
+  `disabled`, `EDITS`, GPX text. No test expects a "can't be empty" sentence or a disabled Save for an empty
+  name.
 - Exit: every §5 case has a test id and a body.
 
 ### Phase 2 — Track D: fuzzer and perf harness (agent D, parallel)
@@ -454,9 +512,12 @@ commit early and often in your own worktree; model set explicitly; no nested spa
 - Files: `web/app.js` (`openRename`, `openChangeNote`, `drawTextBulk`, `applyTextBulk`, guards §3.3,
   NOTE_EDIT conflict §3.5, focus fallback §3.4, `noteOverflow` → `CairnRename.noteBytes`, IME bail),
   `web/index.html` (menu items, script tag, aria), `web/styles.css` (reuse tokens; new classes only
-  `.na-row`, `.na-flag`, `.mode-row`), Help line, FAQ line + rebuilt `faq.html`, DECISIONS UI-39/ENG-09,
+  `.na-row`, `.na-flag`, `.mode-row`, plus the placeholder grey for `.is-placeholder`, reusing the field
+  placeholder token), Help line, FAQ line + rebuilt `faq.html`, DECISIONS UI-39/ENG-09 (and the older
+  "(no name)" wording at DECISIONS.md:918, if the optional-names commit has not already corrected it),
   **`docs/design/LABELS.md`**: every new label and action from §2 decision 4 added in the same commit as
-  the code that introduces it, so the LABELS.md drift test passes at every commit.
+  the code that introduces it, so the LABELS.md drift test passes at every commit ("Untitled" and "Changed
+  N items." are already there).
 - Gating: C's e2e cases flip from skip to pass; `test_page_boots_under_enforced_csp` still passes; the
   LABELS.md drift test passes; screenshots and a11y snapshots of every state (§7).
 - Exit: all §5 e2e green; D's fuzz green; perf budget met.
@@ -512,9 +573,9 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 | `test_nbsp_is_kept_in_names` | "Camp A" prefix "x" | "xCamp A", no `chars-removed` | U |
 | `test_nbsp_find_does_not_match_a_space` | find " " repl "_" on "a b" | 0 matches | U |
 | `test_fullwidth_and_halfwidth_are_different_characters` | "Ａ" vs "A" | no cross-match | U |
-| `test_a_name_of_only_combining_marks_is_not_empty` | "x́" find "x" repl "" | after "́", not `empty` (a non-space character) | U |
-| `test_emoji_only_names_are_not_empty_and_sort_stably` | rename to "🔥" | not `empty`; sorted folder renders without error; order stable | U, E |
-| `test_a_name_that_reads_no_name_is_not_confused_with_empty` | rename to "(no name)" | not `empty`; instructions.txt prints "(no name)" for it as for a blank (`_plain`, bridge.py:1207) — documented | U, W |
+| `test_a_name_of_only_combining_marks_is_kept_not_shown_as_untitled` | "x́" find "x" repl "" | after "́" (a non-space character is never trimmed to blank), stored as is; the After cell shows the mark, no `.is-placeholder` | U, E |
+| `test_emoji_only_names_show_as_themselves_and_sort_stably` | rename to "🔥" | After shows "🔥" (no placeholder); sorted folder renders without error; order stable | U, E |
+| `test_a_name_typed_as_untitled_or_no_name_is_an_ordinary_name` | rename to "Untitled", and to "(no name)" | plain changed rows (not greyed, no `.is-placeholder`), stored and exported verbatim; instructions.txt prints them as typed, and prints "Untitled" for a truly blank name (`_plain`, bridge.py:1217), so those two read alike there — documented | U, E, W |
 | `test_unicode_names_render_as_text_in_the_preview_not_html` | "<b>&amp;</b>" | `.na-row` text equals the string (cf. test_web_app.py:2326) | E |
 
 ### 5.3 XML-hostile
@@ -544,19 +605,21 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 | `test_regex_specials_in_find_are_literal` | find ".*+?^$()[]{}|" on a name containing it | one match | U |
 | `test_empty_find_and_empty_replace_is_a_noop` | find "" repl "" | every row `unchanged`, summary "0 will change · N unchanged", Save disabled — on a hostile map too (no-op rule: no cleaning without a change); the same the instant Find and replace is chosen with nothing typed | U, E |
 | `test_empty_find_replaces_the_whole_name` | the Campsite rows, find "" repl "Campsite" | every After is "Campsite"; a row already named "Campsite" is `unchanged`; Match case on or off gives the same result (decision 1; export side in §5.5) | U, E |
-| `test_empty_find_with_a_whitespace_only_replacement_blocks_save` | find "" repl "  " on names | every row `empty` ("Name can't be empty"), `blocked == rows`, Save disabled | U, E |
+| `test_empty_find_with_a_whitespace_only_replacement_saves_blank_names` | find "" repl "  " on 5 named rows | every After is `""`, shown as a greyed "Untitled"; no flag; summary "5 will change · 0 unchanged"; Save enabled; after Save the 5 names are `""` and the status is "Changed 5 items." | U, E |
 | `test_empty_find_replaces_the_whole_note_like_replace_the_note` | notes, find "" repl "see north" | every note "see north"; identical result to Replace the note "see north"; find "" repl "" is `unchanged` | U, E |
 | `test_find_with_no_matches_marks_every_row_unchanged` | find "zzz" | changed 0, summary "0 will change", Save disabled | U, E |
 | `test_find_equal_to_replace_counts_zero` | find "a" repl "a" | `unchanged`, Save disabled | U, E |
 | `test_whitespace_only_prefix_is_a_noop_after_trim` | prefix "  " on names | `unchanged`, Save disabled | U |
 | `test_whitespace_only_suffix_on_notes_is_a_noop_after_writtennote` | suffix "\n " on notes, including a stored note with a trailing space ("abc ") | `unchanged`; the stored value is not touched | U |
-| `test_set_mode_with_a_blank_note_on_a_row_with_no_note_is_unchanged` | Replace the note "  \n " on rows with `desc` "" or undefined | `unchanged`; on a row with a note: after "" , changed (the note is cleared) | U, E |
+| `test_set_mode_with_a_blank_note_on_a_row_with_no_note_is_unchanged` | Replace the note "  \n " on rows with `desc` "" or undefined | `unchanged`; on a row with a note: after "" , changed (the note is cleared; its After cell is blank) | U, E |
 | `test_overlapping_matches_replace_left_to_right` | "aaa" find "aa" repl "b" | "ba" | U |
-| `test_replace_with_empty_can_empty_a_name_and_blocks_save` | "Camp" find "Camp" repl "" | `empty`, Save disabled | U, E |
+| `test_replace_with_empty_can_empty_a_name_and_saves_it_blank` | "Camp" find "Camp" repl "" | `after === ""`, flags == [] (changed); After cell greyed "Untitled"; Save enabled; stored `it.name === ""` (never "Untitled"); the export's GPX has an empty `<name>`, every GPX parses, `_written_items` doesn't raise | U, E, W |
 | `test_match_case_toggle_changes_the_count_live` | "Camp camp" find "camp" | off: 2 matches; on: 1; `data-preview-seq` advances | U, E |
 | `test_find_whitespace_only_is_a_real_find` | find " " repl "_" | spaces replaced | U |
 | `test_find_longer_than_the_name_matches_nothing` | — | `unchanged` | U |
 | `test_replace_result_is_trimmed_but_inner_spaces_are_kept_for_names` | find "Camp" repl "  " on "Camp A" → "A"; on "X Camp A" → "X    A" | trim only, never collapse | U |
+| `test_whitespace_only_results_are_trimmed_to_blank_and_shown_untitled` | find "Camp" repl " \t\n " on "Camp"; also Add before "  " on a row whose name is already `""` | the first: `after === ""` exactly (never whitespace), changed, After cell greyed "Untitled" (`.is-placeholder`), Save enabled, stored name `""`; the second: `unchanged` (raw ≠ before, but cleaned equals it), and that row's Before cell is a greyed "Untitled" | U, E |
+| `test_missing_notes_show_as_blank_never_no_note` | Change note… in every mode on rows whose `desc` is undefined, `""` and a real note | the Before and After cells of a row with no note are empty text with no `.is-placeholder`; "No note", "(none)" and "Untitled" appear in no note cell | E |
 
 ### 5.5 Incompatible and conflicting bulk operations
 
@@ -566,14 +629,14 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 | `test_renaming_existing_twins_together_keeps_them_twins` | twins map: select "Camp", "camp", "CAMP", " Camp ", Add before "Base " | all four change, no flag on any; Save enabled; export lists four `<name>`s | U, E, W |
 | `test_a_rename_that_collides_with_an_unselected_name_is_an_ordinary_change` | select "Camp A", find " A" repl "" when "Camp" exists elsewhere | changed, flags == []; both items export | U, W |
 | `test_find_in_turkish_locale_matches_the_same_rows` | `iu` find "i" under `tr-TR` | same rows as `en-US` | E |
-| `test_a_rename_producing_empty_for_one_row_blocks_the_whole_save` | 3 rows, one becomes empty | Save disabled; that row reads "Name can't be empty" and renders first; summary "2 will change · 0 unchanged"; fix the find → enabled | E |
+| `test_a_rename_producing_a_blank_name_for_one_row_does_not_block_save` | rows "Camp", "Camp B", "Camp C"; find "Camp" repl "" | rows become "", "B", "C"; the first After cell is a greyed "Untitled", the others plain; no row carries a flag; summary "3 will change · 0 unchanged"; Save enabled; after Save the status is "Changed 3 items." and the first item's name is `""` | E |
 | `test_mixed_waypoints_lines_and_areas_rename_alike` | select one of each | all three change; export GPX `<wpt>`, `<trk>`, `<rte>` names updated | E, W |
 | `test_excluded_rows_in_the_selection_are_renamed_too` | tick an excluded row | renamed, still excluded, not exported | E |
 | `test_exclude_then_rename_then_include_exports_the_new_name` | — | GPX has the new name | E, W |
 | `test_rows_in_a_collapsed_folder_are_not_in_the_dialog` | tick, collapse, open | count excludes them (UI-23) | E |
 | `test_rows_hidden_by_a_filter_are_not_in_the_dialog` | select all, then search | only matches in the dialog | E |
 | `test_one_row_and_1500_rows_both_work` | — | title "Rename 1 item" / "Rename 1,500 items" | E |
-| `test_a_rename_that_drops_rows_from_the_search_prunes_the_selection_and_says_changed_n` | search "Trail", select all, find "Trail" repl "Tr" | rows vanish, SEL pruned, status "Changed N items", filter unchanged, `unexportedChanges()` == N | E |
+| `test_a_rename_that_drops_rows_from_the_search_prunes_the_selection_and_says_changed_n` | search "Trail", select all, find "Trail" repl "Tr" | rows vanish, SEL pruned, status "Changed N items.", filter unchanged, `unexportedChanges()` == N | E |
 | `test_a_note_change_that_removes_the_search_term_prunes_the_row` | search on a note word, Change note… removes it | pruned (the filter reads `desc`, app.js:452); receipt shown | E |
 | `test_a_rename_that_empties_the_selection_moves_focus_to_the_search_field` | the case above, every row pruned | `#more-btn` disabled; `document.activeElement.id == "filter"` | E |
 | `test_a_rename_reorders_a_sorted_folder_and_keeps_focus_on_more` | sort A→Z, prefix "zz " | rows move to the bottom, focus on `#more-btn` | E |
@@ -593,7 +656,7 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 | `test_double_clicking_save_applies_once` | `dblclick` on `#bulk-apply` | `applyTextBulk` closes first (1524 pattern), the second click lands on the page; `EDITS[uid].name` has one prefix; one `edit` per row | E |
 | `test_escape_mid_preview_discards_everything` | type, Esc | no EDITS, modal hidden, focus on `#more-btn` | E |
 | `test_enter_in_a_name_field_saves_when_enabled_and_does_nothing_when_disabled` | Enter in `#bulk-text` | saves / nothing | E |
-| `test_enter_right_after_an_emptying_keystroke_does_not_save` | find "Camp" on "Camp", type repl then delete to "", Enter within 60 ms | nothing saved; `applyTextBulk` recomputed from the fields | E |
+| `test_enter_right_after_deleting_the_text_does_not_save` | Add before: type "x" (the stale preview shows one change and Save enabled), delete it back to "", Enter within 60 ms | nothing saved (`changed === 0` at Save time); `applyTextBulk` recomputed from the fields, not from the stale preview | E |
 | `test_save_clicked_inside_the_debounce_window_uses_the_final_text` | `fill("ab")`, click Save at once | EDITS reflect "ab" | E |
 | `test_enter_in_a_note_field_inserts_a_newline_and_ctrl_enter_saves` | Change note… `#bulk-text`, and `#bulk-find` / `#bulk-repl` in Find and replace (all textareas, decision 2) | Enter → "\n" in the textarea; Ctrl/Cmd+Enter saves | E |
 | `test_ctrl_a_while_open_does_not_change_the_selection` | Ctrl+A with focus in a field and on the card | SEL unchanged (app.js:2449) | E |
@@ -604,7 +667,7 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 | `test_a_programmatic_export_closes_the_dialog_and_applies_nothing` | `doExport()` via evaluate with items included | `closeBulk` ran; export has no rename | E |
 | `test_opening_rename_with_a_pending_folder_merge_offer_flushes_it_first` | type a taken folder name, then More → Rename… | the merge CONFIRM runs first; never CONFIRM over BULK | E |
 | `test_a_queued_bulk_icon_click_does_not_open_over_the_text_dialog` | pointerdown `#bulk-icon`, open Rename… by keyboard, pointerup | one modal (`deferRender` 155-170; `openBulk` guard) | E |
-| `test_opening_rename_with_a_changed_open_note_on_a_selected_row_asks_first` | §3.5 | "Save your note?"; Save → note kept and dialog opens; Cancel → textarea focused | E |
+| `test_opening_rename_with_a_changed_open_note_on_a_selected_row_asks_first` | §3.5 | "Save your note?" with the buttons in DOM order Keep editing · Discard · Save (safe choice first, action last); Save → note kept and dialog opens; Discard → draft dropped and dialog opens; Keep editing → textarea focused, no dialog | E |
 | `test_opening_rename_with_an_unchanged_open_note_just_closes_it` | — | no prompt | E |
 | `test_an_open_note_on_an_unselected_row_stays_open` | — | still open after Cancel | E |
 | `test_focus_returns_to_the_more_button_after_save_and_after_cancel` | selection survives | `document.activeElement.id == "more-btn"` | E |
@@ -618,9 +681,9 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 
 | id | input | expected | layer |
 |---|---|---|---|
-| `test_preview_equals_saved_equals_exported_for_names` | the test prefixes each selected name with its own uid ("⟦i12⟧ ") so names are unique, then random find/replace | per uid: `.na-row[data-uid]` after-text == `it.name` after Save == the GPX `<name>` whose text starts with that uid == reader title | E, W |
+| `test_preview_equals_saved_equals_exported_for_names` | the test prefixes each selected name with its own uid ("⟦i12⟧ ") so names are unique, then random find/replace | per uid: `.na-row[data-uid]` after-text (a `.is-placeholder` cell counts as `""`) == `it.name` after Save == the GPX `<name>` whose text starts with that uid == reader title; a second pass renames some rows to blank, where the blank rows are checked as `""` == `""` == empty `<name>` (no uid prefix to match on, so by position within the folder) | E, W |
 | `test_preview_equals_saved_equals_exported_for_notes` | same, notes; line breaks kept | == GPX `<desc>` (CRLF→LF, trimmed) | E, W |
-| `test_changed_count_in_status_equals_rows_that_differ` | mix of changed/unchanged | status N == rows whose after != before; read within `STATUS_LINGER_MS` (8 s, app.js:35); strip "," from the number (`plural` writes "1,500", app.js:2171) | E |
+| `test_changed_count_in_status_equals_rows_that_differ` | mix of changed/unchanged | status text is exactly "Changed N items." (a period; "Changed 1 item." for one) and N == rows whose after != before; read within `STATUS_LINGER_MS` (8 s, app.js:35); strip "," from the number (`plural` writes "1,500", app.js:2171) | E |
 | `test_unexported_changes_counts_each_renamed_row_once` | rename 7, change note on 3 of them | `unexportedChanges()` == 7 | E |
 | `test_start_over_names_the_bulk_changes_count` | — | "This discards 7 unexported changes." | E |
 | `test_instructions_txt_lists_the_new_names_and_flags_the_right_long_note` | twins + one long note | one cut line under the right item (by position, §3.7(b)) | W |
@@ -668,12 +731,15 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
   `repl !== ""`, every row's `after` is `clean(repl)` or the row is `unchanged` (already equal), and
   `matchCase` makes no difference; (6) `$`-patterns literal: with `find !== ""`, `repl !== ""`, `find ∉
   repl` and `repl ∉ find`, `after.count(repl) >= before.count(find)` (find "" is excluded by the
-  generator; it is property 5); (7) `changed == |rows with after != before and not empty|`; (8)
+  generator; it is property 5); (7) `changed == |rows not flagged unchanged|` (for names: `after !== before`;
+  an empty `after` counts like any other); (8)
   `noteBytes(after) > 512 ⇔ note-over-limit`; (9) rows changed with Match case on ⊆ rows changed with it
   off, **for inputs without `İ`/`ı`/`K`/`ſ`** (the `iu` folding exceptions, excluded by the generator and
-  documented); (10) `transform` never throws; (11) `after` of a changed name is never `""` without `empty`;
-  (12) the flag set of any row ⊆ {`unchanged`, `empty`, `note-over-limit`, `chars-removed`} — nothing
-  else exists (no duplicate flag, decision 3).
+  documented); (10) `transform` never throws; (11) a name's `after` is `""` only when `cleanName(raw)` is
+  `""` (raw empty, whitespace-only or control-only); such a row is `unchanged` iff `before === ""` and
+  otherwise counts in `changed` with no flag of its own (names are optional, decision 17); the core never
+  returns the text "Untitled" unless the input held it; (12) the flag set of any row ⊆ {`unchanged`, `note-over-limit`, `chars-removed`} — nothing
+  else exists (no `empty`, decision 17; no duplicate flag, decision 3).
 
 ### 6.2 Naughty strings
 
@@ -689,25 +755,32 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
   `#mark-dialog[data-bulk]`.
 - `_set_mode(page, mode)`; `_type_spec(page, **fields)` reads `data-preview-seq`, fills, then waits for the
   attribute to exceed the value read (never `wait_for_timeout`); `_type_slowly(page, sel, text, delay)` uses
-  `press_sequentially`; `_preview_rows(page)` → `[(uid, before, after, flags)]` from the DOM only (CSP-safe);
-  `_save_bulk(page)` → status text read at once; `_status_count(text)` strips commas; `_gpx_names(zip)` /
-  `_gpx_descs(zip)` via `ET` over every GPX member.
+  `press_sequentially`; `_preview_rows(page)` → `[(uid, before, after, flags)]` from the DOM only (CSP-safe;
+  a `.is-placeholder` cell is returned as `""`, never as its "Untitled" text, so rows compare equal to
+  `it.name`); `_save_bulk(page)` → status text read at once; `_status_count(text)` strips commas and the
+  closing period; `_gpx_names(zip)` / `_gpx_descs(zip)` via `ET` over every GPX member (an empty `<name>`
+  reads back as `""`, not `None`).
 - `ROW`, `_select_all_shown`, `_clear_selection`, `_menu_action` as moved in Phase 1.
 
 ### 6.4 fuzz_ui.py additions (track D)
 
 - Actions: `a_bulk_rename` (random mode, text from a pool incl. NAUGHTY, Save 70 % / Esc 20 % / backdrop
   10 %), `a_bulk_note` (same for notes incl. 600-byte and `\n`-bearing text), `a_bulk_rename_hostile`
-  (empty-producing find, empty Find + text (whole-value replace, makes twins on purpose), empty Find +
-  whitespace-only replacement, `$&`, control chars). Weights 3/3/1 in `WEIGHTS` (fuzz_ui.py:1246).
+  (blank-producing find, empty Find + text (whole-value replace, makes twins on purpose), empty Find +
+  whitespace-only replacement (blank names on purpose), `$&`, control chars). Weights 3/3/1 in `WEIGHTS`
+  (fuzz_ui.py:1246).
 - `SNAP_JS` (82) additions: `out.bulkKind = BULK && BULK.text ? BULK.text.field : null`, `out.saveDisabled`,
   `out.naRows`, `out.previewSeq`, `out.edits = EDITS`, `out.names = {uid: name}`.
-- Invariants in `check()` (208): no item name empty after any action; no name matches `XML_INVALID`;
-  `#mark-modal` hidden ⇔ `BULK` null; `saveDisabled` ⇔ (any `.na-row[data-flags~=empty]` or changed 0);
-  status "Changed N" N ≤ selection size at open; after each export in the run, every GPX `<name>` text is
-  in the multiset of item names (the `EDITS[uid].name === item.name` check of revision 1 was true by
-  construction and is dropped). Duplicate item names are never a Violation (decision 3); the `twins` map
-  and the hostile action's whole-value replace produce them on purpose.
+- Invariants in `check()` (208): every item name is a string and an empty one is legal (decision 17; any
+  existing invariant that treats an empty name as a Violation is retired by the optional-names change,
+  §3.7(f)); no name matches `XML_INVALID`; `#mark-modal` hidden ⇔ `BULK` null; `saveDisabled` ⇔ every
+  `.na-row` carries `unchanged` (no row, whatever its result, blocks Save); the status after a Save matches
+  `^Changed [\d,]+ items?\.$` with N ≤ selection size at open; a row the preview showed as a
+  `.is-placeholder` is stored as `""`, not as "Untitled"; after each export in the run, every GPX
+  `<name>` text (an empty one counting as `""`) is in the multiset of item names (the `EDITS[uid].name ===
+  item.name` check of revision 1 was true by construction and is dropped). Duplicate item names and blank
+  names are never a Violation (decisions 3, 17); the `twins` map and the hostile action produce them on
+  purpose.
 - Run: `BASE_URL=http://127.0.0.1:8765 uv run python scripts/qa/fuzz_ui.py --maps
   bitterroots,hostile,twins,big1500 --seeds 1,2,3 --n 300`.
 
@@ -749,7 +822,10 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
   core's outputs (captured once from the browser and stored as Python data in
   `tests/bulk_rename_vectors.py` — never under `tests/fixtures/`), `export_zip`, parse each GPX with
   `cairn/io/onx_gpx.py`, assert every name equals the core's `after` exactly and every desc equals it
-  after `strip_html` (the reader's own cleaning, §3.1), count equal, and `instructions.txt` names equal.
+  after `strip_html` (the reader's own cleaning, §3.1), count equal, and `instructions.txt` names equal
+  (a blank name prints as "Untitled" there, `_plain`). Blank names (the vectors include whitespace-only
+  results trimmed to `""`): assert the raw `<name>` text is empty, then pin whatever title the reader
+  returns for it today as the recorded behaviour; nothing assumes it equals `""`.
 - Per-uid chains in W: the GPX carries no uid (ENG-07's sha pin forbids an extension), so W compares
   **multisets** per folder and kind; the per-uid chain is E's job with uid-prefixed names (§5.7).
 
@@ -763,37 +839,62 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 | Preview lag on 1,500 rows | §6.5 budget test, synchronous spec + debounced render, capped list |
 | A rename makes the search list "lose" rows and the owner reads it as data loss | default 10 + e2e pins (names and notes) + the status receipt + the focus fallback; one Help line |
 | A bulk rename makes twins (the Campsite normalisation does so on purpose) | allowed, no warning (decision 3): onX imports duplicate names (ENG-06 probe); `test_campsite_normalisation_makes_three_identical_names_and_exports_three_items` pins that all of them export |
+| A bulk rename can blank many names at once (names are optional, decision 17) and onX's handling of an empty `<name>` is unknown | the preview shows every blank as a greyed "Untitled" before Save and the status counts them; the export writes a valid empty `<name>` (bridge test, §3.7(f)); the owner-run probe below (decision 22) says how onX shows one; if onX drops or mangles such items, the owner decides then whether a warning earns its place (UI-26: no warning without a consequence) |
 | Empty Find is read as "nothing to find" and surprises with a whole-value replace | the both-empty no-op (§3.1): nothing changes until Replace with has text, and the live preview shows every After before Save; `test_empty_find_and_empty_replace_is_a_noop` / `test_empty_find_replaces_the_whole_name` |
 | Parallel agents collide in `app.js` | ownership in §4; only B touches `app.js`; A ships `CairnRename` in its own file |
 | ENG-06 reviewers read the drop as "sanitising names again" | ENG-09: XML-forbidden characters only; printable punctuation, ZWSP, BOM, NBSP, C1 untouched; test names say so |
 | The new `<script>` tag breaks the enforced CSP boot | `test_page_boots_under_enforced_csp` + `test_the_dialog_works_under_the_enforced_csp` |
 | Flaky waits | `data-preview-seq` everywhere; no `wait_for_timeout`; status read within 8 s |
-| **What cannot be tested locally: onX itself** | every expectation is against Cairn's model of onX (512-byte notes, no name limit known, twins allowed, NBSP/ZWJ/RTL rendering unknown). Said here and in UI-39. The owner may run, **owner-run only, never an agent, never without approval**, this probe list on their account: a 300-char name; a 513-byte note ending in a 4-byte emoji; an RTL name; two identical names; an emoji-only name; a name with NBSP and ZWSP. Results go to DECISIONS. |
+| **What cannot be tested locally: onX itself** | every expectation is against Cairn's model of onX (512-byte notes, no name limit known, twins allowed, NBSP/ZWJ/RTL rendering unknown, how onX shows an empty name unknown). Said here and in UI-39. The owner may run, **owner-run only, never an agent, never without approval**, this probe list on their account: a 300-char name; a 513-byte note ending in a 4-byte emoji; an RTL name; two identical names; an emoji-only name; a name with NBSP and ZWSP; **an imported markup with an empty `<name>` (does it import at all, and how does onX list and show it)**. Results go to DECISIONS. |
 | Owner's onX account | no agent imports anything |
 
 **Definition of done**
 
-1. Owner decisions (§2, 2026-10-25) applied as written: mode order, empty Find = whole-value replace, no
-   duplicate warning, approved strings; nothing in the build contradicts them.
+1. Owner decisions (§2, 2026-10-25, decisions 1–4 and 17–22) applied as written: mode order, empty Find =
+   whole-value replace, no duplicate warning, names optional (an empty result is never blocked, shows
+   "Untitled", saves as `""`), blank notes, "Changed N items.", confirm order, approved strings; nothing in
+   the build contradicts them.
 2. `uv run pytest` green on localhost with the dev server up on 8765; new baseline count recorded in
    AGENTS.md (from 1387); `--no-cov` narrow runs used only while iterating.
 3. Every §5 test present, green, descriptive ids; 300 vectors per property with failures pinned; fuzz 3
    seeds × 300 actions × 4 maps clean; perf budget met locally.
-4. Screenshots at 1440×900 **and** an accessibility snapshot of: Rename… each mode (empty, typed, with
-   flags: empty / chars-removed; the Campsite whole-value replace), Change note… each mode (Find and
-   replace with multi-line fields; with the 512 flag), the "Save your note?" conflict, the status line
-   after Save, the export screen's long-note warning after a bulk note change; side-by-side drift check.
+4. Screenshots at 1440×900 **and** an accessibility snapshot of: Rename… each mode (nothing typed, typed,
+   with a greyed "Untitled" After cell and Save enabled, with chars-removed; the Campsite whole-value
+   replace), Change note… each mode (Find and replace with multi-line fields; blank Before/After cells for
+   rows with no note; with the 512 flag), the "Save your note?" conflict, the status line after Save
+   ("Changed N items."), the export screen's long-note warning after a bulk note change; side-by-side drift
+   check.
 5. `docs/design/DECISIONS.md` **UI-39** (bulk rename and note change: modes and their order, empty Find =
-   whole-value replace, flags, no duplicate warning, warn-don't-block, no undo, rows leaving the filter,
-   focus fallback, what onX behaviour is unverified; status decided 2026-10-25) and **ENG-09** (what
+   whole-value replace, flags, no duplicate warning, names optional so an empty result is never blocked,
+   warn-don't-block, no undo, rows leaving the filter, focus fallback, what onX behaviour is unverified
+   including an import with an empty `<name>`; status decided 2026-10-25) and **ENG-09** (what
    shipped: the writers drop XML-forbidden characters, `edc284b`; instructions.txt marks by item position,
    `a192c34`; the core applies the same drop so preview = file; names otherwise untouched per ENG-06).
 6. Help line and FAQ line as approved (§2 decision 4) and rebuilt (`scripts/build_faq_page.py --check`
-   passes); every new label and action in `docs/design/LABELS.md`, added in the same commit as the code,
+   passes), with straight apostrophes and no retired wording (decisions 19, 21); every new label and action in `docs/design/LABELS.md`, added in the same commit as the code,
    with the LABELS.md drift test green; TODO.md's "On hold" entry (TODO.md:58-61) moved to done.
 7. Owner review on localhost; PR opened only when the owner says publish; no onX import without approval.
 
 ---
+
+## Changes in revision 4
+
+- **Names are optional** (decisions 17, 22): the `empty` flag, `blocked`, the "can't be empty" row sentence
+  and "Save disabled for an empty name" are gone; an empty result is a changed row shown as a greyed
+  "Untitled", stored as `""`, exported as an empty `<name>`; Save is enabled whenever one row changes. The
+  flag enum is {`unchanged`, `note-over-limit`, `chars-removed`}; properties (7), (11), (12), the fuzz
+  invariants, §3.2, §3.7(f) and every affected test (§5.2, §5.4, §5.5, §5.6, §5.7) are rewritten, with a
+  kept test that whitespace-only results trim to `""` and show "Untitled".
+- **Missing notes are blank**, never "No note" (decision 18), with a test; "Use note as name" still leaves
+  blank-note rows alone (default 12).
+- **Strings** (decisions 19, 21): status "Changed N items." with a period, straight apostrophes, "You will",
+  and no "Web Map" (say "onX on a computer"); applied to §2, §3.2, §4 and the tests that assert them.
+- **Confirm order** (decision 20): the one confirm this feature opens, "Save your note?", reads Keep editing ·
+  Discard · Save (§3.5), pinned by a test.
+- **Owner-run onX probe** for an imported markup with an empty `<name>` added to the untestable-locally
+  list, a risk row, and UI-39's unverified-behaviour note (§7).
+- Contract and selectors: `transform` no longer returns `blocked`; `.na-before` / `.na-after` and
+  `.is-placeholder` join the selector contract; `_preview_rows` reads a placeholder cell as `""`.
 
 ## Changes in revision 3
 
@@ -804,18 +905,20 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
   note as the fourth; the note Find and replace is the names layout with textareas.
 - **Empty Find = replace the whole value** (the Campsite normalisation). The old "find === '' → no-op"
   rule is gone; the no-op block in §3.1 is the single source: both fields empty ⇒ `unchanged`; Find "" +
-  text ⇒ every After is the text; Find "" + whitespace-only ⇒ every row `empty`, Save disabled; Match case
-  ignored while Find is empty.
+  text ⇒ every After is the text; Find "" + whitespace-only ⇒ every row `empty`, Save disabled (superseded
+  in revision 4: blank names are allowed); Match case ignored while Find is empty.
 - Duplicate names: no warning. The `duplicate` flag, `ctx.otherNames`, the `nameKey` export, the
   normalisation paragraph, the duplicate tests and property (12) are removed; property (12) now pins the
   flag enum; a positive Campsite test (three identical names, no flag, three items exported) and a risk
   line replace them.
 - Approved strings listed in §2 decision 4 and applied to §3.2/§3.3/§3.6/§5; the summary is two-part
-  ("N will change · M unchanged"), blocked rows carry "Name can't be empty" and render first; the long-note
-  row reuses the caution-mark sentence (app.js:950).
+  ("N will change · M unchanged"), blocked rows carried a "can't be empty" sentence and rendered first
+  (superseded in revision 4: nothing is blocked); the long-note row reuses the caution-mark sentence
+  (app.js:950).
 - `docs/design/LABELS.md` added to B's ownership, Phase 3 deliverables and DoD 6: new strings land in the
   same commit as the code, drift test green.
-- §5.4 gains the four empty-Find tests; §5.5's empty-row test asserts the row sentence, not a summary count;
+- §5.4 gains the four empty-Find tests; §5.5's empty-row test asserted the row sentence, not a summary count
+  (both rewritten in revision 4, nothing is blocked);
   fuzz's hostile action adds empty Find + text / + whitespace; properties (4)–(6) restated.
 - Cross-references renumbered (decision 11 → default 12, default 9 → default 10); "Phase 0 approval" and
   "four questions" wording removed everywhere.
@@ -835,7 +938,8 @@ Flags are a set: assert `⊇`, never `==`, unless the test is about exclusivity.
 - Focus fallback to `#filter` when Save empties the selection.
 - Notes: `strip_html` runs at load, export is verbatim (bridge.py:960); the headline invariant holds on
   CalTopo maps and is pinned; note fields are textareas with Ctrl/Cmd+Enter.
-- Spec synchronous, render debounced, `data-preview-seq`; Save recomputes and refuses when blocked.
+- Spec synchronous, render debounced, `data-preview-seq`; Save recomputes and refuses when blocked (since
+  revision 4: when nothing changed).
 - Hypothesis replaced by seeded generators with pinned vectors; per-input `{ok,error}`; properties (6) and
   (9) narrowed; surrogates reported as booleans; perf gated ×3 on CI.
 - Core tests run on `about:blank` with `add_script_tag`; Phase 1 adds `conftest.py` + `helpers.py` +

@@ -270,8 +270,8 @@ def _kept_why(origin: str) -> str:
 
 def _unknown_icon_why(icon: str, origin: str) -> str:
     where = "Your onX file" if origin == "onx" else "The file you loaded"
-    return (f"{where} uses the icon “{icon}”, which Cairn doesn’t know. It goes "
-            f"out unchanged; pick one from the list if onX doesn’t show it.")
+    return (f"{where} uses the icon “{icon}”, which Cairn doesn't know. It goes "
+            f"out unchanged; pick one from the list if onX doesn't show it.")
 
 
 GEOJSON_FAILED = "Failed: Could not load file"
@@ -301,7 +301,7 @@ def _read_one(path: Path, route: str, display_name: str):
         return read_onx_kml(path)
     except ValueError as e:
         first = str(e).strip().splitlines()[0] if str(e).strip() else "unreadable"
-        raise ValueError(f"{display_name} couldn’t be read: {first}") from None
+        raise ValueError(f"{display_name} couldn't be read: {first}") from None
 
 
 def _pair(entries: list) -> list:
@@ -562,7 +562,7 @@ def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
         why = _explain(decision, feat.symbol or "", cfg.default_icon)
     else:
         icon = ""
-        why = "Tracks and areas don’t take an icon in onX."
+        why = "Tracks and areas don't take an icon in onX."
         if origin and (feat.stroke or "").strip():
             # The colour (and line style) came from the file.
             confirmed = True
@@ -928,7 +928,7 @@ def remove_empty_folder(key: str) -> str:
     raises ValueError and changes nothing: items are never dropped this way."""
     g = _folder(key)
     if g["items"]:
-        raise ValueError(f"“{g['name']}” isn’t empty, so it can’t be removed.")
+        raise ValueError(f"“{g['name']}” isn't empty, so it can't be removed.")
     _STATE["groups"] = [x for x in _STATE["groups"] if x is not g]
     return json.dumps({"ok": True, "removed": [key], "folders": _layout()})
 
@@ -1214,7 +1214,7 @@ def _written_items(data: bytes, kind: str) -> list:
 
 def _plain(text) -> str:
     """A name on one line of instructions.txt, as it is typed into onX."""
-    return _one_line(str(text or "")) or "(no name)"
+    return _one_line(str(text or "")) or "Untitled"
 
 
 def build_instructions(manifest, *, from_onx: bool = False) -> str:
@@ -1248,7 +1248,7 @@ def build_instructions(manifest, *, from_onx: bool = False) -> str:
             "",
         ]
     L += [
-        "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
+        "Import each folder below into onX on a computer (webmap.onxmaps.com), one at a time.",
         "In onX, choose Import and add all of that folder's files together.",
         'Tick "Import map data to a new folder".',
         "onX names the new folder with a datetime stamp.",

@@ -26,7 +26,7 @@
     "10_Unorganized/Unorganized_Waypoints.gpx": "9e9d4ae97828497b923851e6964fae34f8808eaa5fe18a80e28bdf7fc0e80f72",
     "10_Unorganized/Unorganized_Tracks.gpx": "6ff0fc9adcb010ab5b597f560b25bfd4393af63f9468380efb47d2d4ab8f9dc2",
     "10_Unorganized/Unorganized_Areas.gpx": "c2e1bfeac32f019309184c7a63521d9a79e821f735934340dbc6736b5c0993f5",
-    "instructions.txt": "6f144636c55159e078c8c1a5b21bda2b3c10d9e30455563331ccb529180100a1"
+    "instructions.txt": "dede1ea8f83b2a772dad96fb5b89b4f409fa9b3adcf9c728b843bfd668c1478e"
   },
   "load_document_json": "5bdb446fa1cac678c6d0ede0a641232c6ffb74126745231e4b53278f5df59dab",
   "notes": [
@@ -36,6 +36,7 @@
     "2026-10-23 (UI-31, export screen): RUNBOOK.md re-pinned for wording only. The 'Before you start' list became the screen's intro line; each folder's four '- [ ]' steps became the screen's three numbered steps ('add these N files together' / 'add this file'), its heading gained '· N files', and counts are singular when 1. Every number (folders, markups, imports, files, order) is unchanged; no other member changed.",
     "2026-10-23 (round 4, UI-31 export screen v2): RUNBOOK.md is replaced by instructions.txt, a plain-text guide with CRLF line endings: the general import steps once, then each NN_Name/ zip folder with the name to rename it to, each file, its item kind (Waypoints / Lines / Areas) and every item's name as written in that file. No counts, step lists or other sections. The new member is pinned in RUNBOOK.md's place (still last in the zip); every GPX member and load_document_json are unchanged, each checked byte for byte when re-pinned.",
     "2026-10-24 (owner feedback, folder order; ENG-07): folders are sorted by name (natural, case-insensitive) with the loose items (Unorganized) last, instead of biggest first. The export's NN_ numbers follow: 01_Blodgett ... 09_Trapper_area, 10_Unorganized (was 01_Unorganized, 02_Lost_Trail_Pass, ... 10_Mill_Creek_Canyon). Every GPX member was checked to have the same sha256 as before under its renumbered name; instructions.txt was re-pinned after checking that its header is unchanged and its folder blocks are the same text apart from the number and their order. load_document_json is unchanged: the test puts the groups back in the old (by size) order before hashing.",
-    "2026-10-25: instructions.txt re-pinned for one owner-approved wording change only: \"onX names the new folder with a date and time stamp.\" became \"... with a datetime stamp.\" (LABELS.md §15 #14). Checked by putting the old line back, which reproduced the previous sha256 exactly."
+    "2026-10-25: instructions.txt re-pinned for one owner-approved wording change only: \"onX names the new folder with a date and time stamp.\" became \"... with a datetime stamp.\" (LABELS.md §15 #14). Checked by putting the old line back, which reproduced the previous sha256 exactly.",
+    "2026-10-25 (later): instructions.txt re-pinned for two owner-approved wording changes only: \"onX's Web Map\" became \"onX on a computer\" in the import line, and the 7 nameless items print \"Untitled\" instead of \"(no name)\". Checked by putting both back, which reproduced the previous sha256 exactly."
   ]
 }

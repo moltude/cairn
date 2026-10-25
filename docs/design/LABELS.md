@@ -188,7 +188,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 |---|---|---|
 | A folder needs a name. | status (error) | app:1812, app:1832; br:750 |
 | A folder name can be up to 100 characters. | status (error) | app:1775 |
-| “{name}” already exists / Move the N item(s) in “{src}” into it? / Move them · Cancel | merge confirm | app:1869-1874 |
+| “{name}” already exists / Move the N item(s) in “{src}” into it? / Cancel · Move them | merge confirm | app:1869-1874 |
 | “{name}” already exists. | status (error) | app:1862 |
 | Made an empty folder. · Removed the empty folder “{name}”. | status | app:1732, app:1745 |
 | Moved N item(s) to a new folder / to {name} / to the folder. (+ “{x}” is empty now, so it was removed.) | status | app:1697-1698 |
@@ -207,8 +207,8 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Start over? | This discards N unexported change(s). / This clears the current map. | **Cancel**, Start over (danger) | app:2326-2333 |
 | Leave this map? | Changes will be lost. | **Stay**, Leave (danger) | app:306-312 |
 | Save your note? | Your note for “{name}” hasn't been saved. | Keep editing, Discard, **Save** | app:2351-2361 |
-| “{name}” already exists | (merge, §7) | Move them, **Cancel** | app:1869-1874 |
-| 1 area will lose its fill. / N areas will lose their fill. | onX resets area fills to blue on import. | Leave this out / Leave these N out, **Keep it / Keep them** | app:2256-2264 |
+| “{name}” already exists | (merge, §7) | **Cancel**, Move them | app:1869-1874 |
+| 1 area will lose its fill / N areas will lose their fill | onX resets area fills to blue on import. | **Keep it / Keep them**, Leave this out / Leave these N out | app:2256-2264 |
 
 ## 10. Export screen
 
@@ -219,7 +219,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Download all | primary button (`onx_ready.zip`) | idx:138 | `#download` |
 | One zip with every folder and instructions.txt | hint | idx:139 | `.done-hint` |
 | Back · Start over | buttons | idx:141-142 | `#back`, `.newmap` |
-| Import each folder into onX's Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite. | intro | idx:145 | `.rb-intro` |
+| Import each folder into onX on a computer; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite. | intro | idx:145 | `.rb-intro` |
 | N · {folder name} (number only when names repeat) | box title | app:2161 | `.rb-title` |
 | Download / Download {N · }{folder} | per-folder button / aria-label | app:2156-2162 | `.rb-dl` |
 | **N** item(s) wasn't / weren't exported: it has / they have no coordinates. X of Y were written. | warning | app:2142 | `.note.warn` |
@@ -245,8 +245,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Couldn't read that file — {reason} / Couldn't read those files — {reason} | err | app:386 |
 | Failed: {reason} (engine boot) | err | app:239 |
 | Couldn't load the map engine (HTTP N). | err | app:208 |
-| Changed N item(s) / line(s) / area(s) | ready | app:1541-1542 |
-| An item needs a name. | err | app:1062 |
+| Changed N item(s). / line(s). / area(s). | ready | app:1541-1542 |
 | Couldn't move / make a folder / remove / rename — {reason} | err | app:1652, 1728, 1743, 1824 |
 | Everything is excluded — include at least one item to export. | err | app:2101 |
 | Building onX files… | info | app:2104 |
@@ -286,9 +285,9 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 |---|---|
 | How to import these files into onX | always, first |
 | These files came from onX. onX imports them as new markups; it doesn't update the originals. / Keep your onX export as a backup. / In onX, delete the original markups first, then their folders. Deleting a folder doesn't delete its markups. / Then import as below. | from an onX file |
-| Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time. / In onX, choose Import and add all of that folder's files together. / Tick "Import map data to a new folder". / onX names the new folder with a datetime stamp. / Rename it to the name shown for that folder below. / Importing needs onX Premium or Elite. | always |
+| Import each folder below into onX on a computer (webmap.onxmaps.com), one at a time. / In onX, choose Import and add all of that folder's files together. / Tick "Import map data to a new folder". / onX names the new folder with a datetime stamp. / Rename it to the name shown for that folder below. / Importing needs onX Premium or Elite. | always |
 | {NN_Name}/    rename to: {folder name} · {file} · Waypoints / Lines / Areas · {item name} | per folder, file, item |
-| (over the length limit; onX will cut this note) · (its hole is not kept: an onX area has one outline) · (no name) | under an item |
+| (over the length limit; onX will cut this note) · (its hole is not kept: an onX area has one outline) · Untitled (a nameless item) | under an item |
 
 ## 14. FAQ and walkthrough headings
 
@@ -299,30 +298,31 @@ Default pin, Icon & color…, Save, Download all, + New folder, More → Move to
 
 ---
 
-## 15. Inconsistencies found (2026-10-25)
+## 15. Audit of 2026-10-25: what was decided
 
-Owner's answers, 2026-10-25: **done** 1, 2 (rule above), 3, 4, 7 ("Blue"), 9, 12, 14 ("datetime"), 17 ("Failed: Could not load file"). **Follow-up**: 8 (TODO.md). **Open, explained to the owner**: 5, 6, 10, 11, 13, 15, 16, 18. **Kept**: 19.
+The owner's answers, by topic (this table, not the numbers used in conversation, is the record):
 
-
-1. **Apply vs Save.** Every visible label says Save; DECISIONS UI-16 and UI-18 rule 4 still say Apply. Fix the decision text (superseded by UI-26).
-2. **Exclude vs "leave out".** Menu and state say Exclude / Excluded / Include; the fill confirm says "Leave this out / Leave these N out", the excluded-row tooltip "Left out of the export", Help's heading "5 · Leave things out". Suggest Exclude wording in controls; prose may keep "leave out".
-3. **item / markup / row / pin.** "item" is the app word; "markup" is onX's word (keep for onX limits and import); "Select rows first" (app:1197) and "Pin color" (app:1451) drift. Suggest "Select items first" and "Waypoint color".
-4. **Line vs Track.** Lines everywhere; onX-file tracks show "Track" on purpose. Keep; documented here.
-5. **"+ New folder…"** in Move to… has an ellipsis but acts immediately (the rail's "+ New folder" has none). Suggest no ellipsis.
-6. **Titles and periods.** The fill confirm title ends with a period ("1 area will lose its fill."); other titles don't. Status sentences mix: "Changed N items" (no period) vs "Moved N items to X." Suggest no period on titles, a period on status sentences.
-7. **Quotes.** app.js uses straight apostrophes with curly double quotes; bridge.py mostly curly apostrophes; the long-note warning uses straight single quotes around names. Suggest curly “” around names and ’ in app text; straight only in instructions.txt.
-8. **"onX" in a control.** "Use onX's blue fill" is the one button label naming onX (UI-15). Suggest "Use blue fill".
-9. **Error prefixes.** "Failed: …", "Export failed: …", "Download failed: …" vs "Couldn't X — …" everywhere else. Suggest "Couldn't start — …", "Couldn't export — …", "Couldn't download — …".
-10. **Name required.** "A name is required. onX searches by name only." vs "A folder needs a name." Suggest "An item needs a name." (UI-26: no explanation).
-11. **Discard warnings.** "Changes will be lost." (Leave this map?) vs "This discards N unexported change(s)." (Start over). Suggest the counted form in both.
-12. **Confirm button order.** Most put the safe choice first, the commit last; the merge confirm ("Move them, Cancel") and fill confirm ("Leave this out, Keep it") don't. Suggest safe first, commit last everywhere.
-13. **Cancel meaning "keep editing".** In "Save your note?", Cancel returns to the note; elsewhere Cancel discards. Suggest "Keep editing".
-14. **Nameless items.** "Untitled" in dialogs vs "(no name)" in the long-note warning and instructions.txt. Suggest "Untitled" in the app; "(no name)" may stay in instructions.txt.
-15. **Date stamp.** "default datetime stamp" (export intro) vs "date and time stamp" (instructions.txt). Suggest "a date and time stamp".
-16. **Web Map.** "Web Map" in the app vs "web map" in the FAQ. Suggest "Web Map" (onX's product name).
-17. **Stale FAQ heading.** "What's the 'Default pin' / 'needs attention' thing?" names an internal field. Suggest dropping "/ 'needs attention'".
-18. **Server paths in GeoJSON errors.** parser.py messages show `/tmp/…` paths and developer wording. Suggest one plain sentence via bridge.py, as the XML readers already get.
-19. **Arrows in Help.** "More → Move to…" vs UI-18 rule 2 (no arrows in button labels). The rule is about labels; Help may keep it, or write "More, then Move to…".
+| Topic | Decision | State |
+|---|---|---|
+| Apply vs Save | **Save** (DECISIONS UI-16/UI-18 text fixed) | done |
+| Exclude vs leave out | **Exclude** in menus, buttons, states; "leave out" where a sentence reads better | rule recorded |
+| "Select rows first", "Pin color" | **Select items first**, **Waypoint color** | done |
+| "+ New folder…" in Move to… | **+ New folder** (no ellipsis) | done |
+| Periods | no period on titles; a period on status sentences ("Changed 3 items.") | done |
+| Quotes | “…” around names; straight apostrophes everywhere; **You will**, not You'll | done |
+| "Use onX's blue fill" | **Blue** (in the Fill row) | done |
+| Error-message prefixes | review every variant together | follow-up (TODO.md) |
+| "A name is required…" | names are **optional**: no error, an empty name shows **Untitled** | done |
+| "Changes will be lost." vs "This discards N unexported changes." | suggested the counted sentence in both | **open: waiting for the owner** |
+| Confirm button order | safe choice first, action last (merge and fill confirms flipped) | done |
+| Cancel in "Save your note?" | **Keep editing** | done |
+| Nameless items | **Untitled** everywhere; a missing note is blank | done |
+| Date stamp | **datetime stamp** | done |
+| "Web Map" | removed everywhere; "onX on a computer" where the sentence needs it | done |
+| FAQ heading "Default pin / needs attention" | **What's the "Default pin"?** | done |
+| GeoJSON errors with /tmp paths | **Failed: Could not load file** | done |
+| Arrows in Help ("More → Move to…") | keep: they are directions, not labels | kept |
+| Line vs Track | keep (onX-file tracks show "Track") | kept |
 
 ## 16. Canonical vocabulary
 
@@ -349,8 +349,12 @@ Owner's answers, 2026-10-25: **done** 1, 2 (rule above), 3, 4, 7 ("Blue"), 9, 12
 | Move items | **Move to…**, **Move N items to** | Put in |
 | Take a note as the name | **Use note as name** | Use description as name |
 | Bulk text edits (new, 2026-10-25) | **Rename…**, **Change note…**; modes **Add before**, **Add after**, **Find and replace**, **Replace the note**; fields **Find**, **Replace with**, **Text**; **Match case**; rows **No change**, **Name can't be empty**; summary **N will change · M unchanged** | |
-| onX's own objects | **markup**, **Web Map**, **Premium or Elite**, **Import map data to a new folder** | |
+| onX's own objects | **markup**, **onX on a computer** (where importing works), **Premium or Elite**, **Import map data to a new folder** | Web Map (owner, 2026-10-25) |
 | Errors | **Couldn't X — reason** | Failed: … |
-| Quotes | “…” around names in the app; ’ apostrophes; straight quotes only in instructions.txt | |
+| Quotes | “…” around names in the app; **straight apostrophes** (') everywhere; straight quotes in instructions.txt | ’ |
+| Contractions | write **You will**, not You'll | |
 | Date stamp | **datetime stamp** | date and time stamp |
 | Sentences | short and direct; no period on titles, a period on status sentences | narrating modals (UI-26) |
+| A missing name | **Untitled** (names are optional, owner 2026-10-25) | (no name), Name can't be empty |
+| A missing note | nothing: blank space | No note, (none) |
+| Confirm buttons | the safe choice first (and default), the action last | |

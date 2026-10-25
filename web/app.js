@@ -976,7 +976,7 @@ function row(it, old = null) {
   const fillMark = fillCaution(it);
   const html = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
-    <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
+    <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name || "Untitled")}" placeholder="Untitled" value="${esc(it.name)}">${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
       `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
@@ -1023,7 +1023,7 @@ function row(it, old = null) {
     tr.classList.toggle("sel", e.target.checked); updateSel();
     syncFolderBox(tr);
   };
-  wireTextField(tr.querySelector(".name-in"), it, "name", { required: true });
+  wireTextField(tr.querySelector(".name-in"), it, "name");
   if (noteOpen) wireNoteEditor(tr, it);
   else tr.querySelector(".note-btn").onclick = () => openNote(it);
   const chip = tr.querySelector(".exc-chip");
@@ -1052,8 +1052,8 @@ function syncFolderBox(tr) {
  *  original value before blurring means the browser sees no change at all, so no
  *  commit happens.
  *
- *  `required` fields (the name) also refuse to commit empty: a nameless markup
- *  is unusable in onX, where the name is the only searchable field.
+ *  `required` fields refuse to commit empty. No field uses it since names became
+ *  optional (owner, 2026-10-25): an empty name shows as "Untitled".
  */
 function wireTextField(el, it, key, { required = false } = {}) {
   el.addEventListener("focus", () => { el.dataset.orig = el.value; });
@@ -1541,7 +1541,7 @@ function applyBulk() {
   refreshAfterEdit();
   const n = changed.length;
   const word = changed.every(i => i.kind === "shapes") ? "area" : changed.every(i => i.kind === "tracks") ? "line" : "item";
-  setStatus(`Changed ${plural(n, word)}`, "ready");
+  setStatus(`Changed ${plural(n, word)}.`, "ready");
 }
 
 function closeBulk() {
@@ -1872,8 +1872,8 @@ function offerMerge(src, dup, where, draft = null) {
     body: `Move the ${plural(src.items.length, "item")} in “${src.name}” into it?`,
     ret,
     buttons: [
-      { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
       { label: "Cancel", initial: true, cancel: true, run: cancel },
+      { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
     ],
   });
 }
@@ -2126,7 +2126,7 @@ async function doExport() {
     quotes, up to LONG_NOTES_SHOWN, then "and N more". */
 const LONG_NOTES_SHOWN = 8;
 function longNoteWarning() {
-  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `'${n || "(no name)"}'`));
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `\u201c${n || "Untitled"}\u201d`));
   const n = LONG_NOTES_SHOWN;
   const list = names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
   return names.length === 1 ? `Item ${list} is over the length limit and will be truncated by onX.`
@@ -2255,15 +2255,15 @@ function warnFillLoss() {
   const n = hit.length;
   if (!n) return;
   openConfirm({
-    title: n === 1 ? "1 area will lose its fill." : `${n} areas will lose their fill.`,
+    title: n === 1 ? "1 area will lose its fill" : `${n} areas will lose their fill`,
     body: "onX resets area fills to blue on import.",
     buttons: [
+      { label: n === 1 ? "Keep it" : "Keep them", initial: true, cancel: true, run: () => closeConfirm() },
       { label: n === 1 ? "Leave this out" : `Leave these ${n} out`, run: () => {
           closeConfirm();
           hit.forEach(it => edit(it, { included: false }, { render: false }));
           refreshAfterEdit();
         } },
-      { label: n === 1 ? "Keep it" : "Keep them", initial: true, cancel: true, run: () => closeConfirm() },
     ],
   });
 }

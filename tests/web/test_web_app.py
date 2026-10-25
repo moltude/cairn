@@ -549,7 +549,7 @@ def test_export_screen_is_one_box_per_folder_name_download_and_files(loaded: Pag
     expect(loaded.locator("#download")).to_have_text("Download all")
     expect(done.locator(".done-hint")).to_have_text("One zip with every folder and instructions.txt")
     expect(done.locator(".rb-intro")).to_have_text(
-        "Import each folder into onX's Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.")
+        "Import each folder into onX on a computer; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.")
     boxes = done.locator(".rb-step")
     expect(boxes).to_have_count(len(manifest))
     # Round 4 (owner's ExportScreen mockup): each box is the folder name as its
@@ -618,7 +618,7 @@ def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path)
     warns = host.locator(".note.warn")
     expect(warns).to_have_count(3)
     expect(warns.nth(0)).to_contain_text("1 item wasn't exported: it has no coordinates.")
-    expect(warns.nth(1)).to_have_text("Item 'Long' is over the length limit and will be truncated by onX.")
+    expect(warns.nth(1)).to_have_text("Item \u201cLong\u201d is over the length limit and will be truncated by onX.")
     expect(warns.nth(2)).to_contain_text("onX accounts hold at most 3,000 markups; this map has 3,002.")
     # Every warning comes before the first folder box.
     order = host.locator(":scope > *").evaluate_all("els => els.map(e => e.className)")
@@ -1319,7 +1319,7 @@ def test_the_dialog_takes_areas_too_with_a_fill_row(loaded: Page):
     loaded.click("#bulk-apply")
     expect(loaded.locator("#mark-modal")).to_be_hidden()
     assert [loaded.evaluate(_LINE.format(uid=u))["style"] for u in uids] == ["dash", "dash"]
-    expect(loaded.locator("#status")).to_have_text("Changed 2 areas")
+    expect(loaded.locator("#status")).to_have_text("Changed 2 areas.")
 
 
 def _keep_fills(page: Page) -> None:
@@ -1337,7 +1337,7 @@ def test_onx_areas_with_a_fill_warn_and_can_be_left_out(fresh_page: Page):
     expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
     dlg = fresh_page.locator("#confirm")
     expect(dlg).to_be_visible()
-    expect(fresh_page.locator("#confirm-title")).to_have_text("4 areas will lose their fill.")
+    expect(fresh_page.locator("#confirm-title")).to_have_text("4 areas will lose their fill")
     expect(fresh_page.locator("#confirm-body")).to_have_text("onX resets area fills to blue on import.")
     fresh_page.click("#confirm .confirm-actions button:text-is('Leave these 4 out')")
     expect(dlg).to_be_hidden()
@@ -1592,19 +1592,21 @@ def test_edit_stage_is_scaled_down_but_the_popover_is_not(loaded: Page):
     assert loaded.evaluate("getComputedStyle(document.querySelector('#mark-pop')).fontSize") == "15px"
 
 
-def test_a_name_cannot_be_committed_empty(fresh_page):
+def test_an_empty_name_is_allowed_and_shows_untitled(fresh_page):
+    # Names are optional (owner, 2026-10-25): an empty name is kept and the
+    # field shows "Untitled" in its place, with no error.
     fresh_page.set_input_files("#file", str(FIXTURE))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
 
-    original = fresh_page.evaluate("DATA.groups[0].items[0].name")
     box = fresh_page.locator(".name-in").first
     box.click()
     box.fill("")
     box.press("Enter")
     fresh_page.wait_for_timeout(300)
 
-    assert fresh_page.evaluate("DATA.groups[0].items[0].name") == original
-    assert "an item needs a name" in fresh_page.inner_text("#status").lower()
+    assert fresh_page.evaluate("DATA.groups[0].items[0].name") == ""
+    expect(fresh_page.locator(".name-in").first).to_have_attribute("placeholder", "Untitled")
+    assert "name" not in fresh_page.inner_text("#status").lower()
 
 
 def test_help_panel_opens_and_closes(fresh_page):
@@ -2198,7 +2200,7 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
     # The fixture's "Campsite" isn't in onX's icon list: kept, but marked and explained.
     expect(page.locator(f"{ROW} .icon-name.unknown-icon")).to_have_text(["Campsite"])
     expect(page.locator(f"{ROW} .icon-btn").nth(1)).to_have_attribute(
-        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn’t know"))
+        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn't know"))
     # The lines' color came from the file too.
     expect(page.locator(f"{ROW} .line-btn").first).to_have_attribute(
         "title", re.compile(r"Kept from your onX file\.$"))
@@ -2700,7 +2702,7 @@ def test_rename_onto_a_taken_name_offers_to_merge(loaded: Page):
     expect(page.locator("#confirm-title")).to_have_text("“North Roots” already exists")
     expect(page.locator("#confirm-body")).to_have_text(
         "Move the 31 items in “Lost Trail Pass” into it?")
-    expect(page.locator("#confirm-actions button")).to_have_text(["Move them", "Cancel"])
+    expect(page.locator("#confirm-actions button")).to_have_text(["Cancel", "Move them"])
     expect(page.locator("#confirm-actions button", has_text="Cancel")).to_be_focused()
 
     # Cancel (Enter on the default) keeps the old name and both folders.
@@ -4142,9 +4144,10 @@ def test_the_caution_marks_the_same_notes_the_export_lists(fresh_page: Page, tmp
     _done(page)
     listed = [n for e in page.evaluate("MANIFEST") for n, _bytes in e["long_notes"]]
     assert sorted(marked) == sorted(listed)
-    # Several: "Items 'a', 'b' are over …" (owner's wording, 2026-10-24), up to 8 names.
+    # Several: "Items “a”, “b” are over …" (owner's wording, 2026-10-24; curly quotes and
+    # "Untitled" for a nameless item since 2026-10-25), up to 8 names.
     assert len(listed) >= 2
-    quoted = [f"'{n}'" for n in listed]
+    quoted = [f"\u201c{n or 'Untitled'}\u201d" for n in listed]
     shown = ", ".join(quoted) if len(quoted) <= 8 else f"{', '.join(quoted[:8])} and {len(quoted) - 8} more"
     expect(page.locator("#runbook .note.warn", has_text="length limit")).to_have_text(
         f"Items {shown} are over the length limit and will be truncated by onX.")
@@ -4162,7 +4165,7 @@ def test_the_long_note_warning_names_eight_then_says_how_many_more(fresh_page: P
     page.set_input_files("#file", str(f))
     page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
     _done(page)
-    names = ", ".join(f"'temp {k}'" for k in range(1, 9))
+    names = ", ".join(f"\u201ctemp {k}\u201d" for k in range(1, 9))
     expect(page.locator("#runbook .note.warn")).to_have_text(
         f"Items {names} and 3 more are over the length limit and will be truncated by onX.")
 
@@ -4301,7 +4304,7 @@ def test_a_mixed_selection_picks_pin_and_line_colors_apart(loaded: Page):
     expect(line.locator(".color-reset")).to_have_attribute("aria-pressed", "true")
     _shot(page, "5b-mixed-dialog-pin-and-line")
     page.click("#bulk-apply")
-    expect(page.locator("#status")).to_have_text("Changed 2 items")
+    expect(page.locator("#status")).to_have_text("Changed 2 items.")
     assert [_color(page, u) for u in wps] == ["rgba(255,0,0,1)"] * 2
     assert [_color(page, u) for u in lines] == [before[u] for u in lines]
     # Now a line colour only (Fuchsia exists only for lines).
@@ -4710,7 +4713,7 @@ def test_one_dialog_for_lines_and_areas_and_for_waypoints_and_areas(loaded: Page
     _shot(page, "fb-11a-lines-and-areas-dialog")
     d.locator('.tog[data-weight="6.0"]').click()
     page.click("#bulk-apply")
-    expect(page.locator("#status")).to_have_text(re.compile(r"^Changed [1-4] items$"))  # only those not thick already
+    expect(page.locator("#status")).to_have_text(re.compile(r"^Changed [1-4] items\.$"))  # only those not thick already
     assert {page.evaluate(_LINE.format(uid=u))["weight"] for u in lines + areas} == {"6.0"}
     _clear_selection(page)
     wps = _items_of(page, "waypoints")
