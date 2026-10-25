@@ -262,6 +262,7 @@ An open note on a selected row asks "Save your note?" first (§9).
 | 1 · Export from CalTopo · 2 · Review the icons · 3 · Edit in bulk · 4 · Folders · 5 · Leave things out · 6 · Export and import | headings |
 | What carries across (Name, Note, Icon, Color, Line style, Folders, Lines vs areas) · Good to know | headings / table |
 | Click a box / Shift + click / Ctrl / ⌘ + A / Header checkbox / Esc / Notes | shortcut rows |
+| More has Move to…, Rename…, Change note…, Use note as name, Exclude and Include. Rename… changes many names at once; Change note… does the same for notes. | prose in 3 · Edit in bulk |
 
 ## 12. Status line and bridge messages
 
@@ -322,7 +323,7 @@ An open note on a selected row asks "Save your note?" first (§9).
 FAQ (source docs/FAQ.md; web/faq.html is generated) group headings: The problem, Your files, What Cairn
 does, Limits and trade-offs, Round trip. Walkthrough step tags: Before, Step 1, What Cairn finds, What
 Cairn flags, What you fix, Your folders, What you import, Good to know. Controls named in their prose:
-Default pin, Icon & color…, Save, Download all, + New folder, More → Move to….
+Default pin, Icon & color…, Save, Download all, + New folder, More → Move to…. FAQ question "Can I rename many items at once?" (answer: "Yes. Tick them, then More → Rename…. Find and replace changes part of each name; Add before and Add after add text to every name. No regex yet.").
 
 ---
 
