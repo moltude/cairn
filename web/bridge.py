@@ -100,6 +100,7 @@ LINE_WEIGHTS = AREA_WEIGHTS = ("4.0", "6.0")
 # an item is in and where it sits. export_zip reads nothing else. doc.folders
 # stays as parsed (the folders as loaded).
 _STATE: dict = {"doc": None, "groups": [], "features": {}, "config": None,
+                "from_onx": False,
                 "edited": set(), "color_edited": set(), "next_folder": 1, "loose": set()}
 
 # What export_zip leaves in _STATE for the export screen and export_folder_zip.
@@ -443,6 +444,10 @@ def load_files(files_json: str) -> str:
             groups.append(_group(fkey, okey, fdata, origin, resolver, cfg, catalog, features))
 
     _STATE.update(doc=doc, groups=groups, features=features, config=cfg,
+                  # Any file of this load from onX: instructions.txt then opens
+                  # with the replace steps (onX imports everything as new
+                  # markups). A Cairn-made or generic file is not an onX export.
+                  from_onx=any(origin == "onx" for _, origin in sources),
                   edited=set(), color_edited=set(), next_folder=1,
                   loose={g["key"] for g in groups if g["unorganized"]})
     _sort_folders()
@@ -1077,7 +1082,7 @@ def export_zip() -> bytes:
             else:
                 unlisted_dropped += entry["dropped"]
 
-        instructions = build_instructions(manifest)
+        instructions = build_instructions(manifest, from_onx=_STATE.get("from_onx", False))
         zf.writestr(INSTRUCTIONS_NAME, instructions.encode("utf-8"))
 
     _STATE["manifest"] = manifest
@@ -1201,7 +1206,7 @@ def _plain(text) -> str:
     return _one_line(str(text or "")) or "(no name)"
 
 
-def build_instructions(manifest) -> str:
+def build_instructions(manifest, *, from_onx: bool = False) -> str:
     """instructions.txt: how to get this INTO onX, and what is in each folder.
 
     onX creates one folder per import BATCH, and a batch accepts several files
@@ -1213,10 +1218,25 @@ def build_instructions(manifest) -> str:
     two warnings that belong to one item are written, under it: a note onX
     will cut, an area hole onX can't keep. Totals, dropped items and the
     account limit are on the export screen.
+
+    from_onx: the map was loaded from an onX export. onX imports everything as
+    new markups, ids or not (docs/ONX_ROUND_TRIP.md), so the replace steps
+    come first: back up, delete the originals, then import. Off by default,
+    so a CalTopo export's file is byte-identical to before (2026-10-25).
     """
     L = [
         "How to import these files into onX",
         "",
+    ]
+    if from_onx:
+        L += [
+            "These files came from onX. onX imports them as new markups; it doesn't update the originals.",
+            "Keep your onX export as a backup.",
+            "In onX, delete the original markups first, then their folders. Deleting a folder doesn't delete its markups.",
+            "Then import as below.",
+            "",
+        ]
+    L += [
         "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
         "In onX, choose Import and add all of that folder's files together.",
         'Tick "Import map data to a new folder".',
