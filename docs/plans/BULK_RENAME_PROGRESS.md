@@ -83,19 +83,24 @@ calls) and gives intermittent answers: detect removed characters with `xmlSafe(s
 | `#bulk-apply` | Save (reused id); disabled when nothing changes |
 | `.bulk-cancel` | Cancel |
 | `#status` | after Save: "Changed N items." |
+| `window.__cairnPerf` | `{ lastTransformMs, lastPreviewMs, lastSaveMs }`, set by `drawTextBulk` / `applyTextBulk` with `performance.now()` (plan 6.5; D reads it) |
+| `.na-more` | the line under a preview capped at 200 rows, worded like the app's existing "and N more" line (B picks the exact existing string and logs it) |
 
 **Test infrastructure** (Phase 1): `tests/web/conftest.py` (fixtures: `_require_server`, `browser`,
 `context`, `fresh_page`, `loaded`, `csp_page`), `tests/web/helpers.py` (constants `BASE_URL`, `FIXTURE`,
 `FX_DIR`, `ROW` and the shared helpers: `export_zip_bytes`, `_export_zip`, `_menu_action`, `_tick`, `_set`,
 `_select_all_shown`, `_clear_selection`, `_set_type`, `_load_files`, `_row`, `_is_marked`, …), and
 `tests/web/__init__.py`. New test files import from `tests.web.helpers`. `tests/naughty_strings.py` is the
-naughty-strings module (Track C creates it).
+naughty-strings module (Track C creates it). **The bulk helpers of plan 6.3** (`_open_bulk`, `_set_mode`,
+`_type_spec`, `_type_slowly`, `_preview_rows`, `_save_bulk`, `_status_count`, `_gpx_names`, `_gpx_descs`)
+are **Track C's**, appended to `tests/web/helpers.py`; C is the only track that edits helpers.py. D uses
+them once C is merged, and until then keeps private copies inside its own file.
 
 ## 3. Tracks
 
 | track | owner | files | model | state | branch | notes |
 |---|---|---|---|---|---|---|
-| Phase 1 | orchestrator | tests/web/{conftest,helpers,__init__}.py, web/rename.js skeleton, this file | Opus 5.5 | in progress | feat/bulk-rename | |
+| Phase 1 | orchestrator | tests/web/{conftest,helpers,__init__}.py, web/rename.js skeleton, this file | Opus 5.5 | **done** `dc99726` | feat/bulk-rename | 1389 passed, 239 web collected |
 | A core | agent | web/rename.js | Opus 5.5 xhigh | not started | bulk/a-core | wave 1 |
 | B dialog UI | agent | web/app.js, web/index.html, web/styles.css, docs/FAQ.md, web/faq.html, docs/design/DECISIONS.md, docs/design/LABELS.md | Opus 5.5 xhigh | not started | bulk/b-ui | wave 1; transform is a stub until A merges |
 | C tests | agent | tests/naughty_strings.py, tests/bulk_rename_vectors.py, tests/web/test_rename_core.py, tests/web/test_bulk_text.py, tests/test_bulk_round_trip.py, tests/test_bulk_prereqs.py | Opus 5.5 xhigh | not started | bulk/c-tests | wave 1 |
@@ -150,6 +155,15 @@ deviations from the plan `DEVIATION:`, and anything another track must act on `F
   helpers moved out of test_web_app.py (collection unchanged at 239), rename.js skeleton, this file.
 - DEVIATION: wave 1 is A + B + C, not A + C + D (section 3 says why). Alternative kept: if B stalls on
   the stub, B pauses and D takes its slot.
+- Phase 1 committed: `dc99726` on `feat/bulk-rename`; full suite 1389 passed. Every track branches from it.
+- DECISION (for A and C): case-insensitive matching is V8's `giu` folding, unmodified. Checked in node:
+  "Οδυσσεύς" find "σ" with Match case off matches **3** (σ, σ and the final ς: Unicode simple case
+  folding maps ς to σ); with Match case on, 2. The plan's `test_final_sigma_matches_only_itself` expects
+  "not ς" and is wrong for JS; C pins the real behaviour under a new id,
+  `test_final_sigma_matches_sigma_without_match_case_and_only_itself_with_it`. Also checked and as the plan
+  says: "İstanbul" find "istanbul" 0, find "İ" 1; "Straße" find "ss" 0; "Ａ" vs "A" 0; NFD "ü" in NFC 0;
+  NBSP vs space 0; Kelvin K and long s DO fold (the plan's property 9 already excludes them). Rejected:
+  a custom folding table (more code, and it would disagree with the browser's own search behaviour).
 - DECISION: agents run on Opus 5.5 at xhigh effort (owner, 2026-10-25, later than the "scale models
   down" note). Alternative: Sonnet for C and D.
 
