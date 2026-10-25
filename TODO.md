@@ -47,6 +47,13 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   newlines, `&#10;`, escaped `<br>`, and a blank line; import, read Notes on web and phone, then
   type a two-line note in onX and export it.
 
+## Next feature: bulk rename and note change
+
+* **Rename… and Change note…** in More (UI-17), with a live before/after preview. Phased,
+  red-teamed plan for parallel implementation agents: [`docs/plans/BULK_RENAME.md`](docs/plans/BULK_RENAME.md).
+  Phase 0 needs the owner: pick the dialog mockup, say yes/no to the duplicate-name flag, approve
+  the wording.
+
 ## Major feature: investigate, then build
 
 * **Avalanche Bridge** — put local avalanche-center field observations (point-level evidence
@@ -55,10 +62,6 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   wrote it). Next step: settle its UNKNOWNs (data sources and their terms, refresh cadence,
   how a user re-imports updates without duplicates), then plan the build.
 
-## On hold
-
-* **Bulk rename and bulk note edit** (UI-17): Rename… (prefix/suffix, find/replace, with a
-  preview) and Change note… in More. Paused 2026-10-25 by the owner.
 
 ## Ideas, not planned
 

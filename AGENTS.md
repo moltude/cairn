@@ -254,6 +254,7 @@ Docs that are current:
 - `docs/DEPLOY.md` — Vercel + the Cloudflare Worker, shipping an engine change, checking a deploy
 - `docs/testing/FOLDERS_RELEASE.md` — the folders release log (PRs #44, #45)
 - `docs/research/*_2026-10-22.md` — dated research, cited by code comments and fixtures
+- `docs/plans/*.md` — plans for work not yet built (bulk rename); archive a plan once it ships
 
 Expired plans and audits (the 2026-08-29 audits, the TUI-era designs, the GPX/KML input
 roadmap, the first deploy plan) were moved on 2026-10-25 to `docs/archive/`, which is
