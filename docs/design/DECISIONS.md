@@ -1244,7 +1244,9 @@ What was built:
   and Ctrl / Cmd + Enter saves (the note editor's rule); in a name's, Enter saves. Never while an
   input method is composing.
 - **Rows**: changed rows first, then the rest, at most 200 drawn ("and N more" below). An unchanged
-  row reads "No change". A note's row shows whose note it is. **Names are optional**: a result that is
+  row reads "No change". A note's row shows whose note it is. The new part of each
+  After value is highlighted (the mockups' green): one span from the first change to the last, none
+  for a pure deletion. **Names are optional**: a result that is
   empty (a whitespace-only replacement included, trimmed) shows the greyed placeholder "Untitled" and
   is saved and exported as an empty name; it never blocks Save. A missing note is a blank cell.
 - **Warn, don't block.** A note pushed over onX's 512 bytes gets the caution mark's sentence (UI-34)
@@ -1264,7 +1266,8 @@ What was built:
   menus, popovers, drags, Ctrl+A, Export and Start over are out of reach. A changed note open on a
   ticked row asks "Save your note?" first (UI-22), Keep editing · Discard · Save.
 - Help gets one line, the FAQ one question ("Can I rename many items at once?"). Deferred: regex,
-  numbering, case changes, undo; the FAQ says "No regex yet."
+  numbering, case changes, undo. The FAQ answer is the approved one, with no "yet" (no roadmap
+  promise on a public page).
 
 Not verified in onX (owner-run only, never an agent): how onX lists and shows an imported markup
 with an **empty `<name>`**, a 300-character name, a 513-byte note ending in a four-byte emoji,

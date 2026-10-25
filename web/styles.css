@@ -365,6 +365,11 @@ textarea#bulk-text,textarea#bulk-find,textarea#bulk-repl{line-height:1.5;resize:
 .na-flag svg{flex:none;width:13px;height:13px;margin-top:1px}
 .na-flag:empty{display:none}
 .is-placeholder,.na-name.untitled{color:var(--muted);font-style:italic}
+/* The new part of an After value (the mockups' #E9EFDF is --sel-row).
+   No padding: inside a word it would read as a space; the shadow widens the
+   patch without moving a letter. */
+.na-after .hit{background:var(--sel-row);border-radius:2px;box-shadow:-1px 0 0 var(--sel-row),1px 0 0 var(--sel-row);
+  -webkit-box-decoration-break:clone;box-decoration-break:clone}
 /* Unchanged: the After cell gives way to "No change", the arrow fades. */
 .mark-dialog .na-row[data-flags~=unchanged] .na-after{display:none}
 .na-row[data-flags~=unchanged] .na-flag{grid-row:1;margin-top:0;font-size:14px;color:var(--muted);font-style:italic}

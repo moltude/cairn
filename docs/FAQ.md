@@ -117,7 +117,7 @@ The reason for doing this before import: onX's own bulk tools are limited. In on
 
 ### Can I rename many items at once?
 
-Yes. Tick them, then **More → Rename…**. **Find and replace** changes part of each name; **Add before** and **Add after** add text to every name. No regex yet.
+Yes. Tick them, then **More → Rename…**. **Find and replace** changes part of each name; **Add before** and **Add after** add text to every name.
 
 ### What do the marks in the list mean?
 
