@@ -297,9 +297,9 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .fill-swatch{width:26px;height:22px;flex:none;border:2px solid #4A90E2;background:rgba(74,144,226,.18);border-radius:2px}
 .swatch-btn[aria-pressed=true]{outline:2px solid var(--ink);outline-offset:2px}
 .swatch-btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
-.icon-search{background:var(--card);border:1px solid var(--control);border-radius:2px;padding:8px 10px;min-height:40px;width:100%}
+.icon-search,#bulk-text,#bulk-find,#bulk-repl{background:var(--card);border:1px solid var(--control);border-radius:2px;padding:8px 10px;min-height:40px;width:100%}
 .icon-search::placeholder{color:var(--muted);font-style:italic;opacity:1}
-.icon-search:focus{border-color:var(--brown);outline:2px solid var(--link);outline-offset:1px}
+.icon-search:focus,#bulk-text:focus,#bulk-find:focus,#bulk-repl:focus{border-color:var(--brown);outline:2px solid var(--link);outline-offset:1px}
 /* Icon picker (UI-29, option C): a two-column list, marker left and name right.
    Built once per open; the filter toggles [hidden] and a pick only flips
    aria-pressed, so focus stays on the chosen button. A long name wraps between
@@ -332,6 +332,55 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .na-cell{display:flex;align-items:center;gap:8px;min-width:0}
 .na-cell svg{flex:none}
 .na-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Rename… and Change note… (UI-39): the same dialog in text mode. The mode
+   toggles and fields sit in the head; the Now → After list below is the
+   names or notes themselves, in the item face (--sans), one row each. */
+.mark-dialog[data-bulk]{width:min(680px,100%)}
+.mark-dialog[data-bulk] .bulk-head{gap:12px}
+.mode-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mark-dialog[data-bulk=note] .mode-row{grid-template-columns:repeat(4,minmax(0,1fr))}
+.mode-tog{min-height:40px;font-size:14px;line-height:1.2;text-align:center}
+.mode-tog[aria-pressed=true]{font-weight:700}
+.text-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:10px 12px}
+.text-fields.find{grid-template-columns:repeat(2,minmax(0,1fr))}
+.text-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+#bulk-text,#bulk-find,#bulk-repl{font-family:var(--sans);font-size:14px;color:var(--ink)}
+textarea#bulk-text,textarea#bulk-find,textarea#bulk-repl{line-height:1.5;resize:vertical;min-height:68px}
+/* Match case: on or off, drawn as the app's checkbox. */
+#bulk-match-case{grid-column:1/-1;justify-self:start;display:inline-flex;align-items:center;gap:8px;min-height:32px;
+  padding:2px 4px 2px 0;background:none;border:none;color:var(--ink);font-size:14px;cursor:pointer}
+#bulk-match-case::before{content:"";flex:none;width:16px;height:16px;box-sizing:border-box;border:1px solid var(--control);
+  border-radius:2px;background:var(--sheet) center/12px 12px no-repeat}
+#bulk-match-case[aria-pressed=true]::before{border-color:var(--green);background-color:var(--green);
+  background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.4 6.3 4.9 8.7 9.6 3.5' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.text-preview{padding:12px 20px 14px;gap:6px}
+.mark-dialog[data-bulk] .na-rows{display:flex;flex-direction:column;align-items:stretch;gap:0;max-height:min(340px,38vh)}
+.na-row{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);column-gap:10px;align-items:center;
+  padding:6px 0;border-top:1px dotted var(--rule-soft)}
+.na-row:first-child{border-top:none}
+.na-row>svg{justify-self:center}
+.na-before,.na-after{min-width:0;font-family:var(--sans);font-size:14px;unicode-bidi:isolate;
+  overflow:hidden;text-overflow:ellipsis;white-space:pre}
+.na-flag{grid-column:3;font-size:12px;line-height:1.4;color:var(--warning);display:flex;gap:6px;align-items:flex-start;margin-top:2px}
+.na-flag svg{flex:none;width:13px;height:13px;margin-top:1px}
+.na-flag:empty{display:none}
+.is-placeholder,.na-name.untitled{color:var(--muted);font-style:italic}
+/* Unchanged: the After cell gives way to "No change", the arrow fades. */
+.mark-dialog .na-row[data-flags~=unchanged] .na-after{display:none}
+.na-row[data-flags~=unchanged] .na-flag{grid-row:1;margin-top:0;font-size:14px;color:var(--muted);font-style:italic}
+.na-row[data-flags~=unchanged]>svg path{stroke:var(--rule)}
+/* Notes: whose note it is above it; the note itself up to three lines, line
+   breaks kept. */
+.mark-dialog[data-bulk=note] .na-row{align-items:start}
+.na-src{display:flex;flex-direction:column;gap:1px;min-width:0}
+.na-src .na-name{font-family:var(--sans);font-size:13px;font-weight:600}
+.mark-dialog[data-bulk=note] .na-before,.mark-dialog[data-bulk=note] .na-after{white-space:pre-wrap;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+.mark-dialog[data-bulk=note] .na-before{color:var(--muted)}
+.mark-dialog[data-bulk=note] .na-row>svg,.mark-dialog[data-bulk=note] .na-row>.na-after,
+.mark-dialog[data-bulk=note] .na-row[data-flags~=unchanged]>.na-flag{margin-top:20px}
+.na-more{padding:8px 0 2px;font-size:13px;font-style:italic;color:var(--muted);border-top:1px dotted var(--rule-soft)}
+#bulk-summary{margin-right:auto;align-self:center;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
 
 /* ---------- modals ---------- */
 .modal{position:fixed;inset:0;background:rgba(42,36,28,.38);display:flex;align-items:center;

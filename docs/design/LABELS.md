@@ -139,8 +139,10 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | More | menu button | idx:117 | `#more-btn` |
 | More actions | menu aria-label | idx:118 | `#more-menu` |
 | Move to… | menu item | idx:119 | `#bulk-move` |
-| Use note as name | menu item | idx:120 | `#bulk-desc` |
-| Exclude · Include | menu items | idx:121-122 | `#bulk-exclude`, `#bulk-include` |
+| Rename… | menu item; opens the Rename dialog (§5.1) | idx:120 | `#bulk-rename` |
+| Change note… | menu item; opens the Change note dialog (§5.1) | idx:121 | `#bulk-note` |
+| Use note as name | menu item | idx:122 | `#bulk-desc` |
+| Exclude · Include | menu items | idx:123-124 | `#bulk-exclude`, `#bulk-include` |
 | Clear | link button; clears the selection | idx:125 | `#clear-sel` |
 
 ---
@@ -171,6 +173,32 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Find an icon for all selected waypoints | search aria-label | app:1453 | `.icon-search` |
 | Leave as is | chip on every section | app:1229 | `.reset-chip` |
 | Cancel · Save | buttons | app:1459-1460 | `.bulk-cancel`, `#bulk-apply` |
+
+### 5.1 Rename… and Change note… (the same dialog in text mode, UI-39)
+
+Built in app.js `openTextBulk` / `drawTextFields` / `drawTextBulk` (owner-approved wording,
+docs/plans/BULK_RENAME.md section 2 decision 4).
+
+| Text | Kind | Source | Selector |
+|---|---|---|---|
+| Rename N item(s) / Change the note on N item(s) | dialog heading (no period); names the dialog (`aria-labelledby`) | app `openTextBulk` | `#bulk-title` |
+| Close | aria-label of × | app `openTextBulk` | `.bulk-x` |
+| Add before · Add after · Find and replace (names); the same plus Replace the note (notes) | mode toggles, in this order | app `TEXT_MODES` | `.mode-tog[data-mode]` |
+| Text | field label (Add before, Add after, Replace the note) | app `drawTextFields` | `#bulk-text` |
+| Find · Replace with | field labels (Find and replace) | app `drawTextFields` | `#bulk-find`, `#bulk-repl` |
+| Match case | toggle (off by default) | app `drawTextFields` | `#bulk-match-case` |
+| Now / After | column labels | app `openTextBulk` | `.now-after` |
+| {item name} or Untitled | whose note it is, above each note (Change note…) | app `drawTextBulk` | `.na-src .na-name` |
+| Untitled | an empty name, Before or After, greyed (display only; stored and exported empty) | app `textCell` | `.is-placeholder` |
+| (blank) | a missing note, Before or After | app `textCell` | `.na-before`, `.na-after` |
+| No change | row sentence for an unchanged row (in place of its After) | app `textFlag` | `.na-flag` |
+| onX imports only the first 512 bytes of a note. About N character(s) will be cut. | row sentence for a note over the limit (the caution's, §3.4) | app `longNoteSentence` | `.na-flag` |
+| and N more | under a list cut at 200 rows (the export warning's "and N more", §10) | app `drawTextBulk` | `.na-more` |
+| N will change · M unchanged | summary, `aria-live=polite` | app `drawTextBulk` | `#bulk-summary` |
+| Cancel · Save | buttons; Save disabled while nothing changes | app `openTextBulk` | `.bulk-cancel`, `#bulk-apply` |
+| Changed N item(s). | status after Save (§12.1) | app `applyTextBulk` | `#status` |
+
+An open note on a selected row asks "Save your note?" first (§9).
 
 ## 6. Move to…
 
@@ -206,7 +234,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 |---|---|---|---|
 | Start over? | This discards N unexported change(s). / This clears the current map. | **Cancel**, Start over (danger) | app:2326-2333 |
 | Leave this map? | Changes will be lost. | **Stay**, Leave (danger) | app:306-312 |
-| Save your note? | Your note for “{name}” hasn't been saved. | Keep editing, Discard, **Save** | app:2351-2361 |
+| Save your note? | Your note for “{name}” hasn't been saved. (on Export, Rename… and Change note…, when the open note changed) | Keep editing, Discard, **Save** | app `askToSaveNote` |
 | “{name}” already exists | (merge, §7) | **Cancel**, Move them | app:1869-1874 |
 | 1 area will lose its fill / N areas will lose their fill | onX resets area fills to blue on import. | **Keep it / Keep them**, Leave this out / Leave these N out | app:2256-2264 |
 
@@ -234,6 +262,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | 1 · Export from CalTopo · 2 · Review the icons · 3 · Edit in bulk · 4 · Folders · 5 · Leave things out · 6 · Export and import | headings |
 | What carries across (Name, Note, Icon, Color, Line style, Folders, Lines vs areas) · Good to know | headings / table |
 | Click a box / Shift + click / Ctrl / ⌘ + A / Header checkbox / Esc / Notes | shortcut rows |
+| More has Move to…, Rename…, Change note…, Use note as name, Exclude and Include. Rename… changes many names at once; Change note… does the same for notes. | prose in 3 · Edit in bulk |
 
 ## 12. Status line and bridge messages
 
@@ -245,7 +274,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Couldn't read that file — {reason} / Couldn't read those files — {reason} | err | app:386 |
 | Failed: {reason} (engine boot) | err | app:239 |
 | Couldn't load the map engine (HTTP N). | err | app:208 |
-| Changed N item(s). / line(s). / area(s). | ready | app:1541-1542 |
+| Changed N item(s). / line(s). / area(s). (Rename… and Change note…: always item(s)) | ready | app:1541-1542, app `applyTextBulk` |
 | Couldn't move / make a folder / remove / rename — {reason} | err | app:1652, 1728, 1743, 1824 |
 | Everything is excluded — include at least one item to export. | err | app:2101 |
 | Building onX files… | info | app:2104 |
@@ -294,7 +323,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 FAQ (source docs/FAQ.md; web/faq.html is generated) group headings: The problem, Your files, What Cairn
 does, Limits and trade-offs, Round trip. Walkthrough step tags: Before, Step 1, What Cairn finds, What
 Cairn flags, What you fix, Your folders, What you import, Good to know. Controls named in their prose:
-Default pin, Icon & color…, Save, Download all, + New folder, More → Move to….
+Default pin, Icon & color…, Save, Download all, + New folder, More → Move to…. FAQ question "Can I rename many items at once?" (answer: "Yes. Tick them, then More → Rename…. Find and replace changes part of each name; Add before and Add after add text to every name. No regex yet.").
 
 ---
 
@@ -348,7 +377,7 @@ The owner's answers, by topic (this table, not the numbers used in conversation,
 | Make a folder | **+ New folder** | New folder… |
 | Move items | **Move to…**, **Move N items to** | Put in |
 | Take a note as the name | **Use note as name** | Use description as name |
-| Bulk text edits (new, 2026-10-25) | **Rename…**, **Change note…**; modes **Add before**, **Add after**, **Find and replace**, **Replace the note**; fields **Find**, **Replace with**, **Text**; **Match case**; rows **No change**, **Name can't be empty**; summary **N will change · M unchanged** | |
+| Bulk text edits (new, 2026-10-25) | **Rename…**, **Change note…**; modes **Add before**, **Add after**, **Find and replace**, **Replace the note**; fields **Find**, **Replace with**, **Text**; **Match case**; row **No change**; summary **N will change · M unchanged**; an empty result shows **Untitled** | Name can't be empty (names are optional) |
 | onX's own objects | **markup**, **onX on a computer** (where importing works), **Premium or Elite**, **Import map data to a new folder** | Web Map (owner, 2026-10-25) |
 | Errors | **Couldn't X — reason** | Failed: … |
 | Quotes | “…” around names in the app; **straight apostrophes** (') everywhere; straight quotes in instructions.txt | ’ |

@@ -117,6 +117,8 @@
         <button id="more-btn" type="button" class="btn small" aria-haspopup="menu" aria-expanded="false" disabled>More<span data-ui-icon="chevron"></span></button>
         <div id="more-menu" class="menu hidden" role="menu" aria-label="More actions">
           <button id="bulk-move" type="button" role="menuitem" aria-haspopup="dialog">Move to…</button>
+          <button id="bulk-rename" type="button" role="menuitem" aria-haspopup="dialog">Rename…</button>
+          <button id="bulk-note" type="button" role="menuitem" aria-haspopup="dialog">Change note…</button>
           <button id="bulk-desc" type="button" role="menuitem">Use note as name</button>
           <button id="bulk-exclude" type="button" role="menuitem">Exclude</button>
           <button id="bulk-include" type="button" role="menuitem">Include</button>
@@ -154,7 +156,7 @@
 <!-- More ▸ Move to…: the folders to move the selection to (filled by app.js) -->
 <div id="move-pop" class="move-pop hidden" role="dialog" aria-label="Move to folder"></div>
 
-<!-- several-items icon & color dialog (filled by app.js) -->
+<!-- several-items dialog: Icon & color…, More ▸ Rename… and Change note… (filled by app.js) -->
 <div id="mark-modal" class="modal hidden"><div id="mark-dialog" class="modal-card mark-dialog" role="dialog" aria-modal="true"></div></div>
 
 <!-- confirmation (Start over, unsaved note; filled by app.js) -->
@@ -193,8 +195,9 @@
        lists on the left (tick <b>Default pin</b> to see only those). Then tick rows.
        <b>Icon &amp; color…</b> changes them all; it's <b>Color &amp; style…</b> when only lines and
        areas are ticked. Lines and areas also take a style and weight, areas onX's blue fill; with
-       both kinds, pins and lines each get their own color. Each row starts on <i>Leave as is</i>. <b>More</b> has <i>Move to…</i>, <i>Use note as
-       name</i>, <i>Exclude</i> and <i>Include</i>.</p>
+       both kinds, pins and lines each get their own color. Each row starts on <i>Leave as is</i>. <b>More</b> has <i>Move to…</i>,
+       <i>Rename…</i>, <i>Change note…</i>, <i>Use note as name</i>, <i>Exclude</i> and <i>Include</i>.
+       <i>Rename…</i> changes many names at once; <i>Change note…</i> does the same for notes.</p>
     <table class="help-tbl">
       <tr><th>Click a box</th><td>Select one row.</td></tr>
       <tr><th>Shift + click</th><td>Select every row between it and the last one you clicked.</td></tr>
@@ -257,6 +260,7 @@
         integrity="sha384-VR47TfKeAmT7vMej7bwOVg0tHTQLLGMSIpsXtFMCZG5OpKZSIXoSLtGY//qHcxc6"
         crossorigin="anonymous"></script>
 <script src="icons.js"></script>
+<script src="rename.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

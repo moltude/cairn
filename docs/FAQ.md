@@ -109,11 +109,15 @@ CalTopo's KML and GPX don't carry a pattern at all, so every line read from them
 Yes. Tick rows, then:
 
 - **Icon & color…** opens one dialog for everything ticked. Waypoints get a color and an icon. Lines and areas get a color, a style (solid or dashed) and a weight, and areas a fill: onX's blue, the one fill onX keeps. With only lines and areas ticked, the button reads **Color & style…**. With both kinds, pins and lines each get their own color row, since onX gives lines one more color (Fuchsia). Every row starts on **Leave as is**.
-- **More** moves the rows to another folder (**Move to…**), renames each to its own note (**Use note as name**), or leaves them out of the export (**Exclude**, undone by **Include**). Excluded rows stay in the list, struck through. Your source file is never changed.
+- **More** moves the rows to another folder (**Move to…**), changes all their names or notes at once (**Rename…**, **Change note…**), renames each to its own note (**Use note as name**), or leaves them out of the export (**Exclude**, undone by **Include**). Excluded rows stay in the list, struck through. Your source file is never changed.
 
-The search box and the **Type**, **Folders** and **Icon** lists narrow what's shown, and select-all only takes the rows you can see. You edit names and notes one item at a time. Bulk rename (prefix, suffix, find and replace) and bulk note editing aren't built yet.
+The search box and the **Type**, **Folders** and **Icon** lists narrow what's shown, and select-all only takes the rows you can see.
 
 The reason for doing this before import: onX's own bulk tools are limited. In onX on a computer, My Content's **Select** mode offers only Add to Folder, Share, Export and Delete for a selection. There is no bulk icon, color or rename, so in onX those changes are one markup at a time.
+
+### Can I rename many items at once?
+
+Yes. Tick them, then **More → Rename…**. **Find and replace** changes part of each name; **Add before** and **Add after** add text to every name. No regex yet.
 
 ### What do the marks in the list mean?
 
@@ -205,7 +209,7 @@ This is optional, and it takes some effort. onX has no bulk editing, so if you w
 
 1. In onX on a computer, put the markups you want to edit in one folder. Export that folder twice: once as **GPX** and once as **KML**.
 2. Drop both files into Cairn together. They become one folder. Icons, colors, line style and weight, and notes arrive as they are in onX.
-3. Edit. Icon, color, line style and weight can be changed for many rows at once. Names and notes are edited one item at a time.
+3. Edit. Icon, color, line style and weight can be changed for many rows at once.
 4. Export from Cairn.
 5. In onX, delete the originals: the markups first, then their folder.
 6. Import the files into onX, following the export screen (or `instructions.txt`).
