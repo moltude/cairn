@@ -60,6 +60,10 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   * what the `#1.0` at the end of every icon `cfg` means (not marker size);
   * whether to map the KML's "Points" / "LineStrings" / "Polygons" folders for unfoldered items
     to "Unorganized", as the GeoJSON gets.
+* **Can onX keep a hole in an area?** An area with a cutout (an inner ring) is written as its
+  outer ring only, because a GPX onX Area route has one outline (ENG-05, provisional). Untested
+  in onX: whether any import path keeps the hole, or whether writing each hole as its own area
+  is better. No real map so far has had one.
 * **Do line breaks in notes survive into onX?** Probe: a GPX whose `<desc>` has literal
   newlines, `&#10;`, escaped `<br>`, and a blank line; import, read Notes on web and phone, then
   type a two-line note in onX and export it.
