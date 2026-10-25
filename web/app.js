@@ -1726,17 +1726,21 @@ function textCell(cls, v, names) {
 /** after as HTML, its new part marked (.hit, the mockups' highlight): what
     lies between the start and the end it shares with before, compared by
     code point so a surrogate pair is never split. One span from the first
-    change to the last. The boundaries widen to keep a combining mark, a
-    variation selector, a skin tone, a ZWJ sequence or a flag whole. A pure
-    deletion has nothing new to mark. The text is after's, exactly. */
+    change to the last. endFirst (Add before) matches the shared end first,
+    so "BR · " before "Bass" is what's marked, not "R · B". The boundaries
+    widen to keep a combining mark, a variation selector, a skin tone, a ZWJ
+    sequence or a flag whole. A pure deletion has nothing new to mark. The
+    text is after's, exactly. */
 const JOINS = /[\p{M}‍︀-️\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u;
 const isRI = c => c >= "\u{1F1E6}" && c <= "\u{1F1FF}";
-function markChange(before, after) {
+function markChange(before, after, endFirst = false) {
   const a = Array.from(before), b = Array.from(after);
-  let s = 0;
-  while (s < a.length && s < b.length && a[s] === b[s]) s++;
-  let e = 0;
-  while (e < a.length - s && e < b.length - s && a[a.length - 1 - e] === b[b.length - 1 - e]) e++;
+  const head = max => { let n = 0; while (n < max && a[n] === b[n]) n++; return n; };
+  const tail = max => { let n = 0; while (n < max && a[a.length - 1 - n] === b[b.length - 1 - n]) n++; return n; };
+  const most = Math.min(a.length, b.length);
+  let s, e;
+  if (endFirst) { e = tail(most); s = head(most - e); }
+  else { s = head(most); e = tail(most - s); }
   let t = b.length - e;
   if (t <= s) return esc(after);
   const odd = (i, step) => { let k = 0; while (b[i] && isRI(b[i])) { k++; i += step; } return k % 2 === 1; };
@@ -1747,10 +1751,10 @@ function markChange(before, after) {
 /** A changed row's After cell, its new part marked; an empty name is the
     "Untitled" placeholder. A note is compared in its written form (the form
     after is in), so trimmed space or a CR isn't counted as new. */
-function afterCell(r, names) {
+function afterCell(r, names, endFirst) {
   if (!r.after) return textCell("na-after", r.after, names);
   const base = names ? r.before : writtenNote(r.before);
-  return `<span class="na-after" title="${esc(r.after)}">${markChange(base, r.after)}</span>`;
+  return `<span class="na-after" title="${esc(r.after)}">${markChange(base, r.after, endFirst)}</span>`;
 }
 /** The sentence under a row: "No change", or the long-note caution (UI-34). */
 function textFlag(r) {
@@ -1783,7 +1787,7 @@ function drawTextBulk() {
     }
     const flag = textFlag(r);
     return `<div class="na-row" data-uid="${esc(r.uid)}" data-flags="${esc(r.flags.join(" "))}">${src}${UI_ICON.arrow}` +
-      `${same(r) ? textCell("na-after", r.after, names) : afterCell(r, names)}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
+      `${same(r) ? textCell("na-after", r.after, names) : afterCell(r, names, t.spec.mode === "prefix")}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
   }).join("") + (more > 0 ? `<div class="na-more">and ${more.toLocaleString("en-US")} more</div>` : "");
   const d = $("#mark-dialog");
   d.querySelector(".na-rows").innerHTML = html;
@@ -2669,6 +2673,19 @@ window.addEventListener("DOMContentLoaded", () => {
     if (open) $("#more-menu button").focus();
   };
   $("#more-menu").onclick = e => e.stopPropagation();
+  // The menu's arrow keys (role=menu): Down / Up move through its items,
+  // wrapping; Home and End jump to its ends, as in the Move to… list. Esc
+  // and Tab keep their own handling.
+  $("#more-menu").onkeydown = e => {
+    const items = [...$("#more-menu").querySelectorAll("[role=menuitem]:not([disabled])")];
+    if (!items.length) return;
+    const i = items.indexOf(document.activeElement);
+    const go = j => { e.preventDefault(); items[(j + items.length) % items.length].focus(); };
+    if (e.key === "ArrowDown") go(i + 1);
+    else if (e.key === "ArrowUp") go(i < 0 ? -1 : i - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(-1);
+  };
   const menuAct = (id, fn) => $(id).onclick = () => { closeMenu(); fn(); };
   menuAct("#bulk-move", openMoveTo);
   menuAct("#bulk-rename", openRename);
