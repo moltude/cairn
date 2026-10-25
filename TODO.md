@@ -33,8 +33,6 @@ Small engine fixes:
 
 Web app features:
 
-* **Bulk rename and bulk note edit** (UI-17): Rename… (prefix/suffix, find/replace, with a
-  preview) and Change note… in More.
 * **Add another map** (UI-12): load a second CalTopo map into the one open, deduped. The engine
   has `core/merge.py` / `dedup.py`; the web app doesn't call them. Today "Start over" resets.
 * **Instructions for an onX → Cairn → onX round trip.** onX imports everything as new markups
@@ -66,10 +64,23 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   newlines, `&#10;`, escaped `<br>`, and a blank line; import, read Notes on web and phone, then
   type a two-line note in onX and export it.
 
+## Major feature: investigate, then build
+
+* **Avalanche Bridge** — put local avalanche-center field observations (point-level evidence
+  behind the zone ratings onX already shows) onto the onX map as importable markups. Draft
+  proposal: `docs/ROADMAP_AVALANCHE_BRIDGE.md` (2026-10-22, not yet committed; another session
+  wrote it). Next step: settle its UNKNOWNs (data sources and their terms, refresh cadence,
+  how a user re-imports updates without duplicates), then plan the build.
+
+## On hold
+
+* **Bulk rename and bulk note edit** (UI-17): Rename… (prefix/suffix, find/replace, with a
+  preview) and Change note… in More. Paused 2026-10-25 by the owner.
+
 ## Ideas, not planned
 
-* **Avalanche Bridge** — local avalanche field reports onto the onX map. A draft proposal
-  (`docs/ROADMAP_AVALANCHE_BRIDGE.md`, untracked, owned by another session). Nothing built.
+* **KMZ input and generic GPX routes.** Plans written 2026-10-23 on branch
+  `worktree-input-formats-plan` (never merged; copies in `docs/archive/2026-10-23-*.md`).
 * **Name for the no-folder group and the "everything" facet** — "Unorganized" and "All" are
   marked provisional (UI-10, UI-14).
 
