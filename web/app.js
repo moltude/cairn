@@ -299,6 +299,7 @@ function onPopState(e) {
 /** Back to the drop screen from `from` (history is already there). */
 function leaveMap(from) {
   flushDeferred();
+  closeBulk();                     // an open dialog never outlives its screen (nothing saved)
   if (CONFIRM) closeConfirm(false);
   const n = unexportedChanges();
   if (!n) { resetAll({ history: false }); return; }
@@ -928,29 +929,37 @@ function wireTip() {
    excluded row isn't exported, so it has none. Rows re-render after every
    edit, so the mark follows the note. */
 let NOTE_LIMIT = null;                 // bridge.ONX_IMPORT_NOTE_LIMIT (512), read at boot
-const utf8Len = cp => cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
 /** [bytes, characters past the limit] of a note, by UTF-8 bytes, measured
     on the note as the export writes it to the GPX <desc> (line endings made
     "\n", outer whitespace trimmed: writers.clean_notes for plain notes), the
-    same measure instructions.txt uses, so the screen and the file agree. */
-const writtenNote = d => String(d || "").replace(/\r\n?/g, "\n").trim();
+    same measure instructions.txt uses, so the screen and the file agree.
+    Both helpers are web/rename.js's, so the row's mark and the Change note…
+    dialog's flag (UI-39) measure alike. */
+const writtenNote = d => CairnRename.writtenNote(d);
 function noteOverflow(desc) {
-  let bytes = 0, kept = 0, total = 0;
-  for (const ch of writtenNote(desc)) {
-    bytes += utf8Len(ch.codePointAt(0)); total++;
-    if (bytes <= NOTE_LIMIT) kept++;
+  const note = writtenNote(desc);
+  const bytes = CairnRename.noteBytes(note);
+  if (bytes <= NOTE_LIMIT) return [bytes, 0];
+  let upTo = 0, kept = 0, total = 0;
+  for (const ch of note) {
+    upTo += CairnRename.noteBytes(ch); total++;
+    if (upTo <= NOTE_LIMIT) kept++;
   }
   return [bytes, total - kept];
+}
+/** The long-note sentence (UI-34), or null for a note onX keeps whole. */
+function longNoteSentence(desc) {
+  const [bytes, cutN] = noteOverflow(desc);
+  return bytes > NOTE_LIMIT
+    ? `onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
 }
 const fillAlpha = f => { const m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(f || ""); return m ? parseFloat(m[1]) : 1; };
 /** The mark beside the note: a note onX will cut, or an item that won't export. */
 function noteCaution(it) {
   if (!it.included) return null;
   if (it.no_coords) return "Won't export: it has no coordinates.";
-  const [bytes, cutN] = noteOverflow(it.desc);
-  return bytes > NOTE_LIMIT
-    ? `onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
-    : null;
+  return longNoteSentence(it.desc);
 }
 /** The mark at the far right of an area's Icon cell, after "Area" (owner
     feedback 2026-10-24): onX will reset its fill. Not for an item that won't
@@ -1102,6 +1111,7 @@ function noteEditor(it) {
 }
 
 function openNote(it) {
+  if (BULK) return;                // the several-items dialog owns the screen
   NOTE_EDIT = { uid: it.uid, draft: it.desc || "" };
   renderFolders();
   const ta = document.querySelector(`tr[data-uid="${CSS.escape(it.uid)}"] .desc-in`);
@@ -1301,6 +1311,7 @@ function syncIconGrid(grid, selected) {
 
 /* ---------- single item: popover anchored to the marker ---------- */
 function openPop(it, anchor) {
+  if (BULK) return;                // a click queued behind the several-items dialog
   closeMenu(); closeBulk();
   POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor,
           style: it.style, weight: it.weight, fill: null };
@@ -1429,6 +1440,9 @@ function closePop() {
    which leaves each item its own value. A mixed selection gets both sets, the
    pin and line colours apart (onX's 10 and 11). */
 function openBulk() {
+  // Already open (Rename… or Change note…): a #bulk-icon click queued by
+  // deferRender must not open a second dialog over it.
+  if (BULK) return;
   const items = selectedItems();
   if (!items.length) return;
   const ret = document.activeElement;
@@ -1546,12 +1560,241 @@ function applyBulk() {
 
 function closeBulk() {
   if (!BULK) return;
-  const { ret } = BULK;
+  const { ret, text } = BULK;
+  if (text) clearTimeout(text.timer);
   BULK = null;
   $("#mark-modal").classList.add("hidden");
-  $("#mark-dialog").innerHTML = "";
+  const d = $("#mark-dialog");
+  d.innerHTML = "";
+  // What the text mode set, so the next dialog (and a test waiting on
+  // [data-bulk]) never sees a closed one's.
+  ["data-bulk", "data-preview-seq", "aria-labelledby"].forEach(a => d.removeAttribute(a));
   const to = ret && ret !== document.body && ret.isConnected && !ret.disabled ? ret : $("#bulk-icon");
   if (!to.disabled) to.focus({ preventScroll: true });
+}
+
+/* ---------- several items: Rename… and Change note… (UI-39) ----------
+   A text mode of the same dialog (BULK.text): a mode (Add before, Add after,
+   Find and replace, and for notes Replace the note), its fields, and the
+   selection's names or notes Now → After. The change itself is
+   CairnRename.transform (web/rename.js), run by the list and again by Save,
+   so the list shows what Save stores and the export writes. BULK being set
+   is what every guard of the dialog reads (Esc, Tab, the backdrop, Ctrl+A,
+   row drags, the menus and popovers, Export, Start over). */
+const TEXT_MODES = {
+  name: [["prefix", "Add before"], ["suffix", "Add after"], ["replace", "Find and replace"]],
+  desc: [["prefix", "Add before"], ["suffix", "Add after"], ["replace", "Find and replace"], ["set", "Replace the note"]],
+};
+const TEXT_FIELDS = { "bulk-text": "text", "bulk-find": "find", "bulk-repl": "repl" };
+const PREVIEW_ROWS = 200;              // rows drawn Now → After; "and N more" for the rest
+const PREVIEW_WAIT_MS = 60;            // typing changes the spec at once, the list this much later
+/* Timings of the last preview and Save (performance.now(), ms), for the
+   perf test and scripts/qa/fuzz_ui.py. */
+window.__cairnPerf = { lastTransformMs: null, lastPreviewMs: null, lastSaveMs: null };
+
+const openRename = () => openTextBulk("name");
+const openChangeNote = () => openTextBulk("desc");
+
+/** field: "name" (Rename…) or "desc" (Change note…). */
+function openTextBulk(field) {
+  if (BULK || !DATA) return;
+  flushDeferred();                 // a name just left: its rename, or its merge offer, first
+  if (CONFIRM) return;             // and never this dialog over that offer
+  const items = selectedItems();
+  if (!items.length) return;
+  // A note open on a selected row: closed first, asking if it changed (UI-22).
+  if (NOTE_EDIT && items.some(i => i.uid === NOTE_EDIT.uid)) {
+    const again = () => openTextBulk(field);
+    if (noteIsChanged()) { askToSaveNote(again, $("#more-btn")); return; }
+    closeNote(allItems().find(i => i.uid === NOTE_EDIT.uid), false);
+    again();
+    return;
+  }
+  closeMenu(); closePop(); closeMove(false); hideTip();
+  const rows = items.map(i => ({ uid: i.uid, name: i.name, desc: i.desc, kind: i.kind }));
+  BULK = {
+    uids: new Set(rows.map(r => r.uid)), rows, byUid: new Map(rows.map(r => [r.uid, r])),
+    ctx: { noteLimit: NOTE_LIMIT }, ret: $("#more-btn"),
+    text: { field, timer: null, spec: { field, mode: "prefix", text: "", find: "", repl: "", matchCase: false } },
+  };
+  const d = $("#mark-dialog");
+  d.removeAttribute("aria-label");
+  d.dataset.bulk = field === "name" ? "rename" : "note";
+  d.dataset.previewSeq = "0";
+  d.setAttribute("aria-labelledby", "bulk-title");
+  d.innerHTML = `
+    <div class="bulk-head">
+      <div class="modal-head plain"><h2 id="bulk-title">${field === "name" ? "Rename" : "Change the note on"} ${plural(rows.length, "item")}</h2>
+        <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
+      <div class="mode-row">${TEXT_MODES[field].map(([m, label]) =>
+        `<button type="button" class="tog mode-tog" data-mode="${m}" aria-pressed="false">${label}</button>`).join("")}</div>
+      <div class="text-fields"></div>
+    </div>
+    <div class="pop-sec text-preview">
+      <div class="now-after">
+        <span class="label">Now</span><span></span><span class="label">After</span>
+        <div class="na-rows"></div>
+      </div>
+    </div>
+    <div class="pop-foot">
+      <span id="bulk-summary" aria-live="polite"></span>
+      <button type="button" class="btn bulk-cancel">Cancel</button>
+      <button type="button" id="bulk-apply" class="btn primary" disabled>Save</button>
+    </div>`;
+  d.querySelectorAll(".mode-tog").forEach(b => b.onclick = () => setTextMode(b.dataset.mode));
+  d.querySelector(".bulk-x").onclick = closeBulk;
+  d.querySelector(".bulk-cancel").onclick = closeBulk;
+  d.querySelector("#bulk-apply").onclick = applyTextBulk;
+  $("#mark-modal").classList.remove("hidden");
+  drawTextFields();
+  drawTextBulk();
+  d.querySelector(".text-fields textarea, .text-fields input").focus();
+}
+
+/** Show the fields of the chosen mode. What was typed stays in the spec, so
+    going back to a mode finds its text again. */
+function setTextMode(mode) {
+  if (!BULK || !BULK.text) return;
+  readTextFields();
+  BULK.text.spec.mode = mode;
+  drawTextFields();
+  drawTextBulk();
+}
+
+function drawTextFields() {
+  const { field, spec } = BULK.text;
+  const d = $("#mark-dialog");
+  d.querySelectorAll(".mode-tog").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === spec.mode)));
+  // Names take one line; a note's fields are multi-line, like the note editor.
+  const box = (id, label) => `<div class="text-field"><label class="label" for="${id}">${label}</label>${field === "name"
+    ? `<input id="${id}" type="text" autocomplete="off" spellcheck="false">`
+    : `<textarea id="${id}" rows="3" spellcheck="false"></textarea>`}</div>`;
+  const host = d.querySelector(".text-fields");
+  const find = spec.mode === "replace";
+  host.classList.toggle("find", find);
+  host.innerHTML = find
+    ? box("bulk-find", "Find") + box("bulk-repl", "Replace with") +
+      `<button type="button" id="bulk-match-case" aria-pressed="${spec.matchCase}">Match case</button>`
+    : box("bulk-text", "Text");
+  // Values set as values: in markup, a textarea drops a leading line break.
+  host.querySelectorAll("input, textarea").forEach(el => { el.value = spec[TEXT_FIELDS[el.id]]; wireTextBulkField(el); });
+  const mc = host.querySelector("#bulk-match-case");
+  if (mc) mc.onclick = () => {
+    spec.matchCase = !spec.matchCase;
+    mc.setAttribute("aria-pressed", String(spec.matchCase));
+    drawTextBulk();
+  };
+}
+
+/** Every keystroke changes the spec at once; the list follows PREVIEW_WAIT_MS
+    later. Enter saves (Ctrl / Cmd + Enter in a note's fields, where Enter
+    starts a new line), never while an input method is composing. */
+function wireTextBulkField(el) {
+  const typed = () => {
+    if (!BULK || !BULK.text) return;
+    BULK.text.spec[TEXT_FIELDS[el.id]] = el.value;
+    clearTimeout(BULK.text.timer);
+    BULK.text.timer = setTimeout(drawTextBulk, PREVIEW_WAIT_MS);
+  };
+  el.addEventListener("input", typed);
+  el.addEventListener("compositionend", typed);
+  el.addEventListener("keydown", e => {
+    if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+    if (el.nodeName === "TEXTAREA" && !(e.metaKey || e.ctrlKey)) return;   // a new line
+    e.preventDefault();
+    applyTextBulk();               // which saves nothing when nothing changes
+  });
+}
+
+/** The fields as they are now, into the spec (Save never trusts the list). */
+function readTextFields() {
+  const { spec } = BULK.text;
+  for (const [id, k] of Object.entries(TEXT_FIELDS)) {
+    const el = document.getElementById(id);
+    if (el) spec[k] = el.value;
+  }
+  return spec;
+}
+
+/** One preview cell. A name that is empty shows the placeholder "Untitled"
+    (display only: an empty name is stored and exported empty); a missing
+    note is blank. */
+function textCell(cls, v, names) {
+  if (names && !v) return `<span class="${cls} is-placeholder">Untitled</span>`;
+  return `<span class="${cls}"${v ? ` title="${esc(v)}"` : ""}>${esc(v)}</span>`;
+}
+/** The sentence under a row: "No change", or the long-note caution (UI-34). */
+function textFlag(r) {
+  if (r.flags.includes("unchanged")) return "No change";
+  if (r.flags.includes("note-over-limit")) return longNoteSentence(r.after) || "";
+  return "";
+}
+
+/** The Now → After list, the summary and Save, from the spec as it is. Changed
+    rows first; at most PREVIEW_ROWS rows. */
+function drawTextBulk() {
+  if (!BULK || !BULK.text) return;
+  const t = BULK.text, names = t.field === "name";
+  clearTimeout(t.timer); t.timer = null;
+  const t0 = performance.now();
+  const res = CairnRename.transform(BULK.rows, t.spec, BULK.ctx);
+  const t1 = performance.now();
+  const same = r => r.flags.includes("unchanged");
+  const changed = res.rows.filter(r => !same(r)), unchanged = res.rows.filter(same);
+  const shown = changed.slice(0, PREVIEW_ROWS);
+  shown.push(...unchanged.slice(0, PREVIEW_ROWS - shown.length));
+  const more = res.rows.length - shown.length;
+  const html = shown.map(r => {
+    const before = textCell("na-before", r.before, names);
+    let src = before;
+    if (!names) {
+      // A note's row says whose note it is.
+      const name = (BULK.byUid.get(r.uid) || {}).name || "";
+      src = `<div class="na-src"><span class="na-name${name ? "" : " untitled"}"${name ? ` title="${esc(name)}"` : ""}>${esc(name || "Untitled")}</span>${before}</div>`;
+    }
+    const flag = textFlag(r);
+    return `<div class="na-row" data-uid="${esc(r.uid)}" data-flags="${esc(r.flags.join(" "))}">${src}${UI_ICON.arrow}` +
+      `${textCell("na-after", r.after, names)}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
+  }).join("") + (more > 0 ? `<div class="na-more">and ${more.toLocaleString("en-US")} more</div>` : "");
+  const d = $("#mark-dialog");
+  d.querySelector(".na-rows").innerHTML = html;
+  const summary = `${res.changed.toLocaleString("en-US")} will change · ${unchanged.length.toLocaleString("en-US")} unchanged`;
+  const sum = $("#bulk-summary");
+  if (sum.textContent !== summary) sum.textContent = summary;   // announced once per change
+  $("#bulk-apply").disabled = !(res.changed > 0);
+  d.dataset.previewSeq = String((Number(d.dataset.previewSeq) || 0) + 1);
+  window.__cairnPerf.lastTransformMs = t1 - t0;
+  window.__cairnPerf.lastPreviewMs = performance.now() - t0;
+}
+
+/** Save: the fields read again and the change worked out again on the items
+    as they are now (the list may be a keystroke behind), nothing when nothing
+    changes; then each changed item through edit(), like a single edit. */
+function applyTextBulk() {
+  if (!BULK || !BULK.text) return;
+  const t0 = performance.now();
+  const { field } = BULK.text;
+  const spec = readTextFields();
+  const byUid = new Map(allItems().map(i => [i.uid, i]));   // one lookup per row, not a find()
+  const rows = BULK.rows.map(r => byUid.get(r.uid)).filter(Boolean)
+    .map(it => ({ uid: it.uid, name: it.name, desc: it.desc, kind: it.kind }));
+  const res = CairnRename.transform(rows, spec, BULK.ctx);
+  if (!(res.changed > 0)) { drawTextBulk(); return; }
+  closeBulk();
+  let n = 0;
+  res.rows.forEach(r => {
+    const it = byUid.get(r.uid);
+    if (!it || r.flags.includes("unchanged")) return;
+    edit(it, { [field]: r.after }, { render: false });
+    n++;
+  });
+  refreshAfterEdit();
+  setStatus(`Changed ${plural(n, "item")}.`, "ready");
+  // The search may have dropped every changed row from the selection, which
+  // disables More: focus would be lost to the page, so it goes to the search.
+  const a = document.activeElement;
+  if (!a || a === document.body || a.disabled) $("#filter").focus({ preventScroll: true });
+  window.__cairnPerf.lastSaveMs = performance.now() - t0;
 }
 
 /* ---------- More menu ---------- */
@@ -1749,6 +1992,7 @@ function removeEmptyFolder(key) {
 }
 
 function startRename(key, where, draft = null, declined = null) {
+  if (BULK) return;                // the several-items dialog owns the screen
   const g = groupByKey(key); if (!g) return;
   clearError();
   RENAME = { key, draft: draft ?? g.name, where, declined };
@@ -1892,6 +2136,7 @@ function mergeInto(srcKey, dstKey, where = "head") {
 
 /* ---------- More ▸ Move to… (the keyboard route) ---------- */
 function openMoveTo() {
+  if (BULK) return;                // the several-items dialog owns the screen
   const uids = selectedItems().map(i => i.uid);
   if (!uids.length) return;
   closeMenu(); closePop();
@@ -2320,6 +2565,7 @@ function unexportedChanges() {
 }
 
 function requestStartOver() {
+  if (BULK) return;                // behind the several-items dialog: not reachable
   const ret = document.activeElement;
   flushDeferred();                 // a name just left: its rename, or its merge offer, first
   if (CONFIRM) return;
@@ -2338,6 +2584,7 @@ function requestStartOver() {
 }
 
 function requestExport() {
+  if (BULK) return;                // behind the several-items dialog: not reachable
   const ret = document.activeElement;
   // A folder name left by clicking Export: its rename happened, its render
   // (and a taken name's merge offer) is waiting. Show it here, on the edit
@@ -2348,7 +2595,16 @@ function requestExport() {
   if (!NOTE_EDIT) { doExport(); return; }
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
   if (!noteIsChanged()) { closeNote(it, false); doExport(); return; }
+  askToSaveNote(doExport, ret);
+}
+
+/** The open note has unsaved changes and something needs it closed (Export,
+    Rename\u2026, Change note\u2026): "Save your note?" (UI-22). Save or Discard closes
+    it and then runs go; Keep editing goes back to it. Safe choice first, the
+    action last (Save, the default). */
+function askToSaveNote(go, ret) {
   const uid = NOTE_EDIT.uid;
+  const it = allItems().find(i => i.uid === uid);
   openConfirm({
     title: "Save your note?",
     body: `Your note for \u201c${it.name}\u201d hasn't been saved.`,
@@ -2359,8 +2615,8 @@ function requestExport() {
           const ta = document.querySelector(`tr[data-uid="${CSS.escape(uid)}"] .desc-in`);
           if (ta) ta.focus({ preventScroll: true });
         } },
-      { label: "Discard", run: () => { closeConfirm(false); closeNote(it, false); doExport(); } },
-      { label: "Save", cls: "primary", initial: true, run: () => { closeConfirm(false); closeNote(it, true); doExport(); } },
+      { label: "Discard", run: () => { closeConfirm(false); closeNote(it, false); go(); } },
+      { label: "Save", cls: "primary", initial: true, run: () => { closeConfirm(false); closeNote(it, true); go(); } },
     ],
   });
 }
@@ -2386,6 +2642,8 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#more-menu").onclick = e => e.stopPropagation();
   const menuAct = (id, fn) => $(id).onclick = () => { closeMenu(); fn(); };
   menuAct("#bulk-move", openMoveTo);
+  menuAct("#bulk-rename", openRename);
+  menuAct("#bulk-note", openChangeNote);
   wireRowDrag();
   wirePointerHeld();
   wireTip();

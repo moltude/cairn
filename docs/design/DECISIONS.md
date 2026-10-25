@@ -915,7 +915,7 @@ sat at the top. Now:
   before them: onX imports everything as new markups, keep the export as a backup, delete the
   original markups then their folders, then import), then each folder nested: `NN_Name/    rename to: <folder>`, each file, its item
   kind (Waypoints / Lines / Areas), and every item's name as written in that file, indented
-  4 spaces a level. An item with no name shows "(no name)". Only two warnings stay, each one
+  4 spaces a level. An item with no name shows "Untitled" ("(no name)" until names became optional, 2026-10-25). Only two warnings stay, each one
   line under its item: a note onX will cut (its written `<desc>` is over 512 bytes) and an area
   whose hole is not kept. No area-fill line (round 5, owner: keep it basic; the row's caution
   mark covers fills, UI-34). Totals, dropped items, the account limit and the "Renamed" list (empty
@@ -1194,3 +1194,95 @@ and the doc pages' own top links.
   bottom of the doc pages and the old top links are gone. In-text links in a sentence ("The
   FAQ has the details") stay body links.
 
+
+### UI-39 — Rename… and Change note…: change many names or notes at once
+Status: decided 2026-10-25 (owner, on the Phase 0 canvas, then a second round the same day:
+names are optional). Plan and tests: docs/plans/BULK_RENAME.md (revision 4). Mockups: the Phase 0
+canvas (https://claude.ai/artifact/5F9oPZLuGRuqU2TaNY8rCN), RenameA, RenameA2, NoteA, NoteA2.
+Engine side: ENG-09.
+
+Two items in **More**, after **Move to…**: **Rename…** (names) and **Change note…** (notes), on the
+ticked rows (UI-17, UI-23: only rows on screen). Each opens the several-items dialog (UI-36) in a
+text mode: the mode toggles and fields at the top, the ticked rows' names or notes **Now → After**
+below, live, then the summary **N will change · M unchanged** with **Cancel · Save**.
+
+Options offered for Rename… (verbatim from the canvas):
+- **A · Three mode toggles** ✔ chosen. "One kind of change per pass. + One field at a time; small
+  and hard to misread. + Same toggles as Style and Weight in the edit panel. − Two kinds of change
+  means opening it twice."
+- **B · All fields at once.** "Several changes in one pass. − Four fields to read every time, most
+  left empty. − An order you have to learn: find and replace runs first, then the text before and
+  after. − Bigger dialog; easier to type in the wrong box."
+- **C · Name pattern** ("{name}"). "+ Most flexible. − A token to learn. Deleting "{name}" turns
+  every name into the same text. − Least like the rest of Cairn."
+
+Options offered for Change note…:
+- **A · Four mode toggles** ✔ chosen, reordered. "+ Same shape as Rename…, plus one mode. + Add after
+  puts the text on a new line, so links and old notes stay whole. + A note pushed over onX's 512-byte
+  limit is flagged on its row, never cut. − Replace the note overwrites every selected note (the
+  preview shows it first)."
+- **B · Replace or add a line.** "+ Two choices; hardest to get wrong. − No find and replace: an old
+  link or a typo can't be fixed across notes. − Rename… and Change note… work differently."
+- **C · One dialog with a Name / Note switch** (More → Change text…). "− Easy to edit the wrong
+  field after switching. − Names take one line and notes many: the box changes shape when you
+  switch."
+
+Duplicate names: **A** flag twins the change creates, **B** no flag ✔ chosen, **C** flag every twin.
+Twins are common in real maps and onX imports them (ENG-06), so nothing in the dialog reads other
+items' names.
+
+What was built:
+- **Modes, in this order.** Rename…: **Add before · Add after · Find and replace**. Change note…: the
+  same plus **Replace the note**. `.tog` toggles; the dialog opens on Add before with an empty
+  **Text** field, so every row reads "No change" and Save is off until something changes. Typed text
+  stays per field when switching modes.
+- **Find and replace**: **Find** and **Replace with** side by side, **Match case** below (off by
+  default), the same layout for notes (multi-line boxes). Plain text, every occurrence, `$` and `\`
+  literal. **An empty Find replaces the whole value** (RenameA2: three "Campsite - Oct …" become
+  "Campsite"); while Find and Replace with are both empty nothing changes.
+- **Notes**: Add before and Add after join with a line break. In a note's fields Enter starts a line
+  and Ctrl / Cmd + Enter saves (the note editor's rule); in a name's, Enter saves. Never while an
+  input method is composing.
+- **Rows**: changed rows first, then the rest, at most 200 drawn ("and N more" below). An unchanged
+  row reads "No change". A note's row shows whose note it is. **Names are optional**: a result that is
+  empty (a whitespace-only replacement included, trimmed) shows the greyed placeholder "Untitled" and
+  is saved and exported as an empty name; it never blocks Save. A missing note is a blank cell.
+- **Warn, don't block.** A note pushed over onX's 512 bytes gets the caution mark's sentence (UI-34)
+  on its row; Save stays on and nothing is cut. Duplicate names and long names get no line (UI-26: no
+  warning without a consequence). Characters XML forbids are dropped (ENG-09); the row shows the result,
+  with no sentence of its own.
+- **Save** works the change out again from the fields and the items as they are (the list may be a
+  keystroke behind), saves nothing when nothing changes, and goes through the same edit path as a
+  single edit, so unexported changes, the leave prompts (UI-37), Start over's count (UI-21) and the
+  caution marks follow. The status reads **"Changed N items."**
+- **No undo** beyond Cancel before Save; after it, Start over or Back (UI-21, UI-37). A rename and
+  its reverse still count as changes (the export is identical).
+- **Rows leaving the search.** A rename or note change can take rows out of the search; the search is
+  left as it is, the selection follows the screen (UI-23), and the status line is the receipt. Focus
+  returns to **More**, or to the search box when the selection emptied (More is then off).
+- **Modal**: Esc, the backdrop, ×, and Cancel close it with nothing saved. While it is open the
+  menus, popovers, drags, Ctrl+A, Export and Start over are out of reach. A changed note open on a
+  ticked row asks "Save your note?" first (UI-22), Keep editing · Discard · Save.
+- Help gets one line, the FAQ one question ("Can I rename many items at once?"). Deferred: regex,
+  numbering, case changes, undo; the FAQ says "No regex yet."
+
+Not verified in onX (owner-run only, never an agent): how onX lists and shows an imported markup
+with an **empty `<name>`**, a 300-character name, a 513-byte note ending in a four-byte emoji,
+right-to-left names, emoji-only names, names with NBSP or zero-width spaces. Until then a bulk
+blank-out is unverified in onX; if onX drops or mangles such items, the owner decides whether a
+warning earns its place. The single name field still saves untrimmed (out of scope here).
+
+### ENG-09 — Characters XML forbids are dropped, in the writers and in the bulk transform
+Status: decided 2026-10-25 (engine work shipped before the dialogs, for UI-39).
+
+- **Writers** (`edc284b`, a translate table since `667684b`): every name and note the GPX and KML
+  writers emit, and the waypoint file's folder name, drop the characters XML 1.0 forbids: C0 controls
+  other than tab, LF and CR, U+FFFE, U+FFFF and lone surrogates (`cairn/core/writers.py`
+  `_XML_INVALID`, `xml_safe`, `xml_text`). One such character anywhere made a whole file unparseable.
+- **The bulk transform** (`web/rename.js`, `CairnRename.xmlSafe`) drops exactly the same set from a
+  value it changes, so the dialog's After column is what Save stores and what the file carries. A
+  value the user didn't change is left as loaded; the writers are the net under it.
+- **Nothing else is touched.** Printable punctuation, NBSP, zero-width space, BOM and C1 controls
+  are legal XML and user data: they pass unchanged, as ENG-06 requires for names.
+- **instructions.txt** marks a long note or a lost hole on the very item, by its position in the
+  file, not on every item with that name (`a192c34`).
