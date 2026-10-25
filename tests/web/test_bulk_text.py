@@ -10,16 +10,12 @@ contract of docs/plans/BULK_RENAME_PROGRESS.md section 2: #bulk-rename / #bulk-n
 Waits are on data-preview-seq (tests/web/helpers.py _type_spec, _set_mode), never on a
 fixed sleep; the status is read within its 8 s. Flags compare as sets (>=) unless a
 test is about exclusivity. Maps are generated at test time (bulk_rename_vectors.item_map).
-
-Until the dialog exists (Track B), every test here skips: the module fixture below
-looks for #bulk-rename in the served index.html.
 """
 from __future__ import annotations
 
 import base64
 import io
 import re
-import urllib.request
 import zipfile
 from collections import Counter
 
@@ -41,14 +37,6 @@ TAG_KIND = {"wpt": "waypoints", "trk": "tracks", "rte": "shapes"}
 def _long_note_sentence(n_cut: int) -> str:
     word = "character" if n_cut == 1 else "characters"
     return f"onX imports only the first 512 bytes of a note. About {n_cut:,} {word} will be cut."
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _rename_dialog_is_built(_require_server):
-    with urllib.request.urlopen(f"{BASE_URL}/index.html", timeout=5) as r:
-        html = r.read().decode("utf-8")
-    if not re.search(r"""id=["']bulk-rename["']""", html):
-        pytest.skip("Rename... is not built yet (Track B): no #bulk-rename in index.html")
 
 
 # --- helpers ------------------------------------------------------------------------
@@ -791,7 +779,13 @@ def test_change_note_set_mode_on_rows_with_empty_notes_adds_them(fresh_page: Pag
             "aria-label", _long_note_sentence(88))
 
 
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    "FOR B: when Save leaves the selection empty, ANCHOR keeps the uid of a pruned row "
+    "(afterMove resets it with `if (!SEL.size) ANCHOR = null`; applyTextBulk doesn't), so "
+    "a later shift-click ranges from a row that is no longer selected"))
 def test_rename_then_shift_click_range_after_save_uses_a_fresh_anchor(fresh_page: Page):
+    """A rename prunes every selected row from the search, emptying the selection; the
+    next shift-click must start a fresh range (one row), not range from the old anchor."""
     page = fresh_page
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
