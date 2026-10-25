@@ -1048,7 +1048,7 @@ def export_zip() -> bytes:
                 rel = f"{dirname}/{p.name}"
                 data = p.read_bytes()
                 zf.writestr(rel, data)
-                entry["files"].append({"path": rel, "count": cnt, "kml": p.suffix == ".kml",
+                entry["files"].append({"path": rel, "count": cnt,
                                        "kind": kind, "items": _written_items(data, kind)})
                 entry["count"] += cnt
             entry["expected"] = len(wps) + len(trks) + len(shapes)
@@ -1160,7 +1160,6 @@ def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
         "holes": sum(len(e.get("holes", ())) for e in manifest),
         "long_notes": sum(len(e.get("long_notes", ())) for e in manifest),
         "note_limit": ONX_IMPORT_NOTE_LIMIT,
-        "kml_batches": sum(1 for e in manifest if any(f["kml"] for f in e["files"])),
     }
 
 

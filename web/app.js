@@ -2137,10 +2137,8 @@ function renderRunbook() {
   // max(written, expected) and dropped items are reported. One box per folder
   // (UI-31: its name, Download, the file chips); the warnings sit above them.
   const S = JSON.parse(py.runPython("bridge.runbook_summary_json()"));
-  const kml = S.kml_batches;
   const host = $("#runbook");
   host.innerHTML =
-    (kml ? `<div class="note warn"><b>${kml}</b> of these folders contain a KML file, which the phone app can't import. Use the Web Map on a computer.</div>` : "") +
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? " wasn't" : "s weren't"} exported: ${S.dropped === 1 ? "it has" : "they have"} no coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
     (S.long_notes ? `<div class="note warn">${esc(longNoteWarning())}</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
@@ -2164,7 +2162,7 @@ function renderRunbook() {
         <button type="button" class="btn rb-dl" aria-label="${esc(label)}">Download</button>
       </div>
       <div class="rb-files">${e.files.map(f =>
-        `<span class="rb-file ${f.kml ? "kml" : ""}">${esc(fileTwin ? f.path : f.path.split("/").pop())}</span>`).join("")}</div>`;
+        `<span class="rb-file">${esc(fileTwin ? f.path : f.path.split("/").pop())}</span>`).join("")}</div>`;
     d.querySelector(".rb-dl").onclick = () => downloadFolder(e);
     host.appendChild(d);
   });

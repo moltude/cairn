@@ -385,7 +385,6 @@ tr.excluded .note-btn,tr.excluded .icon-btn,tr.excluded .line-btn{opacity:.55}
 .rb-dl.btn{font-size:15px;min-height:44px;border-color:var(--green)}
 .rb-files{display:flex;gap:8px;flex-wrap:wrap}
 .rb-file{font-size:15px;background:#fff;border:1px solid var(--rule);padding:4px 12px;overflow-wrap:anywhere}
-.rb-file.kml{border-color:var(--warning);color:var(--warning)}
 code{font-family:var(--serif);font-weight:700;background:var(--sheet);border:1px solid var(--brown);
   color:var(--brown);padding:2px 8px;font-size:14px}
 

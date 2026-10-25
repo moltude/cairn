@@ -521,9 +521,9 @@ def test_instructions_name_each_folder_and_have_no_kml_warning(loaded: Page):
             assert "    " + f["path"].split("/")[-1] in lines
     assert "**" not in text and "#" not in text.split("\r\n\r\n", 1)[0]
 
-    # Areas no longer go out as KML (ENG-05), so nothing triggers the
-    # Web-Map-only KML warning, in instructions.txt or on screen.
-    assert not any(f["kml"] for e in manifest for f in e["files"])
+    # Areas no longer go out as KML (ENG-05), so there is no KML flag in the
+    # manifest and no KML warning, in instructions.txt or on screen.
+    assert not any("kml" in f for e in manifest for f in e["files"])
     assert "KML" not in text
     assert "KML" not in loaded.locator("#runbook").inner_text()
 
