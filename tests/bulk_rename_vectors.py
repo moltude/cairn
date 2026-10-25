@@ -17,8 +17,36 @@ tests/fixtures/. Three kinds of data live here:
 from __future__ import annotations
 
 import json
+import re
 
 from tests.hardening_maps import _folder, _line, _poly, _pt
+
+
+# The core's cleaning rules in Python (web/rename.js: xmlSafe, writtenNote, cleanName,
+# cleanNote). tests/web/test_rename_core.py checks them against the JS on 300 random
+# strings; the bridge tests use them to say what the core stores for a given input.
+XML_INVALID_RE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff\ud800-\udfff]")
+# What JS String.prototype.trim removes: WhiteSpace and LineTerminator. It includes
+# U+FEFF and NBSP and excludes U+0085, unlike Python's str.strip(); writtenNote also
+# trims an outer U+0085 so a note is stored as the writer writes it (Track A).
+JS_TRIM = ("\t\n\x0b\x0c\r \u00a0\u1680" + "".join(map(chr, range(0x2000, 0x200b)))
+            + "\u2028\u2029\u202f\u205f\u3000\ufeff")
+
+
+def py_xml_safe(s):
+    return XML_INVALID_RE.sub("", s)
+
+
+def py_written_note(s):
+    return re.sub(r"\r\n?", "\n", s).strip(JS_TRIM + "\x85")
+
+
+def py_clean_name(s):
+    return re.sub(r"[ \t]*[\r\n\t][ \t\r\n]*", " ", py_xml_safe(s)).strip(JS_TRIM)
+
+
+def py_clean_note(s):
+    return py_written_note(py_xml_safe(s))
 
 
 def spec(mode: str, text: str = "", find: str = "", repl: str = "", match_case: bool = False,

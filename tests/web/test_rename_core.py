@@ -31,6 +31,8 @@ import pytest
 
 from tests.bulk_rename_vectors import (
     CAMPSITES, PINNED, ROUND_TRIP_NAMES, ROUND_TRIP_NOTES, TWINS, spec,
+    JS_TRIM as _JS_TRIM, XML_INVALID_RE as _XML_INVALID_RE,
+    py_clean_name, py_clean_note, py_written_note, py_xml_safe,
 )
 from tests.naughty_strings import NAUGHTY, NAUGHTY_TEXTS
 
@@ -174,31 +176,7 @@ def notes_spec(mode, **kw):
     return spec(mode, field="desc", **kw)
 
 
-# --- Python mirrors of the final helpers (checked against the JS below) ----------------
-
-_XML_INVALID_RE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff\ud800-\udfff]")
-# What JS String.prototype.trim removes: WhiteSpace and LineTerminator. It includes
-# U+FEFF and NBSP and excludes U+0085, unlike Python's str.strip(); writtenNote also
-# trims an outer U+0085 so a note is stored as the writer writes it (Track A).
-_JS_TRIM = ("\t\n\x0b\x0c\r \u00a0\u1680" + "".join(map(chr, range(0x2000, 0x200b)))
-            + "\u2028\u2029\u202f\u205f\u3000\ufeff")
-
-
-def py_xml_safe(s):
-    return _XML_INVALID_RE.sub("", s)
-
-
-def py_written_note(s):
-    return re.sub(r"\r\n?", "\n", s).strip(_JS_TRIM + "\x85")
-
-
-def py_clean_name(s):
-    return re.sub(r"[ \t]*[\r\n\t][ \t\r\n]*", " ", py_xml_safe(s)).strip(_JS_TRIM)
-
-
-def py_clean_note(s):
-    return py_written_note(py_xml_safe(s))
-
+# --- Python mirrors of the helpers (tests/bulk_rename_vectors.py), checked below ------
 
 def utf8_len(s):
     return len(s.encode("utf-8", "surrogatepass"))
