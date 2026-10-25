@@ -194,6 +194,13 @@ BULK_NOTE_TEXT = ["see north", "line1\nline2", "\n", "\n\n  \n", "日" * 200, "a
                   "🔥" * 130, "see <b>north</b> of <Lake>", "Water: 2 L\r\nCamp: yes"]
 
 
+# Is the focused element the page's last tabbable control (a Tab from it leaves the page)?
+LAST_TABBABLE_JS = """() => { const t = [...document.querySelectorAll(
+    'a[href], button, input, select, textarea, [tabindex]')].filter(e => !e.disabled && e.tabIndex >= 0
+    && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+  return t.length > 0 && t[t.length - 1] === document.activeElement; }"""
+
+
 def bulk_count(title):
     """N from the dialog's title ("Rename 1,500 items", "Change the note on 1 item")."""
     m = re.search(r" ([\d,]+) items?$", title or "")
@@ -473,7 +480,10 @@ class Session:
             p.keyboard.insert_text(name) if rng.random() < 0.5 else p.keyboard.type(name, delay=0)
 
     def finish_field(self, rng):
-        """Leave a focused folder-name field: Enter, Esc, Tab or a click away."""
+        """Leave a focused folder-name field: Enter, Esc, Tab or a click away.
+        "Tab-out" is a Tab from the page's last tabbable control (an empty last
+        folder's name, say): focus leaves the page, as in any browser, so the
+        focus check doesn't apply."""
         p = self.page
         r = rng.random()
         if r < 0.5:
@@ -481,7 +491,8 @@ class Session:
         elif r < 0.65:
             p.keyboard.press("Escape"); how = "Escape"
         elif r < 0.8:
-            p.keyboard.press("Tab"); how = "Tab"
+            last = p.evaluate(LAST_TABBABLE_JS)
+            p.keyboard.press("Tab"); how = "Tab-out" if last else "Tab"
         else:
             p.mouse.click(700, 60); how = "click-away"
         self.settle()
@@ -700,7 +711,7 @@ class Session:
             st = self.snap()
             if st["confirm"]:
                 named += ("confirm:" + self.answer_confirm(rng),)
-        return ("move_to", keys, fin, target, named), named is None or named[1] != "click-away"
+        return ("move_to", keys, fin, target, named), named is None or named[1] not in ("click-away", "Tab-out")
 
     def a_filter_type(self, rng, s):
         btns = self.page.locator("#type-filter [data-kind]:visible")
@@ -1074,7 +1085,7 @@ class Session:
                 named += ("confirm:" + self.answer_confirm(rng),)
         elif not st["rename"]:
             raise Violation("new_folder_not_named", f"{how} with {sel} ticked: no name box opened")
-        return ("click_new_folder", how, sel, named), named is not None and named[1] != "click-away"
+        return ("click_new_folder", how, sel, named), named is not None and named[1] not in ("click-away", "Tab-out")
 
     def a_remove_empty_folder(self, rng, s):
         """The x beside an empty folder in the rail, by mouse or keyboard."""
