@@ -809,10 +809,6 @@ def test_change_note_set_mode_on_rows_with_empty_notes_adds_them(fresh_page: Pag
             "aria-label", _long_note_sentence(88))
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    "FOR B: when Save leaves the selection empty, ANCHOR keeps the uid of a pruned row "
-    "(afterMove resets it with `if (!SEL.size) ANCHOR = null`; applyTextBulk doesn't), so "
-    "a later shift-click ranges from a row that is no longer selected"))
 def test_rename_then_shift_click_range_after_save_uses_a_fresh_anchor(fresh_page: Page):
     """A rename prunes every selected row from the search, emptying the selection; the
     next shift-click must start a fresh range (one row), not range from the old anchor."""

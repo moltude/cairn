@@ -1822,9 +1822,12 @@ function applyTextBulk() {
     n++;
   });
   refreshAfterEdit();
+  // The search may have dropped every changed row from the selection: then the
+  // next shift-click starts afresh, as after a move (afterMove).
+  if (!SEL.size) ANCHOR = null;
   setStatus(`Changed ${plural(n, "item")}.`, "ready");
-  // The search may have dropped every changed row from the selection, which
-  // disables More: focus would be lost to the page, so it goes to the search.
+  // An emptied selection also disables More: focus would be lost to the page,
+  // so it goes to the search.
   const a = document.activeElement;
   if (!a || a === document.body || a.disabled) $("#filter").focus({ preventScroll: true });
   window.__cairnPerf.lastSaveMs = performance.now() - t0;
