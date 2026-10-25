@@ -187,7 +187,11 @@ def final2():
         L.append(arrow([(300, y + 35), (370, y + 35), (370, cy)], head=False))
     L.append(tag(52, 227, "Round trip"))
     L.append(arrow([(370, cy), (446, cy)]))
-    L.append(step3(450, cy - 50, 260, 100, "Load", ["best effort glyph and color matching", "for onX imports this is 1:1"], "fill", "g"))
+    # Load: two separate things, as bullets
+    L.append(rect(450, cy - 50, 260, 100, "g", "g") + T(580, cy - 18, "Load", 17, "#fff", 700))
+    for i, line in enumerate(("Best-effort glyph and color match", "onX files come in 1:1")):
+        y = cy + 8 + i * 22
+        L.append(f'<circle cx="474" cy="{y - 4.5}" r="2.6" fill="#E6F4EC"/>' + T(484, y, line, 13.5, "#E6F4EC", 400, "start"))
     L.append(step3(735, cy - 50, 180, 100, "Edit", ["waypoint · line · area", "color, style and glyph"], "out", "g"))
     L.append(pin(785, 350) + poly(825, 350) + area(865, 350))
     L.append(step3(940, cy - 50, 170, 100, "Group into folders", ["drag and drop"], "out", "g"))
