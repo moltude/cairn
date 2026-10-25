@@ -23,6 +23,7 @@ are findable.
 | `ZZTEST filled area` | a polygon with fill `#FF00FF` at opacity 0.3 |
 
 What Cairn itself does to these before onX sees them (CalTopo GeoJSON is HTML-capable, so
-notes are HTML-cleaned): `<desc>` and `<Lake>` are removed as tags (`5 < 6 and 7 > 4`
-survives), two blank lines collapse to one, and the trailing space is trimmed. Names
+notes are HTML-cleaned): only HTML's own tag names are removed, so `<desc>` and `<Lake>`
+survive as written, as does `5 < 6 and 7 > 4` (until 2026-10-25 any `<word>` was stripped);
+two blank lines collapse to one, and the trailing space is trimmed. Names
 keep `#`, `&` and `!` (onX round-trips them unchanged; DECISIONS.md ENG-06).
