@@ -27,23 +27,14 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, expect, sync_playwright
 
-# BASE_URL is read from the environment so this suite can be pointed at a
-# live deployment (e.g. `BASE_URL=https://quietmarch.to/cairn/ pytest ...`)
-# as well as the local dev server. When the caller explicitly set BASE_URL,
-# an unreachable server is a hard failure, not a skip -- a silent skip
-# against a mistyped or down deployment URL would report green for nothing.
-_EXPLICIT_BASE_URL = "BASE_URL" in os.environ
-BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8765").rstrip("/")
-FIXTURE = (
-    Path(__file__).resolve().parent.parent
-    / "fixtures"
-    / "bitterroots"
-    / "Bitterroots__Complete_.json"
+from tests.web.helpers import (  # noqa: F401  (moved out on 2026-10-25)
+    BASE_URL, FIXTURE, FX_DIR, ROW, _ONX_GPX_HEAD,
+    export_zip_bytes, _select_all_shown, _clear_selection, _set_type, _menu_action, _export_zip,
+    _load_files, _set, _tick, _is_marked, _open_changed_waypoint_note, _row, _gpx_blob,
+    _onx_wpt, _gpx_payload,
 )
 
-# Ground truth for the fixture, established by loading it through the real
-# engine (both via the CLI and via this exact app) and reading DATA.totals.
-ROW = ".folder tbody tr"  # scoped: the help panel also contains a <table>
+
 EXPECTED_TOTALS = {"folders": 10, "items": 177, "attention": 25}
 # attention was 26 until the web app began loading the user's
 # cairn_config.yaml explicitly. Without it the browser silently used 144
@@ -52,107 +43,18 @@ EXPECTED_TOTALS = {"folders": 10, "items": 177, "attention": 25}
 # See web/bridge.py:_config().
 
 
-def _server_reachable() -> bool:
-    try:
-        with urllib.request.urlopen(f"{BASE_URL}/index.html", timeout=2) as resp:
-            return resp.status == 200
-    except (urllib.error.URLError, OSError):
-        return False
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _require_server():
-    """Skip if the local dev server isn't up; fail if an explicit BASE_URL is unreachable.
-
-    A skip is the right call for "you forgot to start the dev server" -- but
-    if BASE_URL was set on purpose (pointing at a deployment), an unreachable
-    URL must fail the run. Otherwise a mistyped or down URL reports a clean
-    green skip, which is worse than no test at all.
-    """
-    if not _server_reachable():
-        if _EXPLICIT_BASE_URL:
-            pytest.fail(f"explicit BASE_URL={BASE_URL} is not reachable")
-        pytest.skip(
-            f"web dev server not reachable at {BASE_URL} "
-            "(start it with: uv run python web/serve.py)"
-        )
 
 
-@pytest.fixture(scope="session")
-def browser():
-    with sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
 
 
-@pytest.fixture(scope="session")
-def context(browser):
-    """A single browser context, reused across tests so the CDN-fetched
-    Pyodide/wheel assets stay in the HTTP cache: the first test pays a cold
-    boot, every later test's boot is warm (see perf numbers in the report).
-    """
-    # bypass_csp: the page now ships a strict Content-Security-Policy (see
-    # web/vercel.json, mirrored by serve.py) with no 'unsafe-eval'; Playwright's
-    # string-evaluating helpers (wait_for_function etc.) are eval-based and
-    # would be blocked by it. The CSP itself is verified by
-    # test_page_boots_under_enforced_csp, which uses a non-bypassing context.
-    ctx = browser.new_context(bypass_csp=True)
-    yield ctx
-    ctx.close()
 
 
-@pytest.fixture()
-def fresh_page(context) -> Page:
-    """A brand-new page/tab, booted but with nothing loaded yet.
-
-    Each test gets its own page (not a shared one reloaded with the same
-    file) because Chromium/Playwright does not fire a `change` event on
-    `<input type=file>` when `set_input_files` is called twice with the
-    identical path -- confirmed by direct repro. A fresh page sidesteps that
-    entirely and is also the more realistic "user opens the app" scenario.
-    """
-    page = context.new_page()
-    page.goto(f"{BASE_URL}/index.html")
-    page.wait_for_function("window.__cairnReady === true", timeout=60000)
-    yield page
-    page.close()
 
 
-@pytest.fixture()
-def loaded(fresh_page: Page) -> Page:
-    """fresh_page with the real fixture loaded (no edits, no selection)."""
-    fresh_page.set_input_files("#file", str(FIXTURE))
-    fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
-    return fresh_page
 
 
-def export_zip_bytes(page: Page, confirm: str | None = None) -> bytes:
-    """Trigger export and pull the resulting Blob back into Python as bytes.
-
-    `confirm` names the button to press in the unsaved-note prompt when one is
-    expected; without it, a prompt would hang the wait below (as it should).
-    """
-    page.evaluate("window.__cairnExported = false")
-    page.click("#export")
-    if confirm:
-        page.click(f"#confirm .confirm-actions button:text-is('{confirm}')")
-    page.wait_for_function("window.__cairnExported === true", timeout=60000)
-    b64 = page.evaluate(
-        """
-        (async () => {
-            const buf = await ZIP.arrayBuffer();
-            let binary = '';
-            const bytes = new Uint8Array(buf);
-            const chunk = 0x8000;
-            for (let i = 0; i < bytes.length; i += chunk) {
-                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-            }
-            return btoa(binary);
-        })()
-        """
-    )
-    return base64.b64decode(b64)
 
 
 # ---------------------------------------------------------------------------
@@ -160,50 +62,14 @@ def export_zip_bytes(page: Page, confirm: str | None = None) -> bytes:
 # ---------------------------------------------------------------------------
 
 
-def _select_all_shown(page):
-    """Ctrl/Cmd+A is now the select-all-shown control (the checkbox was removed
-    when bulk selection moved to per-row checkboxes plus this shortcut).
-
-    Blur first: inside a text field Ctrl+A means select-the-text, and the app
-    deliberately ignores it there.
-    """
-    page.evaluate("document.activeElement && document.activeElement.blur()")
-    page.keyboard.press("ControlOrMeta+a")
-    page.wait_for_timeout(350)
 
 
-def _clear_selection(page):
-    page.evaluate("SEL.clear(); ANCHOR = null; renderFolders()")
-    page.wait_for_timeout(250)
 
 
-def _set_type(page, kind):
-    """The type filter is the rail's Type section (All / Waypoints / Lines /
-    Areas, UI-28); "" is All."""
-    page.click(f'#type-filter [data-kind="{kind}"]')
-    page.wait_for_timeout(150)
-    assert page.get_attribute(f'#type-filter [data-kind="{kind}"]', "aria-pressed") == "true"
 
 
-def _menu_action(page, selector):
-    """Bulk actions beyond icon/color now live behind the More menu."""
-    page.click("#more-btn")
-    page.wait_for_timeout(200)
-    page.click(selector)
-    page.wait_for_timeout(350)
 
 
-def _export_zip(page):
-    """Export in the browser and return the downloaded zip as a ZipFile."""
-    import base64, io, zipfile
-    page.click("#export")
-    page.wait_for_function("window.__cairnExported === true", timeout=180_000)
-    b64 = page.evaluate(
-        "async () => { const u = new Uint8Array(await ZIP.arrayBuffer());"
-        " let s=''; for (let i=0;i<u.length;i++) s += String.fromCharCode(u[i]);"
-        " return btoa(s); }"
-    )
-    return zipfile.ZipFile(io.BytesIO(base64.b64decode(b64)))
 
 
 def test_no_loading_or_version_text_after_boot(fresh_page: Page):
@@ -1894,21 +1760,8 @@ def test_start_over_counts_unexported_changes_and_escape_cancels(loaded: Page):
     assert loaded.evaluate("document.body.dataset.stage") == "edit"
 
 
-def _open_changed_waypoint_note(page: Page, text: str):
-    """Open the note editor on a waypoint and type a draft (not applied)."""
-    uid = page.evaluate(
-        "DATA.groups.flatMap(g=>g.items).find(i => i.kind === 'waypoints').uid"
-    )
-    page.locator(f'tr[data-uid="{uid}"] .note-btn').click()
-    page.locator(".desc-in").first.fill(text)
-    return uid
 
 
-def _gpx_blob(zb: bytes) -> str:
-    zf = zipfile.ZipFile(io.BytesIO(zb))
-    return "".join(
-        zf.read(n).decode("utf-8", "replace") for n in zf.namelist() if n.endswith(".gpx")
-    )
 
 
 def test_export_with_unapplied_note_prompts_and_apply_exports_it(loaded: Page):
@@ -2140,32 +1993,13 @@ def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
 # fails the test.
 # ---------------------------------------------------------------------------
 
-FX_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 ONX_PAIR = [FX_DIR / "onx_dialect" / "onx_dialect.gpx", FX_DIR / "onx_dialect" / "onx_dialect.kml"]
 CALTOPO_GPX = FX_DIR / "bitterroots" / "bitterroots_subet.gpx"
 CALTOPO_GPX_HELP = "CalTopo's GPX has no folders, icons or pin colors. Export GeoJSON (or KML) to keep them."
 
 
-@pytest.fixture()
-def csp_page(browser):
-    """A booted page in a context that enforces the production CSP."""
-    ctx = browser.new_context(accept_downloads=True)  # deliberately no bypass_csp
-    page = ctx.new_page()
-    violations = []
-    page.on("console", lambda m: violations.append(m.text)
-            if "Content Security Policy" in m.text else None)
-    page.goto(f"{BASE_URL}/index.html")
-    # Not wait_for_function: under the enforced CSP Playwright cannot evaluate
-    # page JS (no 'unsafe-eval'), so readiness is read from the DOM.
-    expect(page.locator("body")).to_have_attribute("data-engine", "ready", timeout=60000)
-    yield page
-    ctx.close()
-    assert not violations, f"CSP violations: {violations}"
 
 
-def _load_files(page: Page, paths) -> None:
-    page.set_input_files("#file", [str(p) for p in paths])
-    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
 
 
 def test_file_input_accepts_gpx_kml_and_several_files(csp_page: Page):
@@ -2298,19 +2132,10 @@ def test_bitterroots_geojson_still_reads_as_a_caltopo_map(csp_page: Page):
 
 # --- review fixes: an input file's icon names and markup are data, not code ---------
 
-_ONX_GPX_HEAD = ('<?xml version="1.0" encoding="UTF-8"?>\n<gpx xmlns:onx="https://wwww.onxmaps.com/" '
-                 'xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="onXmaps backcountry web">\n')
 
 
-def _onx_wpt(i: int, name: str, icon: str, notes: str = "") -> str:
-    return (f'<wpt lat="46.{i}" lon="-114.{i}"><name>{name}</name><desc>name={name}\nnotes={notes}\n'
-            f'id=id-{i}\ncolor=rgba(255,51,0,1)\nicon={icon}</desc><extensions>'
-            f'<onx:color>rgba(255,51,0,1)</onx:color><onx:icon>{icon}</onx:icon></extensions></wpt>\n')
 
 
-def _gpx_payload(name: str, wpts: str) -> dict:
-    return {"name": name, "mimeType": "application/gpx+xml",
-            "buffer": (_ONX_GPX_HEAD + wpts + "</gpx>\n").encode("utf-8")}
 
 
 def test_icon_names_that_are_object_prototype_keys_still_render(csp_page: Page):
@@ -2355,9 +2180,6 @@ def test_gpx_names_notes_icons_and_filename_render_as_text_not_html(fresh_page: 
 CALTOPO_SYN = FX_DIR / "caltopo_synthetic"
 
 
-def _row(page: Page, name: str):
-    box = page.get_by_role("checkbox", name=f"Select {name}", exact=True)
-    return page.locator(ROW, has=box)
 
 
 def _wpts(gpx: str) -> dict:
@@ -3783,8 +3605,6 @@ def test_an_empty_folders_taken_name_is_refused_without_a_merge_offer(loaded: Pa
 LONG_NOTE = "Water at the spring\nBring a filter: it runs low by August.\n\nCamp 200 m north."
 
 
-def _set(page: Page, uid: str, **patch) -> None:
-    page.evaluate("([u, p]) => edit(allItems().find(i => i.uid === u), p)", [uid, patch])
 
 
 def _tip(page: Page):
@@ -4246,9 +4066,6 @@ def _items_of(page: Page, kind: str, folder: str = "Lost Trail Pass", n: int = 2
         [folder, kind, n])
 
 
-def _tick(page: Page, uids) -> None:
-    for u in uids:
-        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
 
 
 def _color(page: Page, uid: str) -> str:
@@ -4988,8 +4805,6 @@ def _mark(loc, tag: str = "keep") -> None:
     loc.evaluate("(e, t) => { e.__cairnMark = t; }", tag)
 
 
-def _is_marked(loc, tag: str = "keep") -> bool:
-    return loc.evaluate("(e, t) => e.__cairnMark === t", tag)
 
 
 def test_filter_keystrokes_keep_the_rows_and_sections_still_shown(loaded: Page):
