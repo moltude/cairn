@@ -169,3 +169,141 @@ def _gpx_payload(name: str, wpts: str) -> dict:
     return {"name": name, "mimeType": "application/gpx+xml",
             "buffer": (_ONX_GPX_HEAD + wpts + "</gpx>\n").encode("utf-8")}
 
+
+# ---------------------------------------------------------------------------
+# Bulk rename and note change (docs/plans/BULK_RENAME.md 6.3). DOM only where
+# a test may run under the enforced CSP (csp=True): no wait_for_function or
+# string evaluate there. Function-form evaluate_all works under the CSP.
+# ---------------------------------------------------------------------------
+
+BULK_FIELDS = {"text": "#bulk-text", "find": "#bulk-find", "repl": "#bulk-repl"}
+STATUS_CHANGED = re.compile(r"^Changed ([\d,]+) items?\.$")
+_GPX_NS = "{http://www.topografix.com/GPX/1/1}"
+
+
+def _load_text(page: Page, text: str, name: str = "map.json") -> None:
+    """Load a generated map (e.g. tests.bulk_rename_vectors.item_map) without a file."""
+    page.set_input_files("#file", files=[{"name": name, "mimeType": "application/json",
+                                          "buffer": text.encode("utf-8")}])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+
+
+def _preview_seq(page: Page) -> int:
+    return int(page.get_attribute("#mark-dialog", "data-preview-seq") or 0)
+
+
+def _wait_preview_past(page: Page, seq: int, *, csp: bool = False, timeout: float = 5000) -> None:
+    """Wait until the preview has rendered since #mark-dialog[data-preview-seq] read seq."""
+    if csp:
+        expect(page.locator("#mark-dialog")).not_to_have_attribute(
+            "data-preview-seq", str(seq), timeout=timeout)
+    else:
+        page.wait_for_function(
+            "s => Number(document.querySelector('#mark-dialog').dataset.previewSeq) > s",
+            arg=seq, timeout=timeout)
+
+
+def _open_bulk(page: Page, which: str) -> None:
+    """More > Rename... (which="rename") or Change note... ("note"), then wait for the
+    dialog's first render. Waits on the DOM, not on _menu_action's fixed sleeps."""
+    item = {"rename": "#bulk-rename", "note": "#bulk-note"}[which]
+    page.click("#more-btn")
+    page.locator(item).click()
+    dlg = page.locator("#mark-dialog")
+    expect(dlg).to_have_attribute("data-bulk", which)
+    expect(dlg).to_have_attribute("data-preview-seq", re.compile(r"^[1-9]\d*$"))
+
+
+def _set_mode(page: Page, mode: str, *, csp: bool = False) -> None:
+    """Pick a mode toggle (prefix, suffix, replace, set) and wait for its render."""
+    tog = page.locator(f'#mark-dialog .mode-tog[data-mode="{mode}"]')
+    if tog.get_attribute("aria-pressed") == "true":
+        return
+    seq = _preview_seq(page)
+    tog.click()
+    expect(tog).to_have_attribute("aria-pressed", "true")
+    _wait_preview_past(page, seq, csp=csp)
+
+
+def _type_spec(page: Page, *, csp: bool = False, match_case: bool | None = None, **fields) -> None:
+    """Fill text=, find=, repl= (in the call's order), waiting after each for the render
+    it causes; match_case=True/False sets the toggle. A field already holding its value
+    is left alone (filling it again would fire no render to wait for)."""
+    for key, value in fields.items():
+        loc = page.locator(BULK_FIELDS[key])
+        if loc.input_value() == value:
+            continue
+        seq = _preview_seq(page)
+        loc.fill(value)
+        _wait_preview_past(page, seq, csp=csp)
+    if match_case is not None:
+        mc = page.locator("#bulk-match-case")
+        if (mc.get_attribute("aria-pressed") == "true") != match_case:
+            seq = _preview_seq(page)
+            mc.click()
+            _wait_preview_past(page, seq, csp=csp)
+
+
+def _type_slowly(page: Page, sel: str, text: str, delay: float) -> None:
+    page.locator(sel).press_sequentially(text, delay=delay)
+
+
+_PREVIEW_ROWS_JS = """rows => rows.map(r => {
+  const cell = sel => {
+    const e = r.querySelector(sel);
+    if (!e) return null;
+    return e.classList.contains('is-placeholder') || e.querySelector('.is-placeholder') ? '' : e.textContent;
+  };
+  return [r.dataset.uid, cell('.na-before'), cell('.na-after'), r.dataset.flags || ''];
+})"""
+
+
+def _preview_rows(page: Page) -> list:
+    """[(uid, before, after, flags)] from the DOM. A cell showing the "Untitled"
+    placeholder (.is-placeholder) reads as "", so rows compare equal to it.name;
+    flags is a frozenset of data-flags."""
+    rows = page.locator("#mark-dialog .na-row").evaluate_all(_PREVIEW_ROWS_JS)
+    return [(u, b, a, frozenset(f.split())) for u, b, a, f in rows]
+
+
+def _save_bulk(page: Page) -> str:
+    """Click Save; the status line as soon as it reads "Changed N item(s).", within
+    the 8 s it stays up (STATUS_LINGER_MS)."""
+    page.click("#bulk-apply")
+    expect(page.locator("#mark-modal")).to_be_hidden()
+    st = page.locator("#status")
+    expect(st).to_have_text(STATUS_CHANGED, timeout=8000)
+    return st.text_content().strip()
+
+
+def _status_count(text: str) -> int:
+    """N from "Changed N items." ("1,500" -> 1500)."""
+    m = STATUS_CHANGED.match(text.strip())
+    assert m, text
+    return int(m.group(1).replace(",", ""))
+
+
+def _gpx_texts(zf, child: str) -> list:
+    import xml.etree.ElementTree as ET
+    if isinstance(zf, (bytes, bytearray)):
+        zf = zipfile.ZipFile(io.BytesIO(zf))
+    out = []
+    for n in zf.namelist():
+        if n.endswith(".gpx"):
+            root = ET.fromstring(zf.read(n))
+            for tag in ("wpt", "trk", "rte"):
+                for el in root.iter(_GPX_NS + tag):
+                    out.append(el.findtext(_GPX_NS + child) or "")
+    return out
+
+
+def _gpx_names(zf) -> list:
+    """Every item's <name> text in every GPX member of a zip (ZipFile or bytes); an
+    empty <name> reads "", not None."""
+    return _gpx_texts(zf, "name")
+
+
+def _gpx_descs(zf) -> list:
+    """Every item's <desc> text ("" when the element is empty or missing)."""
+    return _gpx_texts(zf, "desc")
+
