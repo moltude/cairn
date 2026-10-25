@@ -140,7 +140,7 @@ def lost(x, y, w=210):
     return (rect(x, y, w, 66, "r", "rl", dash=True, rx=8, sw=1.4)
             + T(x + w / 2, y + 21, "Cairn warns you about", 13, "ink", 700)
             + T(x + w / 2, y + 38, "what the onX import loses:", 13, "ink", 700)
-            + T(x + w / 2, y + 56, "area fill · long notes", 12, "sub"))
+            + T(x + w / 2, y + 56, "Area fill · long notes", 12, "sub"))
 
 
 def export_box(x, y, w, h, sub=None, rows_gap=22, card_h=None):
@@ -176,8 +176,8 @@ def step3(x, y, w, h, label, subs, kind, color):
 
 
 def final2():
-    W, H = 1600, 660
-    L = [T(30, 46, "How Cairn gets a map into onX Backcountry", 28, "ink", 700, "start")]
+    W, H = 1600, 556
+    L = []
     L.append(f'<rect x="450" y="88" width="890" height="26" rx="13" fill="{C["gl"]}"/>' + T(895, 106, "Cairn (in your browser)", 14, "g", 700))
     cy = 270
     for y, t, st, c, dash in ((146, "CalTopo", "GeoJSON (best), KML or GPX", "a", False),
@@ -192,27 +192,26 @@ def final2():
     for i, line in enumerate(("Best-effort glyph and color match", "onX files come in 1:1")):
         y = cy + 8 + i * 22
         L.append(f'<circle cx="474" cy="{y - 4.5}" r="2.6" fill="#E6F4EC"/>' + T(484, y, line, 13.5, "#E6F4EC", 400, "start"))
-    L.append(step3(735, cy - 55, 180, 110, "Edit", ["waypoint · line · area", "color, style and glyph", "name and notes"], "out", "g"))
+    L.append(step3(735, cy - 55, 180, 110, "Edit", ["Waypoint · line · area", "Color, style and glyph", "Name and notes"], "out", "g"))
     L.append(pin(785, 350) + poly(825, 350) + area(865, 350))
-    L.append(step3(940, cy - 50, 170, 100, "Group into folders", ["drag and drop"], "out", "g"))
+    L.append(step3(940, cy - 50, 170, 100, "Group into folders", ["Drag and drop"], "out", "g"))
     L.append(f'<circle cx="1102" cy="{cy-42}" r="10" fill="{C["g"]}"/>' + T(1102, cy - 37, "1", 12, "#fff", 700))
     L.append(folder(988, 338, 34, 24, color="g") + folder(1040, 338, 34, 24, color="g") + arrow([(1020, 332), (1038, 332)], "g", w=1.4))
     for a, b in ((710, 731), (915, 936), (1110, 1126)):
         L.append(arrow([(a, cy), (b, cy)], "g"))
-    L.append(export_box(1130, 140, 210, 330, sub="one zip, every folder inside", rows_gap=34))
-    L.append(arrow([(1340, cy), (1406, cy)], "b", w=2.4) + T(1373, cy - 10, "GPX files", 12, "sub", 700))
+    L.append(export_box(1130, 140, 210, 330, sub="One zip, every folder inside", rows_gap=40))
+    L.append(arrow([(1340, cy), (1406, cy)], "b", w=2.4) + T(1373, cy - 14, "GPX files", 12, "sub", 700))
     L.append(step(1410, cy - 45, 160, 90, "Import", None, "out", "b"))
     L.append(lost(1362, 130, 210))
     L.append(step(1360, 424, 220, 66, "Delete originals", "onX adds copies, never updates", "out", "b", dash=True))
     L.append(f'<circle cx="1570" cy="432" r="10" fill="{C["b"]}"/>' + T(1570, 437, "2", 12, "#fff", 700))
     L.append(arrow([(1340, 457), (1356, 457)], dash=True))
     L.append(arrow([(1490, 424), (1490, cy + 49)], dash=True))
-    L.append(T(1470, 512, "Round trip · clean up what's already in onX", 12.5, "sub", 400, italic=True))
-    L.append(notes(30, 572, [("1", "Each Cairn folder becomes one onX folder. onX names it by date; instructions.txt gives the name to rename it to."),
-                             ("2", "onX round trip only. Keep the onX export as a backup before deleting.")]))
-    L.append(key(1200, 630, [("solid", "Every map"), ("dash", "onX round trip only")]))
-    return svg(W, H, "".join(L)), W, H
-
+    L.append(notes(30, 548, [("1", "Each Cairn folder becomes one onX folder. onX names it by date; rename it to the name in instructions.txt."),
+                             ("2", "onX round trip only: clean up what's already in onX. Keep the onX export as a backup before deleting.")]))
+    L.append(key(1200, 600, [("solid", "Every map"), ("dash", "onX round trip only")]))
+    # no title: shift everything up into the space it took
+    return svg(W, H, '<g transform="translate(0,-62)">' + "".join(L) + "</g>"), W, H
 
 
 def main():
