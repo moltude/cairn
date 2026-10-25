@@ -169,7 +169,15 @@ class IconResolver:
             return None
         token_ends: Dict[str, int] = {}
         for m in _TOKEN_RE.finditer(text):
-            token_ends[m.group()] = m.end()
+            token = m.group()
+            token_ends[token] = m.end()
+            # "Camp2" is the word camp with a number on it: register the word
+            # too, at the same end, so the tie rule above still sees its
+            # position. The token itself stays, for a keyword with digits of
+            # its own ("4x4"); a bare number strips to nothing and adds nothing.
+            word = token.rstrip("0123456789")
+            if word and word != token:
+                token_ends[word] = m.end()
 
         best: IconDecision | None = None
         best_rank: Tuple[int, int] = (-1, 0)

@@ -95,3 +95,44 @@ def test_the_name_decides_before_the_note():
     assert (d.icon, d.field) == ("Food Source", "title")
     d = r.resolve("Point 7", "good spring nearby")
     assert (d.icon, d.field) == ("Water Source", "description")
+
+
+def _numbered_resolver():
+    return IconResolver(
+        symbol_map={},
+        keyword_map={
+            "Camp": ["camp", "tent"],
+            "Water Source": ["creek", "lake", "spring"],
+            "4x4": ["4x4"],
+        },
+        default_icon="Location",
+        generic_symbols=set(),
+    )
+
+
+def test_trailing_digits_on_a_word_do_not_hide_its_keyword():
+    # "Camp2" used to fall back to Location while "Camp 2" resolved to Camp
+    # (checked 2026-10-25): the token was "camp2", and no keyword is spelled so.
+    r = _numbered_resolver()
+    assert r.resolve("Camp2").icon == "Camp"
+    assert r.resolve("Camp 2").icon == "Camp"
+    assert r.resolve("camp12 west").icon == "Camp"
+    d = r.resolve("Point 7", "tent3 here")
+    assert (d.icon, d.field) == ("Camp", "description")
+
+
+def test_pure_numbers_and_keywords_with_digits_still_work():
+    r = _numbered_resolver()
+    assert r.resolve("2").icon == "Location"
+    assert r.resolve("Point 12").icon == "Location"
+    assert r.resolve("4x4 road").icon == "4x4"
+    assert r.resolve("Old 4x4").icon == "4x4"
+    # Leading digits are not trailing digits: "2camp" is not the word camp.
+    assert r.resolve("2camp").icon == "Location"
+
+
+def test_a_numbered_word_keeps_its_position_for_the_tie():
+    # ENG-08: a tie goes to the later word, with or without a number on it.
+    r = _numbered_resolver()
+    assert r.resolve("Camp Lake2").icon == "Water Source"
+    assert r.resolve("Lake Camp2").icon == "Camp"
