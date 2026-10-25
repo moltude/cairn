@@ -680,3 +680,58 @@ deviations from the plan `DEVIATION:`, and anything another track must act on `F
   change). Sweep the internal docs and comments too, or leave dated evidence as written? (orchestrator)
 - The changed-part highlight marks one span from the first to the last change when Find matches several
   times in one value. Good enough, or highlight each match? (orchestrator, 5.0)
+
+## 7. Follow-ups (owner, 2026-10-25, after the build)
+
+Base for every follow-up track: the commit that adds this section on `feat/bulk-rename`. Same rules as
+section 1 (worktree, own port, log in your worktree copy's subsection below, never commit this file).
+
+### 7.1 Owner answers to section 6
+
+| # | question | answer | status |
+|---|---|---|---|
+| 1 | a sentence for removed characters? | **No: drop them silently, and the same rules apply to every text edit** | decided; T builds the single-edit side |
+| 2 | highlight: one span or each match? | show both in a rendered artifact | orchestrator: artifact |
+| 3 | "Web Map" in internal text | **remove it everywhere** | S |
+| 4 | "Leave this map?" count; "Add a note" cell | unsure: show the behaviour under several conditions | orchestrator: artifact |
+
+**One rule set for every text edit** (answer 1). An *untouched* value is never cleaned (focus then blur
+with no typing is a no-op; a dirty loaded value stays as loaded until edited; the writer stays the net).
+After a commit the field shows the cleaned value, so what is on screen is what is stored.
+
+| text | where it is edited | rule on an edited value |
+|---|---|---|
+| item name | single name field, bulk Rename…, Use note as name | `CairnRename.cleanName`: drop XML-forbidden characters, every whitespace run holding `\r \n \t` becomes one space, trim |
+| note | note editor Save, bulk Change note… | `CairnRename.cleanNote`: drop XML-forbidden characters, CRLF / CR → LF, trim |
+| folder name | folder rename (rail, header, + New folder) | **kept**: bridge `_clean_name` (control characters, C1 included, become one space; trim). DECISION (orchestrator): folder names also name the export's folders and files, so their stricter one-line rule stays. Alternative: the item-name rule. Owner to confirm. |
+
+No row sentence and no warning for removed characters anywhere (the core's `chars-removed` flag stays as an
+invisible `data-flags` value for tests). Plan section 3.1's "the single editor stores drafts untrimmed" and
+3.7(e) "the single name editor doesn't trim" are **superseded** by this table.
+
+### 7.2 Extra checks the owner asked for
+
+| # | check | owner of the work |
+|---|---|---|
+| E1 | the longest name onX takes, for a waypoint, a track and an area | R (public docs and onX's public web-app code), T (Cairn: no limit, exported whole, test) |
+| E2 | Find and replace changes every occurrence in a field | T (tests) |
+| E3 | leading and trailing whitespace is trimmed | T (every path in 7.1's table) |
+| E4 | double-confirm onX's note cut (512 UTF-8 bytes) and that Cairn never cuts | R (docs, code, the 2026-10-22 r1 evidence in commit `a07f14a`), T (tests) |
+| E5 | read onX's public how-tos, docs and FAQ on mapping | R |
+
+### 7.3 Follow-up tracks
+
+| track | files | state |
+|---|---|---|
+| R research | `docs/research/ONX_PUBLIC_DOCS_2026-10-25.md` (new) | not started |
+| S "Web Map" sweep | docs, code comments, test comments and READMEs, TODO.md, LABELS.md section 16 (one internal phrase); **not** real export data under `tests/fixtures/` (`.gpx` / `.kml`), file names or URLs | not started |
+| T text rules and tests | `web/app.js`, `tests/web/test_text_rules.py` (new), `tests/web/test_bulk_text.py` / `tests/web/test_rename_core.py` (additions), `tests/web/test_web_app.py` (only where an assertion pinned the old untrimmed behaviour; DEVIATION line each), `docs/design/DECISIONS.md` (UI-39 / UI-16 text rules), `docs/design/LABELS.md` if a label changes | not started |
+
+S and T both touch `DECISIONS.md` and `LABELS.md`: S edits only lines holding "Web Map", T only the text-rule
+lines; minimal hunks so the merge is clean.
+
+### 7.R Track R log
+
+### 7.S Track S log
+
+### 7.T Track T log
