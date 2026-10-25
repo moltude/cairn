@@ -87,7 +87,7 @@ def test_instructions_mark_notes_longer_than_onx_imports():
     bridge.load_files(json.dumps([{"name": "dd.json", "text": src}]))
     z = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
     lines = z.read("instructions.txt").decode("utf-8").split("\r\n")
-    note = "                (onX keeps only the first 512 bytes of this note, about 512 characters)"
+    note = "                (over the length limit; onX will cut this note)"
     assert lines[lines.index("            02 - Juniper Ridge AS (Used Twice)") + 1] == note
     assert lines.count(note) == 1
     assert bridge._STATE["manifest"][1]["long_notes"] == [["02 - Juniper Ridge AS (Used Twice)", 617]]

@@ -12,7 +12,7 @@ Importing needs onX Premium or Elite.
         Waypoints
             01 - Cispus Learning Center Start/Finish
             02 - Juniper Ridge AS (Used Twice)
-                (onX keeps only the first 512 bytes of this note, about 512 characters)
+                (over the length limit; onX will cut this note)
             03 - Sunrise AS (Used Twice)
             04 - Dark Creek AS
             05 - Wilderness Crossing AS

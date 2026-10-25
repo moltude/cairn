@@ -1,5 +1,8 @@
 # GPX and KML as input to the web app — research, 2026-10-22
 
+> **Archived references (2026-10-25).** The `docs/*_2026-08-29.md` and `docs/ROADMAP_ONX_ROUND_TRIP.md` files
+> cited below are no longer tracked; read them with `git show cdd25f3:docs/<name>`.
+
 What it would take for the web app to accept **GPX and KML** (today: CalTopo GeoJSON only) from
 two sources: **(A) CalTopo's GPX/KML exports** and **(B) onX Backcountry's GPX/KML exports**. (B)
 is what an onX → Cairn → onX cleanup round trip needs.

@@ -169,3 +169,53 @@ def test_twin_folder_names_are_told_apart_by_their_zip_folder():
     zf = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
     rename = [ln for ln in _text(zf).split("\r\n") if ln.endswith("/    rename to: Camp")]
     assert len(rename) == 2 and rename[0] != rename[1]
+
+
+# The replace steps for a map that came from onX. onX imports everything as
+# new markups, ids or not (docs/ONX_ROUND_TRIP.md), so a round trip is "back
+# up, delete the originals, then import"; docs/FAQ.md says so and this file
+# didn't (2026-10-25).
+ONX_STEPS = [
+    "These files came from onX. onX imports them as new markups; it doesn't update the originals.",
+    "Keep your onX export as a backup.",
+    "In onX, delete the original markups first, then their folders. Deleting a folder doesn't delete its markups.",
+    "Then import as below.",
+    "",
+]
+
+
+def _export_files(*paths: Path) -> zipfile.ZipFile:
+    bridge.load_files(json.dumps(
+        [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in paths]))
+    return zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
+
+
+def test_a_map_from_onx_gets_the_replace_steps_before_the_import_steps():
+    onx = FX / "onx_exports"
+    lines = _text(_export_files(onx / "three-round-trips.gpx", onx / "three-round-trips.kml")).split("\r\n")
+    assert lines[:2] == HEAD[:2]
+    assert lines[2:2 + len(ONX_STEPS)] == ONX_STEPS
+    assert lines[2 + len(ONX_STEPS):len(HEAD) + len(ONX_STEPS)] == HEAD[2:]
+    assert sum("backup" in ln for ln in lines) == 1
+
+
+def test_a_map_from_one_onx_file_gets_them_too():
+    lines = _text(_export_files(FX / "onx_export_with_tracks.gpx")).split("\r\n")
+    assert lines[2:2 + len(ONX_STEPS)] == ONX_STEPS
+
+
+def test_a_caltopo_map_gets_no_replace_steps():
+    # CalTopo exports are byte-identical to before: nothing came from onX.
+    for ln in _text(_export()).split("\r\n"):
+        assert "onX export" not in ln and "originals" not in ln
+    text = _text(_export_files(FX / "caltopo_synthetic" / "caltopo_synthetic.json"))
+    assert text.split("\r\n")[:len(HEAD)] == HEAD
+
+
+def test_a_cairn_made_file_gets_no_replace_steps():
+    # A Cairn export loaded again is not an onX export: nothing to delete in onX.
+    zf = _export()
+    name = next(n for n in zf.namelist() if n.endswith("_Waypoints.gpx"))
+    bridge.load_files(json.dumps([{"name": "reload.gpx", "text": zf.read(name).decode("utf-8")}]))
+    text = _text(zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip()))))
+    assert text.split("\r\n")[:len(HEAD)] == HEAD

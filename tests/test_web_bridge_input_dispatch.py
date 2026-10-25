@@ -300,7 +300,7 @@ def test_icon_not_in_onx_list_is_kept_but_flagged():
     assert item["icon"] == "Campsite"
     assert item["unknown_icon"] is True
     assert item["confirmed"] is False
-    assert "“Campsite”" in item["why"] and "isn’t in Cairn’s list" in item["why"]
+    assert "“Campsite”" in item["why"] and "which Cairn doesn’t know" in item["why"]
     others = [i for i in _items(data) if i["kind"] == "waypoints" and i is not item]
     assert all(i["unknown_icon"] is False for i in others)
     # Kept means exported unchanged, too.
@@ -463,7 +463,7 @@ def test_a_file_that_is_not_a_map_says_so():
     with pytest.raises(ValueError) as e:
         bridge.load_document("hello, this is a text file", "notes.txt")
     assert str(e.value) == (
-        "This isn't a map file Cairn can read. Cairn opens CalTopo GeoJSON, "
+        "This isn't a map file Cairn can read. Cairn reads CalTopo GeoJSON, "
         "and GPX or KML exported from onX or CalTopo."
     )
 

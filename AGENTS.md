@@ -8,8 +8,10 @@ Instructions for AI agents working in this repo.
 engine it runs in the browser via Pyodide. The typer CLI (`cairn/cli.py`, `cairn/commands/`), the
 legacy prompt-toolkit UI (`cairn/ui/`) and the Textual TUI (`cairn/tui/`) were deleted — their
 last state is git tag `cli-final`. Do not reintroduce a terminal interface or a typer/rich/
-textual dependency. The human-facing doc is `README.md` — what/why,
-icon/color mapping tables (`TECH_DETAIILS.md` was merged into it 2026-08-30); onX quirks are in `docs/FAQ.md`.
+textual dependency. The human-facing doc is `README.md` — what it is, the how-it-works diagram
+(`docs/images/how-cairn-works.png`, drawn by `scripts/make_readme_diagram.py`) and dev setup;
+onX quirks and how-tos are in `docs/FAQ.md` and on the site. onX's color palettes live in
+`cairn/core/color_mapper.py`.
 
 ## Environment: read this first
 
@@ -35,8 +37,10 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-24 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup, owner feedback 2026-10-24 UI-36..38, public copy cleanup and sticky top bar, keyed in-place rendering, icon keyword ties ENG-08): **1367 passed** with the web dev server up; without
-it the `tests/web` tests skip. (Keyed rendering added 7 identity tests and ENG-08 added 3; before them 1357. Copy cleanup and sticky bar took it from 1349. Owner feedback 2026-10-24 added 32; before it 1317. The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
+Baseline as of 2026-10-25 (small engine fixes: numbered names keep their icon, duplicate config keys, load_config(None) is defaults only, dead KML warning removed, strip_html strips HTML tag names only, onX replace steps in instructions.txt): **1377 passed** with the web dev server up; without
+it the `tests/web` tests skip. (The small engine fixes added 10 tests; before them 1367.)
+
+Baseline as of 2026-10-24 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup, owner feedback 2026-10-24 UI-36..38, public copy cleanup and sticky top bar, keyed in-place rendering, icon keyword ties ENG-08): 1367 passed. (Keyed rendering added 7 identity tests and ENG-08 added 3; before them 1357. Copy cleanup and sticky bar took it from 1349. Owner feedback 2026-10-24 added 32; before it 1317. The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
 If you see a different pass count, something changed — find out what before proceeding.
 
@@ -166,8 +170,8 @@ readers via document_adapter.
   `vercel.json`; until 2026-10-23 it stopped at the first (Cache-Control) one, so the dev
   server and CI ran without any CSP and the enforced-CSP tests proved nothing.
 - **XML parsing uses stock `xml.etree.ElementTree`, behind a pre-parse guard.** XML is
-  reachable from the web bridge (GPX/KML input, roadmap `docs/ROADMAP_ONX_ROUND_TRIP.md`
-  Phase 2: `web/bridge.py:load_files` dispatches every file on `detect()`), so the old "only
+  reachable from the web bridge (GPX/KML input:
+  `web/bridge.py:load_files` dispatches every file on `detect()`), so the old "only
   files the user chose, in the CLI" premise is gone. What protects it now, in order:
   1. `cairn/io/input_check.py:guard_input`, called on every file first thing in
      `web/bridge.py:load_files` (`load_document` is its one-file wrapper),
@@ -206,8 +210,9 @@ anything visible, read the relevant entry.
 - Before calling UI work done, screenshot every page and state at 1440×900 and compare them side
   by side: landing, edit, the popover and dialogs, Help, export, FAQ, walkthrough. Fix any drift
   in nav, links, kickers, headings, panels or spacing. The owner shouldn't have to spot it.
-- Regenerate screenshots after a visible change: `scripts/make_walkthrough_shots.py` and
-  `scripts/make_readme_shots.py` (both take `BASE_URL`). Rebuild the FAQ page from
+- Regenerate screenshots after a visible change: `scripts/make_walkthrough_shots.py` (takes
+  `BASE_URL`). The README has no screenshots; its diagram comes from
+  `scripts/make_readme_diagram.py`. Rebuild the FAQ page from
   `docs/FAQ.md` with `scripts/build_faq_page.py` (CI-style check: `--check`).
 
 **Look and components** (tokens are `:root` custom properties in `web/styles.css`; reuse them,
@@ -238,12 +243,19 @@ don't add raw colours)
 
 ## Scope discipline
 
-`TODO.md` is an idea dump, not a work queue — it says so at the top. (`cairn/Instructions for
-agent.md`, a stale Dec 2025 status doc citing six `docs/*.md` files that no longer existed, was
-deleted on 2026-08-29 and its live backlog folded into `TODO.md`.)
+`TODO.md` is the one backlog: open work, what waits on the owner's onX or CalTopo account, and
+what shipped. It is not a work queue; the owner picks what gets built. When something ships,
+move its line to "Done" with the PR number.
 
-Current findings, all verified by running the tool:
-- `docs/CODEBASE_AUDIT_2026-08-29.md` — code health, dead code, testing gaps
-- `docs/UX_AUDIT_2026-08-29.md` — what the project is for, and what using it is actually like
-- `docs/DISTRIBUTION_2026-08-29.md` — packaging and install friction (note: the PyPI name
-  `cairn` is already taken by an unrelated project)
+Docs that are current:
+- `docs/design/DECISIONS.md` — every UI-NN / ENG-NN decision, with status and the why
+- `docs/FAQ.md` — source of `web/faq.html`; onX behaviour as users meet it
+- `docs/ONX_ROUND_TRIP.md` / `docs/ONX_TESTING.md` — live onX import/export results and how to run them
+- `docs/DEPLOY.md` — Vercel + the Cloudflare Worker, shipping an engine change, checking a deploy
+- `docs/testing/FOLDERS_RELEASE.md` — the folders release log (PRs #44, #45)
+- `docs/research/*_2026-10-22.md` — dated research, cited by code comments and fixtures
+
+Expired plans and audits (the 2026-08-29 audits, the TUI-era designs, the GPX/KML input
+roadmap, the first deploy plan) were moved on 2026-10-25 to `docs/archive/`, which is
+gitignored. They are still in git history: `git show cdd25f3:docs/<name>`. Put a doc there when
+its plan has shipped or been dropped, and fix every reference to it in the same commit.

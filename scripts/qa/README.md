@@ -65,6 +65,5 @@ They print what they see; they don't assert. On the fixed code they show the fix
 
 ## Screenshots
 
-Not QA, but the same setup: `scripts/make_readme_shots.py` regenerates the seven README
-screenshots in `docs/screenshots/` (Dark Divide 100, 1440x900); `scripts/make_walkthrough_shots.py`
-does the in-app walkthrough images. Both need the dev server and honour `BASE_URL`.
+Not QA, but the same setup: `scripts/make_walkthrough_shots.py` does the in-app walkthrough
+images. It needs the dev server and honours `BASE_URL`.

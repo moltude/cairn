@@ -4,7 +4,7 @@ Mirrors the security headers from vercel.json (the "/(.*)" block) so the local
 e2e suite exercises the same CSP the Vercel deploy will enforce — a CSP that
 breaks Pyodide fails loudly here instead of only in production.
 """
-import functools, http.server, json, pathlib, socketserver
+import functools, http.server, json, os, pathlib, socketserver
 
 ROOT = pathlib.Path(__file__).parent
 
@@ -33,7 +33,8 @@ class H(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("127.0.0.1", 8765),
+    port = int(os.environ.get("PORT", "8765"))  # PORT=8779 when 8765 is taken
+    with socketserver.TCPServer(("127.0.0.1", port),
             functools.partial(H, directory=str(ROOT))) as httpd:
-        print("serving http://127.0.0.1:8765 with", len(_HEADERS), "security headers")
+        print(f"serving http://127.0.0.1:{port} with", len(_HEADERS), "security headers")
         httpd.serve_forever()

@@ -42,7 +42,7 @@ An item is **Default pin** (`needs_attention`) when it is a waypoint, its resolv
 `Location` (the resolver's fallback), and no icon has been chosen for it. Choosing any icon,
 `Location` included, clears it.
 
-## Measured (real Chromium, 1.7 MB / 177-item map)
+## Measured (2026-08-30, real Chromium, 1.7 MB / 177-item map)
 
 | | | Gate |
 |---|---|---|
@@ -50,49 +50,40 @@ An item is **Default pin** (`needs_attention`) when it is a waypoint, its resolv
 | Total transferred | **11.6 MB** | ≤15 MB ✅ |
 | Parse | 0.13 s | |
 | Export (10 batches, 25 files) | 0.19 s | |
-| Import batches required | **10** (not 24 — one batch takes several files) | |
 
-**Output is byte-identical to the CLI: 24 of 24 files**, GPX and KML, on the full
-Bitterroots map with no edits applied. That is the proof the engine is genuinely reused
-rather than reimplemented — `tests/web/test_web_app.py` keeps it honest.
+These predate the folders release and the micropip-free boot; re-measure before quoting them.
 
 ## Architecture
 
 ```
 index.html / app.js / styles.css     UI only, no map logic
 bridge.py                            the only Python outside cairn/: the adapter
-dist/cairn_maps-*.whl                the existing engine, unmodified
+dist/cairn_maps-*.whl                the engine, as a wheel
 ```
 
-`bridge.py` imports `cairn.core.parser`, `cairn.core.writers`, `cairn.core.mapper`,
-`cairn.core.color_mapper` and `cairn.core.config` and calls them exactly as the CLI does. Every
-GPX and KML byte is produced by the same writers the 342 engine tests already cover.
-
-## The one change this required in `cairn/`
-
-`cairn/__init__.py` used to be `from cairn.cli import app, main`, which meant importing *any*
-submodule pulled in typer, rich and textual — so the engine could not load in a browser at all
-(measured: 0 of 13 engine modules importable without the CLI stack). That was first
-fixed with a lazy import; since 2026-10 the CLI and TUI are gone entirely (git tag `cli-final`),
-so the engine has no terminal dependencies at all. Measurements below that compare against "the
-CLI" date from when it still existed.
+`bridge.py` routes each file on `cairn.io.input_check.detect()` to a reader, keeps the edit
+and folder state, and calls `cairn.core.writers` for every exported byte. Modules it reaches
+carry a `# Web engine:` header (`tests/test_web_engine_surface.py`). Deployment is in
+[`docs/DEPLOY.md`](../docs/DEPLOY.md).
 
 ## Scope
 
-Deliberately not at parity with the former TUI: no undo, no map preview, no session
-persistence, no onX → CalTopo direction. Those are on the roadmap in
-`docs/PLATFORM_DECISION_2026-08-29.md`.
+No undo, no map preview, no saved sessions, no onX → CalTopo direction, no merging of a second
+map into one already loaded (DECISIONS UI-12). Open ideas are in [`TODO.md`](../TODO.md).
 
-## Bugs this prototype exposed
+## Engine bugs the prototype found (2026-08-30)
 
-Building it surfaced defects that reading the code had not. Recording them because several
-are in the engine, not the web layer:
+Building the web app surfaced engine defects that reading the code had not. All are fixed or
+moot now:
 
-| Bug | Where | Impact |
-|---|---|---|
-| `load_config()` resolves `cairn_config.yaml` from the **current directory** | `cairn/core/config.py:906` | The browser (cwd `/home/pyodide`) silently loaded **144** symbol mappings while the CLI loaded **152**. `circle-p` failed to map to Parking, and **8 of 24 exported files differed**. Same bug the CLI has when run from another directory. |
-| Colour edits were silently discarded *(fixed)* | `web/bridge.py` | No writer reads `cairn_onx_color_override`; `writers.py:429` recomputes colour from `feature.color`. Fixed by writing the picked color onto `feature.color` directly for edited items (`bridge.py:257-272`). |
-| KML shapes weren't sorted | `web/bridge.py` | The CLI natural-sorts before `write_kml_shapes` (`convert_cmd.py:458`); the bridge didn't, so placemark order diverged. |
-| `typer`/`rich`/`textual` are hard dependencies | `pyproject.toml` | micropip pulled ~2.6 MB the browser never executes, busting the download gate. **Fixed 2026-10**: the CLI was removed, so `pyyaml` is the only dependency. `deps:false` stays as a guard. |
-| Fallback folder name came from the temp filename | `web/bridge.py` | A CalTopo export with no folders produced a folder literally named `in`, and a runbook saying "Rename it to `in`". |
-| Dropped features masked the 1,500-markup warning | `web/bridge.py` | Items with no coordinates are silently skipped by `writers.py:397`; the limit check ran on the post-drop count, so a 1,601-item map could export 1,400 and never warn. |
+- **`load_config(None)` read `cairn_config.yaml` from the current directory**
+  (`cairn/core/config.py:load_config`). In the browser that silently loaded 144 symbol mappings
+  instead of 152. `bridge.py` passes an explicit path; the CWD lookup was removed on 2026-10-25
+  (None is the built-in defaults only).
+- KML areas came out in a different order than the CLI's. Moot: export writes no KML now.
+- Colour edits were discarded: no writer read the override. Fixed in `bridge.py`.
+- A CalTopo export with no folders got a folder named after the temp file (`in`). Fixed.
+- Items dropped for having no coordinates could hide the account-limit warning. The check now
+  uses max(written, expected).
+- `typer`/`rich`/`textual` were hard dependencies. Gone with the CLI (git tag `cli-final`);
+  `pyyaml` is the only runtime dependency.

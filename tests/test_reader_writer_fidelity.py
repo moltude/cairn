@@ -1,4 +1,4 @@
-"""Roadmap Phase 1 (docs/ROADMAP_ONX_ROUND_TRIP.md): reader and writer fidelity fixes.
+"""Roadmap Phase 1 (the GPX/KML input roadmap, in git history at cdd25f3:docs/ROADMAP_ONX_ROUND_TRIP.md): reader and writer fidelity fixes.
 
 One test group per item, plus notes text (URLs with '#', '&', line breaks) surviving
 every writer and reader unchanged. The whole-file round trip lives in

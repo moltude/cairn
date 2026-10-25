@@ -231,8 +231,11 @@ def test_web_export_writes_areas_gpx_and_no_kml():
     assert not [n for n in names if n.endswith(".kml")]
     root = ET.fromstring(z.read("01_Zones/Zones_Areas.gpx"))
     assert root.find("g:rte/g:type", NS).text == "Area"
+    # Export writes no KML, so the manifest and the export screen's summary
+    # carry no KML flag at all (the "contain a KML file" warning was dead).
     summary = json.loads(bridge.runbook_summary_json())
-    assert summary["kml_batches"] == 0
+    assert "kml_batches" not in summary
+    assert not any("kml" in f for e in bridge._STATE["manifest"] for f in e["files"])
     text = z.read("instructions.txt").decode("utf-8")
     assert "\r\n    Zones_Areas.gpx\r\n        Areas\r\n            Burn\r\n" in text
     assert "KML" not in text
