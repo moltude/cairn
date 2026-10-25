@@ -1273,8 +1273,8 @@ class Session:
                     box = p.locator(f'tr[data-uid="{u}"] .sel-box'); box.scroll_into_view_if_needed(); box.click()
                 self.settle()
         more = p.locator("#more-btn")
-        if more.is_disabled():
-            return (kind, "no sel"), False
+        if more.is_disabled():   # e.g. a search or a folder filter shows no row
+            return (kind, "no sel", f"{len(self.visible_uids())} rows shown"), False
         item = p.locator("#bulk-rename" if field == "name" else "#bulk-note")
         more.click()
         if rng.random() < 0.3:
@@ -1342,7 +1342,7 @@ class Session:
             if s2["bulkKind"] != field:
                 return (kind, opened, case, spec, fin, "closed with 0", total), True
             p.keyboard.press("Escape"); self.settle(); s2 = self.snap(); fin += "-noop+escape"
-        if not fin.startswith("save"):
+        if not fin.startswith("save") or n == 0:
             if s2["bulkKind"] or s2["vis"]["bulk"]:
                 raise Violation("bulk_cancel_did_not_close", f"{fin}: {s2['bulkTitle']!r}")
             self.bulk_expect_untouched(s0, s2, f"{kind} {fin}")
