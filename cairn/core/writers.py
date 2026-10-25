@@ -1517,6 +1517,9 @@ def write_kml_shapes(
 
 # Titles of areas whose holes were not written, since the last clear.
 _areas_without_holes: List[str] = []
+# The same areas by position among the areas written (0-based, in file order
+# across split parts), so a report can mark the very area when names repeat.
+_area_hole_positions: List[int] = []
 
 
 def get_areas_without_holes() -> List[str]:
@@ -1524,9 +1527,15 @@ def get_areas_without_holes() -> List[str]:
     return list(_areas_without_holes)
 
 
+def get_area_hole_positions() -> List[int]:
+    """Positions (0-based, in written order) of the areas get_areas_without_holes names."""
+    return list(_area_hole_positions)
+
+
 def clear_areas_without_holes() -> None:
     """Reset the holes record (call before processing a new folder)."""
     _areas_without_holes.clear()
+    _area_hole_positions.clear()
 
 
 def write_gpx_areas_maybe_split(
@@ -1577,6 +1586,7 @@ def write_gpx_areas_maybe_split(
             track_name_change("shapes", feature.title, sanitized)
         if len(rings) > 1:
             _areas_without_holes.append(sanitized)
+            _area_hole_positions.append(len(item_blocks))
 
         area_rgba, area_style, area_weight, fill_rgba = area_onx_style(feature)
         notes_clean = clean_notes(feature.description or "", bool(feature.properties.get(PLAIN_NOTES_KEY)))

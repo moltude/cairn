@@ -41,6 +41,7 @@ from cairn.utils.utils import PLAIN_NOTES_KEY, natural_sort_key
 from cairn.core.writers import (
     clear_areas_without_holes,
     clear_name_changes,
+    get_area_hole_positions,
     get_areas_without_holes,
     get_name_changes,
     _polygon_rings,
@@ -1069,6 +1070,7 @@ def export_zip() -> bytes:
             ]
             # onX areas are single-ring: these were written outer ring only.
             entry["holes"] = get_areas_without_holes()
+            entry["hole_positions"] = get_area_hole_positions()
             # onX keeps the first 512 UTF-8 bytes of an imported note (2026-10-22),
             # so the test is on bytes: an accented letter, dash or emoji is 2-4.
             # Measured on the <desc> as WRITTEN (what onX actually cuts), under
@@ -1247,16 +1249,19 @@ def build_instructions(manifest, *, from_onx: bool = False) -> str:
     ]
     note_cut = "(over the length limit; onX will cut this note)"
     for e in manifest:
-        long_notes = {name for name, _ in e.get("long_notes", ())}
-        holes = set(e.get("holes", ()))
+        # Marked by position, not by name: names repeat (2026-10-25).
+        holes = set(e.get("hole_positions", ()))
+        area_at = 0
         L += ["", f"{e['dir']}/    rename to: {_plain(e['folder'])}"]
         for f in e["files"]:
             L.append("    " + f["path"].split("/")[-1])
             L.append("        " + _KIND_LABEL[f["kind"]])
-            for name, _ in f["items"]:
+            for name, nbytes in f["items"]:
                 L.append("            " + _plain(name))
-                if name in long_notes:
+                if nbytes > ONX_IMPORT_NOTE_LIMIT:
                     L.append("                " + note_cut)
-                if f["kind"] == "shapes" and name in holes:
-                    L.append("                (its hole is not kept: an onX area has one outline)")
+                if f["kind"] == "shapes":
+                    if area_at in holes:
+                        L.append("                (its hole is not kept: an onX area has one outline)")
+                    area_at += 1
     return _EOL.join(L) + _EOL

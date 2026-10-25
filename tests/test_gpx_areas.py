@@ -274,3 +274,21 @@ def test_web_export_areas_round_trip_through_load_files():
     # onX fills are all alpha 0.1: CalTopo's 0.2 becomes the swatch's 0.1.
     feat = next(iter(bridge._STATE["doc"].folders.values()))["shapes"][0]
     assert feat.fill_opacity == 0.1
+
+
+def test_twin_names_only_the_area_with_the_hole_is_marked():
+    # Duplicate names are common (and bulk rename makes them more so): the mark
+    # must follow the area, not its name (2026-10-25).
+    z = _export(_doc(_poly("a", "Zone", [SQUARE]), _poly("b", "Zone", [SQUARE, HOLE]),
+                     _poly("c", "Zone", [SQUARE])))
+    lines = z.read("instructions.txt").decode("utf-8").split("\r\n")
+    assert lines.count("            Zone") == 3
+    assert lines.count(HOLE_LINE) == 1
+
+
+def test_twin_names_only_the_item_with_the_long_note_is_marked():
+    long_note = "é" * 300                      # 600 UTF-8 bytes, over onX's 512
+    z = _export(_doc(_poly("a", "Zone", [SQUARE], description="short"),
+                     _poly("b", "Zone", [SQUARE], description=long_note)))
+    text = z.read("instructions.txt").decode("utf-8")
+    assert text.count("onX keeps only") + text.count("over the length limit") == 1
