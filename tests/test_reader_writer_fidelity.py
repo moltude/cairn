@@ -333,6 +333,59 @@ def test_empty_or_malformed_multipolygon_adds_no_area(tmp_path):
     assert sum(len(f["shapes"]) for f in parsed.folders.values()) == 0
 
 
+def _parse_fc(tmp_path, *features):
+    fc = {"type": "FeatureCollection", "features": list(features)}
+    return parse_geojson(_write(tmp_path, "m.json", json.dumps(fc)))
+
+
+def _items(parsed, kind):
+    return [x for f in parsed.folders.values() for x in f[kind]]
+
+
+def test_multilinestring_becomes_one_line_per_part(tmp_path):
+    parsed = _parse_fc(tmp_path, {"type": "Feature", "id": "l", "geometry": {
+        "type": "MultiLineString", "coordinates": [[[1, 1], [2, 2]], [[3, 3], [4, 4]]]},
+        "properties": {"class": "Shape", "title": "Two legs", "stroke": "#00FF00"}})
+    lines = _items(parsed, "tracks")
+    assert [(t.title, t.id, t.geometry_type) for t in lines] == [
+        ("Two legs", "l", "LineString"), ("Two legs", "l:part2", "LineString")]
+    assert lines[0].properties["stroke"] == lines[1].properties["stroke"] == "#00FF00"
+
+
+def test_multipoint_becomes_one_waypoint_per_part(tmp_path):
+    parsed = _parse_fc(tmp_path, {"type": "Feature", "id": "p", "geometry": {
+        "type": "MultiPoint", "coordinates": [[1, 1], [2, 2]]},
+        "properties": {"class": "Marker", "title": "Cairns"}})
+    assert [(w.title, w.id) for w in _items(parsed, "waypoints")] == [("Cairns", "p"), ("Cairns", "p:part2")]
+
+
+def test_geometrycollection_members_are_each_kept_as_their_own_kind(tmp_path):
+    parsed = _parse_fc(tmp_path, {"type": "Feature", "id": "g", "geometry": {
+        "type": "GeometryCollection", "geometries": [
+            {"type": "Point", "coordinates": [1, 1]},
+            {"type": "LineString", "coordinates": [[1, 1], [2, 2]]},
+            {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
+            {"type": "MultiLineString", "coordinates": [[[5, 5], [6, 6]]]}]},
+        "properties": {"class": "Shape", "title": "Mixed"}})
+    assert [w.title for w in _items(parsed, "waypoints")] == ["Mixed"]
+    assert [t.title for t in _items(parsed, "tracks")] == ["Mixed", "Mixed"]
+    assert [s.title for s in _items(parsed, "shapes")] == ["Mixed"]
+    ids = [x.id for k in ("waypoints", "tracks", "shapes") for x in _items(parsed, k)]
+    assert len(set(ids)) == 4
+
+
+def test_empty_or_malformed_multi_geometries_add_nothing(tmp_path):
+    parsed = _parse_fc(tmp_path,
+        {"type": "Feature", "id": "a", "geometry": {"type": "MultiLineString", "coordinates": []},
+         "properties": {"class": "Line", "title": "Empty"}},
+        {"type": "Feature", "id": "b", "geometry": {"type": "GeometryCollection", "geometries": "x"},
+         "properties": {"class": "Shape", "title": "Bad"}},
+        {"type": "Feature", "id": "c", "geometry": {"type": "GeometryCollection",
+         "geometries": [{"type": "GeometryCollection", "geometries": [{"type": "Point", "coordinates": [1, 2]}]}]},
+         "properties": {"class": "Marker", "title": "Nested"}})
+    assert sum(len(_items(parsed, k)) for k in ("waypoints", "tracks", "shapes")) == 1  # the nested point
+
+
 # --- Notes text: '#', '&', URLs and line breaks survive unchanged -----------------
 
 def test_normalize_entities_leaves_bare_ampersands_alone():
