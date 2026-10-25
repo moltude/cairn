@@ -1340,7 +1340,7 @@ def _kml_placemark(feature: ParsedFeature) -> Optional[ET.Element]:
         desc.text = xml_safe(notes_text)
 
     # Style. VERIFIED 2026-10-22 (ENG-05): onX's importer IGNORES this style --
-    # a real Web Map import of these Placemarks (inline Style, a shared styleUrl
+    # a real onX web app import of these Placemarks (inline Style, a shared styleUrl
     # style, and the ExtendedData below) came in with onX's default area style.
     # They still carry the area's values in standard KML 2.2 for other KML
     # consumers and for read_onx_kml; the web export writes areas with
@@ -1506,7 +1506,7 @@ def write_kml_shapes(
 
 # --- Areas as GPX <rte> (ENG-05) -------------------------------------------------
 #
-# VERIFIED 2026-10-22 in a real onX Web Map import: onX ignores an area's colour
+# VERIFIED 2026-10-22 in a real onX web app import: onX ignores an area's colour
 # and fill in KML (LineStyle/PolyStyle, a shared styleUrl and onX-style
 # ExtendedData all came in as onX's default red outline / blue 10% fill), but
 # a GPX <rte> with <type>Area</type> and onX extensions imports as a real onX

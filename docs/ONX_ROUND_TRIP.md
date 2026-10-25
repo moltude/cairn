@@ -1,7 +1,7 @@
 # onX round trip: can an import ever update a markup in place?
 
-Live runs on 2026-10-23, 14:30–15:16 UTC, in the owner's onX Backcountry account, through the
-Web Map (`backcountry.onxmaps.com`) in the owner's logged-in Chrome. Raw files are gitignored
+Live runs on 2026-10-23, 14:30–15:16 UTC, in the owner's onX Backcountry account, through
+onX's web app (`backcountry.onxmaps.com`) in the owner's logged-in Chrome. Raw files are gitignored
 and kept locally under `tests/fixtures/roundtrip/<test-id>/`. Each test folder has a tracked
 `README.md`. This doc replaces the run-id1 write-up (`docs/ONX_ROUND_TRIP_IDENTITY.md`, in git history at `8799cbf`), whose findings are
 folded in below as [`new-folder-gpx-with-ids`](#new-folder-gpx-with-ids),
@@ -10,7 +10,7 @@ folded in below as [`new-folder-gpx-with-ids`](#new-folder-gpx-with-ids),
 [`area-fidelity`](#area-fidelity), ran later the same day (16:29–17:00 UTC).
 
 Contents: [Summary](#summary) · [Test index](#test-index) · [Method](#method) ·
-[What the Web Map offers](#import-paths) · [Tests](#tests) · [Area fidelity](#area-fidelity) ·
+[What onX's web app offers](#import-paths) · [Tests](#tests) · [Area fidelity](#area-fidelity) ·
 [Export format](#format-inventory) ·
 [Confidence and limits](#confidence) · [Implications for Cairn](#implications) ·
 [Created in onX](#created) · [Re-running](#rerun) · [Appendix](#appendix)
@@ -43,7 +43,7 @@ Contents: [Summary](#summary) · [Test index](#test-index) · [Method](#method) 
    markups land in no folder; ticked, onX creates a folder named `Import mm/dd/yy H:MM`. The
    client code sends a folder id only in the ticked case, and only for the folder it has just
    created. To get imported markups into an existing folder you must import and then use the
-   folder's **Add Content**, which only adds membership. See [What the Web Map offers](#import-paths).
+   folder's **Add Content**, which only adds membership. See [What onX's web app offers](#import-paths).
 3. **onX reads no identity from the file.** In GPX, the `<desc>` `id=` line is stored as note
    text ([`no-folder-gpx-with-ids`](#no-folder-gpx-with-ids)). KML `<ExtendedData>` is ignored
    completely: the note, icon and colour all come back as onX defaults
@@ -182,7 +182,7 @@ in between.
   and were left unfiled. [Created in onX](#created) lists their uuids.
 
 <a id="import-paths"></a>
-## What the Web Map offers
+## What onX's web app offers
 
 What the UI shows, observed on 2026-10-23:
 
@@ -568,7 +568,7 @@ An empty note exports as `<value>` + newline + `</value>`, not as an empty eleme
 <a id="originals-folder-gpx-with-ids"></a>
 ### `originals-folder-gpx-with-ids`: edited GPX copy put into the originals' own folder
 
-**Question.** The import dialog cannot target a folder ([What the Web Map offers](#import-paths)).
+**Question.** The import dialog cannot target a folder ([What onX's web app offers](#import-paths)).
 The closest available route is to import unticked and then add the copies to the folder that
 holds the originals. Does that bring the two copies together?
 
@@ -1273,7 +1273,7 @@ guess: is the fill dropped because Cairn's values were not onX swatches, or alwa
 
 **Answer: always.** onX's GPX importer reads an area's `<onx:color>`, `<onx:style>` and
 `<onx:weight>` and never reads its fill. Every imported area's server record has **no**
-`fill_color` property; the Web Map then draws, and the export writes, the default
+`fill_color` property; onX's web app then draws, and the export writes, the default
 `rgba(74,144,226,0.1)`. This held for onX's own swatch values re-imported byte for byte, for
 onX's "None" (`rgba(0,0,0,0)`), and for six other encodings. Style (`solid` / `dash` / `dot`)
 and weight (`2.0` / `4.0` / `6.0`, stored as `thin` / `normal` / `thick`) are kept exactly.
@@ -1284,11 +1284,11 @@ Stages, in order:
 |---|---|---|---|
 | `palette` | `ZZTEST · area-fidelity · palette` | 12 areas written by Cairn (`bridge.load_files` → `export_zip`, all red line, CalTopo red fill at 0.1 → `onx:fill_color rgba(255,0,0,0.1)`). Then, **in onX**, areas 01–11 were each set to a different Area Color swatch, Line Color, Style and Weight; 12 was left alone. Exported GPX + KML. | Gives the palettes below. The import stored `{color, weight: "normal"}` only: no fill, and no style (Cairn then wrote none). Area 12 exports with no `<onx:style>` and the default fill. |
 | `palette-reimport` | `ZZTEST · area-fidelity · palette-reimport` | `palette.export.gpx` re-imported unmodified (sha-256 `a4081e3ad86a0170…` for both). | All 12 kept line colour, style (incl. `dot`) and weight (incl. `thin`); **all 12 lost the fill**, including onX's own swatches and `rgba(0,0,0,0)`. |
-| `fill-encoding` | `ZZTEST · area-fidelity · fill-encoding` | Areas 01–08 of `palette.upload.gpx`, renamed, with the `<onx:fill_color>` line replaced by text: (a) `232,118,255,0.1` (the Web Map's `dbValue` form), (b) `rgba(232, 118, 255, 0.1)` with spaces, (c) `<onx:fillColor>`, (d) `<onx:fill>`, (e) `#E876FF`, (f) `rgba(232,118,255,1)`, (g) `rgba(0,0,0,0)`, (h) magenta plus `<onx:style>dash</onx:style><onx:weight>6.0</onx:weight>`. | No fill stored for any of the eight. (h) stored `dash` / `thick`. |
+| `fill-encoding` | `ZZTEST · area-fidelity · fill-encoding` | Areas 01–08 of `palette.upload.gpx`, renamed, with the `<onx:fill_color>` line replaced by text: (a) `232,118,255,0.1` (the `dbValue` form in onX's web app), (b) `rgba(232, 118, 255, 0.1)` with spaces, (c) `<onx:fillColor>`, (d) `<onx:fill>`, (e) `#E876FF`, (f) `rgba(232,118,255,1)`, (g) `rgba(0,0,0,0)`, (h) magenta plus `<onx:style>dash</onx:style><onx:weight>6.0</onx:weight>`. | No fill stored for any of the eight. (h) stored `dash` / `thick`. |
 | `sent` | `ZZTEST · area-fidelity · sent` | 17 areas written by Cairn's real export path from three inputs loaded together: the owner's two onX area exports (`tests/fixtures/onx_exports/areas-{before,after}-edit.gpx`, coordinates moved by text to an empty patch NE of the owner's areas; 3 of the 8 edited in Cairn with `apply_edits`) and a CalTopo-style GeoJSON reusing the same rings (9 areas with CalTopo `stroke`, `fill`, `fill-opacity`, `stroke-width` and `pattern` values). 3 files, one ticked import. Exported GPX + KML. | Table below: every line colour, style, weight, point count and note came back exactly; every fill came back as the default. |
 | `modified` | `ZZTEST · area-fidelity · modified` | `sent.export.{gpx,kml}` loaded into Cairn as a pair, every area renamed (` · modified` / ` · resent`), style and/or weight changed on 6 (incl. `dot` → `dash` and `2.0` → `6.0`), exported, imported ticked. Exported GPX + KML. | Every value as sent. No fill change was possible: Cairn offers none, since onX would drop it, and the `sent` export already carried the default. |
 
-**onX's area palettes** (the Web Map's own colour table in `28452.82d4fd468f694a173259.js`,
+**onX's area palettes** (the web app's own colour table in `28452.82d4fd468f694a173259.js`,
 confirmed by `palette.export.gpx`):
 
 | Area Color (fill) key | Label | `onx:fill_color` |
@@ -1408,7 +1408,7 @@ elevation are masked, except for element order: 7 files list `wpt, rte, trk` and
   here hold because no Add Content happened in between.
 - id1 tested only the ticked path and assumed the unticked path was different. The client
   code shows the only difference is whether a new folder is created. Nothing targets an
-  existing folder ([What the Web Map offers](#import-paths)).
+  existing folder ([What onX's web app offers](#import-paths)).
 - The GPX root's `xsi` namespace and `schemaLocation`, trailing-zero trimming, spaced waypoint
   colours, the ignored uploaded fill, the added area weight, and the newline in empty KML
   notes were never recorded.
@@ -1418,7 +1418,7 @@ elevation are masked, except for element order: 7 files list `wpt, rte, trk` and
 <a id="confidence"></a>
 ## Confidence and limits
 
-**Confidence: high** that on 2026-10-23 the Web Map importer is create-only on every path it
+**Confidence: high** that on 2026-10-23 the importer in onX's web app is create-only on every path it
 offers. Four independent kinds of evidence agree in every test: the full-file export diffs
 (checked per id), the page's own re-fetched records (field for field, `updatedAt` included),
 the import response (which lists only new uuids), and the account-wide digest and counts. The
@@ -1429,7 +1429,7 @@ detect a real in-place change.
 
 - Server behaviour can change at any time, and parsing is server-side. Re-run before anything
   depends on this.
-- Only the Web Map was tested. The phone apps' import was not.
+- Only onX's web app was tested. The phone apps' import was not.
 - Not exercised: dropping a file outside the import card (code says nothing else feeds the
   importer), the per-markup Export, Share and Manage Access, and the unlabelled button on the
   Import Complete card.
@@ -1663,7 +1663,7 @@ Markups (66 areas; `palette-reimport` repeats the `palette` names):
 <a id="rerun"></a>
 ## Re-running
 
-About 5 minutes per test, by hand or by driving the Web Map:
+About 5 minutes per test, by hand or by driving onX's web app:
 
 1. Write `<test-id>.original.gpx`: one waypoint, one `<trk>` and one `<rte><type>Area`, in
    Cairn's GPX dialect, on an empty patch of map.

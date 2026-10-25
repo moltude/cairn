@@ -10,7 +10,7 @@ Evidence tags:
 - **VERIFIED**: a primary source, quoted, with a URL or a repo `file:line`. For onX's help
   center that means the Zendesk API JSON fetched today
   (`https://onxbackcountry.zendesk.com/api/v2/help_center/en-us/articles/<id>.json`). The HTML
-  pages sit behind Cloudflare. For onX's code it means the Web Map JavaScript fetched today from
+  pages sit behind Cloudflare. For onX's code it means the JavaScript of onX's web app, fetched today from
   `https://backcountry.onxmaps.com/` (the old `webmap.onxmaps.com` now 302-redirects there).
   Bundle hashes change on every onX deploy, so the relevant code is quoted verbatim below.
 - **INFERRED**: my reasoning from verified facts. The reasoning is shown.
@@ -42,7 +42,7 @@ New findings outside the two questions. These are flagged for the owner; I edite
    not saved"* and *"KML and GPX file formats … do not save onX customizations like colors,
    icons, and notes."* onX's current export code writes `notes` into `<desc>` and
    `onx:color`/`icon`/`style`/`weight`/`fill_color` extensions (§1.1). The code wins for
-   Web Map exports. Treat that help text as stale, not as evidence.
+   web app exports. Treat that help text as stale, not as evidence.
 4. **The "export then re-import" advice now sits in a different article.** `docs/FAQ.md:157`
    (via FIDELITY:88-89) says onX suggests export-then-reimport "to manage the 1,500 limit".
    Today the advice is in the *performance* article 4402358311053 (quoted in §1.2), and it says
@@ -77,7 +77,7 @@ togpx's default `featureDescription` (`58175.…js`) then writes every non-objec
 function E(c){ … var s=""; for(var f in c) typeof c[f]!="object"&&(s+=f+"="+c[f]+`\n`); return s.substr(0,s.length-1)}
 ```
 
-So every Web Map **GPX** export has `id=<onX markup uuid>` in each element's `<desc>`, next to
+So every web app **GPX** export has `id=<onX markup uuid>` in each element's `<desc>`, next to
 `name=` and `notes=` and, depending on type, `color=`, `style=`, `weight=`, `type=Line|Area`.
 The same properties are also used as the timestamp key
 (`featureCoordTimes:o=>t.timestamps[o.properties.id]`, and timestamps are keyed by `i.uuid`).
@@ -191,7 +191,7 @@ timestamps beyond what's in the file. So the cleanup tool would need to warn abo
 ### 1.6 Ten-minute test (the owner runs it, and it leaves nothing behind)
 
 **Prerequisites:** an onX Backcountry **Premium or Elite** account (importing requires it,
-VERIFIED 360057195972), the **Web Map** on a computer, and a text editor. Allow about 10 minutes.
+VERIFIED 360057195972), **onX on a computer**, and a text editor. Allow about 10 minutes.
 
 **Why it's safe:** two waypoints with an unmistakable name prefix, in a folder of their own.
 My Content search is by name only (VERIFIED, 360052239052), so the prefix makes every test
@@ -212,7 +212,7 @@ markup findable. Cleanup is listed explicitly because of one trap:
      `tests/fixtures/onx_real/export_baseline.gpx` (this sets up W6).
 3. **Test A: re-import the unmodified file.** My Content → Import → select the same file → tick
    **"Import map data to a new folder"** → Import. Refresh the browser if the markups don't show,
-   as onX's help advises (see also memory note: "stale Web Map").
+   as onX's help advises (see also the memory note on onX's web app not refreshing).
    - *Record:* the total count. **+0** means the server matched by id and skipped or replaced.
      **+2** means it duplicates.
    - Search `ZZTEST` and record how many `Alpha`/`Bravo` entries there are.
@@ -242,7 +242,7 @@ text, and the saved export files.
 
 ---
 
-### 1.7 Test result (run 2026-10-22, owner's account, Web Map)
+### 1.7 Test result (run 2026-10-22, owner's account, onX's web app)
 
 Run by Claude driving the owner's Chrome, with approval for each import; the owner deleted
 the test data afterwards (account back to 266 markups, 13 folders).
@@ -280,7 +280,7 @@ Delete in bulk — no bulk icon, color or rename.
   with them."*
 - **Code** (`28452.d0cbe84440ea4b4f2a08.js`): share links are created with
   `POST /v1/sharing/shares?link=webmap` and a body of `{entities, link:{role}}`, where the role
-  defaults to `VIEW_ONLY`. A received link is handled inside the Web Map app through a `link_id`
+  defaults to `VIEW_ONLY`. A received link is handled inside onX's web app through a `link_id`
   query parameter, which fires the `share_link_received` event. That handling runs inside the
   logged-in map, which fits "log in, then the markups are added to your account". **INFERRED**
   for the logged-out experience.
@@ -370,7 +370,7 @@ title and `updated_at` are as returned:
 - 4402358311053: How to improve performance in the Backcountry App, 2026-07-20
 - 4422125175309: Using your Markups across onX Hunt, Offroad, Backcountry, and Fish, 2026-07-14
 
-onX Web Map code, from `https://backcountry.onxmaps.com/`. The entry page's script tags plus all
+onX's web app code, from `https://backcountry.onxmaps.com/`. The entry page's script tags plus all
 792 lazy chunks were listed in `runtime.a789a7595c5c72acd102.js`:
 
 - `50657.87e3701dffd2f41a9e91.js`: import executor (`/v1/markups/import`)

@@ -17,7 +17,7 @@ against that work, so re-run the prototype (§6) after it lands.
 Evidence tags:
 
 - **[RUN]**: I executed it this session; the output is quoted.
-- **[CODE]**: read from onX's live Web Map JavaScript, fetched 2026-10-22 (chunk names below).
+- **[CODE]**: read from the live JavaScript of onX's web app, fetched 2026-10-22 (chunk names below).
 - **[HELP]**: onX Zendesk article text, fetched 2026-10-22 via `/api/v2/help_center/...json`.
 - **[DOC]**: earlier project docs (`FIDELITY_MODEL_2026-08-29.md`, `PLATFORM_CONSTRAINTS_2026-08-29.md`).
 - **[INFER]**: my inference. **[KNOW]**: background knowledge, not fetched this session.
@@ -58,9 +58,9 @@ Evidence tags:
    onX → clean in Cairn → **delete the originals in onX** → import.
 6. **onX's help center contradicts onX's shipped code.** **[HELP]** (article 360057195972,
    updated 2026-04-01) says: *"Only the location and name of the Markup will be saved. onX
-   customizations like icons and colors are not saved."* **[CODE]** The live Web Map export
+   customizations like icons and colors are not saved."* **[CODE]** The live web app export
    writes `onx:color`, `onx:icon`, `onx:style`, `onx:weight`, `onx:fill_color` and a `key=value`
-   `<desc>` that includes `notes` and `id`. I trust the code for the **Web Map** export. The
+   `<desc>` that includes `notes` and `id`. I trust the code for the **web app** export. The
    **iOS app's** GPX export is a separate code path and genuinely unverified.
 7. **Security: stock `xml.etree` is safe enough in Pyodide, verified rather than assumed.**
    **[RUN]** Pyodide 0.29.5 runs Python 3.13.2 with **expat 2.6.4**. A billion-laughs file and a
@@ -91,7 +91,7 @@ onX-ready output.
 - ⛔ impossible: the format does not carry it
 - ❓ unknown until a real export file is available
 
-| Field | CalTopo GPX | CalTopo KML | onX GPX (Web Map) | onX KML (Web Map) |
+| Field | CalTopo GPX | CalTopo KML | onX GPX (web app) | onX KML (web app) |
 |---|---|---|---|---|
 | **Name** | ✅ | 🟡 no reader; `read_onx_kml` reads `<name>` | ✅ (`&`, `#`, `!` etc. stripped by `sanitize_name_for_onx` on write) | ✅ (same sanitizer) |
 | **Note** | ✅ `<desc>`/`<cmt>`, HTML stripped (fixtures have none) | 🟡 `<description>` ignored: the reader reads notes only from ExtendedData (`onx_kml.py:124`) | ✅ desc kv `notes=` incl. multiline; **[RUN]** `a=b` inside notes survives | ✅ ExtendedData `notes` |
@@ -185,7 +185,7 @@ coverage. FIDELITY's provenance table stands: no genuine onX export is in the re
   `aabbggrr`), and reads `MultiGeometry` and inner rings. Build it only after one real CalTopo
   KML export is in hand (P6).
 
-### 3.4 onX GPX (Web Map export), decoded from live code **[CODE]**
+### 3.4 onX GPX (web app export), decoded from live code **[CODE]**
 
 Chunk `37299.498db4a8175bf385c00b.js` (fetched 2026-10-22; the hash will rotate):
 
@@ -206,7 +206,7 @@ Chunk `37299.498db4a8175bf385c00b.js` (fetched 2026-10-22; the hash will rotate)
   - `"folder"` is not in `_DESC_KV_KEYS` (needed for FIDELITY W3).
   - The folder scaffold is hardcoded.
 
-### 3.5 onX KML (Web Map export) **[CODE]**
+### 3.5 onX KML (web app export) **[CODE]**
 
 Chunk `58175.0d9ed1037d6326f4bb0b.js` is mapbox's tokml, called with no options
 (`B()(e.markups)`):
@@ -443,8 +443,8 @@ Steps 1–5 are about 4–5 days and fully offline. Shipping "onX GPX/KML in" cr
 
 | # | Question | Cheapest probe | Changes |
 |---|---|---|---|
-| **P1** | **Does onX import update a markup whose `id=` matches an existing one, or create a duplicate?** | Export 1 waypoint from the Web Map as GPX, change its name in the file, re-import: 1 markup or 2? Repeat with KML | Whether a round trip is "update" or "replace"; whether to write ids (§5.3) |
-| P2 | Does a real Web Map GPX export match §3.4 (desc kv with `id`/`notes`, `onx:` extensions, `<rte><type>Area`)? The help center says icons and colours aren't saved | Export 1 waypoint, 1 track, 1 line and 1 area as GPX **and** KML; commit them as fixtures (FIDELITY W6) | Replaces all synthetic onX fixtures |
+| **P1** | **Does onX import update a markup whose `id=` matches an existing one, or create a duplicate?** | Export 1 waypoint from onX on a computer as GPX, change its name in the file, re-import: 1 markup or 2? Repeat with KML | Whether a round trip is "update" or "replace"; whether to write ids (§5.3) |
+| P2 | Does a real onX web app GPX export match §3.4 (desc kv with `id`/`notes`, `onx:` extensions, `<rte><type>Area`)? The help center says icons and colours aren't saved | Export 1 waypoint, 1 track, 1 line and 1 area as GPX **and** KML; commit them as fixtures (FIDELITY W6) | Replaces all synthetic onX fixtures |
 | P3 | Does onX import `<rte>` + `type=Area` as an Area? | Import the P2 GPX back into a scratch folder | Whether GPX-only round trips keep areas (FIDELITY B2) |
 | P4 | Does the **iOS app's** GPX export carry extensions/kv, or only name + location as the help center says? | Export the same 4 markups from the app | Whether app users can round trip at all |
 | P5 | Does onX accept `& # ! @` in names on import? | Import one waypoint named `A & B #1` | Whether `sanitize_name_for_onx` should stop stripping them |
@@ -452,8 +452,8 @@ Steps 1–5 are about 4–5 days and fully offline. Shipping "onX GPX/KML in" cr
 | P7 | Does onX read `<time>` on import, and elevation on waypoints? | Import a 3-point track with times | Whether fixing the time writer matters for onX |
 | P8 | The simplify tolerance `x.Kr` (module `vOPT`) | Grep the entry bundles (not fetched; only lazy chunks were) | How much geometry onX's own export destroys on long tracks |
 
-> **Answered later on 2026-10-22, in a real Web Map import (design decision ENG-05).**
-> **P2:** a real Web Map GPX export matches §3.4 (`tests/fixtures/caltopo-random/onx_roundtrip/
+> **Answered later on 2026-10-22, in a real import in onX's web app (design decision ENG-05).**
+> **P2:** a real web app GPX export matches §3.4 (`tests/fixtures/caltopo-random/onx_roundtrip/
 > from_geojson/onx_export.gpx`): `<desc>` key=value with `id`/`notes`/`type`, `onx:` extensions,
 > areas as `<rte><type>Area</type>` with `onx:color` + `onx:fill_color`. **P3: yes** — a GPX
 > `<rte>` with `<type>Area</type>` and those two extensions imports as an Area with its color,
@@ -466,7 +466,7 @@ Steps 1–5 are about 4–5 days and fully offline. Shipping "onX GPX/KML in" cr
 
 ## Sources
 
-- onX Web Map JS, fetched 2026-10-22 from `webmap.onxmaps.com`. Runtime
+- onX's web app JS, fetched 2026-10-22 from `webmap.onxmaps.com`. Runtime
   `runtime.9d513607b1b8bc66d666.js` (1,171 chunks). Export post-processor
   `37299.498db4a8175bf385c00b.js`. tokml/togpx `58175.0d9ed1037d6326f4bb0b.js`. Import executor
   `87571.b2fabb456fd0688670ed.js` (`z1zK`).

@@ -188,7 +188,7 @@ class ColorMapper:
 
     # onX's area FILL palette ("Area Color" in onX's area editor): 10 swatches,
     # all at alpha 0.1, plus "None". A separate palette from the line colours.
-    # Source: the Web Map's own colour table (keys, labels, dbValue) and an onX
+    # Source: the colour table in onX's web app (keys, labels, dbValue) and an onX
     # export after each swatch was set in onX (2026-10-23, docs/ONX_ROUND_TRIP.md
     # #area-fidelity). onX's GPX/KML importer does NOT read an area's fill -- every
     # imported area gets the default Blue whatever the file says -- so Cairn writes

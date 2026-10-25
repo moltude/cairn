@@ -1,6 +1,6 @@
 # Real onX exports
 
-`three-round-trips.gpx` and `three-round-trips.kml` are unmodified Web Map exports of one waypoint,
+`three-round-trips.gpx` and `three-round-trips.kml` are unmodified onX web app exports of one waypoint,
 one line and one area after three onX GPX round trips. They come from the
 `multi-step-cycle-gpx` test in `docs/ONX_ROUND_TRIP.md`, run on 2026-10-23, and contain only
 `ZZTEST` test data.
@@ -13,7 +13,7 @@ one line and one area after three onX GPX round trips. They come from the
 innermost note and the markup's current id, and that no onX uuid reaches Cairn's output.
 
 `areas-before-edit.gpx` / `.kml` and `areas-after-edit.gpx` / `.kml` are the owner's unmodified
-Web Map exports (2026-10-23) of four areas the owner drew in onX as test data: `temp`,
+web app exports (2026-10-23) of four areas the owner drew in onX as test data: `temp`,
 `Area 10/23/26 10:09`, `Area 10/23/26 10:10` and `test 4`. Between the two exports the owner
 changed `Area 10/23/26 10:10` from solid / 4.0 to dash / 6.0, and `test 4` from solid to dot and
 from no fill (`rgba(0,0,0,0)`) to the purple fill. Together they cover every onX area property:

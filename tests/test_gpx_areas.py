@@ -1,6 +1,6 @@
 """Areas are exported as onX Area routes in GPX (ENG-05).
 
-Verified 2026-10-22 in a real onX Web Map import: onX ignores an area's colour
+Verified 2026-10-22 in a real onX web app import: onX ignores an area's colour
 and fill in KML, but a GPX <rte> with <type>Area</type> and onX extensions
 imports as an Area with its colour; 2026-10-23 (docs/ONX_ROUND_TRIP.md
 #area-fidelity): and with its <onx:style> and <onx:weight>, never its fill. These tests pin the
