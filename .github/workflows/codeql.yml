@@ -26,7 +26,7 @@ jobs:
         include:
           - language: python           # cairn/, web/bridge.py, scripts/
             build-mode: none
-          - language: javascript-typescript  # web/app.js, web/icons.js
+          - language: javascript-typescript  # web/app.js, web/icons.js, web/rename.js
             build-mode: none
           - language: actions          # workflow files themselves
             build-mode: none
