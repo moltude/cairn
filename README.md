@@ -16,7 +16,7 @@ uv run python web/serve.py   # then open http://127.0.0.1:8765
 ```
 
 See [`web/README.md`](web/README.md) for how the web app works and
-[`docs/VERCEL_DEPLOY_PLAN_2026-08-30.md`](docs/VERCEL_DEPLOY_PLAN_2026-08-30.md)
+[`docs/DEPLOY.md`](docs/DEPLOY.md)
 for how it's deployed.
 
 ### A walkthrough

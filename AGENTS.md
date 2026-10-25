@@ -166,8 +166,8 @@ readers via document_adapter.
   `vercel.json`; until 2026-10-23 it stopped at the first (Cache-Control) one, so the dev
   server and CI ran without any CSP and the enforced-CSP tests proved nothing.
 - **XML parsing uses stock `xml.etree.ElementTree`, behind a pre-parse guard.** XML is
-  reachable from the web bridge (GPX/KML input, roadmap `docs/ROADMAP_ONX_ROUND_TRIP.md`
-  Phase 2: `web/bridge.py:load_files` dispatches every file on `detect()`), so the old "only
+  reachable from the web bridge (GPX/KML input:
+  `web/bridge.py:load_files` dispatches every file on `detect()`), so the old "only
   files the user chose, in the CLI" premise is gone. What protects it now, in order:
   1. `cairn/io/input_check.py:guard_input`, called on every file first thing in
      `web/bridge.py:load_files` (`load_document` is its one-file wrapper),
@@ -238,12 +238,19 @@ don't add raw colours)
 
 ## Scope discipline
 
-`TODO.md` is an idea dump, not a work queue — it says so at the top. (`cairn/Instructions for
-agent.md`, a stale Dec 2025 status doc citing six `docs/*.md` files that no longer existed, was
-deleted on 2026-08-29 and its live backlog folded into `TODO.md`.)
+`TODO.md` is the one backlog: open work, what waits on the owner's onX or CalTopo account, and
+what shipped. It is not a work queue; the owner picks what gets built. When something ships,
+move its line to "Done" with the PR number.
 
-Current findings, all verified by running the tool:
-- `docs/CODEBASE_AUDIT_2026-08-29.md` — code health, dead code, testing gaps
-- `docs/UX_AUDIT_2026-08-29.md` — what the project is for, and what using it is actually like
-- `docs/DISTRIBUTION_2026-08-29.md` — packaging and install friction (note: the PyPI name
-  `cairn` is already taken by an unrelated project)
+Docs that are current:
+- `docs/design/DECISIONS.md` — every UI-NN / ENG-NN decision, with status and the why
+- `docs/FAQ.md` — source of `web/faq.html`; onX behaviour as users meet it
+- `docs/ONX_ROUND_TRIP.md` / `docs/ONX_TESTING.md` — live onX import/export results and how to run them
+- `docs/DEPLOY.md` — Vercel + the Cloudflare Worker, shipping an engine change, checking a deploy
+- `docs/testing/FOLDERS_RELEASE.md` — the folders release log (PRs #44, #45)
+- `docs/research/*_2026-10-22.md` — dated research, cited by code comments and fixtures
+
+Expired plans and audits (the 2026-08-29 audits, the TUI-era designs, the GPX/KML input
+roadmap, the first deploy plan) were moved on 2026-10-25 to `docs/archive/`, which is
+gitignored. They are still in git history: `git show cdd25f3:docs/<name>`. Put a doc there when
+its plan has shipped or been dropped, and fix every reference to it in the same commit.

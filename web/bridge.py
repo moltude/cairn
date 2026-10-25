@@ -51,7 +51,7 @@ from cairn.core.writers import (
     write_gpx_waypoints_maybe_split,
 )
 
-# onX's per-ACCOUNT markup ceiling (FIDELITY_MODEL_2026-08-29.md). Splitting a
+# onX's per-ACCOUNT markup ceiling. Splitting a
 # map into more files or imports does not get around it.
 ONX_ACCOUNT_MARKUP_LIMIT = 3000  # onX help 360052239052, updated 2026-09-16 (was 1,500)
 # Longest note onX keeps on import, in UTF-8 BYTES (verified 2026-10-22, r1):

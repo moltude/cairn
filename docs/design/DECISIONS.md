@@ -268,7 +268,7 @@ merging several CalTopo exports (e.g. three people's Bitterroots maps) into one 
   dedup/merge code (`cairn/core/merge.py`, `dedup.py`) not yet wired into the web app.
 
 ### UI-13 — Reading and editing notes
-Status: proposed (B v2)
+Status: built (B v2): a note opens in a textarea and its line breaks are kept and exported.
 
 Finding: today's note cell is a single-line `<input>` (`web/app.js` `desc-in`); long notes are
 cut off and Enter commits, so there is no way to type a line break. Worse, line breaks never
@@ -295,7 +295,7 @@ pin" → **Default pin**. Rationale: the whole tool is about onX; repeating it o
 noise. ("Export for onX" → "Export" in F17 was the same call.)
 
 ### UI-16 — Changing icon + color now that they're one marker
-Status: proposed — `EditMark.dc.html`
+Status: built, with the revisions below and the list picker of UI-29.
 
 - **One item:** click the row's marker → a popover with a large live preview of the marker
   (name, "Icon · Color", and what it was before), the 10 onX waypoint colors, an icon search with
@@ -321,7 +321,8 @@ Status: accepted with changes ("look okay")
   "Use existing").
 
 ### UI-17 — What's in "More"
-Status: proposed
+Status: partly built. More has the reworded actions and Move to… (UI-32); **Rename…** and
+**Change note…** are not built (open in `TODO.md`).
 
 Finding (`web/index.html:67-72`, `web/app.js:447-452`): today's menu (labelled "Advanced") has
 exactly three actions — **Use description as name**, **Leave out of the onX export**, **Put back

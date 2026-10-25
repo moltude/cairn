@@ -3,7 +3,7 @@
 Live runs on 2026-10-23, 14:30–15:16 UTC, in the owner's onX Backcountry account, through the
 Web Map (`backcountry.onxmaps.com`) in the owner's logged-in Chrome. Raw files are gitignored
 and kept locally under `tests/fixtures/roundtrip/<test-id>/`. Each test folder has a tracked
-`README.md`. This doc replaces `docs/ONX_ROUND_TRIP_IDENTITY.md` (run id1), whose findings are
+`README.md`. This doc replaces the run-id1 write-up (`docs/ONX_ROUND_TRIP_IDENTITY.md`, in git history at `8799cbf`), whose findings are
 folded in below as [`new-folder-gpx-with-ids`](#new-folder-gpx-with-ids),
 [`new-folder-kml-with-ids`](#new-folder-kml-with-ids) and
 [`new-folder-cairn-output`](#new-folder-cairn-output). A separate test of area styling,

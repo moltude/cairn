@@ -3,8 +3,7 @@
  *
  * Not wired to Cloudflare's git-integration auto-deploy on purpose — deploys
  * are manual (paste into the dashboard's Quick Edit, or `wrangler deploy`).
- * See docs/VERCEL_DEPLOY_PLAN_2026-08-30.md §4 for why this exists and how
- * it's wired up.
+ * See docs/DEPLOY.md for how it's wired up.
  *
  * Bind this worker to two exact Routes on the quietmarch.to zone:
  *   - quietmarch.to/cairn

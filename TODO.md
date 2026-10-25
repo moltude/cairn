@@ -1,140 +1,114 @@
-**A dumping ground for ideas, known bugs and functionality I need to implement**
+# Cairn backlog
 
-> Consolidated 2026-08-29. Absorbed the live backlog from `cairn/Instructions for agent.md`
-> (a Dec 2025 document whose status header said "ALL PHASES COMPLETED / Production ready!"
-> and which linked six `docs/*.md` files that no longer exist). Verified findings live in
-> `docs/CODEBASE_AUDIT_2026-08-29.md` and `docs/UX_AUDIT_2026-08-29.md`; this file stays a
-> dumping ground.
+The one list of what's open, what waits on the owner, and what shipped. It is not a work queue:
+the owner picks what gets built. Decisions and their reasons live in `docs/design/DECISIONS.md`
+(UI-NN / ENG-NN); live onX results in `docs/ONX_ROUND_TRIP.md`.
 
-> Reorganized 2026-08-30 around the web app as the primary interface (see `README.md`).
-
-> 2026-10-21: Cairn is now **web-only**. The CLI and TUI were deleted (git tag `cli-final`), and
-> with them every item that only concerned them — the CLI-shape list, the whole TUI/styling
-> backlog, `--no-interactive`, the duplicated summary output, `set-default-color` help, and
-> `core/preview.py` test coverage.
+Consolidated 2026-10-25 from the old TODO, the GPX/KML input roadmap and the folders release
+log's follow-ups. Every open item below was re-checked against the code that day. The old
+roadmap and the 2026-08-29 audits are archived (`git show cdd25f3:docs/<name>`).
 
 ---
 
-## Core engine (used by the web app)
+## Open: can be built now
 
-* **2026-10-22 review fixes (areas + runbook).** Fixed and tested
-  (`tests/test_polygons_end_to_end.py`, `tests/test_web_bridge_review_fixes.py`): area colours
-  quantized to onX's 11-colour track palette (missing/malformed → Blue in UI and KML alike);
-  holes written as `<innerBoundaryIs>`; CalTopo `stroke-width`, `stroke-opacity` and
-  `fill-opacity` carried; unusable polygons counted as dropped; KML size-split like GPX; area
-  names sanitized like waypoints/tracks and every rename listed in RUNBOOK.md; colourless
-  waypoints show and export the same colour; the 1,500 warning says "remove", not "split".
-  Still open from that pass:
-  * **How onX renders KML `<width>` and `PolyStyle` fill is unverified.** Needs one real
-    Web Map import of an area with `fill-opacity` 0.1 and 0 to see whether onX honours them.
-  * **The KML size cap is assumed.** onX documents 4 MB for GPX; areas now split at the same
-    3.75 MiB without a source saying KML shares that limit.
-  * **Non-LineString/Polygon `Shape`s other than `MultiPolygon` are still silently ignored at
-    parse time** (`core/parser.py:add_feature_to_folder`), so they never reach the dropped
-    count. `MultiPolygon` is now split into one area per part (2026-10-22, roadmap Phase 1);
-    `MultiLineString` and `GeometryCollection` are not handled. No CalTopo export seen so far
-    contains any of these (Bitterroots: 17 single-ring Polygons).
-  * **CalTopo `pattern` on areas is not carried** — KML 2.2 has no dash style.
-  * ~~**`strip_html` eats `<...>` that isn't HTML**~~ **Fixed 2026-10-22**: only tag-shaped text
-    (`</?[A-Za-z]...>`) is stripped. Still open: a tag-shaped word in a note, e.g. `<Lake>`, is
-    removed.
+Small engine fixes:
 
-* **CalTopo KML/GPX input (roadmap Phase 7, done 2026-10-22).** Still open, all needing one
-  styled CalTopo export from the owner (a small map with a dotted line, an arrow line, an
-  unfoldered marker, a multi-part area and a polygon, exported as GeoJSON + KML + GPX):
-  * CalTopo's GeoJSON `pattern` values for dotted and arrow lines (only `solid` and the dashed
-    `M0 -1 L0 1,,8,F` are known; the rest export as solid).
-  * What CalTopo's GPX does with an area (closed `<trk>`, or left out) and whether its
-    DisplayColor is exact-match or nearest (Dark Divide: lower-case `#ff0000` got none; other
-    public files show `DarkBlue`).
-  * Whether a multi-part area is one KML `<MultiGeometry>` with two `<Polygon>`s, and how a
-    hole is written.
-  * Unfoldered items: the KML puts them in "Points"/"LineStrings"/"Polygons" folders, the
-    GeoJSON in no folder (Cairn shows "Unorganized"). Cairn keeps the KML's folder names;
-    decide whether to map those three names to "Unorganized".
-  * What the `#1.0` at the end of every icon cfg means (not marker-size: Dark Divide's is 0.75).
-  * **The `! @ # $ % ^ * &` name rule has no cited onX reason** (utils.py says "sorting
-    issues"). Verify against a real import, then keep or drop it.
-  * `docs/FAQ.md:123` ("Area names are left alone", "the app doesn't tell you") is now stale.
+* **Numbered names miss their icon.** `_TOKEN_RE = r"[a-z0-9]+"` (`cairn/core/icon_resolver.py`)
+  keeps trailing digits on the word: `Camp 2` resolves to Camp, `Camp2` and `Chute1` fall back
+  to Location (checked 2026-10-25). Strip trailing digits before matching.
+* **`Camp` is defined twice** in `ICON_COLOR_MAP` and `DEFAULT_KEYWORD_MAP`
+  (`cairn/core/config.py`); Python silently keeps the second. Pick one.
+* **`load_config(None)` reads `cairn_config.yaml` from the current directory**
+  (`cairn/core/config.py`). The web app passes an explicit path, so it's safe today; make the
+  path mandatory or drop the lookup before another caller trips on it.
+* **A tag-shaped word in a note is removed.** `strip_html` keeps `a < b` now, but `<Lake>` is
+  still stripped as a tag.
+* **`MultiLineString` and `GeometryCollection` are dropped at parse time**
+  (`core/parser.py`), without counting as dropped. `MultiPolygon` is split; these aren't. No
+  CalTopo export seen so far contains them.
 
-* **`load_config(None)` still reads `cairn_config.yaml` from the current directory**
-  (`core/config.py`). The web app is safe because `web/bridge.py:_config` passes an explicit
-  path, but the ambient fallback is a trap for any future caller — make the path mandatory, or
-  drop the CWD lookup.
-* ~~**Cairn ships an icon onX does not accept.**~~ **Fixed 2026-10-22**: cabin/hut/yurt (and CalTopo's `hut` symbol) now map to `Shelter`; `Cabin` is gone from every table and config, and `tests/test_mapper.py::test_every_default_mapping_targets_a_real_onx_icon` guards the vocabulary.
-* **Numbered waypoints defeat keyword matching.** `_TOKEN_RE = r"[a-z0-9]+"`
-  (`core/icon_resolver.py:35`) merges trailing digits: `Chute1` → `chute1`, which never matches
-  the keyword `chute`. `Camp 2` resolves; `Camp2` doesn't. Strip trailing digits before tokenizing.
-* **Two dead config entries.** `ICON_COLOR_MAP` and `DEFAULT_KEYWORD_MAP` each define `"Camp"`
-  twice (AST-verified); Python keeps the last silently.
-* ~~**`<desc>` is a debug dump in every exported waypoint.**~~ **Fixed 2026-08-29.**
-  `<desc>` now carries only the user's own note (omitted entirely when there is no note);
-  icons/colors/styles still travel in the `<onx:>` extensions. The old key=value block is
-  still available from the writers via `description_mode="debug"` (not exposed in the web app). Covered by `tests/test_desc_output.py`.
-* ~~**Running the tool wrote into its own installed package.**~~ **Fixed 2026-08-29**: every
-  `migrate` run — and every test run — used to append to the version-controlled
-  `cairn/data/icon_catalog.yaml`, leaking test fixture names ("Test Waypoint", "JsonWaypoint")
-  into shipped data and dirtying the git tree. Recording is now opt-in via `CAIRN_ICON_CATALOG`;
-  the data is write-only telemetry that nothing reads back.
-* ~~**The import gap.**~~ **Now fully characterised and built.** onX *does* have folders; they
-  are created at import time, one per import *batch*, and a batch accepts multiple files of
-  mixed format. The folder is named `"Import mm/dd/yy H:MM"` — a timestamp — so no filename or
-  metadata Cairn writes can ever set it; the user must rename after import. Verified by reading
-  onX's shipped Web Map JS (`multiple:""`, `accept=".gpx,.kml"`,
-  `addCollection({name:"Import"+...})`) plus the Zendesk API. The missing artifact — a generated
-  RUNBOOK telling the user the batches, the order, and the exact name to type — is now built
-  (`web/bridge.py:build_runbook`, shipped in every web export). See
-  `docs/FIDELITY_MODEL_2026-08-29.md` and `docs/PLATFORM_CONSTRAINTS_2026-08-29.md`.
-* **FIXED (2026-10-21): Multi-line notes were flattened at parse time.** `strip_html` (`cairn/utils/utils.py`) ends
-  with `re.sub(r"\s+", " ", text)`, and `cairn/core/parser.py` applies it to every description —
-  so line breaks in CalTopo notes are gone before the web app shows them or the writers export
-  them (7 of 189 notes in the Bitterroots fixture). `strip_html` now keeps `\n` (br/p/div/li/CRLF -> newline, max one blank line); tests added. Prerequisite for the notes editor below. (Found 2026-10-21.)
-* **Investigate: do line breaks / formatting survive into onX notes?** Unknown whether onX keeps
-  newlines from GPX `<desc>` (or KML `<description>`), needs HTML, or flattens. Do not assume —
-  settle it with a real import test. See `docs/design/DECISIONS.md` round 4 (F12). Probe:
-  one GPX with waypoints whose `<desc>` is (A1) literal newlines, (A2) `&#10;` newlines,
-  (B) escaped `&lt;br&gt;`, (C) blank line + indented line; import into a fresh onX collection,
-  check Notes on web and mobile; then type a two-line note in onX, export it as GPX, and read the
-  raw `<desc>`. Optionally repeat as KML `<description>` (plain, CDATA+`<br>`) — Cairn writes no
-  KML descriptions today.
-* Add a feature to include the CalTopo Folder name in either the Name or Description for all elements.
-* Support for polygons/areas at the engine/writer level.
-* **Move the unmapped-symbol warning to the START of the process**, not the end. Right now you
-  learn which icons failed to map only after the files are already written.
-* Investigate line styling in onX.
-* Investigate: can onX data be exported, modified, and re-imported so it *updates* the same
-  objects rather than creating duplicates? (Skeptical this is possible — worth 30 minutes to
-  find out, not more.)
+Web app features:
 
-### General / process
+* **Bulk rename and bulk note edit** (UI-17): Rename… (prefix/suffix, find/replace, with a
+  preview) and Change note… in More.
+* **Add another map** (UI-12): load a second CalTopo map into the one open, deduped. The engine
+  has `core/merge.py` / `dedup.py`; the web app doesn't call them. Today "Start over" resets.
+* **Instructions for an onX → Cairn → onX round trip.** onX imports everything as new markups
+  (ONX_ROUND_TRIP.md), so a round trip is "back up, delete the originals, then import". The FAQ
+  says so; `instructions.txt` (`web/bridge.py:build_instructions`) doesn't. Add the replace
+  steps when the input came from onX.
+* **Folder name in item names or notes**, as an export option.
+* **Load time.** Watch it; the ideas so far are running Pyodide in a Web Worker and a memory
+  snapshot.
 
-* Workflow redesign — `docs/WORKFLOW_REDESIGN_2026-08-29.md` reconciles three design proposals
-  against `docs/DECISION_SURFACE_2026-08-29.md`, which measures that the tool makes users walk
-  68 waypoints to answer ~24 questions. (Written against the since-deleted TUI's flow; re-check
-  what still applies to the web app.)
+## Open: needs the owner's account or a file
+
+Each needs one sitting in onX or CalTopo. Never delete onX data without the owner.
+
+* **onX phone app exports** (old roadmap P4): does the iOS app's GPX carry the `onx:`
+  extensions and `<desc>` lines, or only name and location? Decides whether the round trip
+  works from a phone or only from the Web Map.
+* **Track times and waypoint elevation** (P7): does onX read `<time>` and `<ele>` on import?
+* **One styled CalTopo export** (GeoJSON + KML + GPX of one small map with a dotted line, an
+  arrow line, an unfoldered marker, a multi-part area and an area with a hole). Answers:
+  * CalTopo's `pattern` values for dotted and arrow lines (only solid and one dash are known;
+    the rest export as solid);
+  * what CalTopo's GPX does with an area, and whether its `DisplayColor` is exact or nearest;
+  * how CalTopo's KML writes a multi-part area and a hole;
+  * what the `#1.0` at the end of every icon `cfg` means (not marker size);
+  * whether to map the KML's "Points" / "LineStrings" / "Polygons" folders for unfoldered items
+    to "Unorganized", as the GeoJSON gets.
+* **Do line breaks in notes survive into onX?** Probe: a GPX whose `<desc>` has literal
+  newlines, `&#10;`, escaped `<br>`, and a blank line; import, read Notes on web and phone, then
+  type a two-line note in onX and export it.
+
+## Ideas, not planned
+
+* **Avalanche Bridge** — local avalanche field reports onto the onX map. A draft proposal
+  (`docs/ROADMAP_AVALANCHE_BRIDGE.md`, untracked, owned by another session). Nothing built.
+* **Name for the no-folder group and the "everything" facet** — "Unorganized" and "All" are
+  marked provisional (UI-10, UI-14).
 
 ---
 
-## Web app
+## Done
 
-Feature backlog from the 2026-10-21 redesign review (`docs/design/DECISIONS.md`, round 4):
+Newest first. Details are in DECISIONS and `docs/testing/FOLDERS_RELEASE.md`.
 
-* ~~**Multi-line notes editor.**~~ Done: a note opens in a textarea; line breaks are kept and
-  exported (UI-13).
-* **Bulk rename and bulk note edit** (UI-17). "More" today only offers use-note-as-name and
-  exclude/include. Add Rename… (prefix/suffix, find/replace, with preview) and Change note….
-* ~~**Filter / select by onX icon** (F14).~~ Done: the rail's Icon section (UI-28).
-* ~~**Folder facets with "All folders" + clear** (F1).~~ Done, and folders can now be made,
-  renamed, merged and filled by drag or Move to… (UI-32, shipped 2026-10-24 in PR #44).
-* **Merge several CalTopo maps into one export** (UI-12). "Load another map" currently resets;
-  users read it as "add". Engine has dedup/merge code (`core/merge.py`, `core/dedup.py`) not
-  wired into the web app yet.
-* **Large folders** (F13): every item renders as a table row and every edit/keystroke rebuilds
-  the whole table. Measured 2026-10-21: 1,500 rows 0.21 s load, ~70 ms per filter keystroke;
-  5,000 rows 0.69 s / ~190 ms. Fine within onX's 1,500 limit — no pagination now. If it ever
-  matters: debounce the filter, re-render only the edited row, lazily build collapsed folders.
+* **PR #45 (2026-10-24):** keyed in-place rendering of the rail and folder list; icon keywords
+  read the name before the note and a tie goes to the later word, "AS" reads as aid station
+  (ENG-08); AGENTS.md style guide.
+* **PR #44 (2026-10-24), the folders release:** stable item ids (ENG-07); folders made,
+  renamed, merged and filled by drag or Move to… (UI-32); export screen with one box per folder
+  and `instructions.txt` (UI-31); hover for whole names and notes, caution marks, sort by name,
+  one editing panel, Back/Forward, sticky nav (UI-33..38); FAQ and walkthrough pages.
+* **PR #42 (2026-10-23):** onX area and track style/weight pass through; area-fill warning
+  with an option to leave those areas out (UI-30); solid/dash and 4.0/6.0 line editing (UI-25).
+* **onX round-trip testing (2026-10-22..23):** re-import duplicates, ids or not, so "update in
+  place" was dropped; areas export as GPX onX Area routes because onX ignores KML area colours
+  (ENG-05); onX keeps area style and weight, never the fill; names pass through unchanged, the
+  `! @ # $ % ^ * &` stripping is gone (ENG-06); notes over 512 bytes are cut by onX and flagged.
+* **GPX and KML input (2026-10-22):** input guard and format detection (`input_check`), onX
+  GPX/KML readers wired into the bridge, CalTopo KML and GPX readers with parity tests, GPX/KML
+  in the web UI. Real onX exports are fixtures (`tests/fixtures/onx_real/`, `onx_exports/`).
+* **2026-10-22 review fixes:** area colours on onX's palette, holes, stroke and fill opacity,
+  `MultiPolygon` split, area names sanitized like the rest, the account limit at 3,000 (was
+  1,500), cabin/hut/yurt map to Shelter, `strip_html` only strips tag-shaped text.
+* **Web-only (2026-10-21):** CLI and TUI deleted (git tag `cli-final`); redesign rounds 1–5
+  (UI-01..UI-24): one light theme, onX-style markers, multi-line notes editor (UI-13),
+  icon filter (UI-28), list icon picker (UI-29), folder facets.
+* **Earlier (2026-08-29..30):** `<desc>` carries only the user's note; the engine no longer
+  writes into its own package; multi-line notes kept at parse time; the import-batch
+  instructions (now `instructions.txt`); the web app deployed at quietmarch.to/cairn.
 
-The web app's own known-bugs table lives in [`web/README.md`](web/README.md#bugs-this-prototype-exposed)
-rather than here, since most of what it's surfaced turned out to be engine bugs (folded into
-"Core engine" above). Add new web-only findings there.
+### Dropped
 
+* "Move the unmapped-symbol warning to the start": the web app shows Default pin as soon as a
+  map loads.
+* "Investigate whether onX re-import can update in place": it can't (ONX_ROUND_TRIP.md).
+* "Workflow redesign" (2026-08-29): written for the TUI; the web redesign replaced it.
+* "How onX renders KML `<width>` and PolyStyle fill" and "is the KML size cap 4 MB": areas
+  export as GPX now (ENG-05).
+* "CalTopo `pattern` on areas is not carried": it is now, as the GPX Area route's `onx:style`
+  (ENG-05), and the editor sets solid or dash (UI-36).
