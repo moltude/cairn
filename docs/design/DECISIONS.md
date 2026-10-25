@@ -911,7 +911,9 @@ sat at the top. Now:
   TextEdit and the rest read CRLF too; `.gitattributes` keeps the committed copies byte-exact).
   The general steps once at the top (import each folder's files together in the Web Map, tick
   "Import map data to a new folder", rename the date-named folder to the name shown, Premium or
-  Elite needed), then each folder nested: `NN_Name/    rename to: <folder>`, each file, its item
+  Elite needed; since 2026-10-25, a map loaded from an onX export gets four replace steps
+  before them: onX imports everything as new markups, keep the export as a backup, delete the
+  original markups then their folders, then import), then each folder nested: `NN_Name/    rename to: <folder>`, each file, its item
   kind (Waypoints / Lines / Areas), and every item's name as written in that file, indented
   4 spaces a level. An item with no name shows "(no name)". Only two warnings stay, each one
   line under its item: a note onX will cut (its written `<desc>` is over 512 bytes) and an area
