@@ -198,7 +198,8 @@ docs/plans/BULK_RENAME.md section 2 decision 4).
 | Cancel · Save | buttons; Save disabled while nothing changes | app `openTextBulk` | `.bulk-cancel`, `#bulk-apply` |
 | Changed N item(s). | status after Save (§12.1) | app `applyTextBulk` | `#status` |
 
-An open note on a selected row asks "Save your note?" first (§9).
+An open note on a selected row asks "Save your note?" first (§9). The new part of each After value is
+highlighted (`.na-after .hit`, no text of its own).
 
 ## 6. Move to…
 
@@ -234,7 +235,7 @@ An open note on a selected row asks "Save your note?" first (§9).
 |---|---|---|---|
 | Start over? | This discards N unexported change(s). / This clears the current map. | **Cancel**, Start over (danger) | app:2326-2333 |
 | Leave this map? | Changes will be lost. | **Stay**, Leave (danger) | app:306-312 |
-| Save your note? | Your note for “{name}” hasn't been saved. (on Export, Rename… and Change note…, when the open note changed) | Keep editing, Discard, **Save** | app `askToSaveNote` |
+| Save your note? | Your note for “{name}” (or “Untitled”) hasn't been saved. (on Export, Rename… and Change note…, when the open note changed) | Keep editing, Discard, **Save** | app `askToSaveNote` |
 | “{name}” already exists | (merge, §7) | **Cancel**, Move them | app:1869-1874 |
 | 1 area will lose its fill / N areas will lose their fill | onX resets area fills to blue on import. | **Keep it / Keep them**, Leave this out / Leave these N out | app:2256-2264 |
 
@@ -323,7 +324,7 @@ An open note on a selected row asks "Save your note?" first (§9).
 FAQ (source docs/FAQ.md; web/faq.html is generated) group headings: The problem, Your files, What Cairn
 does, Limits and trade-offs, Round trip. Walkthrough step tags: Before, Step 1, What Cairn finds, What
 Cairn flags, What you fix, Your folders, What you import, Good to know. Controls named in their prose:
-Default pin, Icon & color…, Save, Download all, + New folder, More → Move to…. FAQ question "Can I rename many items at once?" (answer: "Yes. Tick them, then More → Rename…. Find and replace changes part of each name; Add before and Add after add text to every name. No regex yet.").
+Default pin, Icon & color…, Save, Download all, + New folder, More → Move to…. FAQ question "Can I rename many items at once?" (answer: "Yes. Tick them, then More → Rename…. Find and replace changes part of each name; Add before and Add after add text to every name.").
 
 ---
 
