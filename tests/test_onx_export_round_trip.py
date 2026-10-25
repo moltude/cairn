@@ -1,6 +1,6 @@
 """Re-importing an onX export through Cairn: notes unwrap, and no onX id leaks out.
 
-The fixture pair is a real onX Web Map export after three GPX round trips
+The fixture pair is a real onX web app export after three GPX round trips
 (docs/ONX_ROUND_TRIP.md, multi-step-cycle-gpx). Every round trip makes onX store
 the uploaded <desc> block as the new markup's note, so the notes nest. onX
 never matches on ids (docs/ONX_ROUND_TRIP.md), so an id in Cairn's output

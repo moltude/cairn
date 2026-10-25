@@ -17,8 +17,8 @@ Why a guard at all when stock ElementTree is used: expat >= 2.4 already caps
 entity amplification (billion laughs, quadratic blowup) and ElementTree never
 resolves external entities. The guard turns those into an immediate, friendly
 error instead of a parser error deep in a reader, and it does not depend on
-the expat version Pyodide happens to bundle. No exporter of interest (onX
-Web Map, CalTopo, Cairn, Google Earth) emits a DTD, so rejecting one costs
+the expat version Pyodide happens to bundle. No exporter of interest (onX's
+web app, CalTopo, Cairn, Google Earth) emits a DTD, so rejecting one costs
 nothing. See docs/research/KML_GPX_INPUT_2026-10-22.md section 4.
 """
 
@@ -49,7 +49,7 @@ UNKNOWN = "unknown"
 
 # Dialects. Phase 2 dispatches on these, so they are constants, not prose.
 CALTOPO = "caltopo"      # CalTopo GeoJSON, GPX (creator="CALTOPO") or KML ("CalTopo Export" Document)
-ONX = "onx"              # onX Web Map export (GPX creator "onXmaps ... web"; KML <Data name="id">)
+ONX = "onx"              # onX web app export (GPX creator "onXmaps ... web"; KML <Data name="id">)
 ONX_LIKE = "onx-like"    # GPX declaring an onX namespace but not written by onX's web exporter
 CAIRN = "cairn"          # Cairn's own output (GPX creator "Cairn..."; KML generator marker)
 GENERIC = "generic"      # anything else of the right kind (Google Earth KML, other GPX, plain GeoJSON)

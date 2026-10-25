@@ -1,6 +1,6 @@
 # Real onX Backcountry exports
 
-Unedited files exported from the onX Backcountry **Web Map** on 2026-10-22 (My Content →
+Unedited files exported from onX Backcountry's **web app** on 2026-10-22 (My Content →
 folder menu → Export Folder Contents → GPX / KML). The folder held two test waypoints that
 Cairn had just imported ("ZZTEST A" Summit/red, "ZZTEST B" Camp/blue). Both markups were deleted
 from the account afterwards, so the ids are dead.
