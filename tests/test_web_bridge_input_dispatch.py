@@ -476,11 +476,13 @@ def test_unparseable_gpx_error_is_one_line_without_the_temp_path():
     assert "\n" not in msg and "/tmp" not in msg
 
 
-def test_empty_and_invalid_json_keep_their_geojson_errors():
-    with pytest.raises(ValueError, match="GeoJSON file is empty"):
-        bridge.load_document("", "empty.json")
-    with pytest.raises(ValueError, match="Invalid GeoJSON file"):
-        bridge.load_document("{ not json", "bad.json")
+def test_unreadable_geojson_says_one_plain_line():
+    # The parser's messages named a /tmp path; the owner chose one generic line (2026-10-25).
+    for text, name in (("", "empty.json"), ("{ not json", "bad.json"), ('{"features": 3}', "odd.json"),
+                       ('{"type": "FeatureCollection", "features": []}', "none.json")):
+        with pytest.raises(ValueError) as e:
+            bridge.load_document(text, name)
+        assert str(e.value) == "Failed: Could not load file"
 
 
 def test_dtd_is_refused_before_any_reader_runs_in_a_multi_file_load():
@@ -509,7 +511,7 @@ _DTD_KML = ('<?xml version="1.0"?>\n<!DOCTYPE kml [<!ENTITY a "aaaa">]>\n'
 ])
 def test_a_gpx_or_kml_with_nothing_readable_is_refused_by_name(name, text):
     """It used to open as a map of 0 items (an empty folder, an export that writes
-    nothing), where an empty GeoJSON already says "No features found"."""
+    nothing), where an empty GeoJSON already says it could not be loaded."""
     with pytest.raises(ValueError, match=rf"^Cairn found no waypoints, lines or areas in {name}\."):
         bridge.load_document(text, name)
 

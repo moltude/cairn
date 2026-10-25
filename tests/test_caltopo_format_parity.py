@@ -135,7 +135,6 @@ def test_synthetic_map_covers_what_dark_divide_lacks():
 
 def _load(path: str) -> str:
     p = Path(path)
-    bridge.CONFIG_PATH = ROOT / "web" / "cairn_config.yaml"
     return bridge.load_files(json.dumps([{"name": p.name, "text": p.read_text(encoding="utf-8")}]))
 
 

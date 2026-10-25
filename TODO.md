@@ -14,6 +14,33 @@ roadmap and the 2026-08-29 audits are archived (`git show cdd25f3:docs/<name>`).
 
 Small engine fixes: none open (the last ones shipped 2026-10-25, below).
 
+Wording follow-up (owner, 2026-10-25; LABELS.md §15 #8):
+
+* **Error and failure messages: one pattern.** Today's variants, all to review together:
+  * Status-line prefixes (app.js): `Failed: {reason}` (engine boot, :239) · `Export failed: {reason}`
+    (:2120) · `Download failed: {reason}` (:2193) · `Couldn't read that file — {reason}` /
+    `Couldn't read those files — {reason}` (:386) · `Couldn't move / make a folder / remove — {reason}`
+    (:1654) · `Couldn't rename — {reason}` (:1826) · `Failed: Could not load file` (unreadable GeoJSON,
+    shown alone).
+  * Plain error sentences (app.js): `An item needs a name.` · `A folder needs a name.` ·
+    `A folder name can be up to 100 characters.` · `“{name}” already exists.` ·
+    `Everything is excluded — include at least one item to export.`
+  * Thrown inside app.js, shown after a prefix: `Couldn't load the map engine (HTTP N).` ·
+    `Lost track of item {uid}.` · `The folders no longer add up.` · `That folder name is taken.`
+  * bridge.py, shown after "Couldn't read that file —": `{file} couldn’t be read: {reader's first
+    line}` (the reader lines are `Invalid GPX file (XML parse error): …`, `GPX file is empty`,
+    `Invalid KML file (XML parse error): …`, `File does not appear to be a KML file (root element: …)`,
+    `No placemarks found in KML file`, `Failed to read GPX/KML file: …`) · `This isn't a map file
+    Cairn can read. …` · `Cairn found no waypoints, lines or areas in {names}. …` · `No file was
+    given to open.` · the input guard's 16 MB and `<!DOCTYPE>` sentences.
+  * bridge.py folder/move errors: `There is no folder '{key}' in this map.` · `No items were given
+    to move.` · `Move items to one folder: give a folder or a new folder name.` · `Unknown item(s):
+    …` · `“{name}” isn’t empty, so it can’t be removed.` · `No exported folder N. Export again.`
+  * Developer-only (shouldn't reach a user): `Unknown line style / line weight / Unsupported area
+    fill … for {uid}`.
+  Decide one prefix pattern ("Failed: …" vs "Couldn't X — …"), whether reader details are shown, and
+  curly vs straight apostrophes (bridge uses ’, app.js uses '), then apply in one pass.
+
 Web app features:
 
 * **Add another map** (UI-12): load a second CalTopo map into the one open, deduped. The engine

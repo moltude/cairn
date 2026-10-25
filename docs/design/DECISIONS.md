@@ -313,7 +313,7 @@ Status: accepted with changes ("look okay")
 - "Keep each one's" → **"Use existing"** (color and icon) — then → **"Reset"**, see UI-18.
 - Removed the "Was: Default pin · Red" line from the single-item preview; Cancel is enough to
   signal you can revert.
-- Every confirm button reads **"Apply"** (was "Apply to 4") — consistent button language.
+- Every confirm button reads **"Apply"** (was "Apply to 4") — consistent button language. *(Superseded by UI-26: commits read "Save".)*
 - Previews are **live**: the artboard is now interactive. Picking a color or icon re-renders the
   big preview, the icon grid, and every Now → After row in the bulk dialog; "Use existing"
   restores each item's own value; Cancel resets. The real build must do the same.
@@ -349,7 +349,7 @@ Rules proposed for every label:
    keep an `aria-label`).
 3. **Ellipsis (…) only when the command opens a dialog for more input** (Rename…, Choose
    file…), never on buttons that act immediately.
-4. **One pair for confirm/dismiss everywhere: Apply / Cancel.** No "Done", no "Apply to 4".
+4. **One pair for confirm/dismiss everywhere: Save / Cancel** (was Apply / Cancel; UI-26 changed it, confirmed by the owner 2026-10-25). No "Done", no "Apply to 4".
 5. **Explanations go in tooltips or help, not in the label** ("Start over with a different map"
    carries its meaning in the tooltip).
 6. **One name per thing:** Note (not description), Icon (not onX icon), Lines (one term for

@@ -1314,7 +1314,7 @@ def test_the_dialog_takes_areas_too_with_a_fill_row(loaded: Page):
     loaded.click("#bulk-icon")
     d = loaded.locator("#mark-dialog")
     expect(d.locator(".sec-row .label")).to_have_text(["Color", "Style", "Weight", "Fill"])
-    expect(d.locator(".fill-btn")).to_have_text("Use onX's blue fill")
+    expect(d.locator(".fill-btn")).to_have_text("Blue")
     d.locator('.tog[data-style="dash"]').click()
     loaded.click("#bulk-apply")
     expect(loaded.locator("#mark-modal")).to_be_hidden()
@@ -1604,7 +1604,7 @@ def test_a_name_cannot_be_committed_empty(fresh_page):
     fresh_page.wait_for_timeout(300)
 
     assert fresh_page.evaluate("DATA.groups[0].items[0].name") == original
-    assert "name is required" in fresh_page.inner_text("#status").lower()
+    assert "an item needs a name" in fresh_page.inner_text("#status").lower()
 
 
 def test_help_panel_opens_and_closes(fresh_page):
@@ -1939,7 +1939,7 @@ def test_export_with_unapplied_note_cancel_returns_to_the_editor(loaded: Page):
     _open_changed_waypoint_note(loaded, marker)
     loaded.evaluate("window.__cairnExported = false")
     loaded.click("#export")
-    loaded.locator("#confirm").get_by_role("button", name="Cancel").click()
+    loaded.locator("#confirm").get_by_role("button", name="Keep editing").click()
     expect(loaded.locator("#confirm")).to_be_hidden()
     assert loaded.evaluate("document.body.dataset.stage") == "edit"
     assert loaded.evaluate("window.__cairnExported") is False
@@ -2750,7 +2750,7 @@ def test_keyboard_move_to_end_to_end(loaded: Page):
     here = pop.locator(".move-opt", has_text="Lost Trail Pass")
     expect(here).to_be_disabled()
     expect(here).to_contain_text("here now")
-    expect(pop.locator(".move-opt").last).to_have_text("+ New folder…")
+    expect(pop.locator(".move-opt").last).to_have_text("+ New folder")
     expect(pop.locator(".move-opt").first).to_be_focused()   # Blodgett (folders by name)
 
     # Esc closes it and gives focus back to More.
@@ -4288,7 +4288,7 @@ def test_a_mixed_selection_picks_pin_and_line_colors_apart(loaded: Page):
     _tick(page, wps + lines)
     page.click("#bulk-icon")
     d = page.locator("#mark-dialog")
-    expect(d.locator(".sec-row > .label")).to_have_text(["Pin color", "Icon", "Line color", "Style", "Weight"])
+    expect(d.locator(".sec-row > .label")).to_have_text(["Waypoint color", "Icon", "Line color", "Style", "Weight"])
     pin, line = d.locator('.pop-sec[data-row="pin"]'), d.locator('.pop-sec[data-row="line"]')
     expect(pin.locator(".swatch-btn")).to_have_count(10)
     expect(line.locator(".swatch-btn")).to_have_count(11)
@@ -4718,7 +4718,7 @@ def test_one_dialog_for_lines_and_areas_and_for_waypoints_and_areas(loaded: Page
     expect(page.locator("#bulk-icon")).to_have_text("Icon & color…")
     page.click("#bulk-icon")
     expect(d.locator(".sec-row .label")).to_have_text(
-        ["Pin color", "Icon", "Line color", "Style", "Weight", "Fill"])
+        ["Waypoint color", "Icon", "Line color", "Style", "Weight", "Fill"])
     expect(d.locator(".reset-chip")).to_have_text(["Leave as is"] * 6)
     assert _one_row(d)
     _shot(page, "fb-11b-waypoints-and-areas-dialog")

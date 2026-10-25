@@ -135,7 +135,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 |---|---|---|---|
 | 0 selected / N selected | count | idx:114, app:1192 | `#selcount` |
 | Icon & color… / Color & style… (only lines and areas selected) | button; opens the bulk dialog | idx:115, app:1202 | `#bulk-icon` |
-| Select rows first | tooltip when disabled | app:1197 | `#bulk-icon`, `#more-btn` |
+| Select items first | tooltip when disabled | app:1197 | `#bulk-icon`, `#more-btn` |
 | More | menu button | idx:117 | `#more-btn` |
 | More actions | menu aria-label | idx:118 | `#more-menu` |
 | Move to… | menu item | idx:119 | `#bulk-move` |
@@ -155,7 +155,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Find an icon | search placeholder and aria-label | app:1320 | `.icon-search` |
 | No icon matches “{q}”. | empty state | app:1293 | `.grid-empty` |
 | Style: Solid / Dashed (Dotted from a file) · Weight: Thin / Thick (Extra thin from a file) | toggles | app:1219-1248 | `.tog` |
-| Fill · Use onX's blue fill · Leave as is | area fill section | app:1229-1266 | `.fill-btn`, `.fill-reset` |
+| Fill · Blue · Leave as is | area fill section | app:1229-1266 | `.fill-btn`, `.fill-reset` |
 | Cancel · Save | buttons | app:1325-1326 | `.pop-cancel`, `#pop-apply` |
 
 ## 5. Color & style dialog (several items)
@@ -167,7 +167,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Close | aria-label of × | app:1445 | `.bulk-x` |
 | Now / After | column labels | app:1447 | `.now-after` |
 | {name} or Untitled | row text | app:1506 | `.na-name` |
-| Pin color / Line color (mixed) · Color | section labels | app:1451-1456 | `.color-sec` |
+| Waypoint color / Line color (mixed) · Color | section labels | app:1451-1456 | `.color-sec` |
 | Find an icon for all selected waypoints | search aria-label | app:1453 | `.icon-search` |
 | Leave as is | chip on every section | app:1229 | `.reset-chip` |
 | Cancel · Save | buttons | app:1459-1460 | `.bulk-cancel`, `#bulk-apply` |
@@ -179,7 +179,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Move N item(s) to | list heading | app:1899 | `#move-h` |
 | Move to folder | aria-label | idx:155 | `#move-pop` |
 | {folder} + count · {folder} · here now | options | app:1902-1905 | `.move-opt` |
-| + New folder… | option (makes a folder and opens its name) | app:1906 | `.move-new` |
+| + New folder | option (makes a folder and opens its name) | app:1906 | `.move-new` |
 | Move N item(s) | drag ghost | app:2032 | `#drag-ghost` |
 
 ## 7. Folder rename, merge, new folder
@@ -206,7 +206,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 |---|---|---|---|
 | Start over? | This discards N unexported change(s). / This clears the current map. | **Cancel**, Start over (danger) | app:2326-2333 |
 | Leave this map? | Changes will be lost. | **Stay**, Leave (danger) | app:306-312 |
-| Save your note? | Your note for “{name}” hasn't been saved. | Cancel, Discard, **Save** | app:2351-2361 |
+| Save your note? | Your note for “{name}” hasn't been saved. | Keep editing, Discard, **Save** | app:2351-2361 |
 | “{name}” already exists | (merge, §7) | Move them, **Cancel** | app:1869-1874 |
 | 1 area will lose its fill. / N areas will lose their fill. | onX resets area fills to blue on import. | Leave this out / Leave these N out, **Keep it / Keep them** | app:2256-2264 |
 
@@ -246,7 +246,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Failed: {reason} (engine boot) | err | app:239 |
 | Couldn't load the map engine (HTTP N). | err | app:208 |
 | Changed N item(s) / line(s) / area(s) | ready | app:1541-1542 |
-| A name is required. onX searches by name only. | err | app:1062 |
+| An item needs a name. | err | app:1062 |
 | Couldn't move / make a folder / remove / rename — {reason} | err | app:1652, 1728, 1743, 1824 |
 | Everything is excluded — include at least one item to export. | err | app:2101 |
 | Building onX files… | info | app:2104 |
@@ -277,7 +277,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | No file was given to open. | br:365 |
 | This file is X.X MB, and Cairn opens GPX and KML files up to 16 MB. Export one folder at a time instead. | input_check.py:140-143 |
 | This file contains a <!DOCTYPE> declaration, which map exports from onX, CalTopo and Google Earth never include, so Cairn won't open it. | input_check.py:146-149 |
-| GeoJSON file is empty: {path} · Invalid GeoJSON file (JSON parse error): {e} · Invalid GeoJSON file: expected 'features' to be a list (File: {path}) · No features found in GeoJSON file: {path}. Tip: … | parser.py:232-269 |
+| Failed: Could not load file (any unreadable GeoJSON; shown on its own, without “Couldn't read that file —”) | br `GEOJSON_FAILED` |
 | There is no folder '{key}' in this map. · No items were given to move. · “{name}” isn't empty, so it can't be removed. · No exported folder N. Export again. | br:743, 864-869, 923, 1104 |
 
 ## 13. instructions.txt (fixed lines; CRLF; straight quotes; br:1212)
@@ -286,7 +286,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 |---|---|
 | How to import these files into onX | always, first |
 | These files came from onX. onX imports them as new markups; it doesn't update the originals. / Keep your onX export as a backup. / In onX, delete the original markups first, then their folders. Deleting a folder doesn't delete its markups. / Then import as below. | from an onX file |
-| Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time. / In onX, choose Import and add all of that folder's files together. / Tick "Import map data to a new folder". / onX names the new folder with a date and time stamp. / Rename it to the name shown for that folder below. / Importing needs onX Premium or Elite. | always |
+| Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time. / In onX, choose Import and add all of that folder's files together. / Tick "Import map data to a new folder". / onX names the new folder with a datetime stamp. / Rename it to the name shown for that folder below. / Importing needs onX Premium or Elite. | always |
 | {NN_Name}/    rename to: {folder name} · {file} · Waypoints / Lines / Areas · {item name} | per folder, file, item |
 | (over the length limit; onX will cut this note) · (its hole is not kept: an onX area has one outline) · (no name) | under an item |
 
@@ -299,7 +299,10 @@ Default pin, Icon & color…, Save, Download all, + New folder, More → Move to
 
 ---
 
-## 15. Inconsistencies found (2026-10-25; for the owner to approve before any change)
+## 15. Inconsistencies found (2026-10-25)
+
+Owner's answers, 2026-10-25: **done** 1, 2 (rule above), 3, 4, 7 ("Blue"), 9, 12, 14 ("datetime"), 17 ("Failed: Could not load file"). **Follow-up**: 8 (TODO.md). **Open, explained to the owner**: 5, 6, 10, 11, 13, 15, 16, 18. **Kept**: 19.
+
 
 1. **Apply vs Save.** Every visible label says Save; DECISIONS UI-16 and UI-18 rule 4 still say Apply. Fix the decision text (superseded by UI-26).
 2. **Exclude vs "leave out".** Menu and state say Exclude / Excluded / Include; the fill confirm says "Leave this out / Leave these N out", the excluded-row tooltip "Left out of the export", Help's heading "5 · Leave things out". Suggest Exclude wording in controls; prose may keep "leave out".
@@ -332,8 +335,8 @@ Default pin, Icon & color…, Save, Download all, + New folder, More → Move to
 | The default icon | **Default pin** (engine name `Location`) | needs attention |
 | Colour | **Color** | colour |
 | Free text | **Note** | description, desc |
-| Commit / dismiss | **Save** / **Cancel** | Apply, OK, Done |
-| Leave out of the export | **Exclude** / **Include**, state **Excluded** | Leave out (in controls), Skip, Hide |
+| Commit / dismiss | **Save** / **Cancel**; **Keep editing** when Cancel would mean going back to an edit | Apply, OK, Done |
+| Leave out of the export | **Exclude** / **Include**, state **Excluded** in menus, buttons and states. **Leave out** is fine where a sentence reads better: dialogs, tooltips, Help, FAQ, README (owner, 2026-10-25) | Skip, Hide |
 | Keep as is | **Leave as is** | Use existing, Reset |
 | Reset a filter or selection | **Clear**, **Clear all** | Deselect, Reset |
 | Remove one thing | **Remove** | Delete |
@@ -349,5 +352,5 @@ Default pin, Icon & color…, Save, Download all, + New folder, More → Move to
 | onX's own objects | **markup**, **Web Map**, **Premium or Elite**, **Import map data to a new folder** | |
 | Errors | **Couldn't X — reason** | Failed: … |
 | Quotes | “…” around names in the app; ’ apostrophes; straight quotes only in instructions.txt | |
-| Date stamp | **a date and time stamp** | datetime stamp |
+| Date stamp | **datetime stamp** | date and time stamp |
 | Sentences | short and direct; no period on titles, a period on status sentences | narrating modals (UI-26) |

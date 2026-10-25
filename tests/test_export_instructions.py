@@ -28,7 +28,7 @@ HEAD = [
     "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
     "In onX, choose Import and add all of that folder's files together.",
     'Tick "Import map data to a new folder".',
-    "onX names the new folder with a date and time stamp.",
+    "onX names the new folder with a datetime stamp.",
     "Rename it to the name shown for that folder below.",
     "Importing needs onX Premium or Elite.",
 ]

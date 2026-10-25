@@ -274,15 +274,23 @@ def _unknown_icon_why(icon: str, origin: str) -> str:
             f"out unchanged; pick one from the list if onX doesn’t show it.")
 
 
+GEOJSON_FAILED = "Failed: Could not load file"
+
+
 def _read_one(path: Path, route: str, display_name: str):
     """Run one reader, turning its multi-line errors into one sentence.
 
     The XML readers' errors end with a "File: /tmp/..." line, which is what
-    web/app.js's humanError would show. parse_geojson's errors are passed
-    through untouched (their last line is already a hint for the user).
+    web/app.js's humanError would show. parse_geojson's errors all become
+    GEOJSON_FAILED, which app.js shows on its own.
     """
     if route == _ROUTE_GEOJSON:
-        return parse_geojson(path)
+        try:
+            return parse_geojson(path)
+        except ValueError:
+            # The parser's messages carry a server path and developer wording;
+            # the owner chose one plain line (2026-10-25, LABELS.md §15 #17).
+            raise ValueError(GEOJSON_FAILED) from None
     try:
         if route == _ROUTE_CALTOPO_GPX:
             return parse_caltopo_gpx(path)
@@ -1243,7 +1251,7 @@ def build_instructions(manifest, *, from_onx: bool = False) -> str:
         "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
         "In onX, choose Import and add all of that folder's files together.",
         'Tick "Import map data to a new folder".',
-        "onX names the new folder with a date and time stamp.",
+        "onX names the new folder with a datetime stamp.",
         "Rename it to the name shown for that folder below.",
         "Importing needs onX Premium or Elite.",
     ]
