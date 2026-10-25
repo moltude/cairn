@@ -263,7 +263,7 @@ Opting in to be named on WCMAC's site isn't consent to be named in someone else'
   in GPX or KML.
 - Re-importing a file probably **duplicates** rather than updates (UNKNOWN, leaning duplicate).
 - There's **no public upload API**. Markup import (`/v1/markups/import`) is internal to onX's
-  Web Map.
+  web app.
 - *"Shared Markups sync automatically to the recipient's account."* So adding markups to a
   folder that's already shared may reach existing recipients. That needs testing.
 

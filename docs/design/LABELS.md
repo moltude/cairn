@@ -380,6 +380,7 @@ The owner's answers, by topic (this table, not the numbers used in conversation,
 | Take a note as the name | **Use note as name** | Use description as name |
 | Bulk text edits (new, 2026-10-25) | **Rename…**, **Change note…**; modes **Add before**, **Add after**, **Find and replace**, **Replace the note**; fields **Find**, **Replace with**, **Text**; **Match case**; row **No change**; summary **N will change · M unchanged**; an empty result shows **Untitled** | Name can't be empty (names are optional) |
 | onX's own objects | **markup**, **onX on a computer** (where importing works), **Premium or Elite**, **Import map data to a new folder** | Web Map (owner, 2026-10-25) |
+| onX's browser app, in internal text (docs, code comments, tests) | **onX's web app** for the thing itself ("a real onX web app export", "onX's web app JavaScript"); **onX on a computer** where a person does something there | the name in the row above (owner, 2026-10-25) |
 | Errors | **Couldn't X — reason** | Failed: … |
 | Quotes | “…” around names in the app; **straight apostrophes** (') everywhere; straight quotes in instructions.txt | ’ |
 | Contractions | write **You will**, not You'll | |

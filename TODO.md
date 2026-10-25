@@ -55,7 +55,7 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
 
 * **onX phone app exports** (old roadmap P4): does the iOS app's GPX carry the `onx:`
   extensions and `<desc>` lines, or only name and location? Decides whether the round trip
-  works from a phone or only from the Web Map.
+  works from a phone or only from onX on a computer.
 * **Track times and waypoint elevation** (P7): does onX read `<time>` and `<ele>` on import?
 * **Bulk rename onX probe** (UI-39, owner-run only): import one GPX with a 300-character name, a
   513-byte note ending in a 4-byte emoji, an RTL name, two identical names, an emoji-only name, a

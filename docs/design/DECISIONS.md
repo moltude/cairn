@@ -507,7 +507,7 @@ Status: decided.
 ### ENG-05 — Areas are exported as GPX onX Area routes, not KML (2026-10-22)
 Status: decided; the holes trade-off is **provisional**.
 
-Evidence, from a real onX Web Map import on the owner's account (2026-10-22):
+Evidence, from a real onX web app import on the owner's account (2026-10-22):
 
 - **onX ignores area color and fill in KML.** Cairn's `Areas.kml` (KML `Style` with `LineStyle`
   / `PolyStyle`, plus onX-style `ExtendedData` `color` / `fill_color`) imported with onX's
@@ -547,7 +547,7 @@ Decision:
   writers. File: `<Folder>_Areas.gpx`. The KML area writer writes the same four values as
   ExtendedData (and the fill as its PolyStyle).
 - The web export (`web/bridge.py:export_zip`) uses it; no web export writes KML any more, so the
-  runbook's "contains KML, Web Map only" warning is no longer triggered. The KML area writer is
+  runbook's "contains KML" warning (computer only) is no longer triggered. The KML area writer is
   kept for its other callers and tests.
 - Area line style and weight are written and edited like a line's (UI-25). (Until 2026-10-23
   they were not, on the mistaken belief that onX's area export carried only color and fill.)
@@ -893,7 +893,7 @@ sat at the top. Now:
   folder per onX folder, in screen order, plus `instructions.txt`) with the italic hint "One
   zip, one folder inside it per onX folder". Back and Start over sit on the right.
 - **One intro line**, the owner's wording with its comma splice made a semicolon: "Import each
-  folder into onX's Web Map; onX will use a default datetime stamp for the folder name.
+  folder into onX on a computer; onX will use a default datetime stamp for the folder name.
   Importing needs onX Premium or Elite." The warnings that apply (dropped items, long notes, over
   the account limit, KML) follow it, above the boxes.
 - **One box per folder, and only:** the folder name as its heading (no counts), a **Download**
@@ -909,7 +909,7 @@ sat at the top. Now:
 - **instructions.txt** (round 4; it was RUNBOOK.md, Markdown): plain text with no Markdown
   syntax, UTF-8 without a BOM, CRLF line endings (Windows' own; every Notepad shows the lines,
   TextEdit and the rest read CRLF too; `.gitattributes` keeps the committed copies byte-exact).
-  The general steps once at the top (import each folder's files together in the Web Map, tick
+  The general steps once at the top (import each folder's files together in onX on a computer, tick
   "Import map data to a new folder", rename the date-named folder to the name shown, Premium or
   Elite needed; since 2026-10-25, a map loaded from an onX export gets four replace steps
   before them: onX imports everything as new markups, keep the export as a backup, delete the
