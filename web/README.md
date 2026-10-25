@@ -79,6 +79,7 @@ moot now except the first, which the web app sidesteps:
 - **`load_config(None)` reads `cairn_config.yaml` from the current directory**
   (`cairn/core/config.py:load_config`). In the browser that silently loaded 144 symbol mappings
   instead of 152. `bridge.py` passes an explicit path; the fallback is still open in `TODO.md`.
+- KML areas came out in a different order than the CLI's. Moot: export writes no KML now.
 - Colour edits were discarded: no writer read the override. Fixed in `bridge.py`.
 - A CalTopo export with no folders got a folder named after the temp file (`in`). Fixed.
 - Items dropped for having no coordinates could hide the account-limit warning. The check now

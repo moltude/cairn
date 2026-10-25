@@ -15,13 +15,16 @@ roadmap and the 2026-08-29 audits are archived (`git show cdd25f3:docs/<name>`).
 Small engine fixes:
 
 * **Numbered names miss their icon.** `_TOKEN_RE = r"[a-z0-9]+"` (`cairn/core/icon_resolver.py`)
-  keeps trailing digits on the word: `Camp 2` resolves to Camp, `Camp2` and `Chute1` fall back
-  to Location (checked 2026-10-25). Strip trailing digits before matching.
+  keeps trailing digits on the word: `Camp 2` resolves to Camp, `Camp2` falls back to Location
+  (checked 2026-10-25). Strip trailing digits before matching.
 * **`Camp` is defined twice** in `ICON_COLOR_MAP` and `DEFAULT_KEYWORD_MAP`
   (`cairn/core/config.py`); Python silently keeps the second. Pick one.
 * **`load_config(None)` reads `cairn_config.yaml` from the current directory**
   (`cairn/core/config.py`). The web app passes an explicit path, so it's safe today; make the
   path mandatory or drop the lookup before another caller trips on it.
+* **Dead KML warning on the export screen.** Export writes GPX only (`web/bridge.py`, areas as
+  GPX Area routes), yet `runbook_summary` still counts `kml_batches` and `web/app.js` keeps a
+  "contain a KML file" warning that can't fire. Remove both.
 * **A tag-shaped word in a note is removed.** `strip_html` keeps `a < b` now, but `<Lake>` is
   still stripped as a tag.
 * **`MultiLineString` and `GeometryCollection` are dropped at parse time**
@@ -109,6 +112,6 @@ Newest first. Details are in DECISIONS and `docs/testing/FOLDERS_RELEASE.md`.
 * "Investigate whether onX re-import can update in place": it can't (ONX_ROUND_TRIP.md).
 * "Workflow redesign" (2026-08-29): written for the TUI; the web redesign replaced it.
 * "How onX renders KML `<width>` and PolyStyle fill" and "is the KML size cap 4 MB": areas
-  export as GPX now (ENG-05).
+  export as GPX now (ENG-05), and no export file is KML.
 * "CalTopo `pattern` on areas is not carried": it is now, as the GPX Area route's `onx:style`
   (ENG-05), and the editor sets solid or dash (UI-36).
