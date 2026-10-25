@@ -62,7 +62,7 @@ ONX_ACCOUNT_MARKUP_LIMIT = 3000  # onX help 360052239052, updated 2026-09-16 (wa
 # Notes typed in onX itself can be much longer.
 ONX_IMPORT_NOTE_LIMIT = 512
 
-# onX's waypoint palette (10). Track/line adds Fuchsia -> 11. See README.md's color reference.
+# onX's waypoint palette (10). Track/line adds Fuchsia -> 11. See ColorMapper.WAYPOINT_PALETTE.
 ONX_COLORS = [
     ("Red-Orange", "rgba(255,51,0,1)", "#FF3300"),
     ("Blue", "rgba(8,122,255,1)", "#087AFF"),
@@ -75,7 +75,7 @@ ONX_COLORS = [
     ("Red", "rgba(255,0,0,1)", "#FF0000"),
     ("Brown", "rgba(139,69,19,1)", "#8B4513"),
 ]
-# Fuchsia: README.md color table row 11 / ColorMapper.TRACK_PALETTE (track-only).
+# Fuchsia: ColorMapper.TRACK_PALETTE's 11th color (track-only).
 FUCHSIA = ("Fuchsia", "rgba(255,0,255,1)", "#FF00FF")
 LINE_COLORS = ONX_COLORS + [FUCHSIA]
 _RGBA_TO_HEX = {rgba: hex_ for _n, rgba, hex_ in LINE_COLORS}

@@ -172,7 +172,7 @@ class ColorMapper:
         ),  # 11th color - track-only
     )
 
-    # Waypoint palette (official 10 colors). Table: README.md "Icon, Symbol and Color Mapping"
+    # Waypoint palette (official 10 colors). TRACK_PALETTE above adds Fuchsia (11).
     WAYPOINT_PALETTE: tuple[_PaletteColor, ...] = (
         _PaletteColor("orange", 255, 51, 0, "rgba(255,51,0,1)"),
         _PaletteColor("blue", 8, 122, 255, "rgba(8,122,255,1)"),

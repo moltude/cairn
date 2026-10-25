@@ -8,8 +8,10 @@ Instructions for AI agents working in this repo.
 engine it runs in the browser via Pyodide. The typer CLI (`cairn/cli.py`, `cairn/commands/`), the
 legacy prompt-toolkit UI (`cairn/ui/`) and the Textual TUI (`cairn/tui/`) were deleted — their
 last state is git tag `cli-final`. Do not reintroduce a terminal interface or a typer/rich/
-textual dependency. The human-facing doc is `README.md` — what/why,
-icon/color mapping tables (`TECH_DETAIILS.md` was merged into it 2026-08-30); onX quirks are in `docs/FAQ.md`.
+textual dependency. The human-facing doc is `README.md` — what it is, the how-it-works diagram
+(`docs/images/how-cairn-works.png`, drawn by `scripts/make_readme_diagram.py`) and dev setup;
+onX quirks and how-tos are in `docs/FAQ.md` and on the site. onX's color palettes live in
+`cairn/core/color_mapper.py`.
 
 ## Environment: read this first
 
@@ -208,8 +210,9 @@ anything visible, read the relevant entry.
 - Before calling UI work done, screenshot every page and state at 1440×900 and compare them side
   by side: landing, edit, the popover and dialogs, Help, export, FAQ, walkthrough. Fix any drift
   in nav, links, kickers, headings, panels or spacing. The owner shouldn't have to spot it.
-- Regenerate screenshots after a visible change: `scripts/make_walkthrough_shots.py` and
-  `scripts/make_readme_shots.py` (both take `BASE_URL`). Rebuild the FAQ page from
+- Regenerate screenshots after a visible change: `scripts/make_walkthrough_shots.py` (takes
+  `BASE_URL`). The README has no screenshots; its diagram comes from
+  `scripts/make_readme_diagram.py`. Rebuild the FAQ page from
   `docs/FAQ.md` with `scripts/build_faq_page.py` (CI-style check: `--check`).
 
 **Look and components** (tokens are `:root` custom properties in `web/styles.css`; reuse them,

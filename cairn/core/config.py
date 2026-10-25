@@ -168,7 +168,7 @@ def normalize_onx_icon_name(value: str) -> Optional[str]:
 # IMPORTANT:
 # - Waypoints support ONLY the official 10-color waypoint palette.
 # - These defaults must stay within that palette to avoid OnX ignoring colors on import.
-# - See README.md "Icon, Symbol and Color Mapping" for the canonical list.
+# - See ColorMapper.WAYPOINT_PALETTE (core/color_mapper.py) for the canonical list.
 ICON_COLOR_MAP = {
     # Official waypoint palette colors (10 total)
     "Location": "rgba(8,122,255,1)",  # Blue

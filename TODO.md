@@ -14,19 +14,10 @@ roadmap and the 2026-08-29 audits are archived (`git show cdd25f3:docs/<name>`).
 
 Small engine fixes:
 
-* **Numbered names miss their icon.** `_TOKEN_RE = r"[a-z0-9]+"` (`cairn/core/icon_resolver.py`)
-  keeps trailing digits on the word: `Camp 2` resolves to Camp, `Camp2` falls back to Location
-  (checked 2026-10-25). Strip trailing digits before matching.
-* **`Camp` is defined twice** in `ICON_COLOR_MAP` and `DEFAULT_KEYWORD_MAP`
-  (`cairn/core/config.py`); Python silently keeps the second. Pick one.
-* **`load_config(None)` reads `cairn_config.yaml` from the current directory**
-  (`cairn/core/config.py`). The web app passes an explicit path, so it's safe today; make the
-  path mandatory or drop the lookup before another caller trips on it.
-* **Dead KML warning on the export screen.** Export writes GPX only (`web/bridge.py`, areas as
-  GPX Area routes), yet `runbook_summary` still counts `kml_batches` and `web/app.js` keeps a
-  "contain a KML file" warning that can't fire. Remove both.
-* **A tag-shaped word in a note is removed.** `strip_html` keeps `a < b` now, but `<Lake>` is
-  still stripped as a tag.
+* **Raw tracebacks in the status line.** `web/app.js` shows `e.message` (a full Pyodide
+  traceback) on three error paths, where load and rename use `humanError(e)`.
+* **`save_user_mapping` defaults to `./cairn_config.yaml`** (`cairn/core/config.py`), the same
+  current-directory trap `load_config` had. The web app never calls it.
 * **`MultiLineString` and `GeometryCollection` are dropped at parse time**
   (`core/parser.py`), without counting as dropped. `MultiPolygon` is split; these aren't. No
   CalTopo export seen so far contains them.
@@ -35,10 +26,6 @@ Web app features:
 
 * **Add another map** (UI-12): load a second CalTopo map into the one open, deduped. The engine
   has `core/merge.py` / `dedup.py`; the web app doesn't call them. Today "Start over" resets.
-* **Instructions for an onX → Cairn → onX round trip.** onX imports everything as new markups
-  (ONX_ROUND_TRIP.md), so a round trip is "back up, delete the originals, then import". The FAQ
-  says so; `instructions.txt` (`web/bridge.py:build_instructions`) doesn't. Add the replace
-  steps when the input came from onX.
 * **Folder name in item names or notes**, as an export option.
 * **Load time.** Watch it; the ideas so far are running Pyodide in a Web Worker and a memory
   snapshot.
@@ -94,6 +81,12 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
 
 Newest first. Details are in DECISIONS and `docs/testing/FOLDERS_RELEASE.md`.
 
+* **2026-10-25 maintenance:** `Camp2`-style numbered names find their icon; the duplicate
+  `Camp` config entries are gone; `load_config(None)` no longer reads the current directory; the
+  dead KML warning is removed; `<Lake>` survives in notes; `instructions.txt` gives onX-sourced
+  maps the delete-then-import steps, and the FAQ now says delete first; error and long-note
+  wording made consistent; `web/serve.py` takes `PORT`. Docs: one backlog here, expired docs
+  archived, `docs/DEPLOY.md`, a trimmed README with a how-it-works diagram.
 * **PR #45 (2026-10-24):** keyed in-place rendering of the rail and folder list; icon keywords
   read the name before the note and a tie goes to the later word, "AS" reads as aid station
   (ENG-08); AGENTS.md style guide.

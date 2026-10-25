@@ -207,11 +207,11 @@ This is optional, and it takes some effort. onX's web map has no bulk editing, s
 2. Drop both files into Cairn together. They become one folder. Icons, colors, line style and weight, and notes arrive as they are in onX.
 3. Edit. Icon, color, line style and weight can be changed for many rows at once. Names and notes are edited one item at a time.
 4. Export from Cairn.
-5. Import the files into onX, following the export screen (or `instructions.txt`).
-6. Delete the originals in onX yourself.
+5. In onX, delete the originals: the markups first, then their folder.
+6. Import the files into onX, following the export screen (or `instructions.txt`).
 
 Things to know:
-- **onX imports everything as new markups.** It ignores the ids in the file, so it can't update the originals in place. Until you delete the originals you have every markup twice, and the copies count against the 3,000-markup limit.
+- **onX imports everything as new markups.** It ignores the ids in the file, so it can't update the originals in place. Deleting them first means you never have to tell originals from copies, and keeps you under the 3,000-markup limit.
 - **Deleting a folder in onX does not delete the markups inside it.** Delete the markups, then the folder.
 - **Keep your onX export as a backup.** Anything onX keeps outside the file (photos, shares) goes with the originals.
 - **Long notes are cut.** onX keeps the first 512 bytes of a note. Plain English is one byte per letter; accents and dashes take two or three. Cairn warns about notes that are too long.
