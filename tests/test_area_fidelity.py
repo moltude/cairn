@@ -36,7 +36,7 @@ NS = {"g": "http://www.topografix.com/GPX/1/1", "onx": "https://wwww.onxmaps.com
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 PROPS = ("color", "style", "weight", "fill_color")
 
-# The four areas exactly as onX exported them (and as the Web Map shows them).
+# The four areas exactly as onX exported them (and as onX's web app shows them).
 BEFORE = {
     "temp": ("rgba(255,255,0,1)", "solid", "2.0", "rgba(232,118,255,0.1)"),
     "Area 10/23/26 10:09": ("rgba(255,51,0,1)", "solid", "4.0", "rgba(238,255,125,0.1)"),

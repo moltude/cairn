@@ -1,4 +1,4 @@
-"""Real onX Web Map exports (tests/fixtures/onx_real/) load faithfully.
+"""Real onX web app exports (tests/fixtures/onx_real/) load faithfully.
 
 Until 2026-10-22 every onX-reader test ran on synthetic files. These two are
 real: their icons, colors (written by onX with spaces), notes and ids must

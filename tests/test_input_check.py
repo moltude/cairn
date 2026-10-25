@@ -84,7 +84,7 @@ EXPECTED = {
     "caltopo-random/onx-test-random.json": (GEOJSON, CALTOPO),   # REAL CalTopo export, styled
     "caltopo-random/onx-test-random.gpx": (GPX, CALTOPO),
     "caltopo-random/onx-test-random.kml": (KML, CALTOPO),
-    # REAL onX Web Map export (2026-10-22) of Cairn's from_geojson output after import (ENG-05)
+    # REAL onX web app export (2026-10-22) of Cairn's from_geojson output after import (ENG-05)
     "caltopo-random/onx_roundtrip/from_geojson/onx_export.gpx": (GPX, ONX),
     "caltopo-random/onx_roundtrip/from_geojson/onx_export.kml": (KML, ONX),
     "caltopo-random/cairn_output/from_geojson/instructions.txt": (UNKNOWN, NOT_A_MAP),
@@ -132,8 +132,8 @@ EXPECTED = {
     "onx_real/onx_web_line_solid.gpx": (GPX, ONX),   # REAL onX export, 2026-10-22
     "onx_real/onx_web_line_solid.kml": (KML, ONX),   # REAL onX export, 2026-10-22
     "onx_real/README.md": (UNKNOWN, NOT_A_MAP),
-    "onx_real/onx_web_export_2_waypoints.gpx": (GPX, ONX),   # REAL onX Web Map export, 2026-10-22
-    "onx_real/onx_web_export_2_waypoints.kml": (KML, ONX),   # REAL onX Web Map export, 2026-10-22
+    "onx_real/onx_web_export_2_waypoints.gpx": (GPX, ONX),   # REAL onX web app export, 2026-10-22
+    "onx_real/onx_web_export_2_waypoints.kml": (KML, ONX),   # REAL onX web app export, 2026-10-22
     "onx_dialect/onx_dialect.gpx": (GPX, ONX),            # synthetic, modelled on onX's export code
     "onx_dialect/onx_dialect.kml": (KML, ONX),
     "onx_exports/README.md": (UNKNOWN, NOT_A_MAP),
