@@ -9,6 +9,8 @@ Usage (from the repo root, dev server up; see scripts/qa/README.md):
   uv run python scripts/qa/fuzz_ui.py --seeds 1-10 --actions 200
   uv run python scripts/qa/fuzz_ui.py --replay archive/qa-fuzz/runs/<file>.json
   uv run python scripts/qa/fuzz_ui.py --seeds 7 --shrink
+  # Bulk rename and note change: 3 seeds on each of 4 maps.
+  uv run python scripts/qa/fuzz_ui.py --maps bitterroots,hostile,twins,big1500 --seeds 1,2,3 --n 300 --every-map
 
 Generated maps and run records go to archive/qa-fuzz/ (gitignored; --out or
 CAIRN_QA_OUT to change it). Nothing under tests/ may import this file.
@@ -34,6 +36,7 @@ import zipfile
 from pathlib import Path
 
 from playwright.sync_api import Error as PWError
+from playwright.sync_api import TimeoutError as PWTimeout
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -50,6 +53,17 @@ set_out(os.environ.get("CAIRN_QA_OUT") or ROOT / "archive/qa-fuzz")
 sys.path.insert(0, str(ROOT / "tests"))
 from hardening_maps import make_map  # noqa: E402
 
+try:   # the naughty strings of the bulk rename tests (tests/naughty_strings.py)
+    from naughty_strings import NAUGHTY_TEXTS  # noqa: E402
+except ImportError:   # a checkout without them: a few of the same kinds
+    NAUGHTY_TEXTS = [
+        "", " ", "\t", "\n\r\n", " ", "  Camp  ", "Camp\tA", "line1\r\nline2",
+        "a\x00b", "\x01\x02Camp\x1f", "a￾b￿", "a\x85b", "Camp​A", "Ca﻿mp",
+        "a‮b", "日本語の山", "مجلد عربي", "👨‍👩‍👧", "🇺🇸", "é",
+        "$&$1$$$`$'", "back\\slash", ".*+?^$()[]{}|", "]]> & < > \" '", "<b>&amp;</b>",
+        "İstanbul", "Straße", "Οδυσσεύς", "Untitled", "x" * 300,
+    ]
+
 BASE = os.environ.get("BASE_URL", "http://127.0.0.1:8765/").rstrip("/") + "/"
 FX = ROOT / "tests/fixtures"
 
@@ -63,6 +77,8 @@ def build_maps() -> dict:
         "twins": make_map(12, seed=3, per=(1, 5), names=[
             "Camp", "camp", "CAMP", " Camp ", "A/B", "A_B", "Peak 🏔️", "日本語",
             "New folder", "new folder 2", "Unorganized", "x" * 150]),
+        # Bulk rename: 1,500 items in 10 folders.
+        "big1500": make_map(10, per=(150, 150)),
     }
     maps = {}
     for k, text in gen.items():
@@ -100,6 +116,30 @@ SNAP_JS = r"""
   out.rename = RENAME ? {key: RENAME.key, where: RENAME.where} : null;
   out.move = !!MOVE; out.pop = !!POP; out.bulk = !!BULK; out.confirm = !!CONFIRM;
   out.note = NOTE_EDIT ? NOTE_EDIT.uid : null;
+  // Bulk rename and note change (UI-39): the text mode of the bulk dialog.
+  out.bulkKind = BULK && BULK.text ? BULK.text.field : null;
+  out.previewPending = !!(BULK && BULK.text && BULK.text.timer);
+  const apply = document.querySelector('#bulk-apply');
+  out.saveDisabled = apply ? apply.disabled : null;
+  const cell = c => !c ? null : c.classList.contains('is-placeholder') ? '' : c.textContent;
+  out.naRows = [...document.querySelectorAll('#mark-dialog .na-row')].map(r => ({
+     uid: r.dataset.uid, flags: r.dataset.flags,
+     before: cell(r.querySelector('.na-before')), after: cell(r.querySelector('.na-after')),
+     placeholder: [...r.querySelectorAll('.na-before, .na-after')].some(c => c.classList.contains('is-placeholder')),
+     afterPlaceholder: !!r.querySelector('.na-after.is-placeholder')}));
+  const md = document.querySelector('#mark-dialog');
+  out.previewSeq = md && md.dataset.previewSeq != null ? Number(md.dataset.previewSeq) : null;
+  out.summary = (document.querySelector('#bulk-summary') || {}).textContent ?? null;
+  out.bulkTitle = BULK && BULK.text ? (md.querySelector('h2') || {}).textContent ?? null : null;
+  out.edits = EDITS;
+  out.names = {};
+  DATA.groups.forEach(g => g.items.forEach(i => { out.names[i.uid] = i.name; }));
+  // A name or note holding a character XML 1.0 forbids, that Cairn itself
+  // changed (a value loaded that way and never touched is the writer's to drop).
+  const xs = window.CairnRename ? CairnRename.xmlSafe : null;
+  out.xmlBad = !xs ? [] : DATA.groups.flatMap(g => g.items).flatMap(i => ['name', 'desc']
+     .filter(k => EDITS[i.uid] && k in EDITS[i.uid] && typeof i[k] === 'string' && xs(i[k]) !== i[k])
+     .map(k => i.uid + ' ' + k));
   const vis = s => { const e = document.querySelector(s); return !!e && !e.classList.contains('hidden'); };
   out.vis = {confirm: vis('#confirm'), move: vis('#move-pop'), pop: vis('#mark-pop'),
              bulk: vis('#mark-modal'), menu: vis('#more-menu'), help: vis('#help')};
@@ -131,6 +171,13 @@ SNAP_JS = r"""
   const a = document.activeElement;
   out.focus = a === document.body ? 'BODY' : (a ? (a.id || a.dataset?.fk || a.className || a.tagName) : null);
   out.selcount = document.querySelector('#selcount').textContent;
+  // N1 (2026-10-25): the items Export would ask to name, and the rows marked
+  // "Needs a name to export." (a blank name is legal while editing).
+  out.needsName = typeof needsName === 'function'
+    ? DATA.groups.flatMap(g => g.items).filter(needsName).map(i => i.uid) : null;
+  out.nameMarks = [...document.querySelectorAll('#folders tr[data-uid] .name-caution')]
+    .filter(e => e.getAttribute('aria-label') === 'Needs a name to export.').map(e => e.closest('tr').dataset.uid);
+  out.renderedRows = [...document.querySelectorAll('#folders tr[data-uid]')].map(r => r.dataset.uid);
   return out;
 }
 """
@@ -144,6 +191,31 @@ class Violation(Exception):
     def __init__(self, sig, detail):
         super().__init__(f"{sig}: {detail}")
         self.sig, self.detail = sig, detail
+
+
+# Bulk rename and note change (UI-39).
+# name-over-limit and name-empty: the dialog's name flags (UI-40).
+BULK_FLAGS = {"unchanged", "note-over-limit", "chars-removed", "name-over-limit", "name-empty"}
+NAME_THEM = "Name them Untitled"
+NAME_IT = "Name it Untitled"          # the same button when one item is blank
+NEEDS_NAME = "Needs a name to export."
+BULK_PREVIEW_ROWS = 200
+BULK_NAME_TEXT = ["x ", " x", "Base ", " 2", "⟦", "zz ", "1", "Camp", "Campsite", "Trip 3", "-", "  "]
+BULK_NOTE_TEXT = ["see north", "line1\nline2", "\n", "\n\n  \n", "日" * 200, "a" * 600, "x" * 511,
+                  "🔥" * 130, "see <b>north</b> of <Lake>", "Water: 2 L\r\nCamp: yes"]
+
+
+# Is the focused element the page's last tabbable control (a Tab from it leaves the page)?
+LAST_TABBABLE_JS = """() => { const t = [...document.querySelectorAll(
+    'a[href], button, input, select, textarea, [tabindex]')].filter(e => !e.disabled && e.tabIndex >= 0
+    && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+  return t.length > 0 && t[t.length - 1] === document.activeElement; }"""
+
+
+def bulk_count(title):
+    """N from the dialog's title ("Rename 1,500 items", "Change the note on 1 item")."""
+    m = re.search(r" ([\d,]+) items?$", title or "")
+    return int(m.group(1).replace(",", "")) if m else None
 
 
 # --------------------------------------------------------------------------- session
@@ -345,7 +417,55 @@ class Session:
         sc = f"{len(s['sel'])} selected"
         if s["selcount"] != sc:
             raise Violation("selcount_stale", f"{s['selcount']} vs {sc} after {label}")
+        # 10. bulk rename and note change (UI-39).
+        #     Names are optional and twins are legal: an empty or duplicate item
+        #     name is never a Violation. The modal is in step with BULK by check 7.
+        bad = [u for u, it in s["items"].items() if not isinstance(it["name"], str)]
+        if bad:
+            raise Violation("item_name_not_string", f"{bad[:3]} after {label}")
+        if s["xmlBad"]:
+            raise Violation("xml_forbidden_char_stored", f"{s['xmlBad'][:3]} after {label}")
+        # 11. A name is needed to export (UI-40): a blank name is legal while
+        #     editing, and its row says it needs one: exactly the rendered rows
+        #     Export would ask about.
+        if s["needsName"] is not None:
+            rendered = set(s["renderedRows"])
+            want = sorted(u for u in s["needsName"] if u in rendered)
+            if sorted(s["nameMarks"]) != want:
+                raise Violation("needs_name_marks", f"marked {sorted(s['nameMarks'])[:4]} vs {want[:4]} after {label}")
+        if s["bulkKind"] and not s["previewPending"]:
+            self.check_preview(s, label)
         return s
+
+    def check_preview(self, s, label):
+        """The bulk text dialog's list as it stands (no render pending)."""
+        rows = s["naRows"]
+        total = bulk_count(s["bulkTitle"])
+        if total is None:
+            raise Violation("bulk_title", f"{s['bulkTitle']!r} after {label}")
+        flags = [set(r["flags"].split()) for r in rows]
+        odd = sorted({x for f in flags for x in f} - BULK_FLAGS)
+        if odd:
+            raise Violation("bulk_flag_unknown", f"{odd} after {label}")
+        m = re.fullmatch(r"([\d,]+) will change · ([\d,]+) unchanged", s["summary"] or "")
+        if not m:
+            raise Violation("bulk_summary_text", f"{s['summary']!r} after {label}")
+        n, k = (int(x.replace(",", "")) for x in m.groups())
+        if n + k != total:
+            raise Violation("bulk_summary_total", f"{s['summary']!r} vs {total} rows after {label}")
+        # No result blocks Save (UI-39): it is off exactly when nothing changes.
+        same = [("unchanged" in f) for f in flags]
+        if s["saveDisabled"] != all(same) or s["saveDisabled"] != (n == 0):
+            raise Violation("bulk_save_state", f"Save disabled={s['saveDisabled']}, {s['summary']!r}, "
+                            f"{same.count(False)} changed rows shown after {label}")
+        # Changed rows first, at most 200 rows (UI-39).
+        if len(rows) != min(total, BULK_PREVIEW_ROWS):
+            raise Violation("bulk_preview_rows", f"{len(rows)} rows for {total} after {label}")
+        if same != [i >= min(n, len(rows)) for i in range(len(rows))]:
+            raise Violation("bulk_preview_order", f"{n} change, unchanged at {[i for i, x in enumerate(same) if x][:5]} "
+                            f"after {label}")
+        if s["bulkKind"] == "desc" and any(r["placeholder"] for r in rows):
+            raise Violation("bulk_note_placeholder", f"a note cell shows a placeholder after {label}")
 
     # ---- helpers
     def rows(self):
@@ -378,7 +498,10 @@ class Session:
             p.keyboard.insert_text(name) if rng.random() < 0.5 else p.keyboard.type(name, delay=0)
 
     def finish_field(self, rng):
-        """Leave a focused folder-name field: Enter, Esc, Tab or a click away."""
+        """Leave a focused folder-name field: Enter, Esc, Tab or a click away.
+        "Tab-out" is a Tab from the page's last tabbable control (an empty last
+        folder's name, say): focus leaves the page, as in any browser, so the
+        focus check doesn't apply."""
         p = self.page
         r = rng.random()
         if r < 0.5:
@@ -386,7 +509,8 @@ class Session:
         elif r < 0.65:
             p.keyboard.press("Escape"); how = "Escape"
         elif r < 0.8:
-            p.keyboard.press("Tab"); how = "Tab"
+            last = p.evaluate(LAST_TABBABLE_JS)
+            p.keyboard.press("Tab"); how = "Tab-out" if last else "Tab"
         else:
             p.mouse.click(700, 60); how = "click-away"
         self.settle()
@@ -605,7 +729,7 @@ class Session:
             st = self.snap()
             if st["confirm"]:
                 named += ("confirm:" + self.answer_confirm(rng),)
-        return ("move_to", keys, fin, target, named), named is None or named[1] != "click-away"
+        return ("move_to", keys, fin, target, named), named is None or named[1] not in ("click-away", "Tab-out")
 
     def a_filter_type(self, rng, s):
         btns = self.page.locator("#type-filter [data-kind]:visible")
@@ -979,7 +1103,7 @@ class Session:
                 named += ("confirm:" + self.answer_confirm(rng),)
         elif not st["rename"]:
             raise Violation("new_folder_not_named", f"{how} with {sel} ticked: no name box opened")
-        return ("click_new_folder", how, sel, named), named is not None and named[1] != "click-away"
+        return ("click_new_folder", how, sel, named), named is not None and named[1] not in ("click-away", "Tab-out")
 
     def a_remove_empty_folder(self, rng, s):
         """The x beside an empty folder in the rail, by mouse or keyboard."""
@@ -1090,24 +1214,321 @@ class Session:
             raise Violation("hover_tip_stuck", f"{u}: still up after the pointer left")
         return ("hover", u, bool(st["want"]), how), False
 
+    # ---- bulk rename and note change (UI-39)
+    def a_bulk_rename(self, rng, s):
+        return self.text_bulk(rng, s, "name")
+
+    def a_bulk_note(self, rng, s):
+        return self.text_bulk(rng, s, "desc")
+
+    def a_bulk_rename_hostile(self, rng, s):
+        """Blank-producing finds, empty Find + text (twins on purpose), empty
+        Find + whitespace (blank names on purpose), $-patterns, control chars."""
+        return self.text_bulk(rng, s, "name", hostile=True)
+
+    def bulk_spec(self, rng, s0, field, hostile):
+        """(case, mode, {field selector: text}, match case)."""
+        vals = [s0["items"][u][field] for u in s0["sel"] if u in s0["items"]]
+        if hostile:
+            case = rng.choice(["blank_find", "whole_value", "whole_blank", "dollar", "control"])
+            whole = rng.choice([v for v in vals if v.strip()] or ["WP"])
+            if case == "blank_find":
+                return case, "replace", {"#bulk-find": whole, "#bulk-repl": ""}, rng.random() < 0.5
+            if case == "whole_value":
+                return case, "replace", {"#bulk-find": "", "#bulk-repl": rng.choice(["Campsite", "Camp", whole])}, \
+                    rng.random() < 0.5
+            if case == "whole_blank":
+                return case, "replace", {"#bulk-find": "", "#bulk-repl": rng.choice(["  ", " \t ", " ", "　"])}, False
+            if case == "dollar":
+                ch = rng.choice([c for v in vals for c in v if not c.isspace()] or ["W"])
+                return case, "replace", {"#bulk-find": ch, "#bulk-repl": "$&$1$$$`$'"}, rng.random() < 0.5
+            return case, rng.choice(["prefix", "suffix"]), \
+                {"#bulk-text": rng.choice(["\x01\x00ab\x1f", "a￾b", "\x0b\x0cX", "x\x08"])}, False
+        mode = rng.choice(["prefix", "suffix", "replace"] + (["set"] if field == "desc" else []))
+        pool = NAUGHTY_TEXTS + (BULK_NAME_TEXT if field == "name" else BULK_NOTE_TEXT) * 2
+        if mode != "replace":
+            return "random", mode, {"#bulk-text": rng.choice(pool)}, False
+        r = rng.random()
+        words = [w for v in vals for w in re.findall(r"\w+", v)]
+        if r < 0.35 and words:
+            # Find matches whole words only (UI-39): a word of a ticked value
+            # still finds something; a slice mid-word now rarely does.
+            find = rng.choice(words)
+        elif r < 0.6 and any(vals):
+            v = rng.choice([v for v in vals if v]); a = rng.randrange(len(v)); find = v[a:a + rng.randint(1, 5)]
+        elif r < 0.75:
+            find = ""
+        else:
+            find = rng.choice(pool)
+        return "random", mode, {"#bulk-find": find, "#bulk-repl": rng.choice(pool)}, rng.random() < 0.3
+
+    def bulk_seq(self):
+        return self.page.evaluate("() => Number(document.querySelector('#mark-dialog').dataset.previewSeq)")
+
+    def bulk_settled(self):
+        """No list render pending (the list follows typing ~60 ms later)."""
+        self.page.wait_for_function("() => !BULK || !BULK.text || !BULK.text.timer", timeout=3000)
+
+    def bulk_type(self, rng, sel, value):
+        """Type value into a field of the dialog; its list must follow."""
+        p = self.page
+        loc = p.locator(sel)
+        if not loc.count():
+            raise Violation("bulk_field_missing", f"{sel} in {self.snap()['bulkTitle']!r}")
+        old = loc.input_value()
+        if old == value:
+            return
+        seq = self.bulk_seq()
+        plain = value.isascii() and value.isprintable() and len(value) < 40
+        if plain and rng.random() < 0.3:
+            loc.fill(""); loc.press_sequentially(value, delay=rng.choice([0, 20]))
+        else:
+            loc.fill(value)
+        if loc.input_value() != old:
+            try:
+                p.wait_for_function("n => Number(document.querySelector('#mark-dialog').dataset.previewSeq) > n",
+                                    arg=seq, timeout=3000)
+            except PWTimeout:
+                raise Violation("bulk_preview_stale", f"no new list 3 s after typing into {sel}")
+        self.bulk_settled()
+
+    def text_bulk(self, rng, s, field, hostile=False):
+        p = self.page
+        if not p.locator("#bulk-rename").count():
+            return ("bulk_rename", "not built"), False
+        kind = "bulk_rename_hostile" if hostile else "bulk_rename" if field == "name" else "bulk_note"
+        # The selection: the one there, or some ticked rows, or every row shown.
+        if not s["sel"] or rng.random() < 0.3:
+            if rng.random() < 0.3:
+                self.a_select_all(rng, s)
+            else:
+                uids = self.visible_uids()
+                for u in rng.sample(uids, min(len(uids), rng.randint(1, 6))):
+                    box = p.locator(f'tr[data-uid="{u}"] .sel-box'); box.scroll_into_view_if_needed(); box.click()
+                self.settle()
+        more = p.locator("#more-btn")
+        if more.is_disabled():   # e.g. a search or a folder filter shows no row
+            return (kind, "no sel", f"{len(self.visible_uids())} rows shown"), False
+        item = p.locator("#bulk-rename" if field == "name" else "#bulk-note")
+        more.click()
+        if rng.random() < 0.3:
+            item.focus(); p.keyboard.press("Enter"); opened = "kb"
+        else:
+            item.click(); opened = "click"
+        self.settle()
+        s0 = self.snap()
+        asked = None
+        if s0["confirm"]:   # "Save your note?": a changed note open on a ticked row (UI-39)
+            asked = self.answer_confirm(rng)
+            s0 = self.snap()
+        if s0["bulkKind"] != field:
+            return (kind, opened, "not opened", asked), False
+        # Opens on Add before with nothing typed: no change, Save off (UI-39).
+        total = bulk_count(s0["bulkTitle"])
+        if total != len(s0["sel"]):
+            raise Violation("bulk_title_count", f"{s0['bulkTitle']!r} with {len(s0['sel'])} ticked")
+        togs = p.evaluate("() => [...document.querySelectorAll('#mark-dialog .mode-tog')]"
+                          ".map(b => [b.dataset.mode, b.getAttribute('aria-pressed')])")
+        want = ["prefix", "suffix", "replace"] + (["set"] if field == "desc" else [])
+        if togs != [[m, "true" if m == "prefix" else "false"] for m in want]:
+            raise Violation("bulk_open_state", f"mode toggles {togs}")
+        if not s0["saveDisabled"] or not (s0["summary"] or "").startswith("0 will change"):
+            raise Violation("bulk_open_state", f"Save disabled={s0['saveDisabled']} {s0['summary']!r}")
+        self.check_preview(s0, f"open {kind}")
+        # The spec, typed as a person would.
+        case, mode, fields, match_case = self.bulk_spec(rng, s0, field, hostile)
+        if mode != "prefix":
+            seq = self.bulk_seq()
+            p.click(f'#mark-dialog .mode-tog[data-mode="{mode}"]')
+            if self.bulk_seq() <= seq:
+                raise Violation("bulk_preview_stale", f"no new list after choosing {mode}")
+        for sel, value in fields.items():
+            self.bulk_type(rng, sel, value)
+        if match_case:
+            seq = self.bulk_seq()
+            p.click("#bulk-match-case")
+            if self.bulk_seq() <= seq or p.get_attribute("#bulk-match-case", "aria-pressed") != "true":
+                raise Violation("bulk_match_case", "Match case did not turn on and redraw the list")
+        s1 = self.snap()
+        self.check_preview(s1, f"{kind} {mode}")
+        n = int(re.match(r"[\d,]+", s1["summary"]).group().replace(",", ""))
+        self.bulk_expect(case, mode, field, s1, n)
+        spec = (mode, {k[6:]: v[:24] for k, v in fields.items()}, "case" if match_case else "")
+        # Finish: Save (button, or the field's Enter), Esc or a click on the backdrop.
+        r = rng.random()
+        fin = "save" if r < (0.85 if hostile else 0.7) else "escape" if r < 0.93 else "backdrop"
+        if fin == "save":
+            if rng.random() < 0.4:
+                f = p.locator("#mark-dialog .text-fields input, #mark-dialog .text-fields textarea")
+                f.nth(rng.randrange(f.count())).focus()
+                p.keyboard.press("Enter" if field == "name" else "ControlOrMeta+Enter"); fin = "save-key"
+            else:
+                p.locator("#bulk-apply").click(force=n == 0)   # a disabled Save takes no click
+        elif fin == "escape":
+            p.keyboard.press("Escape")
+        else:
+            p.locator("#mark-modal").click(position={"x": 8, "y": 450})
+        self.settle()
+        s2 = self.snap()
+        if fin.startswith("save") and n == 0:
+            # Nothing to save: nothing saved, the dialog stays; then Esc.
+            self.bulk_expect_untouched(s0, s2, f"{kind} {fin} with nothing to change")
+            if s2["bulkKind"] != field:
+                return (kind, opened, case, spec, fin, "closed with 0", total), True
+            p.keyboard.press("Escape"); self.settle(); s2 = self.snap(); fin += "-noop+escape"
+        if not fin.startswith("save") or n == 0:
+            if s2["bulkKind"] or s2["vis"]["bulk"]:
+                raise Violation("bulk_cancel_did_not_close", f"{fin}: {s2['bulkTitle']!r}")
+            self.bulk_expect_untouched(s0, s2, f"{kind} {fin}")
+            return (kind, opened, case, spec, fin, n, total), True
+        self.bulk_expect_saved(s0, s1, s2, field, n, total, f"{kind} {fin}")
+        return (kind, opened, case, spec, fin, n, total), True
+
+    def bulk_expect(self, case, mode, field, s1, n):
+        """What the spec promises, from the fields as typed (a control character
+        or a line break may not survive the field)."""
+        v = self.page.evaluate("""() => { const v = id => (document.getElementById(id) || {}).value ?? null;
+            const t = v('bulk-text'), r = v('bulk-repl'), f = v('bulk-find');
+            const clean = BULK.text.field === 'name' ? CairnRename.cleanName : CairnRename.cleanNote;
+            return {find: f, repl: r, textDirty: t !== null && CairnRename.xmlSafe(t) !== t,
+                    cleanRepl: r === null ? null : clean(r)}; }""")
+        changed = [r for r in s1["naRows"] if "unchanged" not in r["flags"].split()]
+        same = [r for r in s1["naRows"] if "unchanged" in r["flags"].split()]
+        if mode in ("prefix", "suffix") and v["textDirty"]:
+            bad = [r["uid"] for r in changed if "chars-removed" not in r["flags"].split()]
+            if bad:
+                raise Violation("bulk_chars_removed_missing", f"{len(bad)} rows, e.g. {bad[:3]}")
+        if mode == "replace" and v["find"] == "":
+            if v["repl"] == "" and n:
+                raise Violation("bulk_empty_find_and_replace", f"{n} rows change with Find and Replace with empty")
+            bad = [r["uid"] for r in changed if r["after"] != v["cleanRepl"]]
+            if field == "name":   # a row already equal to Replace with is "No change"
+                bad += [r["uid"] for r in same if v["repl"] and r["before"] != v["cleanRepl"]]
+            if bad:
+                raise Violation("bulk_whole_value", f"Find '' + {v['repl'][:20]!r}: {len(bad)} rows, e.g. {bad[:3]}")
+            if field == "name" and v["cleanRepl"] == "":
+                bad = [r["uid"] for r in changed if not r["afterPlaceholder"]]
+                if bad:
+                    raise Violation("bulk_blank_not_untitled", f"{len(bad)} blank rows without the placeholder")
+        if case == "dollar" and v["repl"]:
+            bad = [r["uid"] for r in changed if v["repl"] not in r["after"]]
+            if bad:
+                raise Violation("bulk_dollar_pattern", f"{v['repl']!r} not literal in {len(bad)} rows, e.g. {bad[:3]}")
+
+    @staticmethod
+    def bulk_expect_untouched(s0, s2, label):
+        diff = [u for u, it in s2["items"].items()
+                if (it["name"], it["desc"]) != (s0["items"][u]["name"], s0["items"][u]["desc"])]
+        if diff or s2["edits"] != s0["edits"]:
+            raise Violation("bulk_changed_without_save", f"{len(diff)} items, e.g. {diff[:3]} after {label}")
+
+    @staticmethod
+    def bulk_expect_saved(s0, s1, s2, field, n, total, label):
+        if s2["bulkKind"] or s2["vis"]["bulk"]:
+            raise Violation("bulk_save_did_not_close", f"{n} to change, {s2['summary']!r} after {label}")
+        st = s2["status"]["text"]
+        m = re.fullmatch(r"Changed ([\d,]+) (items?)\.", st)
+        if not m:
+            raise Violation("bulk_status", f"{st!r} after {label}")
+        got = int(m.group(1).replace(",", ""))
+        if got != n or got > total or (m.group(2) == "item") != (got == 1):
+            raise Violation("bulk_status", f"{st!r} for {n} changing of {total} after {label}")
+        # Each row the list showed is stored as it showed it: an "Untitled"
+        # placeholder as "" (UI-39), a "No change" row as it was.
+        for r in s1["naRows"]:
+            now, was = s2["items"][r["uid"]][field], s0["items"][r["uid"]][field]
+            if "unchanged" in r["flags"].split():
+                if now != was:
+                    raise Violation("bulk_unchanged_row_changed", f"{r['uid']}: {was[:40]!r} -> {now[:40]!r} after {label}")
+            elif now != r["after"]:
+                raise Violation("bulk_preview_ne_stored", f"{r['uid']}: list {r['after'][:40]!r}, "
+                                f"stored {now[:40]!r} after {label}")
+            if r["afterPlaceholder"] and s2["names"][r["uid"]] != "":
+                raise Violation("bulk_placeholder_stored", f"{r['uid']}: {s2['names'][r['uid']]!r} after {label}")
+        # And nothing else: exactly n items differ, every one of them ticked,
+        # the other field untouched.
+        diff = [u for u, it in s2["items"].items() if it[field] != s0["items"][u][field]]
+        other = "desc" if field == "name" else "name"
+        if len(diff) != n or not set(diff) <= set(s0["sel"]) or \
+                any(it[other] != s0["items"][u][other] for u, it in s2["items"].items()):
+            raise Violation("bulk_changed_set", f"{len(diff)} items differ for {n} changed after {label}")
+
     def a_export(self, rng, s):
         return self.export_and_verify(rng, s), False
 
     # ---- export verification
+    def names_confirm_open(self):
+        p = self.page
+        return p.locator("#confirm").is_visible() and bool(re.fullmatch(
+            r"(1 item needs|[\d,]+ items need) a name", p.locator("#confirm-title").inner_text().strip()))
+
+    def answer_names(self, rng):
+        """The "N items need a name" confirm (UI-40): check it, then Cancel (by the
+        button, Esc or Enter, its default) or Name them Untitled, and check what
+        each did. Returns what was pressed, for the trail."""
+        p = self.page
+        s0 = self.snap()
+        blank = s0["needsName"] or []
+        n = len(blank)
+        title = p.locator("#confirm-title").inner_text().strip()
+        want = "1 item needs a name" if n == 1 else f"{n:,} items need a name"
+        if not n or title != want:
+            raise Violation("names_confirm_title", f"{title!r} with {n} blank-named items")
+        labels = p.locator("#confirm-actions button").all_inner_texts()
+        if labels != ["Cancel", NAME_IT if n == 1 else NAME_THEM]:
+            raise Violation("names_confirm_buttons", f"{labels}")
+        r = rng.random()
+        if r < 0.45:
+            how = "Cancel" if r < 0.25 else "Escape" if r < 0.35 else "Enter(default)"
+            if how == "Cancel":
+                p.locator("#confirm-actions button").nth(0).click()
+            else:
+                p.keyboard.press(how.split("(")[0])
+            self.settle()
+            s1 = self.snap()
+            status = "1 item needs a name." if n == 1 else f"{n:,} items need a name."
+            if s1["confirm"] or s1["stage"] != "edit":
+                raise Violation("names_cancel", f"confirm={s1['confirm']} stage={s1['stage']} after {how}")
+            if s1["status"]["text"] != status:
+                raise Violation("names_cancel_status", f"{s1['status']['text']!r} vs {status!r}")
+            focused = p.evaluate("() => { const a = document.activeElement;"
+                                 " return a && a.classList.contains('name-in') ? a.closest('tr').dataset.uid : null; }")
+            if focused not in blank:
+                raise Violation("names_cancel_focus", f"focus on {s1['focus']!r}, not a blank name")
+            if s1["names"] != s0["names"]:
+                raise Violation("names_cancel_renamed", "Cancel changed a name")
+        else:
+            how = NAME_THEM                  # recorded as one label whatever the count
+            p.locator("#confirm-actions button").nth(1).click()
+            self.settle()
+            names = p.evaluate("uids => uids.map(u => allItems().find(i => i.uid === u).name)", blank)
+            if names != ["Untitled"] * n:
+                raise Violation("names_not_untitled", f"{names[:3]}")
+        return how
+
     def export_and_verify(self, rng, s):
         p = self.page
         included = [u for u, it in s["items"].items() if it["included"]]
         p.click("#export"); self.settle(50)
+        trail = []
+        # Up to two confirms in turn: "Save your note?", then "N items need a
+        # name" (UI-40). The pick at each is recorded in the trail.
+        for _ in range(3):
+            if not self.snap()["confirm"]:
+                break
+            if self.names_confirm_open():
+                trail.append("names:" + self.answer_names(rng))
+            else:
+                trail.append("confirm:" + self.answer_confirm(rng))
         st = self.snap()
-        if st["confirm"]:   # unsaved note prompt
-            self.answer_confirm(rng)
-            st = self.snap()
         if st["stage"] != "done":
             if not included and "excluded" in st["status"]["text"]:
-                return ("export", "all excluded")
+                return ("export", "all excluded", *trail)
+            if trail and trail[-1].startswith("names:") and trail[-1] != "names:" + NAME_THEM:
+                return ("export", "stayed (names cancel)", *trail)
             if st.get("note") or st["confirm"]:
-                return ("export", "stayed (note cancel)")
-            raise Violation("export_did_not_finish", f"{st['status']} included={len(included)}")
+                return ("export", "stayed (note cancel)", *trail)
+            raise Violation("export_did_not_finish", f"{st['status']} included={len(included)} {trail}")
         self.exports += 1
         # Round 3: an export writes every change so far, so Start over has none to count.
         left = p.evaluate("unexportedChanges()")
@@ -1116,7 +1537,7 @@ class Session:
         res = self.verify_export(rng)
         p.wait_for_timeout(300)
         p.click("#back"); self.settle()
-        return ("export", res)
+        return ("export", res, *trail)
 
     def verify_export(self, rng):
         p = self.page
@@ -1201,6 +1622,9 @@ class Session:
                 cnt += len(els)
                 for c in els:
                     nm = next((x.text or "" for x in c if x.tag.split("}")[-1] == "name"), "")
+                    # No item is ever written with a blank name (UI-40).
+                    if not nm.strip():
+                        raise Violation("export_empty_name", f"{f['path']}: <name>{nm!r}</name>")
                     names.append(nm)
             if cnt != len(inc):
                 raise Violation("zip_folder_items", f"{g['name']!r}: {cnt} in files vs {len(inc)} included")
@@ -1250,6 +1674,8 @@ WEIGHTS = {
     "bulk_icon": 1, "exclude": 5, "include_chip": 2, "export": 2,
     # Round 4: + New folder clicked, the x on an empty folder.
     "click_new_folder": 5, "remove_empty_folder": 3, "hover": 4, "sort_toggle": 3,
+    # Bulk rename and note change (UI-39); "not built" until the dialog exists.
+    "bulk_rename": 3, "bulk_note": 3, "bulk_rename_hostile": 1,
 }
 # Second wave: the human-timing / interleaving actions (--wave 2).
 WEIGHTS2 = dict(WEIGHTS, leave_field_by_click=6, rename_then_drag=3, rename_then_export=2)
@@ -1365,8 +1791,10 @@ def parse_seeds(s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", default="1")
-    ap.add_argument("--actions", type=int, default=200)
-    ap.add_argument("--maps", default=",".join(MAP_ORDER))
+    ap.add_argument("--actions", "--n", type=int, default=200)
+    ap.add_argument("--maps", default=",".join(MAP_ORDER),
+                    help=f"pick from {','.join(MAP_ORDER)},big1500 (by seed %% the count, or see --every-map)")
+    ap.add_argument("--every-map", action="store_true", help="run every seed on every map in --maps")
     ap.add_argument("--replay")
     ap.add_argument("--shrink", action="store_true")
     ap.add_argument("--verbose", action="store_true")
@@ -1389,9 +1817,10 @@ def main():
             print("REPLAY:", f, n, st)
             return
         summary = []
-        for seed in parse_seeds(args.seeds):
-            mlist = args.maps.split(",")
-            map_name = mlist[seed % len(mlist)]
+        mlist = args.maps.split(",")
+        sessions = [(seed, m) for seed in parse_seeds(args.seeds) for m in mlist] if args.every_map \
+            else [(seed, mlist[seed % len(mlist)]) for seed in parse_seeds(args.seeds)]
+        for seed, map_name in sessions:
             actions = gen_actions(seed, args.actions, args.wave)
             t0 = time.time()
             f, n, trace, st = run(ctx, map_name, maps[map_name], actions, verbose=args.verbose)

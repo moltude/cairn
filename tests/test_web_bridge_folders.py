@@ -22,6 +22,7 @@ from cairn.io.onx_gpx import read_onx_gpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
 import bridge  # noqa: E402
+from tests.blank_names import export_named  # noqa: E402
 
 FX = Path(__file__).parent / "fixtures"
 BITTERROOTS = [FX / "bitterroots" / "Bitterroots__Complete_.json"]
@@ -86,7 +87,7 @@ def _layout() -> list:
 
 
 def _export() -> zipfile.ZipFile:
-    return zipfile.ZipFile(io.BytesIO(bridge.export_zip()))
+    return zipfile.ZipFile(io.BytesIO(export_named(bridge)))
 
 
 def _markups(text: str) -> int:
@@ -959,7 +960,7 @@ def test_remove_empty_folder_removes_only_an_empty_folder():
     assert res == {"ok": True, "removed": [key], "folders": res["folders"]}
     assert [f["key"] for f in res["folders"]] == [g["key"] for g in _groups()] and len(_groups()) == 10
     before = _layout()
-    with pytest.raises(ValueError, match="isn’t empty"):
+    with pytest.raises(ValueError, match="isn't empty"):
         bridge.remove_empty_folder(_key("Paddling"))
     with pytest.raises(ValueError, match="no folder"):
         bridge.remove_empty_folder(key)          # already gone

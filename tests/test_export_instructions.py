@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
 import bridge  # noqa: E402
+from tests.blank_names import export_named  # noqa: E402
 
 FX = Path(__file__).parent / "fixtures"
 BITTERROOTS = FX / "bitterroots" / "Bitterroots__Complete_.json"
@@ -25,10 +26,10 @@ GPX = "{http://www.topografix.com/GPX/1/1}"
 HEAD = [
     "How to import these files into onX",
     "",
-    "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
+    "Import each folder below into onX on a computer (webmap.onxmaps.com), one at a time.",
     "In onX, choose Import and add all of that folder's files together.",
     'Tick "Import map data to a new folder".',
-    "onX names the new folder with a date and time stamp.",
+    "onX names the new folder with a datetime stamp.",
     "Rename it to the name shown for that folder below.",
     "Importing needs onX Premium or Elite.",
 ]
@@ -36,7 +37,7 @@ HEAD = [
 
 def _export(path: Path = BITTERROOTS) -> zipfile.ZipFile:
     bridge.load_document(path.read_text(encoding="utf-8"), path.name)
-    return zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
+    return zipfile.ZipFile(io.BytesIO(bytes(export_named(bridge))))
 
 
 def _text(zf: zipfile.ZipFile) -> str:
@@ -110,7 +111,7 @@ def test_folder_file_kind_and_item_names_are_nested_as_written():
         assert [x["name"] for x in f["files"]] == [p["path"].split("/")[-1] for p in e["files"]]
         for x, p in zip(f["files"], e["files"]):
             root = ET_fromstring(zf.read(p["path"]))
-            want = [el.findtext(GPX + "name") or "(no name)" for el in root.iter(GPX + tag[x["kind"]])]
+            want = [el.findtext(GPX + "name") or "Untitled" for el in root.iter(GPX + tag[x["kind"]])]
             assert x["items"] == want and len(want) == p["count"]
             assert x["name"].endswith({"Waypoints": "_Waypoints.gpx", "Lines": "_Tracks.gpx",
                                        "Areas": "_Areas.gpx"}[x["kind"]])
@@ -166,7 +167,7 @@ def test_twin_folder_names_are_told_apart_by_their_zip_folder():
         if f["properties"].get("class") == "Folder" and f["properties"].get("title") in ("Paddling", "Blodgett"):
             f["properties"]["title"] = "Camp"
     bridge.load_document(json.dumps(src), BITTERROOTS.name)
-    zf = zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
+    zf = zipfile.ZipFile(io.BytesIO(bytes(export_named(bridge))))
     rename = [ln for ln in _text(zf).split("\r\n") if ln.endswith("/    rename to: Camp")]
     assert len(rename) == 2 and rename[0] != rename[1]
 
@@ -187,7 +188,7 @@ ONX_STEPS = [
 def _export_files(*paths: Path) -> zipfile.ZipFile:
     bridge.load_files(json.dumps(
         [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in paths]))
-    return zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip())))
+    return zipfile.ZipFile(io.BytesIO(bytes(export_named(bridge))))
 
 
 def test_a_map_from_onx_gets_the_replace_steps_before_the_import_steps():
@@ -217,5 +218,5 @@ def test_a_cairn_made_file_gets_no_replace_steps():
     zf = _export()
     name = next(n for n in zf.namelist() if n.endswith("_Waypoints.gpx"))
     bridge.load_files(json.dumps([{"name": "reload.gpx", "text": zf.read(name).decode("utf-8")}]))
-    text = _text(zipfile.ZipFile(io.BytesIO(bytes(bridge.export_zip()))))
+    text = _text(zipfile.ZipFile(io.BytesIO(bytes(export_named(bridge)))))
     assert text.split("\r\n")[:len(HEAD)] == HEAD

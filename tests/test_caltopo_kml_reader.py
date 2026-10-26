@@ -288,7 +288,7 @@ def test_hostile_folder_nesting_reaches_the_web_app_as_a_sentence(tmp_path):
     import bridge
 
     text = HEAD + _nested_folders(2000) + TAIL
-    with pytest.raises(ValueError, match=r"^deep\.kml couldn’t be read: Its folders are nested"):
+    with pytest.raises(ValueError, match=r"^deep\.kml couldn't be read: Its folders are nested"):
         bridge.load_files(json.dumps([{"name": "deep.kml", "text": text}]))
 
 

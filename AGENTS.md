@@ -37,8 +37,23 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-25 (leftovers: multi-geometries split, XML-forbidden characters dropped by the writers, instructions.txt marks by item not name, note-as-name blank guard, save_user_mapping path required): **1387 passed** with the web dev server up; without
-it the `tests/web` tests skip. (The leftovers added 10 tests; before them 1377, and 1367 before the small engine fixes.)
+Baseline as of 2026-10-26 (branch `feat/bulk-rename-v3`: the bulk rename release squashed into 15 commits, its plan and build log archived, then the ultrareview fixes, which added 3): **2077 passed** with the web dev server up.
+
+Before the fixes, the squashed branch's last change (the filter chips row's paper panel) added 1: 2074 passed.
+
+Before it, the final deep inspection (GeoJSON errors, IME Escape, load-failure reset, one blank-name test, receipt counts): 2073 passed (8 tests added).
+
+Before it, round 5 (owner answers — swatch check, underlined highlight, load-failure dialog, "Name it Untitled"): 2065 passed (3 accessibility tests added).
+
+Baseline before round 5, 2026-10-25, round 4 (accessibility fixes UI-41, Dependabot actions, FAQ and walkthrough retake): 2062 passed (46 accessibility tests added).
+
+Baseline before round 4, 2026-10-25, late (branch `feat/bulk-rename`, round 3: one text rule set, whole-word Find with a highlight per match, onX's name limits warned like notes, a name required to export): **2016 passed** with the web dev server up; without
+it the `tests/web` tests skip. Round 3 added 200 (text rules 39, whole-word Find and name flags 92, limits and the names confirm 69).
+
+Baseline before round 3 (bulk Rename… and Change note…): **1816 passed** with the web dev server up; without
+it the `tests/web` tests skip. The feature added 427: 135 core tests of `web/rename.js` (`tests/web/test_rename_core.py`), 206 bridge and writer tests
+(`tests/test_bulk_prereqs.py`, `tests/test_bulk_round_trip.py`), 83 dialog tests (`tests/web/test_bulk_text.py`) and 3 timing tests (`tests/web/test_bulk_perf.py`).
+Before it, 1389 (the 2026-10-25 leftovers: multi-geometries split, XML-forbidden characters dropped by the writers, instructions.txt marks by item not name, note-as-name blank guard, save_user_mapping path required). (The label inventory test added 2 on 2026-10-25; the leftovers 10 before that; before them 1377, and 1367 before the small engine fixes.)
 
 Baseline as of 2026-10-24 (folders release: PR-A stable ids ENG-07, PR-B export screen UI-31, hardening, PR-C folders UI UI-32, round-2, round-3 and round-4 fixes, round-4 edit-screen follow-ups UI-33..35, round-5 QA fixes, cleanup, owner feedback 2026-10-24 UI-36..38, public copy cleanup and sticky top bar, keyed in-place rendering, icon keyword ties ENG-08): 1367 passed. (Keyed rendering added 7 identity tests and ENG-08 added 3; before them 1357. Copy cleanup and sticky bar took it from 1349. Owner feedback 2026-10-24 added 32; before it 1317. The final batch added one test; before it 1316. The cleanup removed one test of a test-only fallback; before it 1317; before round 5 it was 1301; before the edit-screen follow-ups 1265; before round 4, export screen v2 + instructions.txt, 1258; before the round-3 fixes 1229, before round 2 1179; 2026-10-22 was 892; 2026-10-21 was 568; the
 drop from 686 before that was the CLI/TUI test removal.) (`web/bridge.py` writes to `/tmp`, so its tests need that writable.)
@@ -249,14 +264,23 @@ move its line to "Done" with the PR number.
 
 Docs that are current:
 - `docs/design/DECISIONS.md` — every UI-NN / ENG-NN decision, with status and the why
+- `docs/design/LABELS.md` — every label, action and message in the app, plus the canonical vocabulary. Reuse an existing label before inventing one; change this file in the same commit as any label (`tests/test_labels_inventory.py` fails on a static label it doesn't list)
 - `docs/FAQ.md` — source of `web/faq.html`; onX behaviour as users meet it
 - `docs/ONX_ROUND_TRIP.md` / `docs/ONX_TESTING.md` — live onX import/export results and how to run them
 - `docs/DEPLOY.md` — Vercel + the Cloudflare Worker, shipping an engine change, checking a deploy
 - `docs/testing/FOLDERS_RELEASE.md` — the folders release log (PRs #44, #45)
 - `docs/research/*_2026-10-22.md` — dated research, cited by code comments and fixtures
-- `docs/plans/*.md` — plans for work not yet built (bulk rename); archive a plan once it ships
+- `docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md` — the WCAG 2.2 audit; defines the A11Y-NN ids code and tests cite (UI-41)
+- `docs/testing/ONX_LIMITS_2026-10-25.md` — onX's name, folder-name and note limits measured live (UI-40); `web/bridge.py` cites it and `tests/test_onx_limits.py` checks it exists
+- `docs/plans/*.md` — plans for work not yet built (none open); archive a plan once it ships
 
 Expired plans and audits (the 2026-08-29 audits, the TUI-era designs, the GPX/KML input
 roadmap, the first deploy plan) were moved on 2026-10-25 to `docs/archive/`, which is
-gitignored. They are still in git history: `git show cdd25f3:docs/<name>`. Put a doc there when
-its plan has shipped or been dropped, and fix every reference to it in the same commit.
+gitignored. They are still in git history: `git show cdd25f3:docs/<name>`. The bulk rename plan
+and build log followed on 2026-10-26:
+`git show archive/feat-bulk-rename-pre-squash:docs/plans/<name>`. Put a doc there when its plan
+has shipped or been dropped, and fix every reference to it in the same commit.
+
+Process and tracking docs that only serve the local agent workflow (build logs, trackers, run
+notes) belong in `docs/archive/` too, not in commits (owner, 2026-10-26). One that code, tests or
+other docs cite stays tracked until those references are fixed.

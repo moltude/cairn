@@ -1,7 +1,7 @@
 # onX dialect fixtures (synthetic)
 
 **These are not real onX exports.** No real onX export is in the repo yet (roadmap probe P2,
-FIDELITY W6). They are hand-written to match the onX Web Map export code as decoded in
+FIDELITY W6). They are hand-written to match the export code of onX's web app as decoded in
 `docs/research/KML_GPX_INPUT_2026-10-22.md` (KG) §3.4 and §3.5, extending the KG §6 scratch
 fixtures:
 

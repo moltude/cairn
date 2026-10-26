@@ -155,7 +155,7 @@ e2e tests.
 
 ### For the owner to check
 
-- [ ] Download all, then import one folder's files in onX's Web Map following the three steps.
+- [ ] Download all, then import one folder's files in onX on a computer following the three steps.
 - [ ] Download this folder for one folder; the zip holds just that folder.
 - [ ] Back returns to the map with edits intact; Start over asks first.
 
@@ -430,8 +430,8 @@ is updated.
 
 ### What changed
 - **Export screen** (`web/index.html`, `web/app.js renderRunbook`, `web/styles.css`): the intro
-  is the owner's line with the comma splice made a semicolon: "Import each folder into onX's
-  Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX
+  is the owner's line with the comma splice made a semicolon: "Import each folder into onX on a
+  computer; onX will use a default datetime stamp for the folder name. Importing needs onX
   Premium or Elite." Each box is only the folder name (no "· N markups · N files"), a
   **Download** button (was "Download this folder"; `aria-label` "Download <folder>", with the
   "NN ·" number for a same-named twin) and the file chips. The three numbered steps are gone.

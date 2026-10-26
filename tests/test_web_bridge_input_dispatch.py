@@ -13,9 +13,11 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import re
 import sys
 import zipfile
 from pathlib import Path
+from xml.sax.saxutils import unescape as xml_unescape
 
 import pytest
 
@@ -26,6 +28,8 @@ from cairn.io.input_check import detect
 from cairn.io.onx_gpx import read_onx_gpx
 from cairn.io.onx_kml import read_onx_kml
 from cairn.model import MapDocument
+from cairn.utils.utils import natural_sort_key
+from tests.blank_names import name_blanks
 from tests.test_onx_round_trip_fidelity import (
     ALLOWED_LOSSES,
     FIDELITY_FIGURE,
@@ -154,8 +158,24 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     trapper = [i for g in loaded["groups"] for i in g["items"] if i["name"] == "Trapper"]
     assert [i["why"] for i in trapper] == ["Matched \u201cpeak\u201d in the note."]
     trapper[0]["why"] = "Matched \u201cpeak\u201d in the name."
+    # Straight apostrophes in every message since 2026-10-25 (owner): the baseline's
+    # line and area why-text has the curly one. Put it back so nothing else may move.
+    straight = [i for g in loaded["groups"] for i in g["items"] if "don't take an icon" in i["why"]]
+    assert straight
+    for i in straight:
+        i["why"] = i["why"].replace("don't take an icon", "don\u2019t take an icon")
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
+    # A name is required to export since 2026-10-25 (UI-40): the 7 blank-named items
+    # (6 lines and an area, all in Unorganized) are named "Untitled" first, as the
+    # app's "Name them Untitled" does; the baseline was re-pinned for it (its notes).
+    named = set(name_blanks(bridge))
+    assert sorted(i["kind"] for i in _items(loaded) if i["name"] == "") == ["shapes"] + ["tracks"] * 6
+    assert len(named) == 7
     zf = _zip(bridge.export_zip())
+    for name, digest in baseline["before_names_required"].items():
+        # Only those 7 changed: put the blank names back and the writers' own name
+        # order (natural, stable) gives the bytes pinned before, exactly.
+        assert hashlib.sha256(_blank_names_back(zf.read(name))).hexdigest() == digest, name
     assert zf.namelist() == list(baseline["members"])
     assert not [n for n in zf.namelist() if n.endswith(".kml")]
     dash, solid = b"<onx:style>dash</onx:style>", b"<onx:style>solid</onx:style>"
@@ -167,6 +187,35 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
             assert data.count(b"<onx:icon>Trailhead</onx:icon>") == 1
             data = data.replace(b"<onx:icon>Trailhead</onx:icon>", b"<onx:icon>Water Source</onx:icon>")
         assert hashlib.sha256(data).hexdigest() == digest, name
+
+
+def _blank_names_back(data: bytes) -> bytes:
+    """A member as it was before names were required (2026-10-25): every
+    "Untitled" item made blank again, in the order the writers give blank names.
+    GPX: the <trk> / <rte> blocks re-sorted by natural_sort_key of their names
+    (the writers' stable sort; a blank name sorts first). instructions.txt: each
+    file's item lines re-sorted the same way ("Untitled" is how it prints a
+    blank name, so those lines don't change, only move)."""
+    if data.startswith(b"<?xml"):
+        blocks = re.findall(rb"  <(?:trk|rte)>\n.*?\n  </(?:trk|rte)>\n", data, flags=re.S)
+        start, end = data.index(blocks[0]), data.rindex(blocks[-1]) + len(blocks[-1])
+        assert data[start:end] == b"".join(blocks)
+        blocks = [b.replace(b"<name>Untitled</name>", b"<name></name>") for b in blocks]
+
+        def key(block):
+            name = re.search(rb"<name>(.*?)</name>", block, flags=re.S).group(1).decode()
+            return natural_sort_key(xml_unescape(name))
+        return data[:start] + b"".join(sorted(blocks, key=key)) + data[end:]
+    lines, out, run = data.decode("utf-8").split("\r\n"), [], []
+    for ln in lines + [""]:
+        if ln.startswith(" " * 12):
+            assert not ln.startswith(" " * 16)          # Bitterroots has no item marks
+            run.append(ln)
+            continue
+        out += sorted(run, key=lambda s: natural_sort_key("" if s.strip() == "Untitled" else s.strip()))
+        run = []
+        out.append(ln)
+    return "\r\n".join(out[:-1]).encode("utf-8")
 
 
 def test_single_file_load_document_is_load_files_with_one_file():
@@ -300,7 +349,7 @@ def test_icon_not_in_onx_list_is_kept_but_flagged():
     assert item["icon"] == "Campsite"
     assert item["unknown_icon"] is True
     assert item["confirmed"] is False
-    assert "“Campsite”" in item["why"] and "which Cairn doesn’t know" in item["why"]
+    assert "“Campsite”" in item["why"] and "which Cairn doesn't know" in item["why"]
     others = [i for i in _items(data) if i["kind"] == "waypoints" and i is not item]
     assert all(i["unknown_icon"] is False for i in others)
     # Kept means exported unchanged, too.
@@ -472,15 +521,28 @@ def test_unparseable_gpx_error_is_one_line_without_the_temp_path():
     with pytest.raises(ValueError) as e:
         bridge.load_document((FX / "edge_cases" / "malformed.gpx").read_text(), "malformed.gpx")
     msg = str(e.value)
-    assert msg.startswith("malformed.gpx couldn’t be read: Invalid GPX file")
+    assert msg.startswith("malformed.gpx couldn't be read: Invalid GPX file")
     assert "\n" not in msg and "/tmp" not in msg
 
 
-def test_empty_and_invalid_json_keep_their_geojson_errors():
-    with pytest.raises(ValueError, match="GeoJSON file is empty"):
-        bridge.load_document("", "empty.json")
-    with pytest.raises(ValueError, match="Invalid GeoJSON file"):
-        bridge.load_document("{ not json", "bad.json")
+def test_unreadable_geojson_says_one_plain_line():
+    # The parser's messages named a /tmp path; the owner chose one generic line (2026-10-25).
+    for text, name in (("", "empty.json"), ("{ not json", "bad.json"), ('{"features": 3}', "odd.json"),
+                       ('{"type": "FeatureCollection", "features": []}', "none.json")):
+        with pytest.raises(ValueError) as e:
+            bridge.load_document(text, name)
+        assert str(e.value) == "Failed: Could not load file"
+
+
+def test_geojson_with_a_wrongly_typed_property_says_the_same_plain_line():
+    # A list where a note belongs made the parser raise AttributeError, which reached the
+    # dialog as "'list' object has no attribute 'replace'".
+    text = json.dumps({"type": "FeatureCollection", "features": [{
+        "type": "Feature", "geometry": {"type": "Point", "coordinates": [1, 2]},
+        "properties": {"title": "Camp", "description": [1]}}]})
+    with pytest.raises(ValueError) as e:
+        bridge.load_document(text, "odd.json")
+    assert str(e.value) == "Failed: Could not load file"
 
 
 def test_dtd_is_refused_before_any_reader_runs_in_a_multi_file_load():
@@ -509,7 +571,7 @@ _DTD_KML = ('<?xml version="1.0"?>\n<!DOCTYPE kml [<!ENTITY a "aaaa">]>\n'
 ])
 def test_a_gpx_or_kml_with_nothing_readable_is_refused_by_name(name, text):
     """It used to open as a map of 0 items (an empty folder, an export that writes
-    nothing), where an empty GeoJSON already says "No features found"."""
+    nothing), where an empty GeoJSON already says it could not be loaded."""
     with pytest.raises(ValueError, match=rf"^Cairn found no waypoints, lines or areas in {name}\."):
         bridge.load_document(text, name)
 

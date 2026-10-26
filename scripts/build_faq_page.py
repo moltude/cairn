@@ -186,7 +186,7 @@ def site_nav(current: str, label: str) -> str:
 
 def render(md: str) -> str:
     title, lead, sections = parse(md)
-    used: set = set()
+    used: set = {"content"}            # the skip link's target, <main id="content">
     toc, body = [], []
     for h2, subs in sections:
         sid = slug(h2, used)
@@ -219,12 +219,13 @@ def render(md: str) -> str:
 <link rel="stylesheet" href="styles.css">
 </head>
 <body class="docpage">
+<a href="#content" class="sr-only skip-link">Skip to the content</a>
 <header class="topbar">
   <a class="wordmark wordmark-link" href="./"><span class="cairn-mark">{CAIRN_MARK}</span><span>Cairn</span></a>
   {site_nav("faq", "Site")}
 </header>
 <div class="doc doc-faq">
-  <main class="doc-main">
+  <main class="doc-main" id="content" tabindex="-1">
     <h1 class="sr-only">{inline(title)}</h1>
     {"".join(lead)}
     <nav class="doc-toc" aria-label="On this page"><span class="label">On this page</span>{toc_html}</nav>

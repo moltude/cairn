@@ -88,6 +88,10 @@ def main():
             i["needs_attention"] for g in d2["groups"] for i in g["items"] if i["kind"] == "waypoints")
 
         pg.click("#export")
+        # A name is required to export (UI-40, 2026-10-25): Bitterroots' 7 nameless
+        # items are named "Untitled" in the confirm that asks first.
+        if pg.locator("#confirm").is_visible():
+            pg.click("#confirm-actions button:text-is('Name them Untitled')")
         pg.wait_for_function("window.__cairnExported === true", timeout=120000)
         pg.wait_for_timeout(600)
         save(pg, "08-export")

@@ -50,6 +50,7 @@ from cairn.core.writers import (
     write_gpx_areas_maybe_split,
     write_gpx_tracks_maybe_split,
     write_gpx_waypoints_maybe_split,
+    xml_safe,
 )
 
 # onX's per-ACCOUNT markup ceiling. Splitting a
@@ -62,6 +63,18 @@ ONX_ACCOUNT_MARKUP_LIMIT = 3000  # onX help 360052239052, updated 2026-09-16 (wa
 # note from an onX export was dropped outright, for a reason not yet known.
 # Notes typed in onX itself can be much longer.
 ONX_IMPORT_NOTE_LIMIT = 512
+# Longest name onX keeps on import, in UTF-8 BYTES (measured live 2026-10-25,
+# docs/testing/ONX_LIMITS_2026-10-25.md): onX's importer keeps the first 255
+# bytes of a waypoint, track or area name, cut on a character boundary (an
+# accented 266-byte name arrived as 254 bytes; 254 ASCII + an emoji lost the
+# emoji). The same rule as notes, so names are measured the same way. onX's own
+# editor counts 255 characters instead. Cairn warns and never cuts (UI-40).
+ONX_IMPORT_NAME_LIMIT = 255
+# Longest folder name onX keeps, in CHARACTERS as a browser's maxlength counts
+# them (UTF-16 units): onX's folder rename dialog stops typing at 50 (measured
+# live 2026-10-25, docs/testing/ONX_LIMITS_2026-10-25.md). onX names an imported
+# folder itself; instructions.txt has the user rename it in that dialog.
+ONX_FOLDER_NAME_LIMIT = 50
 
 # onX's waypoint palette (10). Track/line adds Fuchsia -> 11. See ColorMapper.WAYPOINT_PALETTE.
 ONX_COLORS = [
@@ -157,6 +170,19 @@ def _one_line(text: str) -> str:
 def _clean_name(name) -> str:
     """A folder name as stored: control characters become one space, trimmed."""
     return _one_line(name).strip() if isinstance(name, str) else ""
+
+
+def _blank_name(name) -> bool:
+    """Whether a name is empty as written: the characters XML forbids (which
+    the writers drop) gone, then trimmed. app.js nameIsBlank is the same test,
+    so the UI's "needs a name" count and export_zip's guard agree."""
+    return not xml_safe(name if isinstance(name, str) else "").strip()
+
+
+def _utf16_len(text: str) -> int:
+    """Characters as a browser's maxlength counts them (UTF-16 code units):
+    onX's folder rename dialog, and app.js's String.length."""
+    return len(text.encode("utf-16-le")) // 2
 
 
 def _hex_for(rgba: str) -> str:
@@ -270,19 +296,29 @@ def _kept_why(origin: str) -> str:
 
 def _unknown_icon_why(icon: str, origin: str) -> str:
     where = "Your onX file" if origin == "onx" else "The file you loaded"
-    return (f"{where} uses the icon “{icon}”, which Cairn doesn’t know. It goes "
-            f"out unchanged; pick one from the list if onX doesn’t show it.")
+    return (f"{where} uses the icon “{icon}”, which Cairn doesn't know. It goes "
+            f"out unchanged; pick one from the list if onX doesn't show it.")
+
+
+GEOJSON_FAILED = "Failed: Could not load file"
 
 
 def _read_one(path: Path, route: str, display_name: str):
     """Run one reader, turning its multi-line errors into one sentence.
 
     The XML readers' errors end with a "File: /tmp/..." line, which is what
-    web/app.js's humanError would show. parse_geojson's errors are passed
-    through untouched (their last line is already a hint for the user).
+    web/app.js's humanError would show. parse_geojson's errors all become
+    GEOJSON_FAILED, which app.js shows on its own.
     """
     if route == _ROUTE_GEOJSON:
-        return parse_geojson(path)
+        try:
+            return parse_geojson(path)
+        except Exception:
+            # The parser's messages carry a server path and developer wording;
+            # the owner chose one plain line (2026-10-25, LABELS.md §15).
+            # Not only ValueError: valid JSON with a wrongly typed property
+            # (a list for a note) raises AttributeError or TypeError.
+            raise ValueError(GEOJSON_FAILED) from None
     try:
         if route == _ROUTE_CALTOPO_GPX:
             return parse_caltopo_gpx(path)
@@ -293,7 +329,7 @@ def _read_one(path: Path, route: str, display_name: str):
         return read_onx_kml(path)
     except ValueError as e:
         first = str(e).strip().splitlines()[0] if str(e).strip() else "unreadable"
-        raise ValueError(f"{display_name} couldn’t be read: {first}") from None
+        raise ValueError(f"{display_name} couldn't be read: {first}") from None
 
 
 def _pair(entries: list) -> list:
@@ -554,7 +590,7 @@ def _item(uid, kind, feat, origin, resolver, cfg, catalog) -> dict:
         why = _explain(decision, feat.symbol or "", cfg.default_icon)
     else:
         icon = ""
-        why = "Tracks and areas don’t take an icon in onX."
+        why = "Tracks and areas don't take an icon in onX."
         if origin and (feat.stroke or "").strip():
             # The colour (and line style) came from the file.
             confirmed = True
@@ -920,7 +956,7 @@ def remove_empty_folder(key: str) -> str:
     raises ValueError and changes nothing: items are never dropped this way."""
     g = _folder(key)
     if g["items"]:
-        raise ValueError(f"“{g['name']}” isn’t empty, so it can’t be removed.")
+        raise ValueError(f"“{g['name']}” isn't empty, so it can't be removed.")
     _STATE["groups"] = [x for x in _STATE["groups"] if x is not g]
     return json.dumps({"ok": True, "removed": [key], "folders": _layout()})
 
@@ -948,6 +984,17 @@ def export_zip() -> bytes:
     cfg = _STATE["config"]
     groups = _STATE["groups"]
     features = _STATE["features"]
+
+    # A name is required to export (UI-40, owner 2026-10-25): onX never keeps an
+    # empty name, it makes one up ("Imported waypoint markup <timestamp>",
+    # docs/testing/ONX_LIMITS_2026-10-25.md). The UI names such items first
+    # (its "N items need a name" confirm), so this only stops a path that
+    # skipped it. Items the writers won't write (excluded, no coordinates)
+    # don't count; the UI's rule is the same. Checked before anything is
+    # written, so a refused export leaves the last one as it was.
+    if any(_blank_name(i.get("name")) for g in groups for i in g["items"]
+           if i.get("included", True) and not i.get("no_coords")):
+        raise ValueError("An item needs a name.")
 
     # Push UI edits onto the ParsedFeature objects the writers read. Each item
     # reaches its feature through its uid, never by position (ENG-07).
@@ -1080,6 +1127,16 @@ def export_zip() -> bytes:
                 for f in entry["files"] for name, nbytes in f["items"]
                 if nbytes > ONX_IMPORT_NOTE_LIMIT
             ]
+            # onX keeps the first 255 UTF-8 bytes of an imported name (UI-40,
+            # measured 2026-10-25): the name as written, the notes' measure.
+            entry["long_names"] = [
+                [name, len(name.encode("utf-8"))]
+                for f in entry["files"] for name, _nbytes in f["items"]
+                if len(name.encode("utf-8")) > ONX_IMPORT_NAME_LIMIT
+            ]
+            # The name instructions.txt tells the user to type into onX's folder
+            # rename dialog, which stops at 50 characters.
+            entry["long_folder"] = _utf16_len(_plain(g["name"])) > ONX_FOLDER_NAME_LIMIT
             if entry["files"]:
                 manifest.append(entry)
             else:
@@ -1168,6 +1225,10 @@ def runbook_summary(manifest, unlisted_dropped: int = 0) -> dict:
         "holes": sum(len(e.get("holes", ())) for e in manifest),
         "long_notes": sum(len(e.get("long_notes", ())) for e in manifest),
         "note_limit": ONX_IMPORT_NOTE_LIMIT,
+        "long_names": sum(len(e.get("long_names", ())) for e in manifest),
+        "name_limit": ONX_IMPORT_NAME_LIMIT,
+        "long_folders": sum(1 for e in manifest if e.get("long_folder")),
+        "folder_name_limit": ONX_FOLDER_NAME_LIMIT,
     }
 
 
@@ -1206,7 +1267,7 @@ def _written_items(data: bytes, kind: str) -> list:
 
 def _plain(text) -> str:
     """A name on one line of instructions.txt, as it is typed into onX."""
-    return _one_line(str(text or "")) or "(no name)"
+    return _one_line(str(text or "")) or "Untitled"
 
 
 def build_instructions(manifest, *, from_onx: bool = False) -> str:
@@ -1218,9 +1279,10 @@ def build_instructions(manifest, *, from_onx: bool = False) -> str:
 
     The general steps once, then each folder (its zip folder and the name to
     type), each file, the kind of item in it, and each item's name. Only the
-    two warnings that belong to one item are written, under it: a note onX
-    will cut, an area hole onX can't keep. Totals, dropped items and the
-    account limit are on the export screen.
+    warnings that belong to one item are written, under it: a name or a note
+    onX will cut, an area hole onX can't keep; and under a folder's "rename
+    to:", a folder name onX will cut. Totals, dropped items and the account
+    limit are on the export screen.
 
     from_onx: the map was loaded from an onX export. onX imports everything as
     new markups, ids or not (docs/ONX_ROUND_TRIP.md), so the replace steps
@@ -1240,24 +1302,34 @@ def build_instructions(manifest, *, from_onx: bool = False) -> str:
             "",
         ]
     L += [
-        "Import each folder below into onX's Web Map (webmap.onxmaps.com), one at a time.",
+        "Import each folder below into onX on a computer (webmap.onxmaps.com), one at a time.",
         "In onX, choose Import and add all of that folder's files together.",
         'Tick "Import map data to a new folder".',
-        "onX names the new folder with a date and time stamp.",
+        "onX names the new folder with a datetime stamp.",
         "Rename it to the name shown for that folder below.",
         "Importing needs onX Premium or Elite.",
     ]
     note_cut = "(over the length limit; onX will cut this note)"
+    # onX's limits on names (UI-40, measured 2026-10-25): 255 UTF-8 bytes for an
+    # item's name, 50 characters in the folder rename dialog. The folder's mark
+    # is a line of its own under "rename to:", so that line stays the name alone.
+    name_cut = "(over the length limit; onX will cut this name)"
+    folder_cut = "(over the length limit; onX will cut this folder name)"
     for e in manifest:
         # Marked by position, not by name: names repeat (2026-10-25).
         holes = set(e.get("hole_positions", ()))
         area_at = 0
-        L += ["", f"{e['dir']}/    rename to: {_plain(e['folder'])}"]
+        folder = _plain(e["folder"])
+        L += ["", f"{e['dir']}/    rename to: {folder}"]
+        if _utf16_len(folder) > ONX_FOLDER_NAME_LIMIT:
+            L.append("    " + folder_cut)
         for f in e["files"]:
             L.append("    " + f["path"].split("/")[-1])
             L.append("        " + _KIND_LABEL[f["kind"]])
             for name, nbytes in f["items"]:
                 L.append("            " + _plain(name))
+                if len(name.encode("utf-8")) > ONX_IMPORT_NAME_LIMIT:
+                    L.append("                " + name_cut)
                 if nbytes > ONX_IMPORT_NOTE_LIMIT:
                     L.append("                " + note_cut)
                 if f["kind"] == "shapes":

@@ -31,7 +31,6 @@ def _geometry(feat) -> tuple:
 def review_items(path: Path) -> list[dict]:
     """The review screen's items for one file, plus line style and geometry
     from the engine document, sorted by (kind, name)."""
-    bridge.CONFIG_PATH = ROOT / "web" / "cairn_config.yaml"
     data = json.loads(bridge.load_files(json.dumps(
         [{"name": path.name, "text": path.read_text(encoding="utf-8")}])))
     out = []

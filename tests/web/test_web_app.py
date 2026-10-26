@@ -27,23 +27,14 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, expect, sync_playwright
 
-# BASE_URL is read from the environment so this suite can be pointed at a
-# live deployment (e.g. `BASE_URL=https://quietmarch.to/cairn/ pytest ...`)
-# as well as the local dev server. When the caller explicitly set BASE_URL,
-# an unreachable server is a hard failure, not a skip -- a silent skip
-# against a mistyped or down deployment URL would report green for nothing.
-_EXPLICIT_BASE_URL = "BASE_URL" in os.environ
-BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8765").rstrip("/")
-FIXTURE = (
-    Path(__file__).resolve().parent.parent
-    / "fixtures"
-    / "bitterroots"
-    / "Bitterroots__Complete_.json"
+from tests.web.helpers import (  # noqa: F401  (moved out on 2026-10-25)
+    BASE_URL, FIXTURE, FX_DIR, ROW, _ONX_GPX_HEAD,
+    export_zip_bytes, _select_all_shown, _clear_selection, _set_type, _menu_action, _export_zip,
+    _load_files, _set, _tick, _is_marked, _open_changed_waypoint_note, _row, _gpx_blob,
+    _onx_wpt, _gpx_payload, _click_export,
 )
 
-# Ground truth for the fixture, established by loading it through the real
-# engine (both via the CLI and via this exact app) and reading DATA.totals.
-ROW = ".folder tbody tr"  # scoped: the help panel also contains a <table>
+
 EXPECTED_TOTALS = {"folders": 10, "items": 177, "attention": 25}
 # attention was 26 until the web app began loading the user's
 # cairn_config.yaml explicitly. Without it the browser silently used 144
@@ -52,107 +43,18 @@ EXPECTED_TOTALS = {"folders": 10, "items": 177, "attention": 25}
 # See web/bridge.py:_config().
 
 
-def _server_reachable() -> bool:
-    try:
-        with urllib.request.urlopen(f"{BASE_URL}/index.html", timeout=2) as resp:
-            return resp.status == 200
-    except (urllib.error.URLError, OSError):
-        return False
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _require_server():
-    """Skip if the local dev server isn't up; fail if an explicit BASE_URL is unreachable.
-
-    A skip is the right call for "you forgot to start the dev server" -- but
-    if BASE_URL was set on purpose (pointing at a deployment), an unreachable
-    URL must fail the run. Otherwise a mistyped or down URL reports a clean
-    green skip, which is worse than no test at all.
-    """
-    if not _server_reachable():
-        if _EXPLICIT_BASE_URL:
-            pytest.fail(f"explicit BASE_URL={BASE_URL} is not reachable")
-        pytest.skip(
-            f"web dev server not reachable at {BASE_URL} "
-            "(start it with: uv run python web/serve.py)"
-        )
 
 
-@pytest.fixture(scope="session")
-def browser():
-    with sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
 
 
-@pytest.fixture(scope="session")
-def context(browser):
-    """A single browser context, reused across tests so the CDN-fetched
-    Pyodide/wheel assets stay in the HTTP cache: the first test pays a cold
-    boot, every later test's boot is warm (see perf numbers in the report).
-    """
-    # bypass_csp: the page now ships a strict Content-Security-Policy (see
-    # web/vercel.json, mirrored by serve.py) with no 'unsafe-eval'; Playwright's
-    # string-evaluating helpers (wait_for_function etc.) are eval-based and
-    # would be blocked by it. The CSP itself is verified by
-    # test_page_boots_under_enforced_csp, which uses a non-bypassing context.
-    ctx = browser.new_context(bypass_csp=True)
-    yield ctx
-    ctx.close()
 
 
-@pytest.fixture()
-def fresh_page(context) -> Page:
-    """A brand-new page/tab, booted but with nothing loaded yet.
-
-    Each test gets its own page (not a shared one reloaded with the same
-    file) because Chromium/Playwright does not fire a `change` event on
-    `<input type=file>` when `set_input_files` is called twice with the
-    identical path -- confirmed by direct repro. A fresh page sidesteps that
-    entirely and is also the more realistic "user opens the app" scenario.
-    """
-    page = context.new_page()
-    page.goto(f"{BASE_URL}/index.html")
-    page.wait_for_function("window.__cairnReady === true", timeout=60000)
-    yield page
-    page.close()
 
 
-@pytest.fixture()
-def loaded(fresh_page: Page) -> Page:
-    """fresh_page with the real fixture loaded (no edits, no selection)."""
-    fresh_page.set_input_files("#file", str(FIXTURE))
-    fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
-    return fresh_page
 
 
-def export_zip_bytes(page: Page, confirm: str | None = None) -> bytes:
-    """Trigger export and pull the resulting Blob back into Python as bytes.
-
-    `confirm` names the button to press in the unsaved-note prompt when one is
-    expected; without it, a prompt would hang the wait below (as it should).
-    """
-    page.evaluate("window.__cairnExported = false")
-    page.click("#export")
-    if confirm:
-        page.click(f"#confirm .confirm-actions button:text-is('{confirm}')")
-    page.wait_for_function("window.__cairnExported === true", timeout=60000)
-    b64 = page.evaluate(
-        """
-        (async () => {
-            const buf = await ZIP.arrayBuffer();
-            let binary = '';
-            const bytes = new Uint8Array(buf);
-            const chunk = 0x8000;
-            for (let i = 0; i < bytes.length; i += chunk) {
-                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-            }
-            return btoa(binary);
-        })()
-        """
-    )
-    return base64.b64decode(b64)
 
 
 # ---------------------------------------------------------------------------
@@ -160,50 +62,14 @@ def export_zip_bytes(page: Page, confirm: str | None = None) -> bytes:
 # ---------------------------------------------------------------------------
 
 
-def _select_all_shown(page):
-    """Ctrl/Cmd+A is now the select-all-shown control (the checkbox was removed
-    when bulk selection moved to per-row checkboxes plus this shortcut).
-
-    Blur first: inside a text field Ctrl+A means select-the-text, and the app
-    deliberately ignores it there.
-    """
-    page.evaluate("document.activeElement && document.activeElement.blur()")
-    page.keyboard.press("ControlOrMeta+a")
-    page.wait_for_timeout(350)
 
 
-def _clear_selection(page):
-    page.evaluate("SEL.clear(); ANCHOR = null; renderFolders()")
-    page.wait_for_timeout(250)
 
 
-def _set_type(page, kind):
-    """The type filter is the rail's Type section (All / Waypoints / Lines /
-    Areas, UI-28); "" is All."""
-    page.click(f'#type-filter [data-kind="{kind}"]')
-    page.wait_for_timeout(150)
-    assert page.get_attribute(f'#type-filter [data-kind="{kind}"]', "aria-pressed") == "true"
 
 
-def _menu_action(page, selector):
-    """Bulk actions beyond icon/color now live behind the More menu."""
-    page.click("#more-btn")
-    page.wait_for_timeout(200)
-    page.click(selector)
-    page.wait_for_timeout(350)
 
 
-def _export_zip(page):
-    """Export in the browser and return the downloaded zip as a ZipFile."""
-    import base64, io, zipfile
-    page.click("#export")
-    page.wait_for_function("window.__cairnExported === true", timeout=180_000)
-    b64 = page.evaluate(
-        "async () => { const u = new Uint8Array(await ZIP.arrayBuffer());"
-        " let s=''; for (let i=0;i<u.length;i++) s += String.fromCharCode(u[i]);"
-        " return btoa(s); }"
-    )
-    return zipfile.ZipFile(io.BytesIO(base64.b64decode(b64)))
 
 
 def test_no_loading_or_version_text_after_boot(fresh_page: Page):
@@ -323,9 +189,12 @@ def test_top_bar_help_opens_help_from_the_app(fresh_page: Page):
 def test_the_app_chrome_has_only_the_site_nav(fresh_page: Page):
     """The old Help / FAQ / Walkthrough links in the top bar and the rail are
     gone; the top bar carries the site nav and nothing else clickable."""
+    # DEVIATION (A11Y-22, round 4): the rail head's "Skip to the list" (shown only while
+    # focused) is not one of the old links.
     extra = fresh_page.locator("#topbar a:not(.site-nav *), #topbar button:not(.site-nav *), "
-                               ".rail-head a, .rail-head button")
+                               ".rail-head a:not(.skip-link), .rail-head button")
     assert extra.count() == 0
+    assert fresh_page.locator(".rail-head a").count() == 1
     assert fresh_page.locator("#topbar nav.site-nav").count() == 1
 
 
@@ -534,7 +403,7 @@ def test_instructions_name_each_folder_and_have_no_kml_warning(loaded: Page):
 
 
 def _done(page: Page) -> None:
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
 
 
@@ -549,7 +418,7 @@ def test_export_screen_is_one_box_per_folder_name_download_and_files(loaded: Pag
     expect(loaded.locator("#download")).to_have_text("Download all")
     expect(done.locator(".done-hint")).to_have_text("One zip with every folder and instructions.txt")
     expect(done.locator(".rb-intro")).to_have_text(
-        "Import each folder into onX's Web Map; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.")
+        "Import each folder into onX on a computer; onX will use a default datetime stamp for the folder name. Importing needs onX Premium or Elite.")
     boxes = done.locator(".rb-step")
     expect(boxes).to_have_count(len(manifest))
     # Round 4 (owner's ExportScreen mockup): each box is the folder name as its
@@ -618,7 +487,7 @@ def test_export_screen_warnings_sit_above_the_folder_boxes(fresh_page, tmp_path)
     warns = host.locator(".note.warn")
     expect(warns).to_have_count(3)
     expect(warns.nth(0)).to_contain_text("1 item wasn't exported: it has no coordinates.")
-    expect(warns.nth(1)).to_have_text("Item 'Long' is over the length limit and will be truncated by onX.")
+    expect(warns.nth(1)).to_have_text("Item \u201cLong\u201d is over the length limit and will be truncated by onX.")
     expect(warns.nth(2)).to_contain_text("onX accounts hold at most 3,000 markups; this map has 3,002.")
     # Every warning comes before the first folder box.
     order = host.locator(":scope > *").evaluate_all("els => els.map(e => e.className)")
@@ -685,13 +554,14 @@ def test_malformed_file_surfaces_error_without_breaking_app(
     bad_file.write_text(bad_content)
 
     fresh_page.set_input_files("#file", str(bad_file))
-    fresh_page.wait_for_timeout(1000)
 
-    status_text = fresh_page.text_content("#status")
-    status_class = fresh_page.get_attribute("#status", "class")
-
-    assert "err" in (status_class or "")
-    assert status_text is not None and len(status_text) > 0
+    # The failure is a dialog with one button, OK (owner 2026-10-26, A11Y-23);
+    # the status line stays empty so it isn't said twice.
+    expect(fresh_page.locator("#confirm")).to_be_visible()
+    title = fresh_page.text_content("#confirm-title") or ""
+    assert title == "Failed: Could not load file" or title.startswith("Couldn't read that file"), title
+    expect(fresh_page.locator("#confirm .confirm-actions button")).to_have_text(["OK"])
+    expect(fresh_page.locator("#status")).to_have_text("")
 
     # The app must NOT have advanced to the edit stage.
     drop_class = fresh_page.get_attribute("#drop-stage", "class") or ""
@@ -780,8 +650,9 @@ def test_every_waypoint_explains_its_icon(fresh_page):
     )
     assert missing == [], f"items with no explanation: {missing[:5]}"
 
-    # every icon chip carries it as a tooltip
-    chips = fresh_page.locator(".icon-btn[title]").count()
+    # every icon chip carries it as a tooltip. DEVIATION (A11Y-12, round 4): in the styled
+    # tip and the marker's aria-description, no longer its native title.
+    chips = fresh_page.locator(".icon-btn[aria-description]:not([title])").count()
     waypoints = fresh_page.evaluate(
         "DATA.groups.flatMap(g => g.items).filter(i => i.kind === 'waypoints').length"
     )
@@ -1218,7 +1089,7 @@ def test_line_popover_sets_style_and_weight(loaded: Page):
     after = loaded.evaluate(get)
     assert (after["style"], after["weight"]) == (target, "6.0")
 
-    loaded.click("#export")
+    _click_export(loaded)
     expect(loaded.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     with loaded.expect_download() as dl:
         loaded.click("#download")
@@ -1288,7 +1159,7 @@ def test_area_popover_sets_style_and_weight(loaded: Page):
     assert (after["style"], after["weight"], after["fill"]) == ("dash", "6.0", before["fill"])
     expect(row.locator(".line-btn")).to_have_attribute("aria-label", re.compile(r"Dashed, Thick"))
 
-    loaded.click("#export")
+    _click_export(loaded)
     expect(loaded.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     with loaded.expect_download() as dl:
         loaded.click("#download")
@@ -1314,12 +1185,12 @@ def test_the_dialog_takes_areas_too_with_a_fill_row(loaded: Page):
     loaded.click("#bulk-icon")
     d = loaded.locator("#mark-dialog")
     expect(d.locator(".sec-row .label")).to_have_text(["Color", "Style", "Weight", "Fill"])
-    expect(d.locator(".fill-btn")).to_have_text("Use onX's blue fill")
+    expect(d.locator(".fill-btn")).to_have_text("Blue")
     d.locator('.tog[data-style="dash"]').click()
     loaded.click("#bulk-apply")
     expect(loaded.locator("#mark-modal")).to_be_hidden()
     assert [loaded.evaluate(_LINE.format(uid=u))["style"] for u in uids] == ["dash", "dash"]
-    expect(loaded.locator("#status")).to_have_text("Changed 2 areas")
+    expect(loaded.locator("#status")).to_have_text("Changed 2 areas.")
 
 
 def _keep_fills(page: Page) -> None:
@@ -1337,7 +1208,7 @@ def test_onx_areas_with_a_fill_warn_and_can_be_left_out(fresh_page: Page):
     expect(fresh_page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
     dlg = fresh_page.locator("#confirm")
     expect(dlg).to_be_visible()
-    expect(fresh_page.locator("#confirm-title")).to_have_text("4 areas will lose their fill.")
+    expect(fresh_page.locator("#confirm-title")).to_have_text("4 areas will lose their fill")
     expect(fresh_page.locator("#confirm-body")).to_have_text("onX resets area fills to blue on import.")
     fresh_page.click("#confirm .confirm-actions button:text-is('Leave these 4 out')")
     expect(dlg).to_be_hidden()
@@ -1592,19 +1463,21 @@ def test_edit_stage_is_scaled_down_but_the_popover_is_not(loaded: Page):
     assert loaded.evaluate("getComputedStyle(document.querySelector('#mark-pop')).fontSize") == "15px"
 
 
-def test_a_name_cannot_be_committed_empty(fresh_page):
+def test_an_empty_name_is_allowed_and_shows_untitled(fresh_page):
+    # Names are optional (owner, 2026-10-25): an empty name is kept and the
+    # field shows "Untitled" in its place, with no error.
     fresh_page.set_input_files("#file", str(FIXTURE))
     fresh_page.wait_for_function("window.__cairnLoaded === true", timeout=180_000)
 
-    original = fresh_page.evaluate("DATA.groups[0].items[0].name")
     box = fresh_page.locator(".name-in").first
     box.click()
     box.fill("")
     box.press("Enter")
     fresh_page.wait_for_timeout(300)
 
-    assert fresh_page.evaluate("DATA.groups[0].items[0].name") == original
-    assert "name is required" in fresh_page.inner_text("#status").lower()
+    assert fresh_page.evaluate("DATA.groups[0].items[0].name") == ""
+    expect(fresh_page.locator(".name-in").first).to_have_attribute("placeholder", "Untitled")
+    assert "name" not in fresh_page.inner_text("#status").lower()
 
 
 def test_help_panel_opens_and_closes(fresh_page):
@@ -1881,32 +1754,19 @@ def test_start_over_counts_unexported_changes_and_escape_cancels(loaded: Page):
     loaded.wait_for_timeout(100)
     assert loaded.evaluate("Object.keys(EDITS).length") == 1
 
+    assert loaded.evaluate("unexportedChanges()") == 1
     loaded.locator(".newmap").first.click()
     body = loaded.locator("#confirm-body")
-    expect(body).to_have_text(
-        "This discards 1 unexported change."
-    )
+    # No count in the sentence (owner, 2026-10-25); the count is unexportedChanges().
+    expect(body).to_have_text("Changes will be lost.")
     loaded.keyboard.press("Escape")
     expect(loaded.locator("#confirm")).to_be_hidden()
     assert loaded.evaluate("Object.keys(EDITS).length") == 1
     assert loaded.evaluate("document.body.dataset.stage") == "edit"
 
 
-def _open_changed_waypoint_note(page: Page, text: str):
-    """Open the note editor on a waypoint and type a draft (not applied)."""
-    uid = page.evaluate(
-        "DATA.groups.flatMap(g=>g.items).find(i => i.kind === 'waypoints').uid"
-    )
-    page.locator(f'tr[data-uid="{uid}"] .note-btn').click()
-    page.locator(".desc-in").first.fill(text)
-    return uid
 
 
-def _gpx_blob(zb: bytes) -> str:
-    zf = zipfile.ZipFile(io.BytesIO(zb))
-    return "".join(
-        zf.read(n).decode("utf-8", "replace") for n in zf.namelist() if n.endswith(".gpx")
-    )
 
 
 def test_export_with_unapplied_note_prompts_and_apply_exports_it(loaded: Page):
@@ -1939,7 +1799,7 @@ def test_export_with_unapplied_note_cancel_returns_to_the_editor(loaded: Page):
     _open_changed_waypoint_note(loaded, marker)
     loaded.evaluate("window.__cairnExported = false")
     loaded.click("#export")
-    loaded.locator("#confirm").get_by_role("button", name="Cancel").click()
+    loaded.locator("#confirm").get_by_role("button", name="Keep editing").click()
     expect(loaded.locator("#confirm")).to_be_hidden()
     assert loaded.evaluate("document.body.dataset.stage") == "edit"
     assert loaded.evaluate("window.__cairnExported") is False
@@ -2138,32 +1998,13 @@ def test_on_screen_runbook_reports_dropped_areas(fresh_page, tmp_path):
 # fails the test.
 # ---------------------------------------------------------------------------
 
-FX_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 ONX_PAIR = [FX_DIR / "onx_dialect" / "onx_dialect.gpx", FX_DIR / "onx_dialect" / "onx_dialect.kml"]
 CALTOPO_GPX = FX_DIR / "bitterroots" / "bitterroots_subet.gpx"
 CALTOPO_GPX_HELP = "CalTopo's GPX has no folders, icons or pin colors. Export GeoJSON (or KML) to keep them."
 
 
-@pytest.fixture()
-def csp_page(browser):
-    """A booted page in a context that enforces the production CSP."""
-    ctx = browser.new_context(accept_downloads=True)  # deliberately no bypass_csp
-    page = ctx.new_page()
-    violations = []
-    page.on("console", lambda m: violations.append(m.text)
-            if "Content Security Policy" in m.text else None)
-    page.goto(f"{BASE_URL}/index.html")
-    # Not wait_for_function: under the enforced CSP Playwright cannot evaluate
-    # page JS (no 'unsafe-eval'), so readiness is read from the DOM.
-    expect(page.locator("body")).to_have_attribute("data-engine", "ready", timeout=60000)
-    yield page
-    ctx.close()
-    assert not violations, f"CSP violations: {violations}"
 
 
-def _load_files(page: Page, paths) -> None:
-    page.set_input_files("#file", [str(p) for p in paths])
-    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
 
 
 def test_file_input_accepts_gpx_kml_and_several_files(csp_page: Page):
@@ -2191,17 +2032,19 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
     # onX's own icons, shown unchanged, explained, and none needing attention.
     expect(page.locator(f"{ROW} .icon-btn .icon-name")).to_have_text(
         ["Climbing", "Campsite", "Hazard"])
+    # DEVIATION (A11Y-12, round 4): the why is the marker's aria-description (and its
+    # styled tip), not its native title.
     for i in (0, 2):
         expect(page.locator(f"{ROW} .icon-btn").nth(i)).to_have_attribute(
-            "title", "Kept from your onX file.")
+            "aria-description", "Kept from your onX file.")
     expect(page.locator(f"{ROW}.attention")).to_have_count(0)
     # The fixture's "Campsite" isn't in onX's icon list: kept, but marked and explained.
     expect(page.locator(f"{ROW} .icon-name.unknown-icon")).to_have_text(["Campsite"])
     expect(page.locator(f"{ROW} .icon-btn").nth(1)).to_have_attribute(
-        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn’t know"))
+        "aria-description", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn't know"))
     # The lines' color came from the file too.
     expect(page.locator(f"{ROW} .line-btn").first).to_have_attribute(
-        "title", re.compile(r"Kept from your onX file\.$"))
+        "aria-description", re.compile(r"Kept from your onX file\.$"))
     # The type filter keeps the one word "Lines" (UI-18) and still finds the Track.
     page.click('#type-filter [data-kind="tracks"]')
     expect(page.locator(ROW)).to_have_count(2)
@@ -2211,7 +2054,7 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     page = csp_page
     _load_files(page, ONX_PAIR)
     _keep_fills(page)  # onx_dialect's area has a non-default fill
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator(".rb-step")).to_have_count(1)
     expect(page.locator(".rb-step h2")).to_have_text("onx dialect")
@@ -2296,19 +2139,10 @@ def test_bitterroots_geojson_still_reads_as_a_caltopo_map(csp_page: Page):
 
 # --- review fixes: an input file's icon names and markup are data, not code ---------
 
-_ONX_GPX_HEAD = ('<?xml version="1.0" encoding="UTF-8"?>\n<gpx xmlns:onx="https://wwww.onxmaps.com/" '
-                 'xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="onXmaps backcountry web">\n')
 
 
-def _onx_wpt(i: int, name: str, icon: str, notes: str = "") -> str:
-    return (f'<wpt lat="46.{i}" lon="-114.{i}"><name>{name}</name><desc>name={name}\nnotes={notes}\n'
-            f'id=id-{i}\ncolor=rgba(255,51,0,1)\nicon={icon}</desc><extensions>'
-            f'<onx:color>rgba(255,51,0,1)</onx:color><onx:icon>{icon}</onx:icon></extensions></wpt>\n')
 
 
-def _gpx_payload(name: str, wpts: str) -> dict:
-    return {"name": name, "mimeType": "application/gpx+xml",
-            "buffer": (_ONX_GPX_HEAD + wpts + "</gpx>\n").encode("utf-8")}
 
 
 def test_icon_names_that_are_object_prototype_keys_still_render(csp_page: Page):
@@ -2353,9 +2187,6 @@ def test_gpx_names_notes_icons_and_filename_render_as_text_not_html(fresh_page: 
 CALTOPO_SYN = FX_DIR / "caltopo_synthetic"
 
 
-def _row(page: Page, name: str):
-    box = page.get_by_role("checkbox", name=f"Select {name}", exact=True)
-    return page.locator(ROW, has=box)
 
 
 def _wpts(gpx: str) -> dict:
@@ -2412,7 +2243,7 @@ def test_caltopo_gpx_icons_and_colors_set_in_cairn_reach_the_exported_gpx(csp_pa
     page.click("#bulk-apply")
     expect(page.locator("#mark-modal")).to_be_hidden()
 
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     with page.expect_download() as dl:
         page.click("#download")
@@ -2700,7 +2531,7 @@ def test_rename_onto_a_taken_name_offers_to_merge(loaded: Page):
     expect(page.locator("#confirm-title")).to_have_text("“North Roots” already exists")
     expect(page.locator("#confirm-body")).to_have_text(
         "Move the 31 items in “Lost Trail Pass” into it?")
-    expect(page.locator("#confirm-actions button")).to_have_text(["Move them", "Cancel"])
+    expect(page.locator("#confirm-actions button")).to_have_text(["Cancel", "Move them"])
     expect(page.locator("#confirm-actions button", has_text="Cancel")).to_be_focused()
 
     # Cancel (Enter on the default) keeps the old name and both folders.
@@ -2750,7 +2581,7 @@ def test_keyboard_move_to_end_to_end(loaded: Page):
     here = pop.locator(".move-opt", has_text="Lost Trail Pass")
     expect(here).to_be_disabled()
     expect(here).to_contain_text("here now")
-    expect(pop.locator(".move-opt").last).to_have_text("+ New folder…")
+    expect(pop.locator(".move-opt").last).to_have_text("+ New folder")
     expect(pop.locator(".move-opt").first).to_be_focused()   # Blodgett (folders by name)
 
     # Esc closes it and gives focus back to More.
@@ -2930,9 +2761,9 @@ def test_start_over_counts_moves_and_renames(loaded: Page):
     _section(page, "Blodgett").locator(".folder-name").click()
     page.keyboard.type("Blodgett 2")
     page.keyboard.press("Enter")
+    assert page.evaluate("unexportedChanges()") == 3
     page.locator(".newmap").first.click()
-    expect(page.locator("#confirm-body")).to_have_text(
-        "This discards 3 unexported changes.")
+    expect(page.locator("#confirm-body")).to_have_text("Changes will be lost.")
     page.click("#confirm-actions button:text-is('Start over')")
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
     assert page.evaluate("SAVED") is None and page.evaluate("unexportedChanges()") == 0
@@ -3277,7 +3108,7 @@ def test_cancel_on_a_new_folders_taken_name_reopens_its_name(loaded: Page):
     expect(inp).to_have_value("Blodgett")
     # Leaving it unchanged keeps "New folder" and doesn't ask again (else
     # Cancel, reopen, leave, ask... never ends; the fuzzer found it via Export).
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator("#confirm")).to_be_hidden()
     assert ("New folder", 1) in _layout(page)
@@ -3519,8 +3350,7 @@ def test_start_over_counts_only_changes_since_the_last_export(loaded: Page):
     page.keyboard.press("Enter")
     assert page.evaluate("unexportedChanges()") == 3
     page.locator(".newmap").first.click()
-    expect(page.locator("#confirm-body")).to_have_text(
-        "This discards 3 unexported changes.")
+    expect(page.locator("#confirm-body")).to_have_text("Changes will be lost.")
 
 
 def test_the_100_character_message_shows_only_when_typing_was_cut(fresh_page: Page, tmp_path):
@@ -3781,8 +3611,6 @@ def test_an_empty_folders_taken_name_is_refused_without_a_merge_offer(loaded: Pa
 LONG_NOTE = "Water at the spring\nBring a filter: it runs low by August.\n\nCamp 200 m north."
 
 
-def _set(page: Page, uid: str, **patch) -> None:
-    page.evaluate("([u, p]) => edit(allItems().find(i => i.uid === u), p)", [uid, patch])
 
 
 def _tip(page: Page):
@@ -4142,9 +3970,10 @@ def test_the_caution_marks_the_same_notes_the_export_lists(fresh_page: Page, tmp
     _done(page)
     listed = [n for e in page.evaluate("MANIFEST") for n, _bytes in e["long_notes"]]
     assert sorted(marked) == sorted(listed)
-    # Several: "Items 'a', 'b' are over …" (owner's wording, 2026-10-24), up to 8 names.
+    # Several: "Items “a”, “b” are over …" (owner's wording, 2026-10-24; curly quotes and
+    # "Untitled" for a nameless item since 2026-10-25), up to 8 names.
     assert len(listed) >= 2
-    quoted = [f"'{n}'" for n in listed]
+    quoted = [f"\u201c{n or 'Untitled'}\u201d" for n in listed]
     shown = ", ".join(quoted) if len(quoted) <= 8 else f"{', '.join(quoted[:8])} and {len(quoted) - 8} more"
     expect(page.locator("#runbook .note.warn", has_text="length limit")).to_have_text(
         f"Items {shown} are over the length limit and will be truncated by onX.")
@@ -4162,7 +3991,7 @@ def test_the_long_note_warning_names_eight_then_says_how_many_more(fresh_page: P
     page.set_input_files("#file", str(f))
     page.wait_for_function("window.__cairnLoaded === true", timeout=30000)
     _done(page)
-    names = ", ".join(f"'temp {k}'" for k in range(1, 9))
+    names = ", ".join(f"\u201ctemp {k}\u201d" for k in range(1, 9))
     expect(page.locator("#runbook .note.warn")).to_have_text(
         f"Items {names} and 3 more are over the length limit and will be truncated by onX.")
 
@@ -4230,8 +4059,16 @@ def test_an_item_with_no_coordinates_says_it_will_not_export(fresh_page: Page, t
 
 
 def test_no_caution_on_a_plain_caltopo_map(loaded: Page):
+    """A name is needed to export (UI-40). This test used to count every `.caution` on
+    the page as a long note's; Bitterroots' 7 blank-named items now carry the name's
+    mark ("Needs a name to export."), so the note marks are counted in the note cells
+    and the name marks on their own."""
     long_notes = loaded.evaluate("allItems().filter(i => new TextEncoder().encode(i.desc || '').length > 512).length")
-    expect(loaded.locator(".caution")).to_have_count(long_notes)
+    expect(loaded.locator(".note-cell .caution")).to_have_count(long_notes)
+    names = loaded.locator(".name-cell .caution")
+    expect(names).to_have_count(7)
+    assert set(names.evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")) == {"Needs a name to export."}
+    expect(loaded.locator(".caution")).to_have_count(long_notes + 7)
 
 
 # --- 5. Pin colour apart from line colour in the several-items dialog ---------
@@ -4243,9 +4080,6 @@ def _items_of(page: Page, kind: str, folder: str = "Lost Trail Pass", n: int = 2
         [folder, kind, n])
 
 
-def _tick(page: Page, uids) -> None:
-    for u in uids:
-        page.locator(f'tr[data-uid="{u}"] .sel-box').check()
 
 
 def _color(page: Page, uid: str) -> str:
@@ -4288,7 +4122,7 @@ def test_a_mixed_selection_picks_pin_and_line_colors_apart(loaded: Page):
     _tick(page, wps + lines)
     page.click("#bulk-icon")
     d = page.locator("#mark-dialog")
-    expect(d.locator(".sec-row > .label")).to_have_text(["Pin color", "Icon", "Line color", "Style", "Weight"])
+    expect(d.locator(".sec-row > .label")).to_have_text(["Waypoint color", "Icon", "Line color", "Style", "Weight"])
     pin, line = d.locator('.pop-sec[data-row="pin"]'), d.locator('.pop-sec[data-row="line"]')
     expect(pin.locator(".swatch-btn")).to_have_count(10)
     expect(line.locator(".swatch-btn")).to_have_count(11)
@@ -4301,7 +4135,7 @@ def test_a_mixed_selection_picks_pin_and_line_colors_apart(loaded: Page):
     expect(line.locator(".color-reset")).to_have_attribute("aria-pressed", "true")
     _shot(page, "5b-mixed-dialog-pin-and-line")
     page.click("#bulk-apply")
-    expect(page.locator("#status")).to_have_text("Changed 2 items")
+    expect(page.locator("#status")).to_have_text("Changed 2 items.")
     assert [_color(page, u) for u in wps] == ["rgba(255,0,0,1)"] * 2
     assert [_color(page, u) for u in lines] == [before[u] for u in lines]
     # Now a line colour only (Fuchsia exists only for lines).
@@ -4601,9 +4435,13 @@ def test_a_pointer_drag_move_stays_announced_in_the_status_line(loaded: Page):
     page = loaded
     _wide(page)
     st = page.locator("#status")
-    assert st.get_attribute("role") == "status"
+    # DEVIATION (A11Y-24, round 4): the live region is #status-live, which never moves;
+    # #status, the line on screen that moves between the top bar and the rail, mirrors it.
+    live = page.locator("#status-live")
+    assert live.get_attribute("role") == "status" and st.get_attribute("role") is None
     _drag(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"), _rail(page, "North Roots"))
     expect(st).to_have_text("Moved 1 item to North Roots.")
+    expect(live).to_have_text("Moved 1 item to North Roots.")
     for ms in (300, 400, 1500):
         page.wait_for_timeout(ms)
         assert st.text_content() == "Moved 1 item to North Roots."
@@ -4710,7 +4548,7 @@ def test_one_dialog_for_lines_and_areas_and_for_waypoints_and_areas(loaded: Page
     _shot(page, "fb-11a-lines-and-areas-dialog")
     d.locator('.tog[data-weight="6.0"]').click()
     page.click("#bulk-apply")
-    expect(page.locator("#status")).to_have_text(re.compile(r"^Changed [1-4] items$"))  # only those not thick already
+    expect(page.locator("#status")).to_have_text(re.compile(r"^Changed [1-4] items\.$"))  # only those not thick already
     assert {page.evaluate(_LINE.format(uid=u))["weight"] for u in lines + areas} == {"6.0"}
     _clear_selection(page)
     wps = _items_of(page, "waypoints")
@@ -4718,7 +4556,7 @@ def test_one_dialog_for_lines_and_areas_and_for_waypoints_and_areas(loaded: Page
     expect(page.locator("#bulk-icon")).to_have_text("Icon & color…")
     page.click("#bulk-icon")
     expect(d.locator(".sec-row .label")).to_have_text(
-        ["Pin color", "Icon", "Line color", "Style", "Weight", "Fill"])
+        ["Waypoint color", "Icon", "Line color", "Style", "Weight", "Fill"])
     expect(d.locator(".reset-chip")).to_have_text(["Leave as is"] * 6)
     assert _one_row(d)
     _shot(page, "fb-11b-waypoints-and-areas-dialog")
@@ -4985,8 +4823,6 @@ def _mark(loc, tag: str = "keep") -> None:
     loc.evaluate("(e, t) => { e.__cairnMark = t; }", tag)
 
 
-def _is_marked(loc, tag: str = "keep") -> bool:
-    return loc.evaluate("(e, t) => e.__cairnMark === t", tag)
 
 
 def test_filter_keystrokes_keep_the_rows_and_sections_still_shown(loaded: Page):

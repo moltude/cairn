@@ -55,7 +55,7 @@ server. A different count means something changed — find out what before conti
 - `tests/fixtures/bitterroots/Bitterroots__Complete_.json` — canonical large CalTopo dataset.
 - `tests/fixtures/dark_divide_100/` — one real CalTopo map exported as GeoJSON, KML and GPX;
   `PARITY.md` pins every difference.
-- `tests/fixtures/onx_real/`, `onx_exports/` — real onX Web Map exports.
+- `tests/fixtures/onx_real/`, `onx_exports/` — real exports from onX's web app.
 - `tests/fixtures/edge_cases/` — poles, dateline, unicode, malformed input, 10k-feature stress.
 - `tests/fixtures/attacks/` — hostile XML. Never glob it into "every fixture parses" tests.
 - A new fixture must be added to `tests/test_input_check.py`'s `EXPECTED` table.

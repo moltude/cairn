@@ -34,13 +34,30 @@ const $ = s => document.querySelector(s);
    lines stay until something supersedes them. */
 let STATUS_LINGER_MS = 8000;
 let STATUS_TIMER = null;
+/* #status is the line on screen; it moves between the top bar and the rail
+   (showStage). Screen readers hear its words from #status-live, a region that
+   never moves (A11Y-24: a moved live region can stop being announced). */
 const setStatus = (t, cls = "") => {
-  const e = $("#status"); e.textContent = t; e.className = "status " + cls;
+  const e = $("#status"), live = $("#status-live");
+  e.textContent = t; e.className = "status " + cls; live.textContent = t;
   clearTimeout(STATUS_TIMER); STATUS_TIMER = null;
   if (t && cls === "ready") STATUS_TIMER = setTimeout(() => {
-    if (e.textContent === t) { e.textContent = ""; e.className = "status "; }
+    if (e.textContent === t) { e.textContent = ""; e.className = "status "; live.textContent = ""; }
   }, STATUS_LINGER_MS);
 };
+/* Counts a screen reader can't see change (A11Y-04): how many items a search or
+   filter leaves, and how many a select-all, range or header box selects. One
+   polite region, a beat after the last change (typing in the search waits for
+   the pause). Emptied at once, so the same words again are said again. */
+const ANNOUNCE_MS = 400;
+let ANNOUNCE_T = null;
+function announce(msg) {
+  const r = $("#count-live");
+  clearTimeout(ANNOUNCE_T);
+  r.textContent = "";
+  ANNOUNCE_T = setTimeout(() => { r.textContent = msg; }, ANNOUNCE_MS);
+}
+const announceSelection = () => announce(`${SEL.size} selected`);
 /** An error that a later success has made stale ("A folder needs a name."). */
 const clearError = () => { if ($("#status").classList.contains("err")) setStatus(""); };
 
@@ -64,8 +81,9 @@ const clearError = () => { if ($("#status").classList.contains("err")) setStatus
      over what is the same for that node's whole life: its item, its folder key. */
 const HANDLERS = ["onclick", "onchange", "oninput", "onkeydown"];
 /* Attributes a builder never writes, set at run time: the name field's value
-   at focus (wireTextField) and the tip's link (showTip). A morph leaves them. */
-const RUNTIME_ATTRS = new Set(["data-orig", "aria-describedby"]);
+   at focus (wireTextField), the tip's link (showTip) and a folder name's error
+   marks (markFolderNameError). A morph leaves them. */
+const RUNTIME_ATTRS = new Set(["data-orig", "aria-describedby", "aria-invalid"]);
 const isField = n => n.nodeName === "INPUT" || n.nodeName === "TEXTAREA";
 /** Whether live node a can be patched into fresh node b (else b replaces it). */
 const sameNode = (a, b) => a.nodeType === b.nodeType && a.nodeName === b.nodeName &&
@@ -184,6 +202,15 @@ function trapTab(e, card) {
   else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
 }
 
+/* A click on a modal's backdrop closes it only when the press began there too:
+   text selected by dragging out of a field past the card is let go on the
+   backdrop, and the browser sends the backdrop that click as well. */
+function closeOnBackdrop(modal, close) {
+  let pressedHere = false;
+  modal.addEventListener("pointerdown", e => { pressedHere = e.target === modal; });
+  modal.addEventListener("click", e => { if (e.target === modal && pressedHere) close(); });
+}
+
 let PENDING_FILES = null;
 async function boot() {
   try {
@@ -227,6 +254,8 @@ async function boot() {
     if (cfg !== null) py.FS.writeFile("/cairn_config.yaml", cfg);
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
     NOTE_LIMIT = py.runPython("bridge.ONX_IMPORT_NOTE_LIMIT");
+    NAME_LIMIT = py.runPython("bridge.ONX_IMPORT_NAME_LIMIT");
+    FOLDER_NAME_LIMIT = py.runPython("bridge.ONX_FOLDER_NAME_LIMIT");
     ONX_DEFAULT_FILL = py.runPython("bridge.ColorMapper.DEFAULT_AREA_FILL");
     window.__cairnReady = true;
     // The same signal as a DOM attribute, for tests that run under the
@@ -246,13 +275,53 @@ async function boot() {
 /** Show one of drop / edit / done, and move the single #status node into
     that screen's slot (the top bar on drop/done, the rail on edit). */
 function showStage(name) {
-  ["drop", "edit", "done"].forEach(s => $(`#${s}-stage`).classList.toggle("hidden", s !== name));
+  // The class hides (styles.css); the attribute is what HTML asks of the two
+  // <main>s not shown (A11Y-28).
+  ["drop", "edit", "done"].forEach(s => {
+    const el = $(`#${s}-stage`);
+    el.classList.toggle("hidden", s !== name);
+    el.hidden = s !== name;
+  });
   document.body.dataset.stage = name;
   const slot = name === "edit" ? $("#status-rail") : $("#status-top");
   if ($("#status").parentNode !== slot) slot.appendChild($("#status"));
   window.scrollTo(0, 0);
+  // The control that had focus went with the old screen: focus the new
+  // screen's heading (tabindex -1, no ring), so Tab goes on from there and a
+  // screen reader says where it is; and the tab's title names it (A11Y-02).
+  document.title = STAGE_TITLE[name];
+  $(STAGE_HEADING[name]).focus({ preventScroll: true });
+  syncStickyPad();
   syncUnloadGuard();
 }
+const STAGE_TITLE = { drop: document.title, edit: "Cairn — Edit", done: "Cairn — Export" };
+
+/* Keyboard focus never lands under a sticky bar (A11Y-01): the page scrolls a
+   focused control into view below the bars at its top (html scroll-padding-top,
+   --sticky-h: the top bar, or on the edit screen the search row and, while it
+   shows, the selection bar under it), and the rail below its entries above its
+   sticky footer (scroll-padding-bottom, --rail-foot-h). Measured, since the bars
+   come and go and change height; called on a stage change, a selection change
+   and whenever a bar resizes (wireStickyPad). */
+const STICKY_GAP = 8;
+function syncStickyPad() {
+  const root = document.documentElement.style;
+  let top;
+  if (document.body.dataset.stage === "edit") {
+    top = $(".toolbar").offsetHeight;
+    const sb = $("#selbar");
+    // The selection bar sticks at its own top (styles.css: --toolbar-h, 52px).
+    if (!sb.classList.contains("hidden")) top = Math.max(top, (parseFloat(getComputedStyle(sb).top) || 0) + sb.offsetHeight);
+    root.setProperty("--rail-foot-h", `${$(".rail-foot").offsetHeight + STICKY_GAP}px`);
+  } else top = $("#topbar").offsetHeight;
+  root.setProperty("--sticky-h", `${Math.ceil(top) + STICKY_GAP}px`);
+}
+function wireStickyPad() {
+  const ro = new ResizeObserver(() => syncStickyPad());
+  [".toolbar", "#selbar", ".rail-foot", "#topbar"].forEach(s => ro.observe($(s)));
+  syncStickyPad();
+}
+const STAGE_HEADING = { drop: "#drop-stage h1", edit: "#map-title", done: "#done-stage h1" };
 
 /* ---------- browser Back and Forward (UI-37) ----------
    Each stage is a history entry: drop (replaced in at boot), edit (pushed on
@@ -299,6 +368,7 @@ function onPopState(e) {
 /** Back to the drop screen from `from` (history is already there). */
 function leaveMap(from) {
   flushDeferred();
+  closeBulk();                     // an open dialog never outlives its screen (nothing saved)
   if (CONFIRM) closeConfirm(false);
   const n = unexportedChanges();
   if (!n) { resetAll({ history: false }); return; }
@@ -357,6 +427,7 @@ async function handleFiles(files) {
     return;
   }
   showDropWait(false);
+  if (CONFIRM) closeConfirm(false);   // a new file replaces the last one's error
   setStatus("Reading " + (files.length === 1 ? files[0].name : `${files.length} files`) + "…");
   try {
     const payload = await Promise.all(files.map(async f => ({ name: f.name, text: await f.text() })));
@@ -371,6 +442,7 @@ async function handleFiles(files) {
     resetFolderState();
     $("#runbook").replaceChildren();
     SAVED = savedState();
+    FILTER_SIG = null;               // a new map's first render says nothing (A11Y-04)
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
     renderEdit();
@@ -383,9 +455,34 @@ async function handleFiles(files) {
     // message and the engine's messages are already user-friendly ("No features
     // found... make sure this is a CalTopo export"); the stack above it is noise
     // to a hiker. Keep the full thing in the console for us.
-    setStatus((files.length === 1 ? "Couldn't read that file — " : "Couldn't read those files — ") + humanError(e), "err");
+    // The dialog says it; the status line would say it twice (and a screen
+    // reader would hear it twice).
+    setStatus("");
+    loadFailed(humanError(e), files.length);
     console.error(e);
   }
+}
+
+/** A file that didn't load (owner 2026-10-26, A11Y-23): say so in a dialog
+    whose one button, OK, returns to a clean home page, ready for another file.
+    "Failed: Could not load file" is the whole message; any other reason is the
+    body under "Couldn't read that file". */
+function loadFailed(why, count) {
+  const failed = why.startsWith("Failed:");
+  openConfirm({
+    title: failed ? why : (count === 1 ? "Couldn't read that file" : "Couldn't read those files"),
+    body: failed ? "" : why,
+    ret: $("#pick"),
+    buttons: [
+      { label: "OK", initial: true, cancel: true, run: () => {
+          closeConfirm(false);
+          // Also clears a map the engine read but the edit screen failed to
+          // draw. No history step: the edit entry may never have been pushed.
+          resetAll({ history: false });
+          $("#pick").focus({ preventScroll: true });
+        } },
+    ],
+  });
 }
 
 /** The "Getting ready…" line is a status region: empty it when hidden, or a
@@ -681,7 +778,23 @@ function renderFolders() {
   renderChips();
   patch(patchFolders);
   updateSel();
+  announceFilterResult(shownUids.size);
   syncUnloadGuard();               // every edit, move and rename redraws the list
+}
+
+/* The search, type, folder and icon filters, as one string: a render whose
+   filters differ from the last one's says how many items it left (A11Y-04),
+   in the words on screen ("Showing N", "Nothing matches these filters.").
+   Edits, moves and sorts redraw the list too, but don't change this, so they
+   say nothing here (their receipt is the status line). null: a new map, whose
+   first render sets it silently. */
+let FILTER_SIG = null;
+const filterSig = () => JSON.stringify([FILTERS.q, FILTERS.kind, FILTERS.folder, [...FILTERS.icons].sort(), FILTERS.attention]);
+function announceFilterResult(n) {
+  const sig = filterSig();
+  if (FILTER_SIG !== null && sig !== FILTER_SIG)
+    announce($("#folders").querySelector(":scope > .note") ? "Nothing matches these filters." : `Showing ${n}`);
+  FILTER_SIG = sig;
 }
 
 function patchFolders() {
@@ -720,9 +833,10 @@ function folderSection(g, items) {
   const sub = isUnorganized(g) ? "Not in any folder"
     : items.length === g.items.length ? `${g.items.length} item${g.items.length === 1 ? "" : "s"}`
     : `${items.length} of ${g.items.length} shown`;
+  const fmark = folderCaution(g);
   el.innerHTML = `
     <div class="folder-head">
-      ${folderTitleHTML(g)}
+      ${folderTitleHTML(g)}${fmark ? cautionMark(`fcaution|${esc(g.key)}`, fmark, " folder-caution") : ""}
       <span class="folder-sub">${esc(sub)}</span>
       <button type="button" class="collapse" data-fk="collapse|${esc(g.key)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
     </div>
@@ -730,7 +844,7 @@ function folderSection(g, items) {
       <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
       <thead><tr>
         <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
-        <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}" aria-label="Sort ${esc(g.name)} by name">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
+        <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
       </tr></thead><tbody></tbody></table></div>`;
   el.querySelector("tbody")._own = true;
   const fbox = el.querySelector(".folder-all");
@@ -740,6 +854,7 @@ function folderSection(g, items) {
   fbox.onchange = e => {
     items.forEach(i => e.target.checked ? SEL.add(i.uid) : SEL.delete(i.uid));
     renderFolders();
+    announceSelection();
   };
   wireFolderTitle(el, g);
   el.querySelector(".sort-btn").onclick = () => toggleSort(g.key);
@@ -792,10 +907,9 @@ const kindWord = k => k === "shapes" ? "Area" : "Line";
     the type filter keeps the one word "Lines"). */
 const SUBKIND_WORD = { line: "Line", track: "Track", area: "Area" };
 const rowKindWord = it => SUBKIND_WORD[it.subkind] || kindWord(it.kind);
-const oneLine = s => String(s || "").replace(/\s*\n\s*/g, " ").trim();
 /** A note's preview in the list: its first line that isn't blank.
     The rest shows on hover (the tip below). "Use note as name" still joins
-    every line (oneLine). */
+    every line (CairnRename.cleanName). */
 const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boolean) || "";
 
 /* ---------- the hover tip ----------
@@ -804,7 +918,7 @@ const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boole
    focus, with line breaks kept, inside the window, selectable and copyable
    (the pointer may move onto it), and gone on Esc. Not the native `title`:
    it drops line breaks on some platforms and can't be styled. */
-const TIP_SRC = ".name-in, .note-btn, .caution";
+const TIP_SRC = ".name-in, .note-btn, .caution, .icon-btn, .line-btn";
 const TIP_HOVER_MS = 450, TIP_FOCUS_MS = 150;   // how long a hover / keyboard focus waits for the tip
 const TIP_GRACE_MS = 200;      // leaving the control or the tip: time to cross from one to the other
 const PRESS_FOCUS_MS = 300;    // focus this soon after a press came from the pointer, not the keyboard
@@ -812,10 +926,13 @@ const TIP = { src: null, showT: null, hideT: null, over: false };
 let LAST_POINTER = 0;   // when the last press happened: focus right after it isn't keyboard focus
 const cut = el => !!el && el.scrollWidth > el.clientWidth + 1;
 function tipText(src, viaKey = false) {
+  // Each mark its own, a row's or a folder header's (which has no row).
+  if (src.classList.contains("caution")) return src.getAttribute("aria-label");
   const tr = src.closest("tr[data-uid]");
   const it = tr && allItems().find(i => i.uid === tr.dataset.uid);
   if (!it) return null;
-  if (src.classList.contains("caution")) return src.getAttribute("aria-label");   // each mark its own
+  // A marker: why it is what it is, always (A11Y-12).
+  if (src.matches(".icon-btn, .line-btn")) return whyText(it) || null;
   if (src.classList.contains("name-in")) {
     // Not while typing in it (the field shows what is typed), unless it was
     // just reached by keyboard.
@@ -926,29 +1043,80 @@ function wireTip() {
    excluded row isn't exported, so it has none. Rows re-render after every
    edit, so the mark follows the note. */
 let NOTE_LIMIT = null;                 // bridge.ONX_IMPORT_NOTE_LIMIT (512), read at boot
-const utf8Len = cp => cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+// onX's limits on names (UI-40, measured live 2026-10-25), read at boot like
+// NOTE_LIMIT: the first 255 UTF-8 bytes of an imported name are kept, and its
+// folder rename dialog stops at 50 characters (UTF-16 units, as maxlength
+// counts). The bulk dialog's name flag reads NAME_LIMIT too.
+let NAME_LIMIT = null;                 // bridge.ONX_IMPORT_NAME_LIMIT (255)
+let FOLDER_NAME_LIMIT = null;          // bridge.ONX_FOLDER_NAME_LIMIT (50)
+/** [size, characters past the limit] of text measured by size(): the
+    characters (code points) after the longest start that fits in limit. */
+function overflow(text, limit, size) {
+  const total = size(text);
+  if (total <= limit) return [total, 0];
+  let upTo = 0, kept = 0, chars = 0;
+  for (const ch of text) {
+    upTo += size(ch); chars++;
+    if (upTo <= limit) kept++;
+  }
+  return [total, chars - kept];
+}
 /** [bytes, characters past the limit] of a note, by UTF-8 bytes, measured
     on the note as the export writes it to the GPX <desc> (line endings made
     "\n", outer whitespace trimmed: writers.clean_notes for plain notes), the
-    same measure instructions.txt uses, so the screen and the file agree. */
-const writtenNote = d => String(d || "").replace(/\r\n?/g, "\n").trim();
-function noteOverflow(desc) {
-  let bytes = 0, kept = 0, total = 0;
-  for (const ch of writtenNote(desc)) {
-    bytes += utf8Len(ch.codePointAt(0)); total++;
-    if (bytes <= NOTE_LIMIT) kept++;
-  }
-  return [bytes, total - kept];
+    same measure instructions.txt uses, so the screen and the file agree.
+    Both helpers are web/rename.js's, so the row's mark and the Change note…
+    dialog's flag (UI-39) measure alike. */
+const writtenNote = d => CairnRename.writtenNote(d);
+const noteOverflow = desc => overflow(writtenNote(desc), NOTE_LIMIT, CairnRename.noteBytes);
+/** The long-note sentence (UI-34), or null for a note onX keeps whole. */
+function longNoteSentence(desc) {
+  const [bytes, cutN] = noteOverflow(desc);
+  return bytes > NOTE_LIMIT
+    ? `onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
+}
+/** A name as the export writes it to <name> and onX reads it back: the
+    characters XML forbids dropped (the writers' rule), a line break read as
+    "\n". Measured in UTF-8 bytes, as instructions.txt measures it. */
+const writtenName = n => CairnRename.xmlSafe(n).replace(/\r\n?/g, "\n");
+/** The long-name sentence (UI-40), or null for a name onX keeps whole. */
+function longNameSentence(name) {
+  const [bytes, cutN] = overflow(writtenName(name), NAME_LIMIT, CairnRename.noteBytes);
+  return bytes > NAME_LIMIT
+    ? `onX imports only the first ${NAME_LIMIT} bytes of a name. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
+}
+/** The long folder name sentence (UI-40), or null for one onX's rename dialog
+    takes whole. Characters as maxlength counts them: an emoji is two. */
+function longFolderSentence(name) {
+  const [units, cutN] = overflow(String(name ?? ""), FOLDER_NAME_LIMIT, s => s.length);
+  return units > FOLDER_NAME_LIMIT
+    ? `onX keeps only the first ${FOLDER_NAME_LIMIT} characters of a folder name. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
+}
+/** Blank as the export would write it (UI-40); the same test as the dialog's
+    name-empty flag and bridge._blank_name, so the three agree. */
+const nameIsBlank = name => CairnRename.blankName(name);
+/** An item Export would write with a blank name: it needs one first (UI-40). */
+const needsName = it => it.included && !it.no_coords && nameIsBlank(it.name);
+const NEEDS_NAME = "Needs a name to export.";
+/** The mark beside the name: a name the export needs, or one onX will cut. */
+function nameCaution(it) {
+  if (!it.included || it.no_coords) return null;
+  return nameIsBlank(it.name) ? NEEDS_NAME : longNameSentence(it.name);
+}
+/** The mark beside a folder's name in its header: a name onX's rename dialog
+    will cut. Only for a folder the export writes (it has an included item). */
+function folderCaution(g) {
+  return g.items.some(i => i.included) ? longFolderSentence(g.name) : null;
 }
 const fillAlpha = f => { const m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(f || ""); return m ? parseFloat(m[1]) : 1; };
 /** The mark beside the note: a note onX will cut, or an item that won't export. */
 function noteCaution(it) {
   if (!it.included) return null;
   if (it.no_coords) return "Won't export: it has no coordinates.";
-  const [bytes, cutN] = noteOverflow(it.desc);
-  return bytes > NOTE_LIMIT
-    ? `onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
-    : null;
+  return longNoteSentence(it.desc);
 }
 /** The mark at the far right of an area's Icon cell, after "Area" (owner
     feedback 2026-10-24): onX will reset its fill. Not for an item that won't
@@ -958,6 +1126,24 @@ function fillCaution(it) {
 }
 const cautionMark = (fk, text, cls = "") =>
   `<span class="caution${cls}" tabindex="0" role="img" data-fk="${fk}" aria-label="${esc(text)}">${UI_ICON.caution}</span>`;
+
+/** Why a row's icon (or a line's or area's colour) is what it is: the styled
+    tip on the marker (hover or keyboard focus) and, for screen readers, its
+    aria-description (A11Y-12; it was the native title, which keyboard focus
+    never shows). */
+const whyText = it => it.kind === "waypoints" ? it.why || "" : `${colorName(it.color)} — ${it.why || ""}`;
+/** The note button. Its name starts with the words it shows (A11Y-11), so a
+    voice user can say them: "{first line}, note for {name}", or for a missing
+    note "Add a note for {name}" ("Add a note" shows on hover or keyboard focus).
+    An aria-label rather than hidden text in the button: the empty note's words
+    are visibility:hidden at rest, which would drop them from a name built from
+    the content. */
+function noteButton(it, fk) {
+  const line = firstLine(it.desc), who = it.name || "Untitled";
+  const name = line ? `${line}, note for ${who}` : `Add a note for ${who}`;
+  return `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="${esc(name)}">
+        <span class="note-text${line ? "" : " empty"}">${esc(line || "Add a note")}</span>${UI_ICON.pencil}</button>`;
+}
 
 /** The row for item `it`: `old` (its live row, if it has one) when that is
     still right or can be patched to be, else a new one. */
@@ -972,20 +1158,20 @@ function row(it, old = null) {
   const fk = esc(it.uid) + "|";
   const caution = noteCaution(it);
   const fillMark = fillCaution(it);
+  const nameMark = nameCaution(it);
   const html = `
-    <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
-    <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name)}" value="${esc(it.name)}">${it.included ? ""
-      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
+    <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name || "Untitled")}" ${SEL.has(it.uid) ? "checked" : ""}></td>
+    <td class="namecol"><div class="name-cell"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name || "Untitled")}" placeholder="Untitled" value="${esc(it.name)}">${nameMark ? cautionMark(`${fk}namecaution`, nameMark, " name-caution") : ""}</div>${it.included ? ""
+      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name || "Untitled")}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
-        <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
+      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}${noteButton(it, fk)}</div>`}</td>
     <td class="iconcol">${isWp
-      ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
-          ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>`
+      ? `<button type="button" class="icon-btn" data-fk="${fk}mark" aria-description="${esc(whyText(it))}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
+          ? `<span class="whymark">Default pin</span>`
           // An icon an onX file named that isn't in onX's list (Phase 2 flags
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
-      : `<div class="icon-cell"><button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>${fillMark ? cautionMark(`${fk}fillcaution`, fillMark, " fill-caution") : ""}</div>`}</td>`;
+      : `<div class="icon-cell"><button type="button" class="line-btn" data-fk="${fk}mark" aria-description="${esc(whyText(it))}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>${fillMark ? cautionMark(`${fk}fillcaution`, fillMark, " fill-caution") : ""}</div>`}</td>`;
   // Unchanged since it was last drawn: leave it be. (Its classes are checked
   // too: openPop, a tick and a drag set some directly.)
   if (old && old._html === html && old.className === cls) return old;
@@ -1009,6 +1195,7 @@ function row(it, old = null) {
         const on = !SEL.has(it.uid);
         for (let k = lo; k <= hi; k++) on ? SEL.add(order[k]) : SEL.delete(order[k]);
         renderFolders();
+        announceSelection();
         return;
       }
       e.preventDefault();          // the anchor isn't on screen: the click does nothing but move it
@@ -1021,7 +1208,7 @@ function row(it, old = null) {
     tr.classList.toggle("sel", e.target.checked); updateSel();
     syncFolderBox(tr);
   };
-  wireTextField(tr.querySelector(".name-in"), it, "name", { required: true });
+  wireTextField(tr.querySelector(".name-in"), it, "name");
   if (noteOpen) wireNoteEditor(tr, it);
   else tr.querySelector(".note-btn").onclick = () => openNote(it);
   const chip = tr.querySelector(".exc-chip");
@@ -1050,20 +1237,22 @@ function syncFolderBox(tr) {
  *  original value before blurring means the browser sees no change at all, so no
  *  commit happens.
  *
- *  `required` fields (the name) also refuse to commit empty: a nameless markup
- *  is unusable in onX, where the name is the only searchable field.
+ *  An edited name is cleaned like a bulk Rename… (one rule set for every text
+ *  edit, owner 2026-10-25): CairnRename.cleanName drops the characters XML
+ *  forbids, turns a run of whitespace holding a tab or line break into one
+ *  space and trims, silently. The field then shows what is stored. A value
+ *  left untouched is never cleaned (a dirty loaded name stays as loaded), and
+ *  one that cleans back to the stored name is no edit. An empty name is kept
+ *  (owner, 2026-10-25): it shows as "Untitled", and Export asks for names.
  */
-function wireTextField(el, it, key, { required = false } = {}) {
+function wireTextField(el, it, key) {
   el.addEventListener("focus", () => { el.dataset.orig = el.value; });
   const commit = now => {
-    const v = el.value;
-    if (required && !v.trim()) {
-      el.value = el.dataset.orig ?? "";
-      setStatus("A name is required. onX searches by name only.", "err");
-      return;
-    }
-    if (v === el.dataset.orig) return;
+    if (el.value === el.dataset.orig) return;     // untouched: never cleaned
+    const v = CairnRename.cleanName(el.value);
+    el.value = v;                                 // what's on screen is what's stored
     el.dataset.orig = v;
+    if (v === (it[key] ?? "")) return;            // cleans back to the stored value: no edit
     edit(it, { [key]: v }, { render: false });
     // Enter keeps focus in the field: render now (refocus finds it again).
     // `change` fires on blur BEFORE focus lands on the next control; a
@@ -1075,6 +1264,7 @@ function wireTextField(el, it, key, { required = false } = {}) {
   // Enter saves and Esc reverts, both staying in the field (focus never drops
   // to the page): Esc's restored value means the blur that follows sees no change.
   el.addEventListener("keydown", e => {
+    if (e.isComposing || e.keyCode === 229) return;   // the IME's Escape or Enter
     if (e.key === "Escape") {
       e.preventDefault();
       el.value = el.dataset.orig ?? "";
@@ -1100,6 +1290,7 @@ function noteEditor(it) {
 }
 
 function openNote(it) {
+  if (BULK) return;                // the several-items dialog owns the screen
   NOTE_EDIT = { uid: it.uid, draft: it.desc || "" };
   renderFolders();
   const ta = document.querySelector(`tr[data-uid="${CSS.escape(it.uid)}"] .desc-in`);
@@ -1112,11 +1303,24 @@ function openNote(it) {
   }
 }
 
+/** The note the editor saves for draft, or null when saving it is no edit.
+    An edited note is cleaned like a bulk Change note… (one rule set for every
+    text edit, owner 2026-10-25): CairnRename.cleanNote drops the characters
+    XML forbids, makes line endings "\n" and trims the outside, silently; inner
+    line breaks stay. A draft left as the note was is never cleaned, and one
+    that cleans back to the note as the file writes it is no edit. */
+function noteToSave(it, draft) {
+  const was = it.desc || "";
+  if (draft === was) return null;
+  const v = CairnRename.cleanNote(draft);
+  return v === writtenNote(was) ? null : v;
+}
+
 function closeNote(it, apply) {
   if (!NOTE_EDIT) return;
-  const v = NOTE_EDIT.draft;
+  const v = apply && it ? noteToSave(it, NOTE_EDIT.draft) : null;
   NOTE_EDIT = null;
-  if (apply && it && v !== (it.desc || "")) edit(it, { desc: v });
+  if (v !== null) edit(it, { desc: v });
   else renderFolders();
 }
 
@@ -1124,6 +1328,7 @@ function wireNoteEditor(tr, it) {
   const ta = tr.querySelector(".desc-in");
   ta.addEventListener("input", () => { NOTE_EDIT.draft = ta.value; syncUnloadGuard(); });
   ta.addEventListener("keydown", e => {
+    if (e.isComposing || e.keyCode === 229) return;   // the IME's Escape or Enter
     if (e.key === "Escape") {
       e.preventDefault(); e.stopPropagation();
       closeNote(it, false);
@@ -1180,27 +1385,43 @@ function setSelectAll(on) {
   shown.forEach(i => on ? SEL.add(i.uid) : SEL.delete(i.uid));
   if (!on) ANCHOR = null;
   renderFolders();
+  announceSelection();
 }
 
+/** Patch every selected item; returns how many took a patch. */
 function bulk(patch) {
-  selectedItems().forEach(it => edit(it, typeof patch === "function" ? patch(it) : patch, { render: false }));
+  let n = 0;
+  selectedItems().forEach(it => {
+    const p = typeof patch === "function" ? patch(it) : patch;
+    // An empty patch is no edit: it must not leave an empty EDITS entry, which
+    // Start over and the leave prompts would count as a change.
+    if (Object.keys(p).length) { edit(it, p, { render: false }); n++; }
+  });
   refreshAfterEdit();
+  return n;
 }
+/** More's actions that act at once end with a receipt, like every other bulk
+    action (A11Y-25); nothing when nothing changed. */
+const bulkReceipt = (n, say) => { if (n) setStatus(say(n), "ready"); };
 
 function updateSel() {
   const n = SEL.size;
   $("#selcount").textContent = `${n} selected`;
+  const barMoved = $("#selbar").classList.contains("hidden") !== (n === 0);
   $("#selbar").classList.toggle("hidden", n === 0);
   ["#bulk-icon", "#more-btn"].forEach(sel => {
     const el = $(sel);
     el.disabled = n === 0;
-    el.title = n === 0 ? "Select rows first" : "";
+    el.title = n === 0 ? "Select items first" : "";
   });
   const sel = selectedItems();
   // One button, one dialog (UI-36). Lines and areas take a colour and a line
   // style, not an icon: say what it does.
   $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color & style…";
   closeMenu();
+  // The selection bar came or went (A11Y-01): pad now, not at the
+  // ResizeObserver's turn, so a focus scroll in this same task clears it.
+  if (barMoved) syncStickyPad();
 }
 
 /* ---------- icon & color: palettes ---------- */
@@ -1229,11 +1450,19 @@ const weightLabel = w => WEIGHT_NAMES[w] || (w === "2.0" ? "Extra thin" : "Thin"
 const LEAVE = "Leave as is";
 const leaveChip = (cls, on, row = "") =>
   `<button type="button" class="reset-chip ${cls}"${row ? ` data-row="${row}"` : ""} aria-pressed="${on}">${LEAVE}</button>`;
-const secHead = (label, chip = "") => `<div class="sec-row"><span class="label">${label}</span>${chip}</div>`;
+const secHead = (label, chip = "", id = "") =>
+  `<div class="sec-row"><span class="label"${id ? ` id="${id}"` : ""}>${label}</span>${chip}</div>`;
+/* Each row of the popover and the dialog is a group named by its label line
+   (A11Y-07), so its "Leave as is" and its swatches say whose they are: two
+   "Blue"s in an area's popover, two "Leave as is" in a mixed dialog. */
+let GROUP_N = 0;
+const groupId = () => `sec-label-${++GROUP_N}`;
+const groupAttrs = id => `role="group" aria-labelledby="${id}"`;
 /** A colour row: `leave` adds the chip (several items), `current` presses a swatch (one item). */
 function colorRowHTML(row, label, colors, { leave = false, current = null, spread = false } = {}) {
-  return `<div class="pop-sec color-sec" data-row="${row}">
-      ${secHead(label, leave ? leaveChip("color-reset", true, row) : "")}
+  const id = groupId();
+  return `<div class="pop-sec color-sec" data-row="${row}" ${groupAttrs(id)}>
+      ${secHead(label, leave ? leaveChip("color-reset", true, row) : "", id)}
       <div class="palette${spread ? " spread" : ""}" data-row="${row}">${paletteHTML(colors, current)}</div>
     </div>`;
 }
@@ -1242,10 +1471,12 @@ function colorRowHTML(row, label, colors, { leave = false, current = null, sprea
 function lineOptsHTML(style, weight, leave = false) {
   const tog = (attr, k, name, glyph, on) =>
     `<button type="button" class="tog" data-${attr}="${k}" aria-label="${name}" title="${name}" aria-pressed="${on}">${glyph}</button>`;
+  // The group is the whole column, so its "Leave as is" is in it too (A11Y-07).
+  const s = groupId(), w = groupId();
   return `<div class="pop-sec line-opts">
-      <div class="opt-group">${secHead("Style", leave ? leaveChip("style-reset", !style) : "")}<div class="toggles" role="group" aria-label="Style">${
+      <div class="opt-group" ${groupAttrs(s)}>${secHead("Style", leave ? leaveChip("style-reset", !style) : "", s)}<div class="toggles">${
         Object.keys(STYLE_NAMES).map(k => tog("style", k, STYLE_NAMES[k], lineGlyphSVG(k), k === style)).join("")}</div></div>
-      <div class="opt-group">${secHead("Weight", leave ? leaveChip("weight-reset", !weight) : "")}<div class="toggles" role="group" aria-label="Weight">${
+      <div class="opt-group" ${groupAttrs(w)}>${secHead("Weight", leave ? leaveChip("weight-reset", !weight) : "", w)}<div class="toggles">${
         Object.keys(WEIGHT_NAMES).map(k => tog("weight", k, WEIGHT_NAMES[k], lineGlyphSVG("solid", k), k === weight)).join("")}</div></div>
     </div>`;
 }
@@ -1259,10 +1490,11 @@ function syncLineOpts(root, style, weight) {
    its default blue, whatever the file says, so the one fill on offer is that
    blue ("Leave as is" or it). Picking it clears the area's fill caution and is
    what the export writes; the bridge refuses any other fill. */
-const FILL_LABEL = "Use onX's blue fill";
+const FILL_LABEL = "Blue";
 function fillRowHTML() {
-  return `<div class="pop-sec fill-sec" data-row="fill">
-      ${secHead("Fill", leaveChip("fill-reset", true))}
+  const id = groupId();
+  return `<div class="pop-sec fill-sec" data-row="fill" ${groupAttrs(id)}>
+      ${secHead("Fill", leaveChip("fill-reset", true), id)}
       <div class="palette"><button type="button" class="fill-btn" aria-pressed="false"><span class="fill-swatch" aria-hidden="true"></span>${FILL_LABEL}</button></div>
     </div>`;
 }
@@ -1299,6 +1531,7 @@ function syncIconGrid(grid, selected) {
 
 /* ---------- single item: popover anchored to the marker ---------- */
 function openPop(it, anchor) {
+  if (BULK) return;                // a click queued behind the several-items dialog
   closeMenu(); closeBulk();
   POP = { uid: it.uid, color: it.color, icon: it.icon, iconPicked: false, q: "", anchor,
           style: it.style, weight: it.weight, fill: null };
@@ -1306,8 +1539,9 @@ function openPop(it, anchor) {
   const isLine = it.kind === "tracks";
   const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
   const pop = $("#mark-pop");
+  const iconId = groupId();
   pop.classList.toggle("line", isLine);
-  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "area"} for ${it.name}`);
+  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "area"} for ${it.name || "Untitled"}`);
   pop.innerHTML = `
     <div class="pop-head">
       <span class="pop-preview"></span>
@@ -1315,8 +1549,8 @@ function openPop(it, anchor) {
     </div>
     ${isLine ? `<div class="pop-map"></div>` : ""}
     ${colorRowHTML("color", "Color", paletteFor([it]), { current: POP.color, spread: styled })}
-    ${isWp ? `<div class="pop-sec icons">
-      ${secHead("Icon", `<span class="sec-count">${DATA.icons.length} icons</span>`)}
+    ${isWp ? `<div class="pop-sec icons" ${groupAttrs(iconId)}>
+      ${secHead("Icon", `<span class="sec-count">${DATA.icons.length} icons</span>`, iconId)}
       <input type="search" class="icon-search" aria-label="Find an icon" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : styled ? lineOptsHTML(POP.style, POP.weight) : ""}
@@ -1422,11 +1656,14 @@ function closePop() {
 }
 
 /* ---------- several items: ONE dialog from the selection bar (UI-36) ----------
-   Waypoints get Pin color and Icon; lines and areas get Color, Style and
+   Waypoints get Waypoint color and Icon; lines and areas get Color, Style and
    Weight, and Fill when there are areas. Every row starts on "Leave as is",
    which leaves each item its own value. A mixed selection gets both sets, the
    pin and line colours apart (onX's 10 and 11). */
 function openBulk() {
+  // Already open (Rename… or Change note…): a #bulk-icon click queued by
+  // deferRender must not open a second dialog over it.
+  if (BULK) return;
   const items = selectedItems();
   if (!items.length) return;
   const ret = document.activeElement;
@@ -1437,6 +1674,7 @@ function openBulk() {
   const hasLn = items.some(hasLineStyle);
   const hasArea = items.some(i => i.kind === "shapes");
   const mixed = hasWp && hasLn;
+  const iconId = groupId();
   const d = $("#mark-dialog");
   d.setAttribute("aria-label", `Change ${hasWp ? "icon and color" : "color and style"} for ${items.length} items`);
   d.innerHTML = `
@@ -1448,8 +1686,8 @@ function openBulk() {
         <div class="na-rows"></div>
       </div>
     </div>
-    ${hasWp ? colorRowHTML("pin", mixed ? "Pin color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons">
-      ${secHead("Icon", leaveChip("icon-reset", true))}
+    ${hasWp ? colorRowHTML("pin", mixed ? "Waypoint color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons" ${groupAttrs(iconId)}>
+      ${secHead("Icon", leaveChip("icon-reset", true), iconId)}
       <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : ""}
@@ -1503,7 +1741,15 @@ function drawBulk() {
     const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28)
       : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, BULK.style || it.style, BULK.weight || it.weight);
     // The drawn marks show the change; no "Camp · Blue" words beside them (UI-26).
-    return `<span class="na-cell">${nowMark}<span class="na-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
+    // A screen reader gets them as hidden words after the name (A11Y-03): what
+    // each mark draws, "Now …. After …." Inside the first cell, so the grid
+    // keeps three cells per row.
+    const now = isWp ? `${it.needs_attention ? "Default pin" : it.icon}, ${colorName(it.color)}`
+      : `${rowKindWord(it)}, ${colorName(it.color)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}`;
+    const after = isWp ? `${BULK.icon || (it.needs_attention ? "Default pin" : it.icon)}, ${colorName(toColor)}`
+      : `${rowKindWord(it)}, ${colorName(toColor)}, ${styleLabel(BULK.style || it.style)}, ${weightLabel(BULK.weight || it.weight)}`;
+    return `<span class="na-cell">${nowMark}<span class="na-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span>` +
+      `<span class="sr-only">. Now ${esc(now)}. After ${esc(after)}.</span></span>${UI_ICON.arrow}` +
       `<span class="na-cell">${afterMark}</span>`;
   }).join("");
   d.querySelectorAll(".palette[data-row]").forEach(p => {
@@ -1539,17 +1785,306 @@ function applyBulk() {
   refreshAfterEdit();
   const n = changed.length;
   const word = changed.every(i => i.kind === "shapes") ? "area" : changed.every(i => i.kind === "tracks") ? "line" : "item";
-  setStatus(`Changed ${plural(n, word)}`, "ready");
+  setStatus(`Changed ${plural(n, word)}.`, "ready");
 }
 
 function closeBulk() {
   if (!BULK) return;
-  const { ret } = BULK;
+  const { ret, text } = BULK;
+  if (text) clearTimeout(text.timer);
   BULK = null;
   $("#mark-modal").classList.add("hidden");
-  $("#mark-dialog").innerHTML = "";
+  const d = $("#mark-dialog");
+  d.innerHTML = "";
+  // What the text mode set, so the next dialog (and a test waiting on
+  // [data-bulk]) never sees a closed one's.
+  ["data-bulk", "data-preview-seq", "aria-labelledby"].forEach(a => d.removeAttribute(a));
   const to = ret && ret !== document.body && ret.isConnected && !ret.disabled ? ret : $("#bulk-icon");
   if (!to.disabled) to.focus({ preventScroll: true });
+}
+
+/* ---------- several items: Rename… and Change note… (UI-39) ----------
+   A text mode of the same dialog (BULK.text): a mode (Add before, Add after,
+   Find and replace, and for notes Replace the note), its fields, and the
+   selection's names or notes Now → After. The change itself is
+   CairnRename.transform (web/rename.js), run by the list and again by Save,
+   so the list shows what Save stores and the export writes. BULK being set
+   is what every guard of the dialog reads (Esc, Tab, the backdrop, Ctrl+A,
+   row drags, the menus and popovers, Export, Start over). */
+const TEXT_MODES = {
+  name: [["prefix", "Add before"], ["suffix", "Add after"], ["replace", "Find and replace"]],
+  desc: [["prefix", "Add before"], ["suffix", "Add after"], ["replace", "Find and replace"], ["set", "Replace the note"]],
+};
+const TEXT_FIELDS = { "bulk-text": "text", "bulk-find": "find", "bulk-repl": "repl" };
+const PREVIEW_ROWS = 200;              // rows drawn Now → After; "and N more" for the rest
+const PREVIEW_WAIT_MS = 60;            // typing changes the spec at once, the list this much later
+/* Timings of the last preview and Save (performance.now(), ms), for the
+   perf test and scripts/qa/fuzz_ui.py. */
+window.__cairnPerf = { lastTransformMs: null, lastPreviewMs: null, lastSaveMs: null };
+
+const openRename = () => openTextBulk("name");
+const openChangeNote = () => openTextBulk("desc");
+
+/** field: "name" (Rename…) or "desc" (Change note…). */
+function openTextBulk(field) {
+  if (BULK || !DATA) return;
+  flushDeferred();                 // a name just left: its rename, or its merge offer, first
+  if (CONFIRM) return;             // and never this dialog over that offer
+  const items = selectedItems();
+  if (!items.length) return;
+  // A note open on a selected row: closed first, asking if it changed (UI-22).
+  if (NOTE_EDIT && items.some(i => i.uid === NOTE_EDIT.uid)) {
+    const again = () => openTextBulk(field);
+    if (noteIsChanged()) { askToSaveNote(again, $("#more-btn")); return; }
+    closeNote(allItems().find(i => i.uid === NOTE_EDIT.uid), false);
+    again();
+    return;
+  }
+  closeMenu(); closePop(); closeMove(false); hideTip();
+  const rows = items.map(i => ({ uid: i.uid, name: i.name, desc: i.desc, kind: i.kind }));
+  BULK = {
+    uids: new Set(rows.map(r => r.uid)), rows, byUid: new Map(rows.map(r => [r.uid, r])),
+    // Both limits are read at boot; until then rename.js uses its own 512 and 255.
+    ctx: { noteLimit: NOTE_LIMIT, nameLimit: NAME_LIMIT }, ret: $("#more-btn"),
+    // The rows the export writes: only they get its warnings (UI-40), as in the list.
+    written: new Set(items.filter(i => i.included && !i.no_coords).map(i => i.uid)),
+    text: { field, timer: null, spec: { field, mode: "prefix", text: "", find: "", repl: "", matchCase: false } },
+  };
+  const d = $("#mark-dialog");
+  d.removeAttribute("aria-label");
+  d.dataset.bulk = field === "name" ? "rename" : "note";
+  d.dataset.previewSeq = "0";
+  d.setAttribute("aria-labelledby", "bulk-title");
+  d.innerHTML = `
+    <div class="bulk-head">
+      <div class="modal-head plain"><h2 id="bulk-title">${field === "name" ? "Rename" : "Change the note on"} ${plural(rows.length, "item")}</h2>
+        <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
+      <div class="mode-row" role="group" aria-label="Change">${TEXT_MODES[field].map(([m, label]) =>
+        `<button type="button" class="tog mode-tog" data-mode="${m}" aria-pressed="false">${label}</button>`).join("")}</div>
+      <div class="text-fields"></div>
+    </div>
+    <div class="pop-sec text-preview">
+      <div class="now-after">
+        <span class="label">Now</span><span></span><span class="label">After</span>
+        <div class="na-rows" role="list"></div>
+      </div>
+    </div>
+    <div class="pop-foot">
+      <span id="bulk-summary" aria-live="polite"></span>
+      <button type="button" class="btn bulk-cancel">Cancel</button>
+      <button type="button" id="bulk-apply" class="btn primary" disabled>Save</button>
+    </div>`;
+  d.querySelectorAll(".mode-tog").forEach(b => b.onclick = () => setTextMode(b.dataset.mode));
+  d.querySelector(".bulk-x").onclick = closeBulk;
+  d.querySelector(".bulk-cancel").onclick = closeBulk;
+  d.querySelector("#bulk-apply").onclick = applyTextBulk;
+  $("#mark-modal").classList.remove("hidden");
+  drawTextFields();
+  drawTextBulk();
+  d.querySelector(".text-fields textarea, .text-fields input").focus();
+}
+
+/** Show the fields of the chosen mode. What was typed stays in the spec, so
+    going back to a mode finds its text again. */
+function setTextMode(mode) {
+  if (!BULK || !BULK.text) return;
+  readTextFields();
+  BULK.text.spec.mode = mode;
+  drawTextFields();
+  drawTextBulk();
+}
+
+function drawTextFields() {
+  const { field, spec } = BULK.text;
+  const d = $("#mark-dialog");
+  d.querySelectorAll(".mode-tog").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === spec.mode)));
+  // Names take one line; a note's fields are multi-line, like the note editor.
+  const box = (id, label) => `<div class="text-field"><label class="label" for="${id}">${label}</label>${field === "name"
+    ? `<input id="${id}" type="text" autocomplete="off" spellcheck="false">`
+    : `<textarea id="${id}" rows="3" spellcheck="false"></textarea>`}</div>`;
+  const host = d.querySelector(".text-fields");
+  const find = spec.mode === "replace";
+  host.classList.toggle("find", find);
+  host.innerHTML = find
+    ? box("bulk-find", "Find") + box("bulk-repl", "Replace with") +
+      `<button type="button" id="bulk-match-case" aria-pressed="${spec.matchCase}">Match case</button>`
+    : box("bulk-text", "Text");
+  // Values set as values: in markup, a textarea drops a leading line break.
+  host.querySelectorAll("input, textarea").forEach(el => { el.value = spec[TEXT_FIELDS[el.id]]; wireTextBulkField(el); });
+  const mc = host.querySelector("#bulk-match-case");
+  if (mc) mc.onclick = () => {
+    spec.matchCase = !spec.matchCase;
+    mc.setAttribute("aria-pressed", String(spec.matchCase));
+    drawTextBulk();
+  };
+}
+
+/** Every keystroke changes the spec at once; the list follows PREVIEW_WAIT_MS
+    later. Enter saves (Ctrl / Cmd + Enter in a note's fields, where Enter
+    starts a new line), never while an input method is composing. */
+function wireTextBulkField(el) {
+  const typed = () => {
+    if (!BULK || !BULK.text) return;
+    BULK.text.spec[TEXT_FIELDS[el.id]] = el.value;
+    clearTimeout(BULK.text.timer);
+    BULK.text.timer = setTimeout(drawTextBulk, PREVIEW_WAIT_MS);
+  };
+  el.addEventListener("input", typed);
+  el.addEventListener("compositionend", typed);
+  el.addEventListener("keydown", e => {
+    if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+    if (el.nodeName === "TEXTAREA" && !(e.metaKey || e.ctrlKey)) return;   // a new line
+    e.preventDefault();
+    applyTextBulk();               // which saves nothing when nothing changes
+  });
+}
+
+/** The fields as they are now, into the spec (Save never trusts the list). */
+function readTextFields() {
+  const { spec } = BULK.text;
+  for (const [id, k] of Object.entries(TEXT_FIELDS)) {
+    const el = document.getElementById(id);
+    if (el) spec[k] = el.value;
+  }
+  return spec;
+}
+
+/** One preview cell. A name that is empty shows the placeholder "Untitled"
+    (display only: an empty name is stored and exported empty); a missing
+    note is blank. */
+function textCell(cls, v, names) {
+  if (names && !v) return `<span class="${cls} is-placeholder">Untitled</span>`;
+  return `<span class="${cls}"${v ? ` title="${esc(v)}"` : ""}>${esc(v)}</span>`;
+}
+/** after as HTML with each of the core's marks highlighted (.hit, the
+    mockups' green): every replaced match, the text Add before / Add after
+    added, or the whole new value (UI-39; web/rename.js decides what was
+    inserted, the dialog only draws it). A mark's edges widen so a combining
+    mark, a variation selector, a skin tone, a ZWJ sequence, a flag or a
+    surrogate pair is never split; marks that then touch are drawn as one.
+    No marks (a pure deletion, or cleaning the ranges can't follow) is plain
+    text. The text is after's, exactly. */
+const JOINS = /[\p{M}\u200D\uFE00-\uFE0F\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u;
+const isRI = c => c >= "\u{1F1E6}" && c <= "\u{1F1FF}";
+function markRanges(after, marks) {
+  if (!marks || !marks.length) return esc(after);
+  const b = Array.from(after);
+  // Code point of each UTF-16 offset: a start inside a pair moves to the pair, an end past it.
+  const cp = new Array(after.length + 1);
+  let u = 0;
+  b.forEach((ch, i) => { for (let k = 0; k < ch.length; k++) cp[u++] = i + (k ? 0.5 : 0); });
+  cp[u] = b.length;
+  const odd = i => { let k = 0; while (b[i] && isRI(b[i])) { k++; i--; } return k % 2 === 1; };
+  const joined = i => i > 0 && i < b.length &&
+    (JOINS.test(b[i]) || b[i - 1] === "\u200D" || (isRI(b[i]) && odd(i - 1)));
+  const spans = [];
+  for (const [ms, me] of marks) {
+    let s = Math.floor(cp[ms]), t = Math.ceil(cp[me]);
+    if (!(t > s)) continue;
+    while (joined(s)) s--;
+    while (joined(t)) t++;
+    const last = spans[spans.length - 1];
+    if (last && s <= last[1]) last[1] = Math.max(last[1], t);
+    else spans.push([s, t]);
+  }
+  let html = "", at = 0;
+  for (const [s, t] of spans) {
+    html += esc(b.slice(at, s).join("")) + `<span class="hit">${esc(b.slice(s, t).join(""))}</span>`;
+    at = t;
+  }
+  return html + esc(b.slice(at).join(""));
+}
+/** A changed row's After cell, its marks highlighted; an empty name is the
+    "Untitled" placeholder. */
+function afterCell(r, names) {
+  if (!r.after) return textCell("na-after", r.after, names);
+  return `<span class="na-after" title="${esc(r.after)}">${markRanges(r.after, r.marks)}</span>`;
+}
+/** The sentence under a row: "No change", the long-note caution (UI-34), or a
+    name onX will cut or can't import without (UI-40): the row marks' own
+    sentences, longNameSentence and NEEDS_NAME. All warn; none blocks Save. */
+function textFlag(r) {
+  if (r.flags.includes("unchanged")) return "No change";
+  if (!BULK.written.has(r.uid)) return "";
+  if (r.flags.includes("note-over-limit")) return longNoteSentence(r.after) || "";
+  if (r.flags.includes("name-over-limit")) return longNameSentence(r.after) || "";
+  if (r.flags.includes("name-empty")) return NEEDS_NAME;
+  return "";
+}
+
+/** The Now → After list, the summary and Save, from the spec as it is. Changed
+    rows first; at most PREVIEW_ROWS rows. */
+function drawTextBulk() {
+  if (!BULK || !BULK.text) return;
+  const t = BULK.text, names = t.field === "name";
+  clearTimeout(t.timer); t.timer = null;
+  const t0 = performance.now();
+  const res = CairnRename.transform(BULK.rows, t.spec, BULK.ctx);
+  const t1 = performance.now();
+  const same = r => r.flags.includes("unchanged");
+  const changed = res.rows.filter(r => !same(r)), unchanged = res.rows.filter(same);
+  const shown = changed.slice(0, PREVIEW_ROWS);
+  shown.push(...unchanged.slice(0, PREVIEW_ROWS - shown.length));
+  const more = res.rows.length - shown.length;
+  const html = shown.map(r => {
+    const before = textCell("na-before", r.before, names);
+    let src = before;
+    if (!names) {
+      // A note's row says whose note it is.
+      const name = (BULK.byUid.get(r.uid) || {}).name || "";
+      src = `<div class="na-src"><span class="sr-only">Note for </span><span class="na-name${name ? "" : " untitled"}"${name ? ` title="${esc(name)}"` : ""}>${esc(name || "Untitled")}</span>` +
+        `<span class="sr-only">, now </span>${before}</div>`;
+    }
+    const flag = textFlag(r);
+    // A list of rows, each read in words where the screen draws an arrow
+    // (A11Y-06): "Now X, after Y" ("Note for N, now X, after Y"); an unchanged
+    // row "Now X, No change". Hidden spans beside the cells, never in them.
+    return `<div class="na-row" role="listitem" data-uid="${esc(r.uid)}" data-flags="${esc(r.flags.join(" "))}">${names ? `<span class="sr-only">Now </span>` : ""}${src}${UI_ICON.arrow}` +
+      `<span class="sr-only">${same(r) ? ", " : ", after "}</span>` +
+      `${same(r) ? textCell("na-after", r.after, names) : afterCell(r, names)}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
+  }).join("") + (more > 0 ? `<div class="na-more" role="listitem">and ${more.toLocaleString("en-US")} more</div>` : "");
+  const d = $("#mark-dialog");
+  d.querySelector(".na-rows").innerHTML = html;
+  const summary = `${res.changed.toLocaleString("en-US")} will change · ${unchanged.length.toLocaleString("en-US")} unchanged`;
+  const sum = $("#bulk-summary");
+  if (sum.textContent !== summary) sum.textContent = summary;   // announced once per change
+  $("#bulk-apply").disabled = !(res.changed > 0);
+  d.dataset.previewSeq = String((Number(d.dataset.previewSeq) || 0) + 1);
+  window.__cairnPerf.lastTransformMs = t1 - t0;
+  window.__cairnPerf.lastPreviewMs = performance.now() - t0;
+}
+
+/** Save: the fields read again and the change worked out again on the items
+    as they are now (the list may be a keystroke behind), nothing when nothing
+    changes; then each changed item through edit(), like a single edit. */
+function applyTextBulk() {
+  if (!BULK || !BULK.text) return;
+  const t0 = performance.now();
+  const { field } = BULK.text;
+  const spec = readTextFields();
+  const byUid = new Map(allItems().map(i => [i.uid, i]));   // one lookup per row, not a find()
+  const rows = BULK.rows.map(r => byUid.get(r.uid)).filter(Boolean)
+    .map(it => ({ uid: it.uid, name: it.name, desc: it.desc, kind: it.kind }));
+  const res = CairnRename.transform(rows, spec, BULK.ctx);
+  if (!(res.changed > 0)) { drawTextBulk(); return; }
+  closeBulk();
+  let n = 0;
+  res.rows.forEach(r => {
+    const it = byUid.get(r.uid);
+    if (!it || r.flags.includes("unchanged")) return;
+    edit(it, { [field]: r.after }, { render: false });
+    n++;
+  });
+  refreshAfterEdit();
+  // The search may have dropped every changed row from the selection: then the
+  // next shift-click starts afresh, as after a move (afterMove).
+  if (!SEL.size) ANCHOR = null;
+  setStatus(`Changed ${plural(n, "item")}.`, "ready");
+  // An emptied selection also disables More: focus would be lost to the page,
+  // so it goes to the search.
+  const a = document.activeElement;
+  if (!a || a === document.body || a.disabled) $("#filter").focus({ preventScroll: true });
+  window.__cairnPerf.lastSaveMs = performance.now() - t0;
 }
 
 /* ---------- More menu ---------- */
@@ -1675,9 +2210,9 @@ function keepNoteDraft() {
   if (!NOTE_EDIT) return;
   if (shownItems().some(i => i.uid === NOTE_EDIT.uid)) return;
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
-  const v = NOTE_EDIT.draft;
+  const v = it ? noteToSave(it, NOTE_EDIT.draft) : null;
   NOTE_EDIT = null;
-  if (it && v !== (it.desc || "")) edit(it, { desc: v }, { render: false });
+  if (v !== null) edit(it, { desc: v }, { render: false });
 }
 
 /** A folder name in a status line: at most SHORT_NAME characters. */
@@ -1747,6 +2282,7 @@ function removeEmptyFolder(key) {
 }
 
 function startRename(key, where, draft = null, declined = null) {
+  if (BULK) return;                // the several-items dialog owns the screen
   const g = groupByKey(key); if (!g) return;
   clearError();
   RENAME = { key, draft: draft ?? g.name, where, declined };
@@ -1775,7 +2311,7 @@ function wireFolderName(inp) {
   const tooLong = `A folder name can be up to ${FOLDER_NAME_MAX} characters.`;
   const checkAdded = added => {
     const kept = inp.value.length - (inp.selectionEnd - inp.selectionStart);
-    if (kept + added.length > FOLDER_NAME_MAX) setStatus(tooLong, "err");
+    if (kept + added.length > FOLDER_NAME_MAX) { setStatus(tooLong, "err"); markFolderNameError(inp, true); }
   };
   inp.addEventListener("beforeinput", e => {
     if (!e.inputType.startsWith("insert")) return;
@@ -1786,6 +2322,8 @@ function wireFolderName(inp) {
   inp.addEventListener("input", () => {
     if (RENAME && RENAME.key === key) RENAME.draft = inp.value;
     if (inp.value.length < FOLDER_NAME_MAX && $("#status").textContent === tooLong) setStatus("");
+    // Typing answers "A folder needs a name."; the length error lasts while its line does.
+    if ($("#status").textContent !== tooLong) markFolderNameError(inp, false);
   });
   inp.addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); finishRename(key, true); }
@@ -1794,6 +2332,15 @@ function wireFolderName(inp) {
   // A patch that moves or replaces the input is not the user leaving it
   // (Chrome fires blur on a focused element as it is moved or removed).
   inp.addEventListener("blur", () => { if (!PATCHING && inp.isConnected) finishRename(key, true, { defer: true }); });
+}
+
+/** While a folder name's error stands, its field says so: aria-invalid, and
+    described by the status line that words it (A11Y-23); cleared once it is
+    answered. Both survive a render (RUNTIME_ATTRS). */
+function markFolderNameError(inp, on) {
+  if (!inp) return;
+  if (on) { inp.setAttribute("aria-invalid", "true"); inp.setAttribute("aria-describedby", "status"); }
+  else { inp.removeAttribute("aria-invalid"); inp.removeAttribute("aria-describedby"); }
 }
 
 function finishRename(key, save, { defer = false } = {}) {
@@ -1829,7 +2376,11 @@ function finishRename(key, save, { defer = false } = {}) {
   const done = () => {
     if (!DATA) return;
     if (failed) { resyncAfterFailure(); return; }
-    if (reopen) { startRename(key, "rail"); setStatus("A folder needs a name.", "err"); return; }
+    if (reopen) {
+      startRename(key, "rail"); setStatus("A folder needs a name.", "err");
+      markFolderNameError($(".folder-name-in"), true);
+      return;
+    }
     // Leaving one name for another folder's: keep the new field's selection.
     const a = document.activeElement;
     const sel = a && a.classList.contains("folder-name-in") ? [a.selectionStart, a.selectionEnd] : null;
@@ -1870,8 +2421,8 @@ function offerMerge(src, dup, where, draft = null) {
     body: `Move the ${plural(src.items.length, "item")} in “${src.name}” into it?`,
     ret,
     buttons: [
-      { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
       { label: "Cancel", initial: true, cancel: true, run: cancel },
+      { label: "Move them", run: () => { closeConfirm(false); mergeInto(src.key, dup.key, where); } },
     ],
   });
 }
@@ -1890,6 +2441,7 @@ function mergeInto(srcKey, dstKey, where = "head") {
 
 /* ---------- More ▸ Move to… (the keyboard route) ---------- */
 function openMoveTo() {
+  if (BULK) return;                // the several-items dialog owns the screen
   const uids = selectedItems().map(i => i.uid);
   if (!uids.length) return;
   closeMenu(); closePop();
@@ -1903,7 +2455,7 @@ function openMoveTo() {
         `<span class="facet-name">${esc(g.name)}${h ? " · here now" : ""}</span>` +
         // The count tells apart two folders a file named alike ("Camp", "camp").
         `<span class="facet-count">${h ? "" : g.items.length}</span></button>`;
-    }).join("")}<button type="button" class="move-opt move-new">+ New folder…</button></div>`;
+    }).join("")}<button type="button" class="move-opt move-new">+ New folder</button></div>`;
   p.querySelectorAll(".move-opt[data-key]").forEach(b => b.onclick = () => {
     const k = b.dataset.key; closeMove(false);
     moveTo(uids, k);
@@ -2123,12 +2675,31 @@ async function doExport() {
     items whose notes onX will cut, by name as written in straight single
     quotes, up to LONG_NOTES_SHOWN, then "and N more". */
 const LONG_NOTES_SHOWN = 8;
-function longNoteWarning() {
-  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `'${n || "(no name)"}'`));
+/** Up to LONG_NOTES_SHOWN quoted names, then "and N more". */
+function nameList(quoted) {
   const n = LONG_NOTES_SHOWN;
-  const list = names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
+  return quoted.length > n ? `${quoted.slice(0, n).join(", ")} and ${quoted.length - n} more` : quoted.join(", ");
+}
+function longNoteWarning() {
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `\u201c${shortName(n || "Untitled")}\u201d`));
+  const list = nameList(names);
   return names.length === 1 ? `Item ${list} is over the length limit and will be truncated by onX.`
     : `Items ${list} are over the length limit and will be truncated by onX.`;
+}
+/** The same warning for names over onX's 255 bytes and folder names over its
+    50 characters (UI-40). Every list shortens a name past 48 characters (shortName):
+    these names are long by definition. */
+function longNameWarning() {
+  const names = MANIFEST.flatMap(e => (e.long_names || []).map(([n]) => `\u201c${shortName(n)}\u201d`));
+  const list = nameList(names);
+  return names.length === 1 ? `Name ${list} is over the length limit and will be truncated by onX.`
+    : `Names ${list} are over the length limit and will be truncated by onX.`;
+}
+function longFolderWarning() {
+  const names = MANIFEST.filter(e => e.long_folder).map(e => `\u201c${shortName(e.folder)}\u201d`);
+  const list = nameList(names);
+  return names.length === 1 ? `Folder name ${list} is over the length limit and will be truncated by onX.`
+    : `Folder names ${list} are over the length limit and will be truncated by onX.`;
 }
 
 function renderRunbook() {
@@ -2141,6 +2712,8 @@ function renderRunbook() {
   host.innerHTML =
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? " wasn't" : "s weren't"} exported: ${S.dropped === 1 ? "it has" : "they have"} no coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
     (S.long_notes ? `<div class="note warn">${esc(longNoteWarning())}</div>` : "") +
+    (S.long_names ? `<div class="note warn">${esc(longNameWarning())}</div>` : "") +
+    (S.long_folders ? `<div class="note warn">${esc(longFolderWarning())}</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   // Two folders may share a name ("Camp" twice, from the file), or two names
   // sanitize alike ("A B", "A_B"): only then does a box show its number, and
@@ -2253,23 +2826,24 @@ function warnFillLoss() {
   const n = hit.length;
   if (!n) return;
   openConfirm({
-    title: n === 1 ? "1 area will lose its fill." : `${n} areas will lose their fill.`,
+    title: n === 1 ? "1 area will lose its fill" : `${n} areas will lose their fill`,
     body: "onX resets area fills to blue on import.",
     buttons: [
+      { label: n === 1 ? "Keep it" : "Keep them", initial: true, cancel: true, run: () => closeConfirm() },
       { label: n === 1 ? "Leave this out" : `Leave these ${n} out`, run: () => {
           closeConfirm();
           hit.forEach(it => edit(it, { included: false }, { render: false }));
           refreshAfterEdit();
         } },
-      { label: n === 1 ? "Keep it" : "Keep them", initial: true, cancel: true, run: () => closeConfirm() },
     ],
   });
 }
 
+/** Whether Save in the open note editor would change its note (noteToSave). */
 function noteIsChanged() {
   if (!NOTE_EDIT || !DATA) return false;
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
-  return !!it && NOTE_EDIT.draft !== (it.desc || "");
+  return !!it && noteToSave(it, NOTE_EDIT.draft) !== null;
 }
 
 function resetAll({ history: stepBack = true } = {}) {
@@ -2281,6 +2855,7 @@ function resetAll({ history: stepBack = true } = {}) {
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
   SORT.clear(); hideTip();
   resetFilters();
+  FILTER_SIG = null; clearTimeout(ANNOUNCE_T); $("#count-live").textContent = "";
   $("#file").value = "";
   showStage("drop");
   setStatus("");
@@ -2318,15 +2893,14 @@ function unexportedChanges() {
 }
 
 function requestStartOver() {
+  if (BULK) return;                // behind the several-items dialog: not reachable
   const ret = document.activeElement;
   flushDeferred();                 // a name just left: its rename, or its merge offer, first
   if (CONFIRM) return;
-  const n = unexportedChanges();
   openConfirm({
     title: "Start over?",
-    body: n
-      ? `This discards ${n} unexported change${n === 1 ? "" : "s"}.`
-      : "This clears the current map.",
+    // No count, as in "Leave this map?" (owner, 2026-10-25: keep it simple).
+    body: unexportedChanges() ? "Changes will be lost." : "This clears the current map.",
     ret,
     buttons: [
       { label: "Cancel", initial: true, cancel: true, run: () => closeConfirm() },
@@ -2336,6 +2910,7 @@ function requestStartOver() {
 }
 
 function requestExport() {
+  if (BULK) return;                // behind the several-items dialog: not reachable
   const ret = document.activeElement;
   // A folder name left by clicking Export: its rename happened, its render
   // (and a taken name's merge offer) is waiting. Show it here, on the edit
@@ -2343,22 +2918,84 @@ function requestExport() {
   if (RENAME) finishRename(RENAME.key, true);
   flushDeferred();
   if (CONFIRM) return;
-  if (!NOTE_EDIT) { doExport(); return; }
+  // In order: a taken folder name's merge offer (above: it stops the export,
+  // as before), then "Save your note?", then the items that need a name (UI-40),
+  // then the export.
+  const go = () => exportOrAskForNames(ret);
+  if (!NOTE_EDIT) { go(); return; }
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
-  if (!noteIsChanged()) { closeNote(it, false); doExport(); return; }
-  const uid = NOTE_EDIT.uid;
+  if (!noteIsChanged()) { closeNote(it, false); go(); return; }
+  askToSaveNote(go, ret);
+}
+
+/** A name is required to export (UI-40, owner 2026-10-25): onX would make one up
+    ("Imported waypoint markup <timestamp>"). With blank-named items to write,
+    ask first. Name them Untitled names each one "Untitled", as an ordinary
+    edit (an unexported change until this export writes it), then exports;
+    Cancel says how many and goes to the first one. */
+function exportOrAskForNames(ret) {
+  const blank = allItems().filter(needsName);
+  if (!blank.length) { doExport(); return; }
+  const n = blank.length;
   openConfirm({
-    title: "Save your note?",
-    body: `Your note for \u201c${it.name}\u201d hasn't been saved.`,
+    title: n === 1 ? "1 item needs a name" : `${plural(n, "item")} need a name`,
+    body: "",
     ret,
     buttons: [
-      { label: "Cancel", cancel: true, run: () => {
+      { label: "Cancel", initial: true, cancel: true, run: () => { closeConfirm(false); showBlankNames(blank); } },
+      { label: n === 1 ? "Name it Untitled" : "Name them Untitled", run: () => {
+          closeConfirm(false);
+          blank.forEach(it => edit(it, { name: "Untitled" }, { render: false }));
+          refreshAfterEdit();
+          doExport();
+        } },
+    ],
+  });
+}
+
+/** After Cancel: the status says how many need a name, and focus goes to the
+    first such name field on screen. When a filter or a collapsed folder hides
+    every one, the filters are cleared and the first one's folder opened. */
+function showBlankNames(blank) {
+  const uids = new Set(blank.map(i => i.uid));
+  const onScreen = () => [...document.querySelectorAll("#folders tr[data-uid] .name-in")]
+    .find(el => uids.has(el.closest("tr").dataset.uid) && el.getClientRects().length);
+  let field = onScreen();
+  if (!field) {
+    const first = blank[0];
+    const g = DATA.groups.find(g => g.items.includes(first));
+    if (!shownItems().includes(first)) resetFilters();
+    if (g) COLLAPSED.delete(g.key);
+    renderRail(); renderFolders();
+    field = onScreen();
+  }
+  const n = blank.length;
+  setStatus(n === 1 ? "1 item needs a name." : `${plural(n, "item")} need a name.`, "err");
+  if (field) {
+    field.focus({ preventScroll: true });
+    field.scrollIntoView({ block: "nearest" });
+  }
+}
+
+/** The open note has unsaved changes and something needs it closed (Export,
+    Rename\u2026, Change note\u2026): "Save your note?" (UI-22). Save or Discard closes
+    it and then runs go; Keep editing goes back to it. Safe choice first, the
+    action last (Save, the default). */
+function askToSaveNote(go, ret) {
+  const uid = NOTE_EDIT.uid;
+  const it = allItems().find(i => i.uid === uid);
+  openConfirm({
+    title: "Save your note?",
+    body: `Your note for \u201c${it.name || "Untitled"}\u201d hasn't been saved.`,
+    ret,
+    buttons: [
+      { label: "Keep editing", cancel: true, run: () => {
           closeConfirm(false);
           const ta = document.querySelector(`tr[data-uid="${CSS.escape(uid)}"] .desc-in`);
           if (ta) ta.focus({ preventScroll: true });
         } },
-      { label: "Discard", run: () => { closeConfirm(false); closeNote(it, false); doExport(); } },
-      { label: "Save", cls: "primary", initial: true, run: () => { closeConfirm(false); closeNote(it, true); doExport(); } },
+      { label: "Discard", run: () => { closeConfirm(false); closeNote(it, false); go(); } },
+      { label: "Save", cls: "primary", initial: true, run: () => { closeConfirm(false); closeNote(it, true); go(); } },
     ],
   });
 }
@@ -2369,11 +3006,15 @@ window.addEventListener("DOMContentLoaded", () => {
     el.insertAdjacentHTML("beforeend", UI_ICON[el.dataset.uiIcon] || "");
   });
   wireDrop();
+  wireStickyPad();
+  // Skip to the list (A11Y-22): to the search, without a #filter history entry
+  // (each stage is one entry, UI-37).
+  $("#edit-stage .skip-link").onclick = e => { e.preventDefault(); $("#filter").focus(); };
   $("#filter").oninput = e => { FILTERS.q = e.target.value; renderFolders(); };
   document.querySelectorAll("#type-filter [data-kind]").forEach(b => b.onclick = () => setKind(b.dataset.kind));
   document.querySelectorAll(".rail .facet[data-sec] .sec-h").forEach(h =>
     h.onclick = () => toggleRailSection(h.closest(".facet").dataset.sec));
-  $("#clear-sel").onclick = () => { SEL.clear(); ANCHOR = null; renderFolders(); };
+  $("#clear-sel").onclick = () => { SEL.clear(); ANCHOR = null; renderFolders(); announceSelection(); };
   $("#more-btn").onclick = e => {
     e.stopPropagation();
     closeMove(false); closePop();   // never a menu under the Move to… list
@@ -2382,23 +3023,54 @@ window.addEventListener("DOMContentLoaded", () => {
     if (open) $("#more-menu button").focus();
   };
   $("#more-menu").onclick = e => e.stopPropagation();
+  // The menu's arrow keys (role=menu): Down / Up move through its items,
+  // wrapping; Home and End jump to its ends, as in the Move to… list. Esc
+  // and Tab keep their own handling.
+  $("#more-menu").onkeydown = e => {
+    const items = [...$("#more-menu").querySelectorAll("[role=menuitem]:not([disabled])")];
+    if (!items.length) return;
+    const i = items.indexOf(document.activeElement);
+    const go = j => { e.preventDefault(); items[(j + items.length) % items.length].focus(); };
+    if (e.key === "ArrowDown") go(i + 1);
+    else if (e.key === "ArrowUp") go(i < 0 ? -1 : i - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(-1);
+    else if (e.key === "Tab") {
+      // The items aren't Tab stops (tabindex -1, the ARIA menu pattern; A11Y-17):
+      // Tab closes the menu and goes on from More, to Clear (Shift+Tab: Icon &
+      // color…). More takes focus first, before its menu is hidden; the Tab
+      // itself is not prevented.
+      $("#more-btn").focus();
+      closeMenu();
+    }
+  };
   const menuAct = (id, fn) => $(id).onclick = () => { closeMenu(); fn(); };
   menuAct("#bulk-move", openMoveTo);
+  menuAct("#bulk-rename", openRename);
+  menuAct("#bulk-note", openChangeNote);
   wireRowDrag();
   wirePointerHeld();
   wireTip();
-  // A note of only spaces and line breaks would give an empty name, which the
-  // name field refuses: leave that row alone.
-  menuAct("#bulk-desc", () => bulk(it => { const n = oneLine(it.desc || ""); return n ? { name: n } : {}; }));
-  menuAct("#bulk-exclude", () => bulk({ included: false }));
-  menuAct("#bulk-include", () => bulk({ included: true }));
+  // The note cleaned as a name (CairnRename.cleanName, the rule of every name
+  // edit): its lines joined by a space, trimmed. A note of only spaces and line
+  // breaks would blank the name: that row is left alone (2026-10-25), as is
+  // one whose name is that already.
+  menuAct("#bulk-desc", () => bulkReceipt(bulk(it => {
+    const n = CairnRename.cleanName(it.desc || "");
+    return n && n !== it.name ? { name: n } : {};
+  }), n => `Renamed ${plural(n, "item")} from their notes.`));
+  // Only the items it changes count: one already left out isn't excluded again.
+  menuAct("#bulk-exclude", () => bulkReceipt(bulk(it => it.included ? { included: false } : {}),
+    n => `Excluded ${plural(n, "item")}.`));
+  menuAct("#bulk-include", () => bulkReceipt(bulk(it => it.included ? {} : { included: true }),
+    n => `Included ${plural(n, "item")}.`));
   // Every nav's Help (top bar, search row, footer) opens the dialog here.
   document.querySelectorAll(".help-open").forEach(b => b.onclick = openHelp);
   // faq.html / walkthrough.html link here as "./#help".
   if (location.hash === "#help") openHelp();
   $("#help-close").onclick = closeHelp;
-  $("#help").addEventListener("click", e => { if (e.target === $("#help")) closeHelp(); });
-  $("#mark-modal").addEventListener("click", e => { if (e.target === $("#mark-modal")) closeBulk(); });
+  closeOnBackdrop($("#help"), closeHelp);
+  closeOnBackdrop($("#mark-modal"), closeBulk);
   // Clicks inside the popover stay there: its icon grid re-renders under the
   // pointer, so the document-level "outside click" test can't be trusted.
   $("#mark-pop").addEventListener("click", e => e.stopPropagation());
@@ -2409,7 +3081,7 @@ window.addEventListener("DOMContentLoaded", () => {
   history.replaceState({ cairn: "drop" }, "");
   addEventListener("popstate", onPopState);
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
-  $("#confirm").addEventListener("click", e => { if (e.target === $("#confirm")) cancelConfirm(); });
+  closeOnBackdrop($("#confirm"), cancelConfirm);
   $("#download").onclick = () => downloadBlob(ZIP, "onx_ready.zip");
   // Outside click closes the menu and the popover (Cancel semantics).
   document.addEventListener("click", e => {
@@ -2424,9 +3096,12 @@ window.addEventListener("DOMContentLoaded", () => {
       if (CONFIRM) trapTab(e, $("#confirm .modal-card"));
       else if (!$("#help").classList.contains("hidden")) trapTab(e, $("#help .modal-card"));
       else if (BULK) trapTab(e, $("#mark-dialog"));
+      else if (POP) trapTab(e, $("#mark-pop"));   // like Move to…: Tab stays in it (A11Y-08)
       return;
     }
     if (e.key === "Escape") {
+      // An Escape that cancels an IME's candidate list is the IME's, not ours.
+      if (e.isComposing || e.keyCode === 229) return;
       // Priority: a drag in progress, then what's in front, then an open note,
       // then let a focused field revert its own edit, else clear the selection.
       if (DRAG) {
@@ -2442,7 +3117,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!$("#more-menu").classList.contains("hidden")) { closeMenu(); $("#more-btn").focus(); return; }
       if (typing) return;                       // wireTextField handles the revert
       if (NOTE_EDIT) { closeNote(null, false); return; }
-      if (SEL.size) { SEL.clear(); ANCHOR = null; renderFolders(); }
+      if (SEL.size) { SEL.clear(); ANCHOR = null; renderFolders(); announceSelection(); }
       return;
     }
     // Not behind anything in front: a dialog, Move to… or Help.
