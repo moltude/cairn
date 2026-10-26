@@ -119,7 +119,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Excluded | state label | app:978 | `.exc-label` |
 | Include / Include {name} (Untitled when it has none) | button / aria-label on an excluded row | app:978 | `.exc-chip` |
 | Left out of the export. Click to put it back. | tooltip | app:978 | `.exc-chip` |
-| Add a note | empty-note button text | app:981 | `.note-text.empty` |
+| Add a note | empty-note button text, shown only while the row is hovered or the button has keyboard focus (owner 2026-10-25) | app:981 | `.note-text.empty` |
 | {first line of note} · Open note for {name} (Untitled when it has none) | button text · aria-label | app:980-981 | `.note-btn` |
 | {icon name} or "Default pin" | text under the marker | app:984-987 | `.icon-name`, `.whymark` |
 | {Icon}, {Color}. Change icon or color | marker aria-label | app:983 | `.icon-btn` |

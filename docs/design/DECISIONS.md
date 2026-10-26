@@ -1045,6 +1045,9 @@ Status: decided 2026-10-23 (owner, round 4 follow-ups). Release log: FOLDERS_REL
   in the name), and Esc closes it and does nothing else. A press anywhere else, a scroll, a
   drag or a re-render closes it. The note editor and dragging work as before.
 - The same popup carries the caution mark's text (UI-34).
+- An item with no note shows only the pencil in its note cell; "Add a note" appears while the row is
+  hovered or its note button has keyboard focus (owner 2026-10-25, variant C on the canvas). Rejected:
+  "Add a note" always (before), and always blank.
 
 ### UI-34 — A caution mark for what won't carry over to onX
 Status: decided 2026-10-23 (owner, round 4).

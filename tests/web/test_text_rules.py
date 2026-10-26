@@ -166,6 +166,36 @@ def test_a_nameless_items_row_controls_and_popover_are_announced_as_untitled(fre
         "button", name="Include Untitled", exact=True)).to_have_count(1)
 
 
+def test_an_empty_note_cell_shows_add_a_note_only_on_hover_or_keyboard_focus(fresh_page: Page):
+    """Owner, 2026-10-25 (variant C): a missing note is blank but for the pencil until the
+    pointer or the keyboard reaches the row. The button's name stays its aria-label."""
+    page = fresh_page
+    _map(page, [("w", "", ""), ("w", "Excluded", ""), ("w", "Ticked", ""), ("w", "Noted", "a note")])
+    bare = page.evaluate("allItems()[0].uid")
+    excluded, ticked = _uid(page, "Excluded"), _uid(page, "Ticked")
+    _set(page, excluded, included=False)
+    _tick(page, [ticked])
+    text = lambda u: page.locator(f'tr[data-uid="{u}"] .note-text')   # noqa: E731
+    page.mouse.move(0, 0)
+    for u in (bare, excluded, ticked):
+        expect(text(u)).to_have_text("Add a note")
+        expect(text(u)).to_have_css("visibility", "hidden")
+        page.locator(f'tr[data-uid="{u}"] .name-in').hover()
+        expect(text(u)).to_have_css("visibility", "visible")
+        page.mouse.move(0, 0)
+        expect(text(u)).to_have_css("visibility", "hidden")
+    expect(text(_uid(page, "Noted"))).to_have_css("visibility", "visible")
+    # Keyboard: Tab from the name field to the note button.
+    page.locator(f'tr[data-uid="{bare}"] .name-in').focus()
+    expect(text(bare)).to_have_css("visibility", "hidden")
+    page.keyboard.press("Tab")
+    btn = page.locator(f'tr[data-uid="{bare}"] .note-btn')
+    expect(btn).to_be_focused()
+    expect(text(bare)).to_have_css("visibility", "visible")
+    expect(page.locator(f'tr[data-uid="{bare}"]').get_by_role(
+        "button", name="Open note for Untitled", exact=True)).to_have_count(1)
+
+
 # =====================================================================================
 # E1: Cairn sets no name length limit
 # =====================================================================================
