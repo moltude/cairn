@@ -313,7 +313,7 @@ Status: accepted with changes ("look okay")
 - "Keep each one's" → **"Use existing"** (color and icon) — then → **"Reset"**, see UI-18.
 - Removed the "Was: Default pin · Red" line from the single-item preview; Cancel is enough to
   signal you can revert.
-- Every confirm button reads **"Apply"** (was "Apply to 4") — consistent button language.
+- Every confirm button reads **"Apply"** (was "Apply to 4") — consistent button language. *(Superseded by UI-26: commits read "Save".)*
 - Previews are **live**: the artboard is now interactive. Picking a color or icon re-renders the
   big preview, the icon grid, and every Now → After row in the bulk dialog; "Use existing"
   restores each item's own value; Cancel resets. The real build must do the same.
@@ -349,7 +349,7 @@ Rules proposed for every label:
    keep an `aria-label`).
 3. **Ellipsis (…) only when the command opens a dialog for more input** (Rename…, Choose
    file…), never on buttons that act immediately.
-4. **One pair for confirm/dismiss everywhere: Apply / Cancel.** No "Done", no "Apply to 4".
+4. **One pair for confirm/dismiss everywhere: Save / Cancel** (was Apply / Cancel; UI-26 changed it, confirmed by the owner 2026-10-25). No "Done", no "Apply to 4".
 5. **Explanations go in tooltips or help, not in the label** ("Start over with a different map"
    carries its meaning in the tooltip).
 6. **One name per thing:** Note (not description), Icon (not onX icon), Lines (one term for
@@ -443,7 +443,9 @@ Status: decided 2026-10-21. Closes the red-team item "Start over discards all ed
 
 User: show a pop-up confirmation when someone clicks Start over. Built as an in-page dialog
 (not a browser `confirm()`): "Start over?" with Cancel (initial focus) and a destructive
-"Start over". When edits exist it states how many unexported changes will be lost.
+"Start over". When there are unexported changes it says "Changes will be lost.", as "Leave this
+map?" does, with no count (owner 2026-10-25: no count; it said "This discards N unexported
+changes." before).
 
 Other options considered: an undo toast after the reset; moving the button away from Export.
 
@@ -507,7 +509,7 @@ Status: decided.
 ### ENG-05 — Areas are exported as GPX onX Area routes, not KML (2026-10-22)
 Status: decided; the holes trade-off is **provisional**.
 
-Evidence, from a real onX Web Map import on the owner's account (2026-10-22):
+Evidence, from a real onX web app import on the owner's account (2026-10-22):
 
 - **onX ignores area color and fill in KML.** Cairn's `Areas.kml` (KML `Style` with `LineStyle`
   / `PolyStyle`, plus onX-style `ExtendedData` `color` / `fill_color`) imported with onX's
@@ -547,7 +549,7 @@ Decision:
   writers. File: `<Folder>_Areas.gpx`. The KML area writer writes the same four values as
   ExtendedData (and the fill as its PolyStyle).
 - The web export (`web/bridge.py:export_zip`) uses it; no web export writes KML any more, so the
-  runbook's "contains KML, Web Map only" warning is no longer triggered. The KML area writer is
+  runbook's "contains KML" warning (no phone import) is no longer triggered. The KML area writer is
   kept for its other callers and tests.
 - Area line style and weight are written and edited like a line's (UI-25). (Until 2026-10-23
   they were not, on the mistaken belief that onX's area export carried only color and fill.)
@@ -893,7 +895,7 @@ sat at the top. Now:
   folder per onX folder, in screen order, plus `instructions.txt`) with the italic hint "One
   zip, one folder inside it per onX folder". Back and Start over sit on the right.
 - **One intro line**, the owner's wording with its comma splice made a semicolon: "Import each
-  folder into onX's Web Map; onX will use a default datetime stamp for the folder name.
+  folder into onX on a computer; onX will use a default datetime stamp for the folder name.
   Importing needs onX Premium or Elite." The warnings that apply (dropped items, long notes, over
   the account limit, KML) follow it, above the boxes.
 - **One box per folder, and only:** the folder name as its heading (no counts), a **Download**
@@ -909,13 +911,13 @@ sat at the top. Now:
 - **instructions.txt** (round 4; it was RUNBOOK.md, Markdown): plain text with no Markdown
   syntax, UTF-8 without a BOM, CRLF line endings (Windows' own; every Notepad shows the lines,
   TextEdit and the rest read CRLF too; `.gitattributes` keeps the committed copies byte-exact).
-  The general steps once at the top (import each folder's files together in the Web Map, tick
+  The general steps once at the top (import each folder's files together in onX on a computer, tick
   "Import map data to a new folder", rename the date-named folder to the name shown, Premium or
   Elite needed; since 2026-10-25, a map loaded from an onX export gets four replace steps
   before them: onX imports everything as new markups, keep the export as a backup, delete the
   original markups then their folders, then import), then each folder nested: `NN_Name/    rename to: <folder>`, each file, its item
   kind (Waypoints / Lines / Areas), and every item's name as written in that file, indented
-  4 spaces a level. An item with no name shows "(no name)". Only two warnings stay, each one
+  4 spaces a level. An item with no name shows "Untitled" ("(no name)" until names became optional, 2026-10-25). Only two warnings stay, each one
   line under its item: a note onX will cut (its written `<desc>` is over 512 bytes) and an area
   whose hole is not kept. No area-fill line (round 5, owner: keep it basic; the row's caution
   mark covers fills, UI-34). Totals, dropped items, the account limit and the "Renamed" list (empty
@@ -1043,6 +1045,9 @@ Status: decided 2026-10-23 (owner, round 4 follow-ups). Release log: FOLDERS_REL
   in the name), and Esc closes it and does nothing else. A press anywhere else, a scroll, a
   drag or a re-render closes it. The note editor and dragging work as before.
 - The same popup carries the caution mark's text (UI-34).
+- An item with no note shows only the pencil in its note cell; "Add a note" appears while the row is
+  hovered or its note button has keyboard focus (owner 2026-10-25, variant C on the canvas). Rejected:
+  "Add a note" always (before), and always blank.
 
 ### UI-34 — A caution mark for what won't carry over to onX
 Status: decided 2026-10-23 (owner, round 4).
@@ -1073,6 +1078,9 @@ Status: decided 2026-10-23 (owner, round 4).
   slot). Every row keeps the slot, an excluded one too, so all notes start in line.
 - The export screen's long-note warning names the items (up to 8, then "and N more").
 - Round 5: UI-30's load dialog now skips a transparent fill too, matching the mark (owner).
+- 2026-10-25 (UI-40): the same mark after a name onX will cut (over 255 bytes) or that the export
+  needs ("Needs a name to export."), and after a folder's name in its header when onX will cut it
+  (over 50 characters).
 
 ### UI-35 — Sort by name; pin colour apart from line colour
 Status: decided 2026-10-23 (owner, round 4); the dialog awaits the owner's look at
@@ -1194,3 +1202,213 @@ and the doc pages' own top links.
   bottom of the doc pages and the old top links are gone. In-text links in a sentence ("The
   FAQ has the details") stay body links.
 
+
+### UI-39 — Rename… and Change note…: change many names or notes at once
+Status: decided 2026-10-25 (owner, on the mockup canvas, then a second round the same day:
+names are optional). The plan (revision 4) and its build log are archived: `git show
+archive/feat-bulk-rename-pre-squash:docs/plans/BULK_RENAME.md` (and `BULK_RENAME_PROGRESS.md`).
+Mockups: the canvas (https://claude.ai/artifact/5F9oPZLuGRuqU2TaNY8rCN), RenameA, RenameA2,
+NoteA, NoteA2.
+Engine side: ENG-09.
+In part superseded by UI-40 (2026-10-25): names stay optional while editing but an export needs one,
+and names and folder names onX will cut are marked outside this dialog.
+
+Two items in **More**, after **Move to…**: **Rename…** (names) and **Change note…** (notes), on the
+ticked rows (UI-17, UI-23: only rows on screen). Each opens the several-items dialog (UI-36) in a
+text mode: the mode toggles and fields at the top, the ticked rows' names or notes **Now → After**
+below, live, then the summary **N will change · M unchanged** with **Cancel · Save**.
+
+Options offered for Rename… (verbatim from the canvas):
+- **A · Three mode toggles** ✔ chosen. "One kind of change per pass. + One field at a time; small
+  and hard to misread. + Same toggles as Style and Weight in the edit panel. − Two kinds of change
+  means opening it twice."
+- **B · All fields at once.** "Several changes in one pass. − Four fields to read every time, most
+  left empty. − An order you have to learn: find and replace runs first, then the text before and
+  after. − Bigger dialog; easier to type in the wrong box."
+- **C · Name pattern** ("{name}"). "+ Most flexible. − A token to learn. Deleting "{name}" turns
+  every name into the same text. − Least like the rest of Cairn."
+
+Options offered for Change note…:
+- **A · Four mode toggles** ✔ chosen, reordered. "+ Same shape as Rename…, plus one mode. + Add after
+  puts the text on a new line, so links and old notes stay whole. + A note pushed over onX's 512-byte
+  limit is flagged on its row, never cut. − Replace the note overwrites every selected note (the
+  preview shows it first)."
+- **B · Replace or add a line.** "+ Two choices; hardest to get wrong. − No find and replace: an old
+  link or a typo can't be fixed across notes. − Rename… and Change note… work differently."
+- **C · One dialog with a Name / Note switch** (More → Change text…). "− Easy to edit the wrong
+  field after switching. − Names take one line and notes many: the box changes shape when you
+  switch."
+
+Duplicate names: **A** flag twins the change creates, **B** no flag ✔ chosen, **C** flag every twin.
+Twins are common in real maps and onX imports them (ENG-06), so nothing in the dialog reads other
+items' names.
+
+What was built:
+- **Modes, in this order.** Rename…: **Add before · Add after · Find and replace**. Change note…: the
+  same plus **Replace the note**. `.tog` toggles; the dialog opens on Add before with an empty
+  **Text** field, so every row reads "No change" and Save is off until something changes. Typed text
+  stays per field when switching modes.
+- **Find and replace**: **Find** and **Replace with** side by side, **Match case** below (off by
+  default), the same layout for notes (multi-line boxes). Plain text, every occurrence, `$` and `\`
+  literal. **An empty Find replaces the whole value** (RenameA2: three "Campsite - Oct …" become
+  "Campsite"); while Find and Replace with are both empty nothing changes.
+- **Whole words only** (owner, 2026-10-25 evening; always on, no toggle). A match never starts or
+  ends inside a word: "TH" doesn't touch "Sawtooth", "Trail" doesn't touch "Trailhead". Letters
+  (with their accents) and digits are word characters, so "TH2" isn't found by "TH"; spaces,
+  punctuation and symbols are boundaries, so "TH." is found and keeps its full stop and "Bob's" is
+  found by "Bob". Each Chinese or Japanese character (Han, hiragana, katakana) is a word of its own,
+  so "山" is still found in "日本語の山". Korean (Hangul) is written with spaces and follows the
+  ordinary rule. A boundary is needed only at an edge of the Find that is a word character, so
+  "(rainy)" and " - " are found wherever they occur. Known limit: Thai and other scripts written
+  without spaces are ordinary word characters, so a Find there matches only a whole unspaced run.
+  Matches go left to right without overlapping.
+- **Notes**: Add before and Add after join with a line break. In a note's fields Enter starts a line
+  and Ctrl / Cmd + Enter saves (the note editor's rule); in a name's, Enter saves. Never while an
+  input method is composing.
+- **Rows**: changed rows first, then the rest, at most 200 drawn ("and N more" below). An unchanged
+  row reads "No change". A note's row shows whose note it is. **Each replaced match is
+  highlighted** in the After value (the mockups' green; owner, 2026-10-25 evening, replacing one
+  span from the first change to the last). Add before and Add after highlight the added text (not
+  a note's joining line break); an empty Find and Replace the note highlight the whole new value.
+  Nothing is highlighted for a pure deletion, or on a row whose clean-up moved text in a way the
+  highlight can't follow (a tab or line break collapsed inside a name, a character XML forbids
+  dropped from the middle, an edge trimmed into the added text): no highlight rather than a wrong
+  one. The highlight never splits a letter from its accent or an emoji sequence. `web/rename.js`
+  works out what was inserted; the dialog only draws it. **Names are optional**: a result that is
+  empty (a whitespace-only replacement included, trimmed) shows the greyed placeholder "Untitled" and
+  is saved as an empty name; it never blocks Save. Export then asks to name it "Untitled" (UI-40,
+  2026-10-25; it was exported as an empty name before). A missing note is a blank cell.
+- **Warn, don't block.** A note pushed over onX's 512 bytes gets the caution mark's sentence (UI-34)
+  on its row; Save stays on and nothing is cut. Since 2026-10-25 (UI-40) a name gets its row mark's
+  sentence too: over onX's 255 bytes, "onX imports only the first 255 bytes of a name. About N
+  characters will be cut."; empty, "Needs a name to export.". Duplicate names get no line (UI-26: no
+  warning without a consequence). Characters XML forbids are dropped (ENG-09); the row shows the result,
+  with no sentence of its own.
+- **Save** works the change out again from the fields and the items as they are (the list may be a
+  keystroke behind), saves nothing when nothing changes, and goes through the same edit path as a
+  single edit, so unexported changes, the leave prompts (UI-37), Start over's count (UI-21) and the
+  caution marks follow. The status reads **"Changed N items."**
+- **No undo** beyond Cancel before Save; after it, Start over or Back (UI-21, UI-37). A rename and
+  its reverse still count as changes (the export is identical).
+- **Rows leaving the search.** A rename or note change can take rows out of the search; the search is
+  left as it is, the selection follows the screen (UI-23), and the status line is the receipt. Focus
+  returns to **More**, or to the search box when the selection emptied (More is then off).
+- **Modal**: Esc, the backdrop, ×, and Cancel close it with nothing saved. While it is open the
+  menus, popovers, drags, Ctrl+A, Export and Start over are out of reach. A changed note open on a
+  ticked row asks "Save your note?" first (UI-22), Keep editing · Discard · Save.
+- Help gets one line, the FAQ one question ("Can I rename many items at once?"). Deferred: regex,
+  numbering, case changes, undo. The FAQ answer is the approved one, with no "yet" (no roadmap
+  promise on a public page).
+
+Not verified in onX (owner-run only, never an agent): how onX lists and shows an imported markup
+with an **empty `<name>`**, a 300-character name, a 513-byte note ending in a four-byte emoji,
+right-to-left names, emoji-only names, names with NBSP or zero-width spaces. Until then a bulk
+blank-out is unverified in onX; if onX drops or mangles such items, the owner decides whether a
+warning earns its place.
+
+**One rule set for every text edit** (owner, 2026-10-25, after the build). An edited name (the row's
+name field, Use note as name, Rename…) goes through `CairnRename.cleanName`: characters XML forbids
+dropped, a whitespace run holding a tab or line break made one space, trimmed. An edited note (the note
+editor's Save, Change note…) goes through `cleanNote`: characters XML forbids dropped, line endings made
+"\n", trimmed outside, inner line breaks kept. Silently: no sentence, no warning. A value left untouched
+is never cleaned (a dirty loaded value stays as loaded; the writers are the net). After a commit the field
+shows the cleaned value. An edit that cleans back to the stored value (for a note, its written form) is no
+edit. Folder names keep their own one-line rule: they also name the export's folders and files.
+
+### ENG-09 — Characters XML forbids are dropped, in the writers and in the bulk transform
+Status: decided 2026-10-25 (engine work shipped before the dialogs, for UI-39).
+
+- **Writers** (`edc284b`, a translate table since `667684b`): every name and note the GPX and KML
+  writers emit, and the waypoint file's folder name, drop the characters XML 1.0 forbids: C0 controls
+  other than tab, LF and CR, U+FFFE, U+FFFF and lone surrogates (`cairn/core/writers.py`
+  `_XML_INVALID`, `xml_safe`, `xml_text`). One such character anywhere made a whole file unparseable.
+- **The bulk transform** (`web/rename.js`, `CairnRename.xmlSafe`) drops exactly the same set from a
+  value it changes, so the dialog's After column is what Save stores and what the file carries; so do
+  the row's name field, Use note as name and the note editor (UI-39's one rule set). A
+  value the user didn't change is left as loaded; the writers are the net under it.
+- **Nothing else is touched.** Printable punctuation, NBSP, zero-width space, BOM and C1 controls
+  are legal XML and user data: they pass unchanged, as ENG-06 requires for names.
+- **instructions.txt** marks a long note or a lost hole on the very item, by its position in the
+  file, not on every item with that name (`a192c34`).
+
+### UI-40 — onX's name limits, warned like long notes; a name to export
+Status: decided 2026-10-25 (owner, round 3: L1 and N1 below), after a live import run
+(`docs/testing/ONX_LIMITS_2026-10-25.md`). Supersedes two choices in UI-39's plan: no flag for a
+long name, and optional names, at export only (a name may still be blank while editing).
+
+What the live run measured, in the owner's onX account (ZZTEST probes, imports only): onX's importer
+keeps the first **255 UTF-8 bytes** of a waypoint, track or area name, cut on a character boundary
+(an accented 266-byte name came back as 254 bytes; 254 letters and an emoji lost the emoji); its
+folder rename dialog stops typing at **50 characters**; and it never keeps an **empty name**: it makes
+one up ("Imported waypoint markup <timestamp>"). That also answers UI-39's "not verified in onX" for an
+empty name and a 300-character name.
+
+**L1: warn, never cut** (as for notes over 512 bytes, UI-34):
+- `web/bridge.py` `ONX_IMPORT_NAME_LIMIT = 255` (bytes, the note's measure: `CairnRename.noteBytes`
+  on the name as written) and `ONX_FOLDER_NAME_LIMIT = 50` (characters as a browser's `maxlength`
+  counts them, UTF-16 units, so an emoji is two), read at boot into `NAME_LIMIT` / `FOLDER_NAME_LIMIT`.
+  Cairn's own folder name cap (100, UI-32) is unchanged.
+- A caution mark after an included item's name over 255 bytes: "onX imports only the first 255 bytes
+  of a name. About N characters will be cut." After a folder's name in its header, when the folder
+  has an included item: "onX keeps only the first 50 characters of a folder name. About N characters
+  will be cut." The rail has none (its entries are buttons; the header is the folder's one place).
+- The export screen, in the long-note warning's words, one warning each: "Name “A” is over the
+  length limit and will be truncated by onX." / "Names “A”, “B” and N more are …" and "Folder name
+  “A” is …" / "Folder names …". All three lists shorten a name past 48 characters.
+- instructions.txt: "(over the length limit; onX will cut this name)" under the item (above the
+  note's line when it has both), and "(over the length limit; onX will cut this folder name)" on its
+  own line under the folder's "rename to:", which stays the name alone.
+
+**N1: a name is required to export**, with a one-click fix:
+- An included item whose name is blank as written (the characters XML forbids dropped, then
+  trimmed) gets "Needs a name to export." after its name. Excluded items and items with no
+  coordinates are not written, so they don't count.
+- Export asks, after a taken folder name's merge offer and "Save your note?": "N items need a
+  name" ("1 item needs a name"), **Cancel** (the default) · **Name them Untitled**. The action stores
+  "Untitled" on each, as ordinary edits, then exports. Cancel sets the status "N items need a name."
+  and focuses the first such name on screen; when a filter or a collapsed folder hides every one, it
+  clears the filters and opens that folder.
+- `export_zip` refuses one anyway (`"An item needs a name."`) before writing anything, so no path
+  writes an empty `<name>`.
+- The owner chose a block plus a one-click fix after hearing that Bitterroots alone has 7 blank
+  names (6 lines and an area), rather than a block alone. The fix writes "Untitled", the placeholder
+  used everywhere (Claude's suggestion, accepted by the owner on 2026-10-26; the alternative was
+  the kind, "Untitled line"). Exporting a blank name and letting onX name it was not kept: onX's
+  name is a timestamp.
+
+### UI-41 — Accessibility: what changed for keyboard and screen-reader users
+Status: decided 2026-10-25 (owner: "implement the high value, low impact accessibility features" from the
+WCAG 2.2 A/AA audit, `docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md`; its "Status (round 4)" table lists
+each finding). Fixes that change an approved look were held for the owner: A11Y-10 (how a selected swatch
+differs from a focused one, UI-36), A11Y-16 (the After highlight, UI-39), A11Y-18 (one Tab stop per
+palette, UI-29), A11Y-21 (a panel behind the chips row, UI-20).
+
+- **Focus never hides under a sticky bar.** The bars' height is measured into `--sticky-h` and used as
+  `scroll-padding-top`; the rail footer likewise. The FAQ and walkthrough pad by 72px.
+- **A new screen takes focus.** Every stage change focuses its heading (no ring), and the tab title says
+  where you are: "Cairn — Edit", "Cairn — Export"; the drop screen keeps the landing title.
+- **Skip links**, visible only while focused: "Skip to the list" on the edit screen (to the search), "Skip
+  to the content" on the FAQ and the walkthrough.
+- **What is drawn is also said.** The Now → After lists of Icon & color…, Rename… and Change note… carry
+  hidden words ("Now Camp, Red. After Summit, Blue."; "Now X, after Y"). Option rows are named groups
+  (Color, Icon, Style, Weight, Fill; the Rename… modes are "Change"). This puts the picture into words; it
+  doesn't narrate (UI-26).
+- **Counts are announced.** A hidden polite region speaks "Showing N", "Nothing matches these filters." and
+  "N selected" after a filter or a bulk selection change; `#status` keeps its place on screen while a fixed
+  hidden region carries its words.
+- **Three new receipts:** "Excluded N items.", "Included N items.", "Renamed N items from their notes."
+  (nothing is said when nothing changed). Wording open for the owner.
+- **Smaller:** the More menu shows a focus ring and Tab leaves it (arrows move inside); the single-item
+  popover keeps Tab inside; the note button's name starts with its visible words; a marker's "why" shows
+  in the styled tip on hover and keyboard focus (and as its accessible description) instead of a native
+  tooltip; "Untitled" is muted italic and excluded rows dim by colour, both at 4.5:1 or better; the empty
+  folder's × and the FAQ group links are at least 24px; the rail's section labels are headings; hidden
+  stages carry `hidden`.
+- **Owner answers, 2026-10-26** (the four held findings): the chosen colour swatch also carries a white check
+  (A11Y-10); the After highlight in Rename… / Change note… is underlined as well as shaded (A11Y-16); a file
+  that fails to load says so in a dialog ("Failed: Could not load file", or "Couldn't read that file" with
+  the reason) whose one button, OK, returns to a clean home page, with nothing on the status line (A11Y-23);
+  one Tab stop per palette (A11Y-18) is deferred. Later the same day: the filter chips row gets the paper
+  panel UI-20 asks for, so "Showing N" and "Clear all" no longer sit on the contours (A11Y-21).
+  Accepted from Claude's suggestions the same day (UI-40): the names confirm's action reads "Name it
+  Untitled" for one item; Cancel stays its default; the fix writes plain "Untitled".
