@@ -45,6 +45,12 @@
   /** A note as Cairn stores it after a bulk change: XML-safe, then written form. */
   const cleanNote = s => writtenNote(xmlSafe(s));
 
+  /** Whether a name is blank as the export writes it (tracker 7.4 N1): nothing but
+      whitespace once the characters XML forbids are gone, by Python's strip(), which
+      bridge._blank_name uses. That is JS's \s plus U+0085 (NEL), minus U+FEFF (BOM):
+      a BOM-only name is a name, like a ZWSP-only one. */
+  const blankName = s => /^(?:[^\S\uFEFF]|\u0085)*$/.test(xmlSafe(s));
+
   /** UTF-8 bytes of s, the measure onX cuts notes by (512). */
   const noteBytes = s => {
     let n = 0;
@@ -210,7 +216,7 @@
         if (over) flags.push("note-over-limit");
       } else if (over) {
         flags.push("name-over-limit");
-      } else if (after === "") {
+      } else if (blankName(after)) {
         flags.push("name-empty");      // onX needs a name to import it (tracker 7.4 N1); warn only
       }
       if (xmlSafe(raw) !== raw) flags.push("chars-removed");
@@ -246,7 +252,7 @@
    *    its written form) the row is "unchanged" too. An unchanged row's after is its before.
    *  - a changed row may carry "chars-removed" (raw held characters XML forbids); a note
    *    "note-over-limit" (after is over ctx.noteLimit UTF-8 bytes); a name "name-over-limit"
-   *    (over ctx.nameLimit UTF-8 bytes) or "name-empty" (after is ""). All warn only: an
+   *    (over ctx.nameLimit UTF-8 bytes) or "name-empty" (blankName(after)). All warn only: an
    *    empty name is still saved, and the dialog shows "Untitled".
    *  - marks (tracker 7.4 W2): where after holds inserted text, as [start, end] UTF-16
    *    offsets, end excluded, in order, never empty: each replaced match, the text Add
@@ -279,6 +285,6 @@
   }
 
   root.CairnRename = Object.freeze({
-    transform, xmlSafe, cleanName, cleanNote, writtenNote, noteBytes, XML_INVALID,
+    transform, xmlSafe, cleanName, cleanNote, writtenNote, blankName, noteBytes, XML_INVALID,
   });
 })(typeof window !== "undefined" ? window : globalThis);

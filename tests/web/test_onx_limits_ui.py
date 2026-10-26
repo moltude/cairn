@@ -265,6 +265,19 @@ def test_a_blank_name_is_marked_needs_a_name_and_an_excluded_one_is_not(fresh_pa
     expect(page.locator("#status")).not_to_have_class(re.compile(r"\berr\b"))
 
 
+def test_the_needs_a_name_mark_trims_as_the_export_does(fresh_page: Page):
+    """A BOM-only name is not blank in the file, like a ZWSP-only one: no mark, and Export
+    doesn't ask about it. A NEL-only one is (Python's strip() takes U+0085)."""
+    page = fresh_page
+    uids = _map(page, {"Trip": [("w", "\ufeff", ""), ("w", "\u200b", ""), ("w", "Camp", "")]})
+    expect(_name_mark(page, uids["\ufeff"])).to_have_count(0)
+    expect(_name_mark(page, uids["\u200b"])).to_have_count(0)
+    field = page.locator(f'tr[data-uid="{uids["Camp"]}"] .name-in')
+    field.fill("\x85")
+    field.press("Enter")
+    expect(_name_mark(page, uids["Camp"])).to_have_attribute("aria-label", NEEDS)
+
+
 def test_bitterroots_seven_blank_names_ask_first_and_name_them_untitled_exports(loaded: Page):
     page = loaded
     blank = page.evaluate("allItems().filter(i => i.name === '').map(i => i.uid)")

@@ -10,6 +10,7 @@ the After highlight, A11Y-23 a load failure is a dialog whose OK returns to a cl
 on contours)."""
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
@@ -599,6 +600,24 @@ def test_exclude_include_and_use_note_as_name_leave_a_receipt(fresh_page: Page):
     expect(st).to_have_text("")
 
 
+def test_exclude_and_include_count_only_the_items_they_change(fresh_page: Page):
+    """Items already left out aren't counted again by Exclude, nor included ones by Include."""
+    page = fresh_page
+    _map(page, [("w", "A", ""), ("w", "B", ""), ("w", "C", "")])
+    st = page.locator("#status")
+    _tick(page, [_uid(page, "A")])
+    _menu_action(page, "#bulk-exclude")
+    expect(st).to_have_text("Excluded 1 item.")
+    _tick(page, [_uid(page, "B"), _uid(page, "C")])
+    _menu_action(page, "#bulk-exclude")
+    expect(st).to_have_text("Excluded 2 items.")
+    page.evaluate("setStatus('')")
+    _menu_action(page, "#bulk-exclude")
+    expect(st).to_have_text("")
+    _menu_action(page, "#bulk-include")
+    expect(st).to_have_text("Included 3 items.")
+
+
 # --- A11Y-26: the Name column header -----------------------------------------------------
 
 
@@ -1038,3 +1057,21 @@ def test_a_file_that_fails_to_load_says_so_in_a_dialog_and_ok_returns_home(fresh
     expect(page.locator("#pick")).to_be_focused()
     assert page.evaluate("document.querySelector('#file').value") == ""
 
+
+
+def test_ok_after_a_load_that_failed_while_drawing_leaves_no_map_behind(fresh_page: Page):
+    """The engine read the file but drawing the edit screen threw: OK still returns to a
+    clean home page, with no half-loaded map left for Back or Forward to reach."""
+    page = fresh_page
+    page.evaluate("() => { window.renderEdit = () => { throw new Error('draw failed'); }; }")
+    page.set_input_files("#file", files=[{"name": "camp.json", "mimeType": "application/json",
+                                          "buffer": json.dumps({"type": "FeatureCollection", "features": [{
+                                              "type": "Feature", "geometry": {"type": "Point", "coordinates": [1, 2]},
+                                              "properties": {"title": "Camp"}}]}).encode()}])
+    expect(page.locator("#confirm")).to_be_visible()
+    page.keyboard.press("Enter")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    expect(page.locator("#pick")).to_be_focused()
+    assert page.evaluate("DATA") is None
+    assert page.evaluate("window.__cairnLoaded") is False
