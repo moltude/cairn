@@ -2487,13 +2487,14 @@ function nameList(quoted) {
   return quoted.length > n ? `${quoted.slice(0, n).join(", ")} and ${quoted.length - n} more` : quoted.join(", ");
 }
 function longNoteWarning() {
-  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `\u201c${n || "Untitled"}\u201d`));
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `\u201c${shortName(n || "Untitled")}\u201d`));
   const list = nameList(names);
   return names.length === 1 ? `Item ${list} is over the length limit and will be truncated by onX.`
     : `Items ${list} are over the length limit and will be truncated by onX.`;
 }
 /** The same warning for names over onX's 255 bytes and folder names over its
-    50 characters (L1), each name shortened (they are long by definition). */
+    50 characters (L1). Every list shortens a name past 48 characters (shortName):
+    these names are long by definition. */
 function longNameWarning() {
   const names = MANIFEST.flatMap(e => (e.long_names || []).map(([n]) => `\u201c${shortName(n)}\u201d`));
   const list = nameList(names);
