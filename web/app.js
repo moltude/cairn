@@ -1843,22 +1843,15 @@ function afterCell(r, names) {
   if (!r.after) return textCell("na-after", r.after, names);
   return `<span class="na-after" title="${esc(r.after)}">${markRanges(r.after, r.marks)}</span>`;
 }
-/** The name twin of the long-note sentence (tracker 7.4 L1): onX's importer
-    keeps the first nameLimit UTF-8 bytes of a name; N counts the characters
-    past them, as noteOverflow does for notes. */
-function bulkNameSentence(name, limit) {
-  let upTo = 0, cut = 0;
-  for (const ch of name) { upTo += CairnRename.noteBytes(ch); if (upTo > limit) cut++; }
-  return `onX imports only the first ${limit} bytes of a name. About ${plural(Math.max(cut, 1), "character")} will be cut.`;
-}
 /** The sentence under a row: "No change", the long-note caution (UI-34), or a
-    name onX will cut or can't import without (tracker 7.4 L1, N1). All warn;
-    none blocks Save. */
+    name onX will cut or can't import without (tracker 7.4 L1, N1; UI-40): the
+    row marks' own sentences, longNameSentence and NEEDS_NAME. All warn; none
+    blocks Save. */
 function textFlag(r) {
   if (r.flags.includes("unchanged")) return "No change";
   if (r.flags.includes("note-over-limit")) return longNoteSentence(r.after) || "";
-  if (r.flags.includes("name-over-limit")) return bulkNameSentence(r.after, BULK.ctx.nameLimit);
-  if (r.flags.includes("name-empty")) return "Needs a name to export.";
+  if (r.flags.includes("name-over-limit")) return longNameSentence(r.after) || "";
+  if (r.flags.includes("name-empty")) return NEEDS_NAME;
   return "";
 }
 
