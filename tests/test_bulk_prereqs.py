@@ -30,6 +30,7 @@ sys.path.insert(0, str(ROOT / "web"))
 import bridge  # noqa: E402
 
 from cairn.core.writers import DEFAULT_MAX_GPX_BYTES  # noqa: E402
+from tests.blank_names import blank_uids, name_blanks  # noqa: E402
 from tests.bulk_rename_vectors import CAMPSITES, TWINS, item_map  # noqa: E402
 from tests.hardening_maps import _folder, _poly  # noqa: E402
 from tests.naughty_strings import NAUGHTY  # noqa: E402
@@ -136,21 +137,28 @@ def test_apply_edits_with_control_characters_exports_clean_gpx():
     assert written(zf) == [("01_Bulk/Bulk_Waypoints.gpx", [["Camp", 2]])]
 
 
-def test_an_empty_name_exports_an_empty_name_element_and_instructions_say_untitled():
-    """3.7(f): names are optional (decision 17). The <name> element is written and
-    empty; instructions.txt prints "Untitled" for it (bridge._plain)."""
+def test_an_empty_name_blocks_the_export_until_it_is_named_untitled():
+    """3.7(f), changed by N1 (owner, 2026-10-25): a name may be empty while editing,
+    but not in an export. export_zip refuses and writes nothing; once each is named
+    "Untitled" (the app's "Name them Untitled"), every kind writes that name.
+    DEVIATION: this test pinned an empty <name> element in the export (decision 17)."""
     items = load(ONE_OF_EACH)
     edit({i["uid"]: {"name": ""} for i in items})
+    assert [i["name"] for i in stored()] == ["", "", ""]          # stored blank: names optional while editing
+    bridge._STATE.pop("manifest", None)
+    with pytest.raises(ValueError, match=r"^An item needs a name\.$"):
+        bridge.export_zip()
+    assert "manifest" not in bridge._STATE                         # refused before writing anything
+    assert len(name_blanks(bridge)) == 3
     zf = export()
     got = gpx_items(zf)
-    assert len(got) == 3 and all(n == "" for _m, _k, n, _d in got)
+    assert len(got) == 3 and all(n == "Untitled" for _m, _k, n, _d in got)
     for m in {m for m, *_ in got}:
         root = ET.fromstring(zf.read(m))
         for el in root.iter():
             if el.tag in {GPX + t for t in TAG.values()}:
-                name = el.find(GPX + "name")
-                assert name is not None and (name.text or "") == ""
-    assert sorted(n for _p, its in written(zf) for n, _b in its) == ["", "", ""]
+                assert el.findtext(GPX + "name") == "Untitled"
+    assert sorted(n for _p, its in written(zf) for n, _b in its) == ["Untitled"] * 3
     assert [n for n, _marks in instruction_items(zf)] == ["Untitled"] * 3
 
 
@@ -291,14 +299,19 @@ def test_zero_width_space_and_bom_are_kept_in_names():
 
 
 def test_a_name_typed_as_untitled_or_no_name_is_an_ordinary_name():
-    """Typed "Untitled" and "(no name)" are stored and written as typed; a truly blank
-    name is written empty. instructions.txt prints the typed "Untitled" and the blank
-    one alike ("Untitled", bridge._plain): documented, not a bug."""
+    """Typed "Untitled" and "(no name)" are stored and written as typed; they are names,
+    so they don't block the export. A truly blank name does (N1) until it is named
+    "Untitled", which then reads like the typed one everywhere.
+    DEVIATION (N1, 2026-10-25): the blank one was written as an empty <name>."""
     items = load([("w", "A", ""), ("w", "B", ""), ("w", "C", "")])
     edit({uid(items, "A"): {"name": "Untitled"}, uid(items, "B"): {"name": "(no name)"},
           uid(items, "C"): {"name": ""}})
+    assert blank_uids(bridge) == [uid(items, "C")]
+    with pytest.raises(ValueError, match="An item needs a name"):
+        bridge.export_zip()
+    name_blanks(bridge)
     zf = export()
-    assert names(zf) == Counter(["Untitled", "(no name)", ""])
+    assert names(zf) == Counter(["Untitled", "(no name)", "Untitled"])
     assert sorted(n for n, _m in instruction_items(zf)) == ["(no name)", "Untitled", "Untitled"]
 
 
@@ -328,9 +341,16 @@ def test_the_writer_strips_what_the_core_missed(kind):
 
 @pytest.mark.parametrize("text", [t for _l, t in NAUGHTY], ids=[label for label, _t in NAUGHTY])
 def test_every_naughty_string_exports_and_reparses(text):
-    """Each naughty string as the name and the note of a waypoint, a line and an area."""
+    """Each naughty string as the name and the note of a waypoint, a line and an area.
+    One that is blank as written (spaces, tabs, line breaks, NBSP...) blocks the export
+    (N1) until the items are named "Untitled", as the app does first.
+    DEVIATION (N1, 2026-10-25): blank-as-written names were exported as empty <name>s."""
     items = load(ONE_OF_EACH)
     edit({i["uid"]: {"name": text, "desc": text} for i in items})
+    if bridge._blank_name(text):
+        with pytest.raises(ValueError, match="An item needs a name"):
+            bridge.export_zip()
+        assert len(name_blanks(bridge)) == 3
     zf = export()
     got = gpx_items(zf)
     assert len(got) == 3
@@ -352,6 +372,7 @@ def test_a_bulk_note_with_html_looking_text_on_a_caltopo_map_exports_verbatim():
     (bridge.export_zip sets PLAIN_NOTES_KEY), so <b> survives as text."""
     load_file(BITTERROOTS)
     n = _set_every_note(HTML_NOTE)
+    name_blanks(bridge)          # Bitterroots' 7 blank names (N1, 2026-10-25); DEVIATION: added
     zf = export()
     assert descs(zf) == Counter({HTML_NOTE: n})
     raw = b"".join(zf.read(m) for m in zf.namelist() if m.endswith(".gpx"))
@@ -373,14 +394,20 @@ def test_a_bulk_note_on_an_onx_map_exports_verbatim():
 
 def test_replace_with_empty_can_empty_a_name_and_saves_it_blank():
     """Find "Camp" replace with "" on "Camp": the core's after is "" (stored as "", never
-    "Untitled"); every kind writes an empty <name> and every GPX parses."""
+    "Untitled"). The export then needs a name (N1): refused until it is named "Untitled",
+    and every GPX parses.
+    DEVIATION (N1, 2026-10-25): the waypoint was written with an empty <name>."""
     items = load([("w", "Camp", ""), ("l", "Camp line", ""), ("a", "Camp area", "")])
     edit({uid(items, "Camp"): {"name": ""}, uid(items, "Camp line"): {"name": "line"},
           uid(items, "Camp area"): {"name": "area"}})
+    assert sorted(i["name"] for i in stored()) == ["", "area", "line"]
+    with pytest.raises(ValueError, match="An item needs a name"):
+        bridge.export_zip()
+    assert name_blanks(bridge) == [uid(items, "Camp")]
     zf = export()
-    assert names(zf, "waypoints") == Counter({"": 1})
-    assert names(zf) == Counter(["", "line", "area"])
-    assert sorted(n for _p, its in written(zf) for n, _b in its) == ["", "area", "line"]
+    assert names(zf, "waypoints") == Counter({"Untitled": 1})
+    assert names(zf) == Counter(["Untitled", "line", "area"])
+    assert sorted(n for _p, its in written(zf) for n, _b in its) == ["Untitled", "area", "line"]
 
 
 # =====================================================================================
@@ -454,8 +481,12 @@ def _members(zf) -> dict:
 def test_rename_then_rename_back_still_counts_as_edits_and_exports_identically():
     """Prefix "⟦" then find "⟦" replace "": every name is back to what it was, the
     bridge holds two rounds of edits, and every member of the zip is byte-identical to
-    the unedited export (the zip's own timestamps aside)."""
-    items = load_file(BITTERROOTS)
+    the unedited export (the zip's own timestamps aside).
+    DEVIATION (N1, 2026-10-25): Bitterroots' 7 blank names are named "Untitled" first,
+    as the app does before its first export; the round of edits starts from there."""
+    load_file(BITTERROOTS)
+    name_blanks(bridge)
+    items = [dict(i) for i in stored()]
     baseline = _members(export())
     edit({i["uid"]: {"name": "⟦" + i["name"]} for i in items})
     assert all(i["name"].startswith("⟦") for i in stored())

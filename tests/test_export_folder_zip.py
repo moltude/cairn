@@ -17,6 +17,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
 import bridge  # noqa: E402
+from tests.blank_names import export_named  # noqa: E402
 
 FX = Path(__file__).parent / "fixtures"
 BITTERROOTS = FX / "bitterroots" / "Bitterroots__Complete_.json"
@@ -29,7 +30,7 @@ def _zip(b) -> zipfile.ZipFile:
 
 def _bitterroots() -> zipfile.ZipFile:
     bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
-    return _zip(bridge.export_zip())
+    return _zip(export_named(bridge))
 
 
 def test_download_all_layout_is_one_numbered_subfolder_per_folder_then_the_instructions():
@@ -75,7 +76,7 @@ def test_folder_zip_needs_no_second_export_and_follows_the_latest_one():
     keep = next(i for i in g["items"] if i["kind"] == "waypoints")
     edits = {i["uid"]: {"included": False} for i in g["items"] if i is not keep}
     bridge.apply_edits(json.dumps(edits))
-    bridge.export_zip()
+    export_named(bridge)
     after = _zip(bridge.export_folder_zip(first["n"]))
     assert after.namelist() == [f"01_{first['safe']}/{first['safe']}_Waypoints.gpx"]
     assert full.namelist() != after.namelist()
@@ -85,7 +86,7 @@ def test_folder_numbers_are_the_screen_numbers_not_list_positions(tmp_path):
     """A folder that wrote no file is skipped on screen but keeps its number,
     so export_folder_zip looks folders up by n."""
     bridge.load_files(json.dumps([{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in ONX_PAIR]))
-    bridge.export_zip()
+    export_named(bridge)
     (e,) = bridge._STATE["manifest"]
     one = _zip(bridge.export_folder_zip(e["n"]))
     assert sorted(one.namelist()) == [
@@ -138,7 +139,7 @@ def test_a_non_ascii_folder_name_survives_the_raw_copy():
     bridge.load_document(BITTERROOTS.read_text(encoding="utf-8"), BITTERROOTS.name)
     key = next(g["key"] for g in bridge._STATE["groups"] if g["name"] == "Paddling")
     bridge.rename_folder(key, "Kanu Zürich 日本")
-    full = _zip(bridge.export_zip())
+    full = _zip(export_named(bridge))
     e = next(e for e in bridge._STATE["manifest"] if e["folder"] == "Kanu Zürich 日本")
     one = _zip(bridge.export_folder_zip(e["n"]))
     assert one.namelist() == [f["path"] for f in e["files"]] and "Zürich" in one.namelist()[0]
