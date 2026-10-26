@@ -57,10 +57,22 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   extensions and `<desc>` lines, or only name and location? Decides whether the round trip
   works from a phone or only from onX on a computer.
 * **Track times and waypoint elevation** (P7): does onX read `<time>` and `<ele>` on import?
-* **Bulk rename onX probe** (UI-39, owner-run only): import one GPX with a 300-character name, a
-  513-byte note ending in a 4-byte emoji, an RTL name, two identical names, an emoji-only name, a
-  name with NBSP and ZWSP, and a markup with an empty `<name>`. Does each import, and how does onX
-  list and show it? The empty `<name>` decides whether blanking names in bulk needs a warning.
+* **Bulk rename onX probe** (UI-39, owner-run only): import one GPX with names of 255, 256 and 300
+  ASCII characters and one of 128 accented characters (256 bytes: bytes or characters?), a 513-byte
+  note ending in a 4-byte emoji, an RTL name, two identical names, an emoji-only name, a name with
+  NBSP and ZWSP, and a markup with an empty `<name>`. Does each import, and how does onX list and
+  show it? onX's own editor stops names at 255 characters and refuses a blank one
+  (`docs/research/ONX_PUBLIC_DOCS_2026-10-25.md`); what its importer does is unknown. The empty
+  `<name>` decides whether blanking names in bulk needs a warning.
+* **Folder names over 50 characters**: onX's editor stops folder names at 50; Cairn allows 100 and
+  instructions.txt tells users to type Cairn's name into onX. Cap at 50, flag over 50, or leave it?
+  (owner decision; same research doc).
+* **The "…" on onX's Import Complete card** offers Add to (folder), per onX's code: try it once.
+  If it moves a fresh import into an existing folder, the round-trip FAQ's "no way into an
+  existing folder" needs softening.
+* **The dropped 3,000+ character note**: re-import `tests/fixtures/onx_real/onx_web_line_long_note.gpx`
+  alone (no KML). It is an onX Route, whose typed notes have no cap; this separates "the KML was
+  used" from "a size rule".
 * **One styled CalTopo export** (GeoJSON + KML + GPX of one small map with a dotted line, an
   arrow line, an unfoldered marker, a multi-part area and an area with a hole). Answers:
   * CalTopo's `pattern` values for dotted and arrow lines (only solid and one dash are known;
