@@ -89,13 +89,6 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   a blank name becomes "Imported waypoint markup <timestamp>", and Import Complete → Add to Folder adds a
   fresh import to an existing folder.
 
-## Next feature: bulk rename and note change
-
-* **Rename… and Change note…** in More (UI-39, UI-40), with a live Now → After preview: built on
-  branch `feat/bulk-rename-v3` (2026-10-25, squashed for review 2026-10-26), waiting for the
-  owner's review. Its plan and build log are archived (UI-39 says where). After merge: rerun the
-  bulk-edit timing on the Vercel deployment at 1,500 / 3,000 / 10,000 items.
-
 ## Major feature: investigate, then build
 
 * **Avalanche Bridge** — put local avalanche-center field observations (point-level evidence
@@ -118,6 +111,14 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
 
 Newest first. Details are in DECISIONS and `docs/testing/FOLDERS_RELEASE.md`.
 
+* **PR #49 (2026-10-26), bulk rename:** Rename… and Change note… in More, with a live
+  Now → After preview (UI-39); one text rule set for every name and note edit, and a whole-word
+  Find; onX's name limits warned (255 bytes a name, 50 characters a folder name) and a name
+  required to export (UI-40); 24 of the 29 accessibility findings fixed, then four more after
+  the owner's answers. After the merge, on the Vercel deployment: the web suite passed (672), and
+  a prefix typed into Rename… on every row took at most 0.6 / 1.2 / 2.4 ms a key to transform and
+  3 / 4.4 / 5.2 ms to list at 1,500 / 3,000 / 10,000 items; Save took 124 / 242 / 798 ms (the
+  10,000 Save is over the 500 ms budget, but 10,000 is past onX's 3,000 cap).
 * **2026-10-25 leftovers:** `MultiPoint`, `MultiLineString` and `GeometryCollection` split into
   one markup per part instead of being dropped; characters XML forbids are dropped from every
   written name and note (one control character used to break a whole GPX); `instructions.txt`
