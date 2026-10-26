@@ -1304,11 +1304,13 @@ def test_unexported_changes_counts_each_renamed_row_once(loaded: Page):
     assert loaded.evaluate("unexportedChanges()") == 7
 
 
-def test_start_over_names_the_bulk_changes_count(loaded: Page):
+def test_start_over_after_a_bulk_rename_warns_and_counts_seven_changes(loaded: Page):
     page = loaded
     _rename_7_then_note_3(page)
+    assert page.evaluate("unexportedChanges()") == 7
     page.locator(".newmap").first.click()
-    expect(page.locator("#confirm-body")).to_have_text("This discards 7 unexported changes.")
+    # No count in the sentence (owner, 2026-10-25).
+    expect(page.locator("#confirm-body")).to_have_text("Changes will be lost.")
 
 
 def test_the_caution_marks_match_the_dialogs_note_flags(fresh_page: Page):

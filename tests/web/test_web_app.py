@@ -1749,11 +1749,11 @@ def test_start_over_counts_unexported_changes_and_escape_cancels(loaded: Page):
     loaded.wait_for_timeout(100)
     assert loaded.evaluate("Object.keys(EDITS).length") == 1
 
+    assert loaded.evaluate("unexportedChanges()") == 1
     loaded.locator(".newmap").first.click()
     body = loaded.locator("#confirm-body")
-    expect(body).to_have_text(
-        "This discards 1 unexported change."
-    )
+    # No count in the sentence (owner, 2026-10-25); the count is unexportedChanges().
+    expect(body).to_have_text("Changes will be lost.")
     loaded.keyboard.press("Escape")
     expect(loaded.locator("#confirm")).to_be_hidden()
     assert loaded.evaluate("Object.keys(EDITS).length") == 1
@@ -2754,9 +2754,9 @@ def test_start_over_counts_moves_and_renames(loaded: Page):
     _section(page, "Blodgett").locator(".folder-name").click()
     page.keyboard.type("Blodgett 2")
     page.keyboard.press("Enter")
+    assert page.evaluate("unexportedChanges()") == 3
     page.locator(".newmap").first.click()
-    expect(page.locator("#confirm-body")).to_have_text(
-        "This discards 3 unexported changes.")
+    expect(page.locator("#confirm-body")).to_have_text("Changes will be lost.")
     page.click("#confirm-actions button:text-is('Start over')")
     expect(page.locator("body")).to_have_attribute("data-stage", "drop")
     assert page.evaluate("SAVED") is None and page.evaluate("unexportedChanges()") == 0
@@ -3343,8 +3343,7 @@ def test_start_over_counts_only_changes_since_the_last_export(loaded: Page):
     page.keyboard.press("Enter")
     assert page.evaluate("unexportedChanges()") == 3
     page.locator(".newmap").first.click()
-    expect(page.locator("#confirm-body")).to_have_text(
-        "This discards 3 unexported changes.")
+    expect(page.locator("#confirm-body")).to_have_text("Changes will be lost.")
 
 
 def test_the_100_character_message_shows_only_when_typing_was_cut(fresh_page: Page, tmp_path):

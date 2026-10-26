@@ -593,6 +593,40 @@ def test_regex_specials_in_find_are_literal(core):
     assert flags == {"unchanged"}
 
 
+# Find and replace changes every occurrence in a field, not the first (UI-39), a check the
+# owner asked for. The dialog's side is tests/web/test_text_rules.py.
+_FAR = "Trail" + ", then switchbacks, meadow and scree" * 20 + " to the far Trail"
+EVERY_MATCH = [
+    pytest.param("name", "Ridge Trail Trail Trail", "Trail", False, "Ridge Path Path Path",
+                 id="three-matches-in-one-name"),
+    pytest.param("name", _FAR, "Trail", False, _FAR.replace("Trail", "Path"), id="matches-far-apart"),
+    pytest.param("name", "Trail trail TRAIL", "trail", False, "Path Path Path",
+                 id="mixed-case-with-match-case-off-changes-all-three"),
+    pytest.param("name", "Trail trail TRAIL", "trail", True, "Trail Path TRAIL",
+                 id="mixed-case-with-match-case-on-changes-only-the-exact-one"),
+    pytest.param("desc", "Trail at the top\nthen the Trail down", "Trail", False,
+                 "Path at the top\nthen the Path down", id="matches-on-two-lines-of-a-note"),
+    pytest.param("desc", "up top\nTrail down\nup top\nTrail down", "top\nTrail", False,
+                 "up Path down\nup Path down", id="a-find-across-a-line-break-matches-twice-in-a-note"),
+]
+
+
+@pytest.mark.parametrize("field,before,find,match_case,after", EVERY_MATCH)
+def test_find_and_replace_changes_every_occurrence_in_a_field(core, field, before, find, match_case, after):
+    sp = spec("replace", field=field, find=find, repl="Path", match_case=match_case)
+    assert one(core, before, sp) == (after, set(), 1)
+
+
+@pytest.mark.parametrize("before,after", [
+    pytest.param("aaaa", "bb", id="adjacent-matches-aaaa-to-bb"),
+    pytest.param("aaa", "ba", id="overlapping-aaa-goes-left-to-right"),
+    pytest.param("aaaaa", "bba", id="overlapping-aaaaa-goes-left-to-right"),
+])
+def test_find_aa_replaces_adjacent_and_overlapping_text_left_to_right(core, before, after):
+    got, flags, changed = one(core, before, names_spec("replace", find="aa", repl="b"))
+    assert (got, flags, changed) == (after, set(), 1)
+
+
 @pytest.mark.parametrize("field", ["name", "desc"])
 def test_empty_find_and_empty_replace_is_a_noop(core, field):
     """On hostile values too: no cleaning without a change."""
