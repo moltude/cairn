@@ -58,8 +58,7 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
 
 * **Avalanche Bridge** — put local avalanche-center field observations (point-level evidence
   behind the zone ratings onX already shows) onto the onX map as importable markups. Draft
-  proposal: `docs/ROADMAP_AVALANCHE_BRIDGE.md` (2026-10-22, not yet committed; another session
-  wrote it). Next step: settle its UNKNOWNs (data sources and their terms, refresh cadence,
+  proposal: `docs/ROADMAP_AVALANCHE_BRIDGE.md` (2026-10-22; another session wrote it). Next step: settle its UNKNOWNs (data sources and their terms, refresh cadence,
   how a user re-imports updates without duplicates), then plan the build.
 
 
