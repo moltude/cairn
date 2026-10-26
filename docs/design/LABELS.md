@@ -109,6 +109,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Note · Icon | column headers | app:733 | `.note-th` |
 | New folder / New folder 2 … | default new-folder name | br:723, br:886 | — |
 | Unorganized | folder for items outside any folder | parser.py:19, br:513 | `UNORGANIZED_FOLDER_NAME` |
+| onX keeps only the first 50 characters of a folder name. About N character(s) will be cut. | caution after the folder's name (a folder with an included item; UI-40) | app `folderCaution` | `.caution.folder-caution` |
 
 ### 3.4 Rows
 
@@ -128,6 +129,8 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Won't export: it has no coordinates. | caution | app:947 | `.caution` |
 | onX imports only the first 512 bytes of a note. About N character(s) will be cut. | caution | app:950 | `.caution` |
 | onX will reset this area's fill to its default blue. | caution | app:957 | `.caution.fill-caution` |
+| onX imports only the first 255 bytes of a name. About N character(s) will be cut. | caution after the name (included rows; UI-40) | app `nameCaution` | `.caution.name-caution` |
+| Needs a name to export. | caution after a blank name (included rows with coordinates; UI-40) | app `nameCaution` | `.caution.name-caution` |
 
 ### 3.5 Selection bar and More menu
 
@@ -193,6 +196,8 @@ docs/plans/BULK_RENAME.md section 2 decision 4).
 | (blank) | a missing note, Before or After | app `textCell` | `.na-before`, `.na-after` |
 | No change | row sentence for an unchanged row (in place of its After) | app `textFlag` | `.na-flag` |
 | onX imports only the first 512 bytes of a note. About N character(s) will be cut. | row sentence for a note over the limit (the caution's, §3.4) | app `longNoteSentence` | `.na-flag` |
+| onX imports only the first 255 bytes of a name. About N character(s) will be cut. | row sentence for a name over the limit (flag `name-over-limit`; the row caution's, §3.4; UI-40) | app `textFlag` → `longNameSentence` | `.na-flag` |
+| Needs a name to export. | row sentence for a name left empty (flag `name-empty`; the row caution's, §3.4; UI-40) | app `textFlag` → `NEEDS_NAME` | `.na-flag` |
 | and N more | under a list cut at 200 rows (the export warning's "and N more", §10) | app `drawTextBulk` | `.na-more` |
 | N will change · M unchanged | summary, `aria-live=polite` | app `drawTextBulk` | `#bulk-summary` |
 | Cancel · Save | buttons; Save disabled while nothing changes | app `openTextBulk` | `.bulk-cancel`, `#bulk-apply` |
@@ -238,6 +243,7 @@ highlighted (`.na-after .hit`, no text of its own).
 | Save your note? | Your note for “{name}” (or “Untitled”) hasn't been saved. (on Export, Rename… and Change note…, when the open note changed) | Keep editing, Discard, **Save** | app `askToSaveNote` |
 | “{name}” already exists | (merge, §7) | **Cancel**, Move them | app:1869-1874 |
 | 1 area will lose its fill / N areas will lose their fill | onX resets area fills to blue on import. | **Keep it / Keep them**, Leave this out / Leave these N out | app:2256-2264 |
+| 1 item needs a name / N items need a name | (none; UI-26) | **Cancel**, Name them Untitled | app `exportOrAskForNames` (on Export, after the merge offer and Save your note?; UI-40) |
 
 ## 10. Export screen
 
@@ -253,6 +259,8 @@ highlighted (`.na-after .hit`, no text of its own).
 | Download / Download {N · }{folder} | per-folder button / aria-label | app:2156-2162 | `.rb-dl` |
 | **N** item(s) wasn't / weren't exported: it has / they have no coordinates. X of Y were written. | warning | app:2142 | `.note.warn` |
 | Item 'A' is over the length limit and will be truncated by onX. / Items 'A', 'B' and N more are over … | warning | app:2125-2131 | `.note.warn` |
+| Name “A” is over the length limit and will be truncated by onX. / Names “A”, “B” and N more are over … | warning (names over 255 bytes; UI-40) | app `longNameWarning` | `.note.warn` |
+| Folder name “A” is over the length limit and will be truncated by onX. / Folder names “A”, “B” … are over … | warning (folder names over 50 characters; UI-40) | app `longFolderWarning` | `.note.warn` |
 | onX accounts hold at most 3,000 markups; this map has N. Remove or exclude some before importing. | warning | app:2144 | `.note.warn` |
 
 ## 11. Help panel (idx:166-253)
@@ -278,6 +286,7 @@ highlighted (`.na-after .hit`, no text of its own).
 | Changed N item(s). / line(s). / area(s). (Rename… and Change note…: always item(s)) | ready | app:1541-1542, app `applyTextBulk` |
 | Couldn't move / make a folder / remove / rename — {reason} | err | app:1652, 1728, 1743, 1824 |
 | Everything is excluded — include at least one item to export. | err | app:2101 |
+| 1 item needs a name. / N items need a name. | err | app `showBlankNames` (Cancel in the names confirm; UI-40) |
 | Building onX files… | info | app:2104 |
 | Export failed: {reason} · Download failed: {reason} | err | app:2118, app:2191 |
 
@@ -308,6 +317,7 @@ highlighted (`.na-after .hit`, no text of its own).
 | This file contains a <!DOCTYPE> declaration, which map exports from onX, CalTopo and Google Earth never include, so Cairn won't open it. | input_check.py:146-149 |
 | Failed: Could not load file (any unreadable GeoJSON; shown on its own, without “Couldn't read that file —”) | br `GEOJSON_FAILED` |
 | There is no folder '{key}' in this map. · No items were given to move. · “{name}” isn't empty, so it can't be removed. · No exported folder N. Export again. | br:743, 864-869, 923, 1104 |
+| An item needs a name. (export_zip's guard, after "Export failed: "; the UI names blank items first, so it never shows; UI-40) | br `export_zip` |
 
 ## 13. instructions.txt (fixed lines; CRLF; straight quotes; br:1212)
 
@@ -317,7 +327,8 @@ highlighted (`.na-after .hit`, no text of its own).
 | These files came from onX. onX imports them as new markups; it doesn't update the originals. / Keep your onX export as a backup. / In onX, delete the original markups first, then their folders. Deleting a folder doesn't delete its markups. / Then import as below. | from an onX file |
 | Import each folder below into onX on a computer (webmap.onxmaps.com), one at a time. / In onX, choose Import and add all of that folder's files together. / Tick "Import map data to a new folder". / onX names the new folder with a datetime stamp. / Rename it to the name shown for that folder below. / Importing needs onX Premium or Elite. | always |
 | {NN_Name}/    rename to: {folder name} · {file} · Waypoints / Lines / Areas · {item name} | per folder, file, item |
-| (over the length limit; onX will cut this note) · (its hole is not kept: an onX area has one outline) · Untitled (a nameless item) | under an item |
+| (over the length limit; onX will cut this name) · (over the length limit; onX will cut this note) · (its hole is not kept: an onX area has one outline) · Untitled (a nameless item) | under an item (the name's line first; UI-40) |
+| (over the length limit; onX will cut this folder name) | its own line under a folder's "rename to:" (UI-40) |
 
 ## 14. FAQ and walkthrough headings
 
@@ -342,7 +353,7 @@ The owner's answers, by topic (this table, not the numbers used in conversation,
 | Quotes | “…” around names; straight apostrophes everywhere; **You will**, not You'll | done |
 | "Use onX's blue fill" | **Blue** (in the Fill row) | done |
 | Error-message prefixes | review every variant together | follow-up (TODO.md) |
-| "A name is required…" | names are **optional**: no error, an empty name shows **Untitled** | done |
+| "A name is required…" | names are **optional** while editing: no error, an empty name shows **Untitled**. An export needs one (UI-40, 2026-10-25): **Name them Untitled** | done |
 | "Changes will be lost." vs "This discards N unexported changes." | **"Changes will be lost."** in both, no count (owner, 2026-10-25) | decided |
 | Confirm button order | safe choice first, action last (merge and fill confirms flipped) | done |
 | Cancel in "Save your note?" | **Keep editing** | done |
@@ -386,6 +397,6 @@ The owner's answers, by topic (this table, not the numbers used in conversation,
 | Contractions | write **You will**, not You'll | |
 | Date stamp | **datetime stamp** | date and time stamp |
 | Sentences | short and direct; no period on titles, a period on status sentences | narrating modals (UI-26) |
-| A missing name | **Untitled** (names are optional, owner 2026-10-25) | (no name), Name can't be empty |
+| A missing name | **Untitled** (names are optional while editing, owner 2026-10-25); before export, **Needs a name to export.** and **Name them Untitled** (UI-40) | (no name), Name can't be empty |
 | A missing note | nothing: blank space | No note, (none) |
 | Confirm buttons | the safe choice first (and default), the action last | |

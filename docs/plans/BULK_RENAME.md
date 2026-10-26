@@ -153,6 +153,11 @@ owner's review on localhost). Where the build departed from this plan, and why, 
 
 ### 3.1 One pure core, in JavaScript: `web/rename.js`
 
+**Superseded in part by the progress tracker's section 7.4** (owner, round 3, 2026-10-25): Find
+matches whole words only; each replaced match is highlighted; the core has two more flags,
+`name-over-limit` and `name-empty`, and its context takes `nameLimit` as well as `noteLimit`
+(DECISIONS UI-39 and UI-40). The text below is the plan as built in round 1.
+
 **Why JS, not Python.** (a) Preview latency: every keystroke re-runs the transform over up to 1,500 rows;
 a `py.runPython` hop plus JSON both ways is 5–20 ms on warm Pyodide and spikes under GC; JS does it in
 < 2 ms. (b) The bridge is not called per edit today: `EDITS` go to `apply_edits` once, at export

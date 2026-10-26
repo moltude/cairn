@@ -46,6 +46,13 @@ count equals the summary's, and Esc, the backdrop or a Save with nothing to chan
 alone. A seventh map, `big1500` (1,502 rows), is outside the `seed % 6` rotation; name it with
 `--maps`.
 
+A name is required to export (N1, round 3). A blank name stays legal while editing, and after
+every action exactly the rendered rows Export would ask about carry "Needs a name to export.".
+An export answers "Save your note?" and then "N items need a name" (its title and buttons
+checked), picking Cancel, Esc, Enter or Name them Untitled; the trail records each pick. Cancel
+must leave the edit screen with the status "N items need a name." and focus on a blank name;
+Name them Untitled must store "Untitled" on each. No exported GPX may hold a blank `<name>`.
+
 `--maps` picks one map per seed (`seed % len(maps)`); `--every-map` runs every seed on every
 listed map instead. `--n` is `--actions`.
 

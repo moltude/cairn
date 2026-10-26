@@ -123,6 +123,9 @@ Yes. Tick them, then **More → Rename…**. **Find and replace** changes part o
 
 - **Default pin** under a marker: Cairn found no icon for it (see above).
 - **A caution mark:** onX won't keep something as is. Before a note: the note is over onX's 512-byte import limit (onX imports only the first 512 bytes of a note) and will be cut, or the item has no coordinates and won't export. At the right end of an area's Icon cell, after "Area": onX will reset this area's fill to its default blue; choose **Blue** under Fill to clear the mark. Hover it, or tab to it, for the details.
+- **A long name:** onX keeps the first 255 bytes of a name. A longer one gets a caution mark.
+- **A long folder name:** onX keeps 50 characters. A longer one gets a caution mark beside it.
+- **No name:** every item needs one to export. Export offers to name blank ones Untitled.
 - **A name or note cut short:** hover it, or tab to it, to read all of it. The tip keeps the note's line breaks, and you can select text in it. Esc closes it.
 - **The arrow in a Name header** sorts by name: A–Z, then Z–A, then back to map order. Each folder sorts on its own, and numbers sort naturally ("Camp 2" before "Camp 10"). Sorting changes only the view, never the export.
 
