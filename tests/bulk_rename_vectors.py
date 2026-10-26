@@ -103,7 +103,9 @@ ROUND_TRIP_NAMES = [
     ("prefix_collapses_tab_and_newline", "Camp\tA \n B", spec("prefix", text="x"), "xCamp A B"),
     ("prefix_keeps_space_runs", "Camp  A", spec("prefix", text="x"), "xCamp  A"),
     ("prefix_long_3000", "Camp", spec("prefix", text="x" * 3000), "x" * 3000 + "Camp"),
-    # Find matches whole words only (tracker 7.4 W1), so the find stands alone in "b a b".
+    # DEVIATION (tracker 7.4 W1, Find matches whole words only): these five vectors matched
+    # inside words ("bab" find "a", "aaa" find "aa", "Οδυσσεύς" find "σ", "İstanbul" find
+    # "İ", "x\u0301" find "x"); each now matches a whole word, with the same intent.
     ("dollar_patterns_literal", "b a b", spec("replace", find="a", repl="$&$1$$$`$'"),
      "b $&$1$$$`$' b"),
     ("backslashes_literal", "a\\b", spec("replace", find="\\", repl="\\\\"), "a\\\\b"),
@@ -120,7 +122,7 @@ ROUND_TRIP_NAMES = [
     ("find_consumes_the_name", "Camp", spec("replace", find="Camp"), ""),
     ("whitespace_result_is_blank", "Camp", spec("replace", find="Camp", repl=" \t\n "), ""),
     ("trim_keeps_inner_spaces", "X Camp A", spec("replace", find="Camp", repl="  "), "X    A"),
-    # "x" followed by its accent is one word, so the mark is a word of its own here.
+    # DEVIATION (W1, above): "x" and its accent are one word, so the mark stands apart here.
     ("combining_mark_left_alone", "x \u0301", spec("replace", find="x"), "\u0301"),
     ("emoji_only", "Camp", spec("replace", repl="🔥"), "🔥"),
     ("typed_untitled", "Camp", spec("replace", repl="Untitled"), "Untitled"),
@@ -159,8 +161,8 @@ PINNED = {
     # Left-to-right matching: with Match case off "Aa aa" matches at 0 and blocks the
     # match at 3, so the replacement rewrites "Aa aa" to itself and the row is unchanged;
     # with it on, "aa aa" matches at 3 and the row changes. So rows changed with Match case
-    # on are NOT always a subset of those changed with it off (plan 6.1 property 9). Whole
-    # words since tracker 7.4 W1 (it was "Aaa" find "aa", which no longer matches at all).
+    # on are NOT always a subset of those changed with it off (plan 6.1 property 9).
+    # DEVIATION (tracker 7.4 W1): it was "Aaa" find "aa", which whole-word Find no longer matches.
     "match_case_overlap_on": ([("Aa aa aa", "")], spec("replace", find="aa aa", repl="Aa aa", match_case=True),
                               [("Aa Aa aa", set())]),
     "match_case_overlap_off": ([("Aa aa aa", "")], spec("replace", find="aa aa", repl="Aa aa"),
