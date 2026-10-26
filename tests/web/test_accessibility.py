@@ -862,3 +862,126 @@ def test_status_words_are_said_from_a_region_that_never_moves(fresh_page: Page):
     page.evaluate("setStatus('A folder needs a name.', 'err')")
     expect(live).to_have_text("A folder needs a name.")
 
+# --- A11Y-01: focus never hidden under the sticky bars -----------------------------------
+
+# For the focused element: how many of nine points across its box are covered by
+# something else (the audit's measure), and its box.
+_COVERED_JS = """() => {
+  const el = document.activeElement;
+  if (!el || el === document.body) return null;
+  const r = el.getBoundingClientRect();
+  let covered = 0;
+  for (const fx of [0.1, 0.5, 0.9]) for (const fy of [0.1, 0.5, 0.9]) {
+    const x = r.left + r.width * fx, y = r.top + r.height * fy;
+    const hit = document.elementFromPoint(x, y);
+    if (!hit || (hit !== el && !el.contains(hit))) covered++;
+  }
+  return { covered, key: el.dataset.fk || el.id || el.className || el.tagName, top: r.top, bottom: r.bottom };
+}"""
+
+
+def _walk(page: Page, key: str, presses: int) -> list:
+    out = []
+    for _ in range(presses):
+        page.keyboard.press(key)
+        page.wait_for_timeout(30)
+        s = page.evaluate(_COVERED_JS)
+        if s:
+            out.append(s)
+    return out
+
+
+@pytest.mark.parametrize("ticked", [0, 2], ids=["nothing-ticked", "two-rows-ticked"])
+def test_shift_tab_up_the_list_never_hides_focus_under_the_search_row_or_selection_bar(loaded: Page, ticked):
+    """A11Y-01: tabbing backwards up Bitterroots from row 60, no focus stop is covered at
+    all by the sticky search row or the selection bar (was: up to 16 of 80 fully covered)."""
+    page = loaded
+    _wide(page)
+    if ticked:
+        boxes = page.locator(f"{ROW} .sel-box")
+        boxes.nth(0).check()
+        boxes.nth(1).check()
+    row = page.locator(ROW).nth(60)
+    row.locator(".name-in").focus()
+    page.keyboard.press("Escape")                     # no tip; the field keeps focus
+    stops = _walk(page, "Shift+Tab", 80)
+    bad = [s for s in stops if s["covered"]]
+    assert len(stops) >= 60 and not bad, bad[:5]
+
+
+def test_tab_down_the_rail_never_hides_focus_under_its_footer(loaded: Page):
+    """A11Y-01: Tab from the rail's first section down to Export: no rail entry is covered
+    by the sticky footer (status, Export, Start over)."""
+    page = loaded
+    _wide(page)
+    page.locator(".rail .sec-h").first.focus()
+    stops = []
+    for _ in range(60):
+        page.keyboard.press("Tab")
+        page.wait_for_timeout(30)
+        if page.evaluate("document.activeElement.id === 'export'"):
+            break
+        s = page.evaluate(_COVERED_JS)
+        if s:
+            stops.append(s)
+    assert any(s["key"].startswith("icon|") for s in stops), stops[-3:]
+    bad = [s for s in stops if s["covered"]]
+    assert not bad, bad[:5]
+
+
+def test_shift_tab_up_the_faq_never_hides_focus_under_its_top_bar(page_on):
+    """A11Y-01: on the FAQ, Shift+Tab from the bottom: no link is covered by the sticky
+    top bar (was: the TOC links and # anchors)."""
+    page = page_on("faq.html")
+    page.locator(".faq-q .anchor").last.focus()       # (not End: its smooth scroll races the focus scroll)
+    page.wait_for_timeout(100)
+    stops = _walk(page, "Shift+Tab", 45)
+    bad = [s for s in stops if s["covered"]]
+    assert len(stops) >= 40 and not bad, bad[:5]
+
+
+@pytest.mark.parametrize("path,target", [("faq.html", ".faq-q"), ("walkthrough.html", ".wt-step")])
+def test_an_in_page_link_still_lands_its_target_just_below_the_top_bar(page_on, path, target):
+    """A11Y-01: the page's scroll padding replaced the sections' scroll margin, so an
+    anchor jump lands where it did: 72px from the top, clear of the bar."""
+    page = page_on(path)
+    sid = page.locator(target).nth(2).get_attribute("id")
+    page.goto(f"{BASE_URL}/{path}#{sid}")
+    page.wait_for_timeout(200)
+    top = page.locator(f"#{sid}").evaluate("e => e.getBoundingClientRect().top")
+    bar = page.locator(".topbar").evaluate("e => e.getBoundingClientRect().bottom")
+    assert abs(top - 72) <= 1 and top > bar, (top, bar)
+
+
+# --- A11Y-23: a folder name error marks its field ----------------------------------------
+
+
+def test_a_folder_name_error_marks_the_field_invalid_until_it_is_fixed(loaded: Page):
+    """A11Y-23: Enter on an empty new folder name keeps the field open, aria-invalid and
+    described by the status line ("A folder needs a name."); typing clears both. Pasting
+    past 100 characters does the same with "A folder name can be up to 100 characters."."""
+    page = loaded
+    page.locator(".new-folder").click()
+    inp = page.locator("#folder-facets .folder-name-in")
+    expect(inp).to_be_focused()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.press("Backspace")
+    page.keyboard.press("Enter")
+    expect(page.locator("#status")).to_have_text("A folder needs a name.")
+    inp = page.locator("#folder-facets .folder-name-in")
+    expect(inp).to_be_focused()
+    expect(inp).to_have_attribute("aria-invalid", "true")
+    expect(inp).to_have_attribute("aria-describedby", "status")
+    assert _ax(page, "#folder-facets .folder-name-in")["description"] == "A folder needs a name."
+    page.keyboard.type("R")
+    expect(inp).not_to_have_attribute("aria-invalid", "true")
+    assert inp.get_attribute("aria-describedby") is None
+    page.keyboard.insert_text("x" * 120)
+    expect(page.locator("#status")).to_have_text("A folder name can be up to 100 characters.")
+    expect(inp).to_have_attribute("aria-invalid", "true")
+    # Still marked after the rail re-renders around it.
+    page.evaluate("renderRail()")
+    expect(inp).to_have_attribute("aria-invalid", "true")
+    page.keyboard.press("Backspace")
+    expect(page.locator("#status")).to_have_text("")
+    expect(inp).not_to_have_attribute("aria-invalid", "true")

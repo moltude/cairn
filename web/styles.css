@@ -34,6 +34,12 @@
 }
 *{box-sizing:border-box}
 html{background:var(--paper)}
+/* Focus never lands under a sticky bar (A11Y-01): scrolling a control into view
+   stops below the bars at the top. app.js measures them into --sticky-h; the doc
+   pages, which have no JS, use their top bar's 72px (that also places an anchor
+   jump, as the sections' scroll-margin-top did). */
+html{scroll-padding-top:var(--sticky-h,0px)}
+html:has(body.docpage){scroll-padding-top:72px}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:15px;line-height:1.45;
   -webkit-text-size-adjust:100%}
 button,input,textarea,select{font:inherit;color:inherit}
@@ -130,7 +136,9 @@ body[data-stage=edit]{font-size:13px}
 .sec-h .caret{flex:none;width:12px;text-align:center;font-size:12px;color:var(--muted);margin-left:auto}
 .sec-sum:not(:empty)+.caret{margin-left:0}
 .sec-h:hover .label,.sec-h:hover .caret{color:var(--ink)}
-.rail{scroll-padding-bottom:84px}
+/* The rail's entries scroll into view above its sticky footer (status, Export,
+   Start over; app.js measures it into --rail-foot-h; A11Y-01). */
+.rail{scroll-padding-bottom:var(--rail-foot-h,150px)}
 .rail .facet:last-of-type{padding-bottom:18px}
 .facet-list{display:flex;flex-direction:column;gap:1px;padding-bottom:8px}
 .facet-btn{text-align:left;display:flex;justify-content:space-between;gap:8px;padding:4px 10px;
@@ -568,8 +576,8 @@ h1[tabindex="-1"]:focus,main[tabindex="-1"]:focus{outline:none}
   font-weight:400;color:var(--brown);text-decoration:none}
 .doc-toc ul a{font-size:14px;color:var(--ink);text-decoration:none;text-underline-offset:3px}
 .doc-toc a:hover,.doc-toc a:focus-visible{color:var(--link-hover);text-decoration:underline}
-.faq-sec{margin:0 0 44px;scroll-margin-top:72px}
-.faq-q{padding:20px 0 6px;border-bottom:1px dotted var(--rule);scroll-margin-top:72px}
+.faq-sec{margin:0 0 44px}
+.faq-q{padding:20px 0 6px;border-bottom:1px dotted var(--rule)}
 .faq-q:last-child{border-bottom:none}
 .faq-q .anchor{position:absolute;left:-22px;color:var(--muted);text-decoration:none;font-weight:400}
 .faq-q h3:hover .anchor,.faq-q .anchor:focus-visible{color:var(--brown)}
@@ -587,8 +595,8 @@ h1[tabindex="-1"]:focus,main[tabindex="-1"]:focus{outline:none}
 .wt-stats li{background:var(--card);border:1px solid var(--rule);padding:14px 16px;margin:0}
 .wt-stats b{display:block;font-size:34px;line-height:1.1;color:var(--green)}
 .wt-stats span{font-size:13px;color:var(--muted);line-height:1.35;display:block;margin-top:4px}
-.wt-step{margin:0 0 56px;scroll-margin-top:72px}
-.wt-foot{scroll-margin-top:72px;margin:0 0 24px}
+.wt-step{margin:0 0 56px}
+.wt-foot{margin:0 0 24px}
 .wt-lede sup{font-size:.7em;line-height:0}
 .wt-step .step-tag{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--brown)}
 .wt-step h2{border-bottom:none;padding-bottom:0;margin:2px 0 8px;font-size:28px}

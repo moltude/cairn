@@ -81,8 +81,9 @@ const clearError = () => { if ($("#status").classList.contains("err")) setStatus
      over what is the same for that node's whole life: its item, its folder key. */
 const HANDLERS = ["onclick", "onchange", "oninput", "onkeydown"];
 /* Attributes a builder never writes, set at run time: the name field's value
-   at focus (wireTextField) and the tip's link (showTip). A morph leaves them. */
-const RUNTIME_ATTRS = new Set(["data-orig", "aria-describedby"]);
+   at focus (wireTextField), the tip's link (showTip) and a folder name's error
+   marks (markFolderNameError). A morph leaves them. */
+const RUNTIME_ATTRS = new Set(["data-orig", "aria-describedby", "aria-invalid"]);
 const isField = n => n.nodeName === "INPUT" || n.nodeName === "TEXTAREA";
 /** Whether live node a can be patched into fresh node b (else b replaces it). */
 const sameNode = (a, b) => a.nodeType === b.nodeType && a.nodeName === b.nodeName &&
@@ -281,9 +282,36 @@ function showStage(name) {
   // screen reader says where it is; and the tab's title names it (A11Y-02).
   document.title = STAGE_TITLE[name];
   $(STAGE_HEADING[name]).focus({ preventScroll: true });
+  syncStickyPad();
   syncUnloadGuard();
 }
 const STAGE_TITLE = { drop: document.title, edit: "Cairn — Edit", done: "Cairn — Export" };
+
+/* Keyboard focus never lands under a sticky bar (A11Y-01): the page scrolls a
+   focused control into view below the bars at its top (html scroll-padding-top,
+   --sticky-h: the top bar, or on the edit screen the search row and, while it
+   shows, the selection bar under it), and the rail below its entries above its
+   sticky footer (scroll-padding-bottom, --rail-foot-h). Measured, since the bars
+   come and go and change height; called on a stage change, a selection change
+   and whenever a bar resizes (wireStickyPad). */
+const STICKY_GAP = 8;
+function syncStickyPad() {
+  const root = document.documentElement.style;
+  let top;
+  if (document.body.dataset.stage === "edit") {
+    top = $(".toolbar").offsetHeight;
+    const sb = $("#selbar");
+    // The selection bar sticks at its own top (styles.css: --toolbar-h, 52px).
+    if (!sb.classList.contains("hidden")) top = Math.max(top, (parseFloat(getComputedStyle(sb).top) || 0) + sb.offsetHeight);
+    root.setProperty("--rail-foot-h", `${$(".rail-foot").offsetHeight + STICKY_GAP}px`);
+  } else top = $("#topbar").offsetHeight;
+  root.setProperty("--sticky-h", `${Math.ceil(top) + STICKY_GAP}px`);
+}
+function wireStickyPad() {
+  const ro = new ResizeObserver(() => syncStickyPad());
+  [".toolbar", "#selbar", ".rail-foot", "#topbar"].forEach(s => ro.observe($(s)));
+  syncStickyPad();
+}
 const STAGE_HEADING = { drop: "#drop-stage h1", edit: "#map-title", done: "#done-stage h1" };
 
 /* ---------- browser Back and Forward (UI-37) ----------
@@ -1363,6 +1391,7 @@ function updateSel() {
   // style, not an icon: say what it does.
   $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color & style…";
   closeMenu();
+  syncStickyPad();                 // the selection bar came or went (A11Y-01)
 }
 
 /* ---------- icon & color: palettes ---------- */
@@ -2250,7 +2279,7 @@ function wireFolderName(inp) {
   const tooLong = `A folder name can be up to ${FOLDER_NAME_MAX} characters.`;
   const checkAdded = added => {
     const kept = inp.value.length - (inp.selectionEnd - inp.selectionStart);
-    if (kept + added.length > FOLDER_NAME_MAX) setStatus(tooLong, "err");
+    if (kept + added.length > FOLDER_NAME_MAX) { setStatus(tooLong, "err"); markFolderNameError(inp, true); }
   };
   inp.addEventListener("beforeinput", e => {
     if (!e.inputType.startsWith("insert")) return;
@@ -2261,6 +2290,8 @@ function wireFolderName(inp) {
   inp.addEventListener("input", () => {
     if (RENAME && RENAME.key === key) RENAME.draft = inp.value;
     if (inp.value.length < FOLDER_NAME_MAX && $("#status").textContent === tooLong) setStatus("");
+    // Typing answers "A folder needs a name."; the length error lasts while its line does.
+    if ($("#status").textContent !== tooLong) markFolderNameError(inp, false);
   });
   inp.addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); finishRename(key, true); }
@@ -2269,6 +2300,15 @@ function wireFolderName(inp) {
   // A patch that moves or replaces the input is not the user leaving it
   // (Chrome fires blur on a focused element as it is moved or removed).
   inp.addEventListener("blur", () => { if (!PATCHING && inp.isConnected) finishRename(key, true, { defer: true }); });
+}
+
+/** While a folder name's error stands, its field says so: aria-invalid, and
+    described by the status line that words it (A11Y-23); cleared once it is
+    answered. Both survive a render (RUNTIME_ATTRS). */
+function markFolderNameError(inp, on) {
+  if (!inp) return;
+  if (on) { inp.setAttribute("aria-invalid", "true"); inp.setAttribute("aria-describedby", "status"); }
+  else { inp.removeAttribute("aria-invalid"); inp.removeAttribute("aria-describedby"); }
 }
 
 function finishRename(key, save, { defer = false } = {}) {
@@ -2304,7 +2344,11 @@ function finishRename(key, save, { defer = false } = {}) {
   const done = () => {
     if (!DATA) return;
     if (failed) { resyncAfterFailure(); return; }
-    if (reopen) { startRename(key, "rail"); setStatus("A folder needs a name.", "err"); return; }
+    if (reopen) {
+      startRename(key, "rail"); setStatus("A folder needs a name.", "err");
+      markFolderNameError($(".folder-name-in"), true);
+      return;
+    }
     // Leaving one name for another folder's: keep the new field's selection.
     const a = document.activeElement;
     const sel = a && a.classList.contains("folder-name-in") ? [a.selectionStart, a.selectionEnd] : null;
@@ -2930,6 +2974,7 @@ window.addEventListener("DOMContentLoaded", () => {
     el.insertAdjacentHTML("beforeend", UI_ICON[el.dataset.uiIcon] || "");
   });
   wireDrop();
+  wireStickyPad();
   // Skip to the list (A11Y-22): to the search, without a #filter history entry
   // (each stage is one entry, UI-37).
   $("#edit-stage .skip-link").onclick = e => { e.preventDefault(); $("#filter").focus(); };

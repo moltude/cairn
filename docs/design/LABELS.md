@@ -233,6 +233,7 @@ highlighted (`.na-after .hit`, no text of its own).
 |---|---|---|
 | A folder needs a name. | status (error) | app:1812, app:1832; br:750 |
 | A folder name can be up to 100 characters. | status (error) | app:1775 |
+| (either error above, while it stands) | the open name field is `aria-invalid` and described by the status line (`aria-describedby="status"`); typing a name, or getting under 100, clears both (A11Y-23) | app `markFolderNameError` |
 | “{name}” already exists / Move the N item(s) in “{src}” into it? / Cancel · Move them | merge confirm | app:1869-1874 |
 | “{name}” already exists. | status (error) | app:1862 |
 | Made an empty folder. · Removed the empty folder “{name}”. | status | app:1732, app:1745 |
