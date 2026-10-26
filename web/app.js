@@ -227,6 +227,8 @@ async function boot() {
     if (cfg !== null) py.FS.writeFile("/cairn_config.yaml", cfg);
     await py.runPythonAsync("import sys; sys.path.insert(0,'/'); import bridge");
     NOTE_LIMIT = py.runPython("bridge.ONX_IMPORT_NOTE_LIMIT");
+    NAME_LIMIT = py.runPython("bridge.ONX_IMPORT_NAME_LIMIT");
+    FOLDER_NAME_LIMIT = py.runPython("bridge.ONX_FOLDER_NAME_LIMIT");
     ONX_DEFAULT_FILL = py.runPython("bridge.ColorMapper.DEFAULT_AREA_FILL");
     window.__cairnReady = true;
     // The same signal as a DOM attribute, for tests that run under the
@@ -723,9 +725,10 @@ function folderSection(g, items) {
   const sub = isUnorganized(g) ? "Not in any folder"
     : items.length === g.items.length ? `${g.items.length} item${g.items.length === 1 ? "" : "s"}`
     : `${items.length} of ${g.items.length} shown`;
+  const fmark = folderCaution(g);
   el.innerHTML = `
     <div class="folder-head">
-      ${folderTitleHTML(g)}
+      ${folderTitleHTML(g)}${fmark ? cautionMark(`fcaution|${esc(g.key)}`, fmark, " folder-caution") : ""}
       <span class="folder-sub">${esc(sub)}</span>
       <button type="button" class="collapse" data-fk="collapse|${esc(g.key)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expand" : "Collapse"} ${esc(g.name)}">${UI_ICON.chevron}</button>
     </div>
@@ -814,10 +817,11 @@ const TIP = { src: null, showT: null, hideT: null, over: false };
 let LAST_POINTER = 0;   // when the last press happened: focus right after it isn't keyboard focus
 const cut = el => !!el && el.scrollWidth > el.clientWidth + 1;
 function tipText(src, viaKey = false) {
+  // Each mark its own, a row's or a folder header's (which has no row).
+  if (src.classList.contains("caution")) return src.getAttribute("aria-label");
   const tr = src.closest("tr[data-uid]");
   const it = tr && allItems().find(i => i.uid === tr.dataset.uid);
   if (!it) return null;
-  if (src.classList.contains("caution")) return src.getAttribute("aria-label");   // each mark its own
   if (src.classList.contains("name-in")) {
     // Not while typing in it (the field shows what is typed), unless it was
     // just reached by keyboard.
@@ -928,6 +932,24 @@ function wireTip() {
    excluded row isn't exported, so it has none. Rows re-render after every
    edit, so the mark follows the note. */
 let NOTE_LIMIT = null;                 // bridge.ONX_IMPORT_NOTE_LIMIT (512), read at boot
+// onX's limits on names (UI-40, measured live 2026-10-25), read at boot like
+// NOTE_LIMIT: the first 255 UTF-8 bytes of an imported name are kept, and its
+// folder rename dialog stops at 50 characters (UTF-16 units, as maxlength
+// counts). The bulk dialog's name flag reads NAME_LIMIT too.
+let NAME_LIMIT = null;                 // bridge.ONX_IMPORT_NAME_LIMIT (255)
+let FOLDER_NAME_LIMIT = null;          // bridge.ONX_FOLDER_NAME_LIMIT (50)
+/** [size, characters past the limit] of text measured by size(): the
+    characters (code points) after the longest start that fits in limit. */
+function overflow(text, limit, size) {
+  const total = size(text);
+  if (total <= limit) return [total, 0];
+  let upTo = 0, kept = 0, chars = 0;
+  for (const ch of text) {
+    upTo += size(ch); chars++;
+    if (upTo <= limit) kept++;
+  }
+  return [total, chars - kept];
+}
 /** [bytes, characters past the limit] of a note, by UTF-8 bytes, measured
     on the note as the export writes it to the GPX <desc> (line endings made
     "\n", outer whitespace trimmed: writers.clean_notes for plain notes), the
@@ -935,23 +957,49 @@ let NOTE_LIMIT = null;                 // bridge.ONX_IMPORT_NOTE_LIMIT (512), re
     Both helpers are web/rename.js's, so the row's mark and the Change note…
     dialog's flag (UI-39) measure alike. */
 const writtenNote = d => CairnRename.writtenNote(d);
-function noteOverflow(desc) {
-  const note = writtenNote(desc);
-  const bytes = CairnRename.noteBytes(note);
-  if (bytes <= NOTE_LIMIT) return [bytes, 0];
-  let upTo = 0, kept = 0, total = 0;
-  for (const ch of note) {
-    upTo += CairnRename.noteBytes(ch); total++;
-    if (upTo <= NOTE_LIMIT) kept++;
-  }
-  return [bytes, total - kept];
-}
+const noteOverflow = desc => overflow(writtenNote(desc), NOTE_LIMIT, CairnRename.noteBytes);
 /** The long-note sentence (UI-34), or null for a note onX keeps whole. */
 function longNoteSentence(desc) {
   const [bytes, cutN] = noteOverflow(desc);
   return bytes > NOTE_LIMIT
     ? `onX imports only the first ${NOTE_LIMIT} bytes of a note. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
     : null;
+}
+/** A name as the export writes it to <name> and onX reads it back: the
+    characters XML forbids dropped (the writers' rule), a line break read as
+    "\n". Measured in UTF-8 bytes, as instructions.txt measures it. */
+const writtenName = n => CairnRename.xmlSafe(n).replace(/\r\n?/g, "\n");
+/** The long-name sentence (UI-40), or null for a name onX keeps whole. */
+function longNameSentence(name) {
+  const [bytes, cutN] = overflow(writtenName(name), NAME_LIMIT, CairnRename.noteBytes);
+  return bytes > NAME_LIMIT
+    ? `onX imports only the first ${NAME_LIMIT} bytes of a name. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
+}
+/** The long folder name sentence (UI-40), or null for one onX's rename dialog
+    takes whole. Characters as maxlength counts them: an emoji is two. */
+function longFolderSentence(name) {
+  const [units, cutN] = overflow(String(name ?? ""), FOLDER_NAME_LIMIT, s => s.length);
+  return units > FOLDER_NAME_LIMIT
+    ? `onX keeps only the first ${FOLDER_NAME_LIMIT} characters of a folder name. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
+    : null;
+}
+/** Blank as the export would write it (UI-40): nothing left once the characters
+    XML forbids are dropped and the ends trimmed (cleanNote trims U+0085 too, as
+    the bridge's Python strip() does), so this and bridge._blank_name agree. */
+const nameIsBlank = name => CairnRename.cleanNote(name ?? "") === "";
+/** An item Export would write with a blank name: it needs one first (UI-40). */
+const needsName = it => it.included && !it.no_coords && nameIsBlank(it.name);
+const NEEDS_NAME = "Needs a name to export.";
+/** The mark beside the name: a name the export needs, or one onX will cut. */
+function nameCaution(it) {
+  if (!it.included || it.no_coords) return null;
+  return nameIsBlank(it.name) ? NEEDS_NAME : longNameSentence(it.name);
+}
+/** The mark beside a folder's name in its header: a name onX's rename dialog
+    will cut. Only for a folder the export writes (it has an included item). */
+function folderCaution(g) {
+  return g.items.some(i => i.included) ? longFolderSentence(g.name) : null;
 }
 const fillAlpha = f => { const m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(f || ""); return m ? parseFloat(m[1]) : 1; };
 /** The mark beside the note: a note onX will cut, or an item that won't export. */
@@ -982,9 +1030,10 @@ function row(it, old = null) {
   const fk = esc(it.uid) + "|";
   const caution = noteCaution(it);
   const fillMark = fillCaution(it);
+  const nameMark = nameCaution(it);
   const html = `
     <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name || "Untitled")}" ${SEL.has(it.uid) ? "checked" : ""}></td>
-    <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name || "Untitled")}" placeholder="Untitled" value="${esc(it.name)}">${it.included ? ""
+    <td class="namecol"><div class="name-cell"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name || "Untitled")}" placeholder="Untitled" value="${esc(it.name)}">${nameMark ? cautionMark(`${fk}namecaution`, nameMark, " name-caution") : ""}</div>${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name || "Untitled")}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
       `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name || "Untitled")}">
@@ -1794,21 +1843,14 @@ function afterCell(r, names) {
   if (!r.after) return textCell("na-after", r.after, names);
   return `<span class="na-after" title="${esc(r.after)}">${markRanges(r.after, r.marks)}</span>`;
 }
-/** The name twin of the long-note sentence (UI-40): onX's importer
-    keeps the first nameLimit UTF-8 bytes of a name; N counts the characters
-    past them, as noteOverflow does for notes. */
-function bulkNameSentence(name, limit) {
-  let upTo = 0, cut = 0;
-  for (const ch of name) { upTo += CairnRename.noteBytes(ch); if (upTo > limit) cut++; }
-  return `onX imports only the first ${limit} bytes of a name. About ${plural(Math.max(cut, 1), "character")} will be cut.`;
-}
 /** The sentence under a row: "No change", the long-note caution (UI-34), or a
-    name onX will cut or can't import without (UI-40). All warn; none blocks Save. */
+    name onX will cut or can't import without (UI-40): the row marks' own
+    sentences, longNameSentence and NEEDS_NAME. All warn; none blocks Save. */
 function textFlag(r) {
   if (r.flags.includes("unchanged")) return "No change";
   if (r.flags.includes("note-over-limit")) return longNoteSentence(r.after) || "";
-  if (r.flags.includes("name-over-limit")) return bulkNameSentence(r.after, BULK.ctx.nameLimit);
-  if (r.flags.includes("name-empty")) return "Needs a name to export.";
+  if (r.flags.includes("name-over-limit")) return longNameSentence(r.after) || "";
+  if (r.flags.includes("name-empty")) return NEEDS_NAME;
   return "";
 }
 
@@ -2455,12 +2497,31 @@ async function doExport() {
     items whose notes onX will cut, by name as written in straight single
     quotes, up to LONG_NOTES_SHOWN, then "and N more". */
 const LONG_NOTES_SHOWN = 8;
-function longNoteWarning() {
-  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `\u201c${n || "Untitled"}\u201d`));
+/** Up to LONG_NOTES_SHOWN quoted names, then "and N more". */
+function nameList(quoted) {
   const n = LONG_NOTES_SHOWN;
-  const list = names.length > n ? `${names.slice(0, n).join(", ")} and ${names.length - n} more` : names.join(", ");
+  return quoted.length > n ? `${quoted.slice(0, n).join(", ")} and ${quoted.length - n} more` : quoted.join(", ");
+}
+function longNoteWarning() {
+  const names = MANIFEST.flatMap(e => (e.long_notes || []).map(([n]) => `\u201c${shortName(n || "Untitled")}\u201d`));
+  const list = nameList(names);
   return names.length === 1 ? `Item ${list} is over the length limit and will be truncated by onX.`
     : `Items ${list} are over the length limit and will be truncated by onX.`;
+}
+/** The same warning for names over onX's 255 bytes and folder names over its
+    50 characters (UI-40). Every list shortens a name past 48 characters (shortName):
+    these names are long by definition. */
+function longNameWarning() {
+  const names = MANIFEST.flatMap(e => (e.long_names || []).map(([n]) => `\u201c${shortName(n)}\u201d`));
+  const list = nameList(names);
+  return names.length === 1 ? `Name ${list} is over the length limit and will be truncated by onX.`
+    : `Names ${list} are over the length limit and will be truncated by onX.`;
+}
+function longFolderWarning() {
+  const names = MANIFEST.filter(e => e.long_folder).map(e => `\u201c${shortName(e.folder)}\u201d`);
+  const list = nameList(names);
+  return names.length === 1 ? `Folder name ${list} is over the length limit and will be truncated by onX.`
+    : `Folder names ${list} are over the length limit and will be truncated by onX.`;
 }
 
 function renderRunbook() {
@@ -2473,6 +2534,8 @@ function renderRunbook() {
   host.innerHTML =
     (S.dropped ? `<div class="note warn"><b>${S.dropped}</b> item${S.dropped === 1 ? " wasn't" : "s weren't"} exported: ${S.dropped === 1 ? "it has" : "they have"} no coordinates. ${S.written} of ${S.expected} were written.</div>` : "") +
     (S.long_notes ? `<div class="note warn">${esc(longNoteWarning())}</div>` : "") +
+    (S.long_names ? `<div class="note warn">${esc(longNameWarning())}</div>` : "") +
+    (S.long_folders ? `<div class="note warn">${esc(longFolderWarning())}</div>` : "") +
     (S.over_limit ? `<div class="note warn">onX accounts hold at most ${S.limit.toLocaleString("en-US")} markups; this map has ${S.markups.toLocaleString("en-US")}. Remove or exclude some before importing.</div>` : "");
   // Two folders may share a name ("Camp" twice, from the file), or two names
   // sanitize alike ("A B", "A_B"): only then does a box show its number, and
@@ -2676,10 +2739,63 @@ function requestExport() {
   if (RENAME) finishRename(RENAME.key, true);
   flushDeferred();
   if (CONFIRM) return;
-  if (!NOTE_EDIT) { doExport(); return; }
+  // In order: a taken folder name's merge offer (above: it stops the export,
+  // as before), then "Save your note?", then the items that need a name (UI-40),
+  // then the export.
+  const go = () => exportOrAskForNames(ret);
+  if (!NOTE_EDIT) { go(); return; }
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
-  if (!noteIsChanged()) { closeNote(it, false); doExport(); return; }
-  askToSaveNote(doExport, ret);
+  if (!noteIsChanged()) { closeNote(it, false); go(); return; }
+  askToSaveNote(go, ret);
+}
+
+/** A name is required to export (UI-40, owner 2026-10-25): onX would make one up
+    ("Imported waypoint markup <timestamp>"). With blank-named items to write,
+    ask first. Name them Untitled names each one "Untitled", as an ordinary
+    edit (an unexported change until this export writes it), then exports;
+    Cancel says how many and goes to the first one. */
+function exportOrAskForNames(ret) {
+  const blank = allItems().filter(needsName);
+  if (!blank.length) { doExport(); return; }
+  const n = blank.length;
+  openConfirm({
+    title: n === 1 ? "1 item needs a name" : `${plural(n, "item")} need a name`,
+    body: "",
+    ret,
+    buttons: [
+      { label: "Cancel", initial: true, cancel: true, run: () => { closeConfirm(false); showBlankNames(blank); } },
+      { label: "Name them Untitled", run: () => {
+          closeConfirm(false);
+          blank.forEach(it => edit(it, { name: "Untitled" }, { render: false }));
+          refreshAfterEdit();
+          doExport();
+        } },
+    ],
+  });
+}
+
+/** After Cancel: the status says how many need a name, and focus goes to the
+    first such name field on screen. When a filter or a collapsed folder hides
+    every one, the filters are cleared and the first one's folder opened. */
+function showBlankNames(blank) {
+  const uids = new Set(blank.map(i => i.uid));
+  const onScreen = () => [...document.querySelectorAll("#folders tr[data-uid] .name-in")]
+    .find(el => uids.has(el.closest("tr").dataset.uid) && el.getClientRects().length);
+  let field = onScreen();
+  if (!field) {
+    const first = blank[0];
+    const g = DATA.groups.find(g => g.items.includes(first));
+    if (!shownItems().includes(first)) resetFilters();
+    if (g) COLLAPSED.delete(g.key);
+    renderRail(); renderFolders();
+    field = onScreen();
+  }
+  const n = blank.length;
+  setStatus(n === 1 ? "1 item needs a name." : `${plural(n, "item")} need a name.`, "err");
+  if (field) {
+    field.focus({ preventScroll: true });
+    field.scrollIntoView({ block: "nearest" });
+  }
 }
 
 /** The open note has unsaved changes and something needs it closed (Export,

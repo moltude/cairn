@@ -405,7 +405,12 @@ def test_replace_with_empty_can_empty_a_name_and_saves_it_blank(fresh_page: Page
     expect(page.locator("#bulk-apply")).to_be_enabled()
     _save_bulk(page)
     assert _names(page, [u]) == [""]
-    assert sorted(_gpx_names(_export_zip(page))) == ["", "Lake"]
+    # A name is needed to export (UI-40): the blank name is saved, but the row is marked,
+    # and Export names it "Untitled" (the helper presses Name them Untitled). It used
+    # to be exported as an empty <name>.
+    expect(page.locator(f'tr[data-uid="{u}"] .name-caution')).to_have_attribute("aria-label", "Needs a name to export.")
+    assert sorted(_gpx_names(_export_zip(page))) == ["Lake", "Untitled"]
+    assert _names(page, [u]) == ["Untitled"]
 
 
 def test_match_case_toggle_changes_the_count_live(fresh_page: Page):
@@ -798,7 +803,10 @@ def test_rename_then_rename_back_still_counts_as_edits_and_exports_identically(l
     _set_mode(page, "replace")
     _type_spec(page, find="⟦", repl="")
     assert _status_count(_save_bulk(page)) == n
-    assert page.evaluate("unexportedChanges()") == n
+    # A name is needed to export (UI-40): was == n. The baseline export named Bitterroots'
+    # 7 blank items "Untitled" (EDITS {name: "Untitled"}), so for them the round trip ends
+    # on the edit already exported: 170 unexported changes, not 177.
+    assert page.evaluate("unexportedChanges()") == n - 7
     assert _members(_export_zip(page)) == baseline
 
 
@@ -1266,7 +1274,13 @@ def test_preview_equals_saved_equals_exported_for_names(loaded: Page):
     _save_bulk(page)
     assert _names(page, uids[:3]) == ["", "", ""]
     blanks = page.evaluate("allItems().filter(i => i.included && i.name === '').length")
-    assert _gpx_names(_export_zip(page)).count("") == blanks >= 3
+    assert blanks == 3                         # Bitterroots' own 7 were named at the first export
+    # A name is needed to export (UI-40): blank names were exported as "" (count("") == blanks).
+    # Export now names them "Untitled" first (the helper presses Name them Untitled).
+    names = _gpx_names(_export_zip(page))
+    assert "" not in names and _names(page, uids[:3]) == ["Untitled"] * 3
+    assert names.count("Untitled") == page.evaluate(
+        "allItems().filter(i => i.included && i.name === 'Untitled').length") >= blanks
 
 
 def test_preview_equals_saved_equals_exported_for_notes(loaded: Page):

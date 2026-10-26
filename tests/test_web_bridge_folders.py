@@ -22,6 +22,7 @@ from cairn.io.onx_gpx import read_onx_gpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
 import bridge  # noqa: E402
+from tests.blank_names import export_named  # noqa: E402
 
 FX = Path(__file__).parent / "fixtures"
 BITTERROOTS = [FX / "bitterroots" / "Bitterroots__Complete_.json"]
@@ -86,7 +87,7 @@ def _layout() -> list:
 
 
 def _export() -> zipfile.ZipFile:
-    return zipfile.ZipFile(io.BytesIO(bridge.export_zip()))
+    return zipfile.ZipFile(io.BytesIO(export_named(bridge)))
 
 
 def _markups(text: str) -> int:

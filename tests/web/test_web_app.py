@@ -31,7 +31,7 @@ from tests.web.helpers import (  # noqa: F401  (moved out on 2026-10-25)
     BASE_URL, FIXTURE, FX_DIR, ROW, _ONX_GPX_HEAD,
     export_zip_bytes, _select_all_shown, _clear_selection, _set_type, _menu_action, _export_zip,
     _load_files, _set, _tick, _is_marked, _open_changed_waypoint_note, _row, _gpx_blob,
-    _onx_wpt, _gpx_payload,
+    _onx_wpt, _gpx_payload, _click_export,
 )
 
 
@@ -400,7 +400,7 @@ def test_instructions_name_each_folder_and_have_no_kml_warning(loaded: Page):
 
 
 def _done(page: Page) -> None:
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
 
 
@@ -1084,7 +1084,7 @@ def test_line_popover_sets_style_and_weight(loaded: Page):
     after = loaded.evaluate(get)
     assert (after["style"], after["weight"]) == (target, "6.0")
 
-    loaded.click("#export")
+    _click_export(loaded)
     expect(loaded.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     with loaded.expect_download() as dl:
         loaded.click("#download")
@@ -1154,7 +1154,7 @@ def test_area_popover_sets_style_and_weight(loaded: Page):
     assert (after["style"], after["weight"], after["fill"]) == ("dash", "6.0", before["fill"])
     expect(row.locator(".line-btn")).to_have_attribute("aria-label", re.compile(r"Dashed, Thick"))
 
-    loaded.click("#export")
+    _click_export(loaded)
     expect(loaded.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     with loaded.expect_download() as dl:
         loaded.click("#download")
@@ -2047,7 +2047,7 @@ def test_onx_pair_export_downloads_a_zip_with_the_kept_icons(csp_page: Page):
     page = csp_page
     _load_files(page, ONX_PAIR)
     _keep_fills(page)  # onx_dialect's area has a non-default fill
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator(".rb-step")).to_have_count(1)
     expect(page.locator(".rb-step h2")).to_have_text("onx dialect")
@@ -2236,7 +2236,7 @@ def test_caltopo_gpx_icons_and_colors_set_in_cairn_reach_the_exported_gpx(csp_pa
     page.click("#bulk-apply")
     expect(page.locator("#mark-modal")).to_be_hidden()
 
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     with page.expect_download() as dl:
         page.click("#download")
@@ -3101,7 +3101,7 @@ def test_cancel_on_a_new_folders_taken_name_reopens_its_name(loaded: Page):
     expect(inp).to_have_value("Blodgett")
     # Leaving it unchanged keeps "New folder" and doesn't ask again (else
     # Cancel, reopen, leave, ask... never ends; the fuzzer found it via Export).
-    page.click("#export")
+    _click_export(page)
     expect(page.locator("body")).to_have_attribute("data-stage", "done", timeout=60000)
     expect(page.locator("#confirm")).to_be_hidden()
     assert ("New folder", 1) in _layout(page)
@@ -4052,8 +4052,16 @@ def test_an_item_with_no_coordinates_says_it_will_not_export(fresh_page: Page, t
 
 
 def test_no_caution_on_a_plain_caltopo_map(loaded: Page):
+    """A name is needed to export (UI-40). This test used to count every `.caution` on
+    the page as a long note's; Bitterroots' 7 blank-named items now carry the name's
+    mark ("Needs a name to export."), so the note marks are counted in the note cells
+    and the name marks on their own."""
     long_notes = loaded.evaluate("allItems().filter(i => new TextEncoder().encode(i.desc || '').length > 512).length")
-    expect(loaded.locator(".caution")).to_have_count(long_notes)
+    expect(loaded.locator(".note-cell .caution")).to_have_count(long_notes)
+    names = loaded.locator(".name-cell .caution")
+    expect(names).to_have_count(7)
+    assert set(names.evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")) == {"Needs a name to export."}
+    expect(loaded.locator(".caution")).to_have_count(long_notes + 7)
 
 
 # --- 5. Pin colour apart from line colour in the several-items dialog ---------

@@ -11,6 +11,7 @@ import yaml
 # regression covers the shipped export path, not a CLI helper.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
 import bridge  # noqa: E402
+from tests.blank_names import export_named  # noqa: E402
 
 
 FIXTURE = (
@@ -83,7 +84,7 @@ def test_bitterroots_complete_caltopo_to_onx_export_standardizes_icons_and_track
     monkeypatch.setattr(bridge, "CONFIG_PATH", cfg_path)
 
     bridge.load_document(FIXTURE.read_text(encoding="utf-8"), FIXTURE.name)
-    zip_bytes = bridge.export_zip()
+    zip_bytes = export_named(bridge)
 
     gpx = _read_all_gpx_texts(zip_bytes)
     # Sanity: should produce GPX artifacts for a dataset this size.

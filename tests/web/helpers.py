@@ -44,16 +44,49 @@ def _server_reachable() -> bool:
         return False
 
 
-def export_zip_bytes(page: Page, confirm: str | None = None) -> bytes:
+# A name is needed to export (UI-40): with blank-named items to write, Export first
+# opens "N items need a name" (Cancel · Name them Untitled). Bitterroots has 7, so
+# the export helpers below press NAME_THEM there unless a test passes names=None
+# (leave the confirm up) or another button label.
+NAME_THEM = "Name them Untitled"
+NEEDS_NAME_TITLE = re.compile(r"^(1 item needs|[\d,]+ items need) a name$")
+
+
+def _names_confirm_open(page: Page) -> bool:
+    """Whether the "N items need a name" confirm is up. DOM only (works under the CSP)."""
+    return page.locator("#confirm").is_visible() and bool(
+        NEEDS_NAME_TITLE.match(page.locator("#confirm-title").text_content() or ""))
+
+
+def _answer_names(page: Page, names: str | None = NAME_THEM) -> bool:
+    """Press `names` in the "N items need a name" confirm if it is up (None: leave
+    it); whether it was. Export runs in the click's own handler, so the confirm is
+    either up or not by the time the click returns."""
+    if names and _names_confirm_open(page):
+        page.click(f"#confirm-actions button:text-is('{names}')")
+        return True
+    return False
+
+
+def _click_export(page: Page, names: str | None = NAME_THEM) -> None:
+    """Click Export and answer the names confirm (UI-40) the way `names` says."""
+    page.click("#export")
+    _answer_names(page, names)
+
+
+def export_zip_bytes(page: Page, confirm: str | None = None, names: str | None = NAME_THEM) -> bytes:
     """Trigger export and pull the resulting Blob back into Python as bytes.
 
     `confirm` names the button to press in the unsaved-note prompt when one is
     expected; without it, a prompt would hang the wait below (as it should).
+    `names` is the button for the "N items need a name" confirm that may follow
+    (UI-40): "Name them Untitled" by default.
     """
     page.evaluate("window.__cairnExported = false")
     page.click("#export")
     if confirm:
         page.click(f"#confirm .confirm-actions button:text-is('{confirm}')")
+    _answer_names(page, names)
     page.wait_for_function("window.__cairnExported === true", timeout=60000)
     b64 = page.evaluate(
         """
@@ -105,10 +138,12 @@ def _menu_action(page, selector):
     page.wait_for_timeout(350)
 
 
-def _export_zip(page):
-    """Export in the browser and return the downloaded zip as a ZipFile."""
+def _export_zip(page, names: str | None = NAME_THEM):
+    """Export in the browser and return the downloaded zip as a ZipFile. `names`:
+    the button for the "N items need a name" confirm (UI-40), as export_zip_bytes."""
     import base64, io, zipfile
     page.click("#export")
+    _answer_names(page, names)
     page.wait_for_function("window.__cairnExported === true", timeout=180_000)
     b64 = page.evaluate(
         "async () => { const u = new Uint8Array(await ZIP.arrayBuffer());"

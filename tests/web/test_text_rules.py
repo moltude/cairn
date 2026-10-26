@@ -184,9 +184,12 @@ def test_an_empty_note_cell_shows_add_a_note_only_on_hover_or_keyboard_focus(fre
         page.mouse.move(0, 0)
         expect(text(u)).to_have_css("visibility", "hidden")
     expect(text(_uid(page, "Noted"))).to_have_css("visibility", "visible")
-    # Keyboard: Tab from the name field to the note button.
+    # Keyboard: Tab from the name field to the note button. A name is needed to export
+    # (UI-40): the nameless row's "Needs a name to export." mark is a focus stop in between.
     page.locator(f'tr[data-uid="{bare}"] .name-in').focus()
     expect(text(bare)).to_have_css("visibility", "hidden")
+    page.keyboard.press("Tab")
+    expect(page.locator(f'tr[data-uid="{bare}"] .name-caution')).to_be_focused()
     page.keyboard.press("Tab")
     btn = page.locator(f'tr[data-uid="{bare}"] .note-btn')
     expect(btn).to_be_focused()
