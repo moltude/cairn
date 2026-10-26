@@ -391,6 +391,17 @@ def test_a_note_ending_in_next_line_exports_as_the_core_stores_it(core):
         assert clean_notes(writer_xml_safe(g), plain=True) == g
 
 
+def test_a_bom_at_a_notes_edge_is_kept_as_the_writer_keeps_it(core):
+    """Regression: JS trim() drops U+FEFF (BOM) and Python's str.strip() in the writer's
+    clean_notes keeps it, so a loaded note starting or ending with a BOM was measured
+    3 bytes short of the file, and any note edit dropped the BOM (ENG-09: user data).
+    writtenNote strips exactly what Python strips; names keep their own rule
+    (test_a_trailing_bom_or_nbsp_in_a_name_is_trimmed_like_a_space)."""
+    texts = ["\ufeffabc", "abc\ufeff", " \ufeff abc \ufeff ", "\x1fabc\x1c"]
+    assert helper(core, "writtenNote", *texts) == [clean_notes(t, plain=True) for t in texts]
+    assert helper(core, "cleanNote", "\ufeffabc\ufeff\n") == ["\ufeffabc\ufeff"]
+
+
 # =====================================================================================
 # Length and limits
 # =====================================================================================

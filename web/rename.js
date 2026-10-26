@@ -25,15 +25,17 @@
   /** s without the characters XML 1.0 forbids. */
   const xmlSafe = s => String(s ?? "").replace(XML_INVALID, "");
 
-  /** A note as the export writes it to <desc>: line endings made "\n", outer
-      whitespace trimmed (app.js writtenNote, writers.clean_notes for plain notes).
-      Python's strip() there also takes U+0085 (NEL), which JS's trim() keeps, so
-      an outer NEL goes too: the preview's note is the file's. */
+  /** A note as the export writes it to <desc>: line endings made "\n", then the outer
+      whitespace Python's str.strip() takes (writers.clean_notes for plain notes; app.js
+      writtenNote), so the preview's note is the file's. That set is JS's \s without
+      U+FEFF (a BOM is user data and stays), plus U+001C-U+001F and U+0085 (NEL). */
+  const pySpace = c => /[^\S\uFEFF]|[\u001C-\u001F\u0085]/.test(c);
   const writtenNote = s => {
-    let t = String(s ?? "").replace(/\r\n?/g, "\n").trim();
-    while (t.charCodeAt(0) === 0x85) t = t.slice(1).trim();
-    while (t.charCodeAt(t.length - 1) === 0x85) t = t.slice(0, -1).trim();
-    return t;
+    const t = String(s ?? "").replace(/\r\n?/g, "\n");
+    let a = 0, b = t.length;
+    while (a < b && pySpace(t[a])) a++;
+    while (b > a && pySpace(t[b - 1])) b--;
+    return t.slice(a, b);
   };
 
   /** A name as Cairn stores it after a bulk change: XML-safe, every whitespace

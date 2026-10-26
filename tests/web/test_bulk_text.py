@@ -24,8 +24,8 @@ from playwright.sync_api import Page, expect
 from tests.bulk_rename_vectors import CAMPSITES, item_map
 from tests.naughty_strings import NAUGHTY_TEXTS
 from tests.web.helpers import (
-    BASE_URL, BULK_FIELDS, FIXTURE, ROW, _export_zip, _gpx_descs, _gpx_names, _load_text, _open_bulk,
-    _open_changed_waypoint_note, _preview_rows, _preview_seq, _save_bulk, _select_all_shown,
+    BASE_URL, BULK_FIELDS, FIXTURE, ROW, _export_zip, _gpx_descs, _gpx_names, _load_text, _menu_action,
+    _open_bulk, _open_changed_waypoint_note, _preview_rows, _preview_seq, _save_bulk, _select_all_shown,
     _set, _set_mode, _status_count, _tick, _type_slowly, _type_spec, _wait_preview_past,
 )
 
@@ -1187,6 +1187,49 @@ def test_backdrop_click_cancels(fresh_page: Page):
     page.locator("#mark-modal").click(position={"x": 5, "y": 5})
     expect(page.locator("#mark-modal")).to_be_hidden()
     assert _edits(page) == {} and _names(page, uids) == ["Camp", "Lake"]
+
+
+def test_a_drag_from_a_field_let_go_on_the_backdrop_keeps_the_dialog(fresh_page: Page):
+    """Selecting text by dragging out of a field past the card isn't a click on the
+    backdrop, though the browser sends one there: the dialog and its typing stay."""
+    page = fresh_page
+    uids = _two_rows(page)
+    _open_bulk(page, "rename")
+    _type_spec(page, text="x")
+    box = page.locator(BULK_FIELDS["text"]).bounding_box()
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.mouse.down()
+    page.mouse.move(5, 5, steps=5)
+    page.mouse.up()
+    expect(page.locator("#mark-modal")).to_be_visible()
+    expect(page.locator(BULK_FIELDS["text"])).to_have_value("x")
+    assert _edits(page) == {} and _names(page, uids) == ["Camp", "Lake"]
+
+
+def test_export_warnings_show_only_on_rows_the_export_writes(fresh_page: Page):
+    """UI-40: an excluded item isn't written, so the dialog gives its row no export
+    warning, as the list gives it no mark and Export doesn't count it."""
+    page = fresh_page
+    _map(page, [("w", "Camp", ""), ("w", "Lake", "")])
+    camp, lake = _uids(page, "Camp", "Lake")
+    _tick(page, [lake])
+    _menu_action(page, "#bulk-exclude")
+    _tick(page, [camp, lake])
+    flag = lambda u: page.locator(f'#mark-dialog .na-row[data-uid="{u}"] .na-flag')
+    _open_bulk(page, "rename")
+    _type_spec(page, text="x" * 300)
+    expect(flag(camp)).to_contain_text("onX imports only the first 255 bytes of a name.")
+    expect(flag(lake)).to_have_text("")
+    _set_mode(page, "replace")
+    _type_spec(page, find="", repl=" ")      # an empty Find replaces the whole value
+    expect(flag(camp)).to_have_text("Needs a name to export.")
+    expect(flag(lake)).to_have_text("")
+    page.keyboard.press("Escape")
+    expect(page.locator("#mark-modal")).to_be_hidden()
+    _open_bulk(page, "note")
+    _type_spec(page, text="y" * 600)
+    expect(flag(camp)).to_contain_text("onX imports only the first 512 bytes of a note.")
+    expect(flag(lake)).to_have_text("")
 
 
 def test_the_menu_items_are_disabled_with_nothing_selected(loaded: Page):

@@ -37,7 +37,9 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-26 (branch `feat/bulk-rename-v3`, the bulk rename release squashed into 15 commits, its plan and build log archived; its last change, the filter chips row's paper panel, added 1): **2074 passed** with the web dev server up.
+Baseline as of 2026-10-26 (branch `feat/bulk-rename-v3`: the bulk rename release squashed into 15 commits, its plan and build log archived, then the ultrareview fixes, which added 3): **2077 passed** with the web dev server up.
+
+Before the fixes, the squashed branch's last change (the filter chips row's paper panel) added 1: 2074 passed.
 
 Before it, the final deep inspection (GeoJSON errors, IME Escape, load-failure reset, one blank-name test, receipt counts): 2073 passed (8 tests added).
 

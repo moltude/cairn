@@ -202,6 +202,15 @@ function trapTab(e, card) {
   else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
 }
 
+/* A click on a modal's backdrop closes it only when the press began there too:
+   text selected by dragging out of a field past the card is let go on the
+   backdrop, and the browser sends the backdrop that click as well. */
+function closeOnBackdrop(modal, close) {
+  let pressedHere = false;
+  modal.addEventListener("pointerdown", e => { pressedHere = e.target === modal; });
+  modal.addEventListener("click", e => { if (e.target === modal && pressedHere) close(); });
+}
+
 let PENDING_FILES = null;
 async function boot() {
   try {
@@ -1835,8 +1844,10 @@ function openTextBulk(field) {
   const rows = items.map(i => ({ uid: i.uid, name: i.name, desc: i.desc, kind: i.kind }));
   BULK = {
     uids: new Set(rows.map(r => r.uid)), rows, byUid: new Map(rows.map(r => [r.uid, r])),
-    // NAME_LIMIT (onX's 255-byte name cut) is read at boot like NOTE_LIMIT; 255 until then.
-    ctx: { noteLimit: NOTE_LIMIT, nameLimit: typeof NAME_LIMIT === "number" ? NAME_LIMIT : 255 }, ret: $("#more-btn"),
+    // Both limits are read at boot; until then rename.js uses its own 512 and 255.
+    ctx: { noteLimit: NOTE_LIMIT, nameLimit: NAME_LIMIT }, ret: $("#more-btn"),
+    // The rows the export writes: only they get its warnings (UI-40), as in the list.
+    written: new Set(items.filter(i => i.included && !i.no_coords).map(i => i.uid)),
     text: { field, timer: null, spec: { field, mode: "prefix", text: "", find: "", repl: "", matchCase: false } },
   };
   const d = $("#mark-dialog");
@@ -1994,6 +2005,7 @@ function afterCell(r, names) {
     sentences, longNameSentence and NEEDS_NAME. All warn; none blocks Save. */
 function textFlag(r) {
   if (r.flags.includes("unchanged")) return "No change";
+  if (!BULK.written.has(r.uid)) return "";
   if (r.flags.includes("note-over-limit")) return longNoteSentence(r.after) || "";
   if (r.flags.includes("name-over-limit")) return longNameSentence(r.after) || "";
   if (r.flags.includes("name-empty")) return NEEDS_NAME;
@@ -3057,8 +3069,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // faq.html / walkthrough.html link here as "./#help".
   if (location.hash === "#help") openHelp();
   $("#help-close").onclick = closeHelp;
-  $("#help").addEventListener("click", e => { if (e.target === $("#help")) closeHelp(); });
-  $("#mark-modal").addEventListener("click", e => { if (e.target === $("#mark-modal")) closeBulk(); });
+  closeOnBackdrop($("#help"), closeHelp);
+  closeOnBackdrop($("#mark-modal"), closeBulk);
   // Clicks inside the popover stay there: its icon grid re-renders under the
   // pointer, so the document-level "outside click" test can't be trusted.
   $("#mark-pop").addEventListener("click", e => e.stopPropagation());
@@ -3069,7 +3081,7 @@ window.addEventListener("DOMContentLoaded", () => {
   history.replaceState({ cairn: "drop" }, "");
   addEventListener("popstate", onPopState);
   document.querySelectorAll(".newmap").forEach(b => b.onclick = requestStartOver);
-  $("#confirm").addEventListener("click", e => { if (e.target === $("#confirm")) cancelConfirm(); });
+  closeOnBackdrop($("#confirm"), cancelConfirm);
   $("#download").onclick = () => downloadBlob(ZIP, "onx_ready.zip");
   // Outside click closes the menu and the popover (Cancel semantics).
   document.addEventListener("click", e => {
