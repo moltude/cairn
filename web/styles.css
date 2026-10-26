@@ -227,7 +227,11 @@ tbody tr.editing{background:var(--open-row);box-shadow:inset 3px 0 0 var(--brown
 .note-btn:hover svg,.note-btn:focus-visible svg{opacity:1}
 .note-btn:hover .note-text{color:var(--ink)}
 .note-text{flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.note-text.empty{color:var(--muted)}
+/* A missing note: only the pencil, until the pointer or the keyboard reaches the
+   row (owner, 2026-10-25). visibility, not display: the row and the button keep
+   their size. The button's name is its aria-label, so this text is decoration. */
+.note-text.empty{color:var(--muted);visibility:hidden}
+tr:hover .note-text.empty,.note-btn:focus-visible .note-text.empty{visibility:visible}
 .note-ed{display:flex;flex-direction:column;gap:8px;padding:4px 0 8px}
 .desc-in{width:100%;line-height:1.5;background:var(--sheet);border:1px solid var(--brown);border-radius:2px;
   padding:8px 10px;color:var(--ink);resize:vertical;min-height:96px;font-family:var(--sans);font-size:14px}

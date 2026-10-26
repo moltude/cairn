@@ -114,13 +114,13 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 
 | Text | Kind | Source | Selector |
 |---|---|---|---|
-| Select {name} | checkbox aria-label | app:976 | `.sel-box` |
+| Select {name} (Untitled when it has none) | checkbox aria-label | app:976 | `.sel-box` |
 | Name of {name} | aria-label of the name field | app:977 | `.name-in` |
 | Excluded | state label | app:978 | `.exc-label` |
-| Include / Include {name} | button / aria-label on an excluded row | app:978 | `.exc-chip` |
+| Include / Include {name} (Untitled when it has none) | button / aria-label on an excluded row | app:978 | `.exc-chip` |
 | Left out of the export. Click to put it back. | tooltip | app:978 | `.exc-chip` |
-| Add a note | empty-note button text | app:981 | `.note-text.empty` |
-| {first line of note} · Open note for {name} | button text · aria-label | app:980-981 | `.note-btn` |
+| Add a note | empty-note button text, shown only while the row is hovered or the button has keyboard focus (owner 2026-10-25) | app:981 | `.note-text.empty` |
+| {first line of note} · Open note for {name} (Untitled when it has none) | button text · aria-label | app:980-981 | `.note-btn` |
 | {icon name} or "Default pin" | text under the marker | app:984-987 | `.icon-name`, `.whymark` |
 | {Icon}, {Color}. Change icon or color | marker aria-label | app:983 | `.icon-btn` |
 | Line / Track / Area | text on line and area rows ("Track" for onX-file tracks) | app:793-794 | `.icon-name.kind` |
@@ -151,7 +151,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 
 | Text | Kind | Source | Selector |
 |---|---|---|---|
-| Change icon and color for {name} / Change line for {name} / Change area for {name} | dialog aria-label | app:1310 | `#mark-pop` |
+| Change icon and color for {name} / Change line for {name} / Change area for {name} ({name}: Untitled when it has none) | dialog aria-label | app:1310 | `#mark-pop` |
 | {item name} or Untitled | popover title | app:1314 | `.pop-name` |
 | Color · Icon · N icons | section labels / count | app:1317-1319 | — |
 | Find an icon | search placeholder and aria-label | app:1320 | `.icon-search` |
@@ -233,7 +233,7 @@ highlighted (`.na-after .hit`, no text of its own).
 
 | Title | Body | Buttons (default focus in bold) | Source |
 |---|---|---|---|
-| Start over? | This discards N unexported change(s). / This clears the current map. | **Cancel**, Start over (danger) | app:2326-2333 |
+| Start over? | Changes will be lost. (unexported changes; no count, owner 2026-10-25) / This clears the current map. | **Cancel**, Start over (danger) | app:2326-2333 |
 | Leave this map? | Changes will be lost. | **Stay**, Leave (danger) | app:306-312 |
 | Save your note? | Your note for “{name}” (or “Untitled”) hasn't been saved. (on Export, Rename… and Change note…, when the open note changed) | Keep editing, Discard, **Save** | app `askToSaveNote` |
 | “{name}” already exists | (merge, §7) | **Cancel**, Move them | app:1869-1874 |
@@ -343,7 +343,7 @@ The owner's answers, by topic (this table, not the numbers used in conversation,
 | "Use onX's blue fill" | **Blue** (in the Fill row) | done |
 | Error-message prefixes | review every variant together | follow-up (TODO.md) |
 | "A name is required…" | names are **optional**: no error, an empty name shows **Untitled** | done |
-| "Changes will be lost." vs "This discards N unexported changes." | suggested the counted sentence in both | **open: waiting for the owner** |
+| "Changes will be lost." vs "This discards N unexported changes." | **"Changes will be lost."** in both, no count (owner, 2026-10-25) | decided |
 | Confirm button order | safe choice first, action last (merge and fill confirms flipped) | done |
 | Cancel in "Save your note?" | **Keep editing** | done |
 | Nameless items | **Untitled** everywhere; a missing note is blank | done |

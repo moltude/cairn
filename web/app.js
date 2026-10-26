@@ -795,10 +795,9 @@ const kindWord = k => k === "shapes" ? "Area" : "Line";
     the type filter keeps the one word "Lines"). */
 const SUBKIND_WORD = { line: "Line", track: "Track", area: "Area" };
 const rowKindWord = it => SUBKIND_WORD[it.subkind] || kindWord(it.kind);
-const oneLine = s => String(s || "").replace(/\s*\n\s*/g, " ").trim();
 /** A note's preview in the list: its first line that isn't blank.
     The rest shows on hover (the tip below). "Use note as name" still joins
-    every line (oneLine). */
+    every line (CairnRename.cleanName). */
 const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boolean) || "";
 
 /* ---------- the hover tip ----------
@@ -984,11 +983,11 @@ function row(it, old = null) {
   const caution = noteCaution(it);
   const fillMark = fillCaution(it);
   const html = `
-    <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name)}" ${SEL.has(it.uid) ? "checked" : ""}></td>
+    <td class="selcol"><input type="checkbox" class="sel-box" data-fk="${fk}sel" aria-label="Select ${esc(it.name || "Untitled")}" ${SEL.has(it.uid) ? "checked" : ""}></td>
     <td class="namecol"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name || "Untitled")}" placeholder="Untitled" value="${esc(it.name)}">${it.included ? ""
-      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name)}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
+      : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name || "Untitled")}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name)}">
+      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name || "Untitled")}">
         <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
     <td class="iconcol">${isWp
       ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
@@ -1061,20 +1060,29 @@ function syncFolderBox(tr) {
  *  original value before blurring means the browser sees no change at all, so no
  *  commit happens.
  *
+ *  An edited name is cleaned like a bulk Rename… (one rule set for every text
+ *  edit, owner 2026-10-25): CairnRename.cleanName drops the characters XML
+ *  forbids, turns a run of whitespace holding a tab or line break into one
+ *  space and trims, silently. The field then shows what is stored. A value
+ *  left untouched is never cleaned (a dirty loaded name stays as loaded), and
+ *  one that cleans back to the stored name is no edit.
+ *
  *  `required` fields refuse to commit empty. No field uses it since names became
  *  optional (owner, 2026-10-25): an empty name shows as "Untitled".
  */
 function wireTextField(el, it, key, { required = false } = {}) {
   el.addEventListener("focus", () => { el.dataset.orig = el.value; });
   const commit = now => {
-    const v = el.value;
-    if (required && !v.trim()) {
+    if (el.value === el.dataset.orig) return;     // untouched: never cleaned
+    const v = CairnRename.cleanName(el.value);
+    if (required && !v) {
       el.value = el.dataset.orig ?? "";
       setStatus("An item needs a name.", "err");
       return;
     }
-    if (v === el.dataset.orig) return;
+    el.value = v;                                 // what's on screen is what's stored
     el.dataset.orig = v;
+    if (v === (it[key] ?? "")) return;            // cleans back to the stored value: no edit
     edit(it, { [key]: v }, { render: false });
     // Enter keeps focus in the field: render now (refocus finds it again).
     // `change` fires on blur BEFORE focus lands on the next control; a
@@ -1124,11 +1132,24 @@ function openNote(it) {
   }
 }
 
+/** The note the editor saves for draft, or null when saving it is no edit.
+    An edited note is cleaned like a bulk Change note… (one rule set for every
+    text edit, owner 2026-10-25): CairnRename.cleanNote drops the characters
+    XML forbids, makes line endings "\n" and trims the outside, silently; inner
+    line breaks stay. A draft left as the note was is never cleaned, and one
+    that cleans back to the note as the file writes it is no edit. */
+function noteToSave(it, draft) {
+  const was = it.desc || "";
+  if (draft === was) return null;
+  const v = CairnRename.cleanNote(draft);
+  return v === writtenNote(was) ? null : v;
+}
+
 function closeNote(it, apply) {
   if (!NOTE_EDIT) return;
-  const v = NOTE_EDIT.draft;
+  const v = apply && it ? noteToSave(it, NOTE_EDIT.draft) : null;
   NOTE_EDIT = null;
-  if (apply && it && v !== (it.desc || "")) edit(it, { desc: v });
+  if (v !== null) edit(it, { desc: v });
   else renderFolders();
 }
 
@@ -1195,7 +1216,12 @@ function setSelectAll(on) {
 }
 
 function bulk(patch) {
-  selectedItems().forEach(it => edit(it, typeof patch === "function" ? patch(it) : patch, { render: false }));
+  selectedItems().forEach(it => {
+    const p = typeof patch === "function" ? patch(it) : patch;
+    // An empty patch is no edit: it must not leave an empty EDITS entry, which
+    // Start over and the leave prompts would count as a change.
+    if (Object.keys(p).length) edit(it, p, { render: false });
+  });
   refreshAfterEdit();
 }
 
@@ -1320,7 +1346,7 @@ function openPop(it, anchor) {
   const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
   const pop = $("#mark-pop");
   pop.classList.toggle("line", isLine);
-  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "area"} for ${it.name}`);
+  pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "area"} for ${it.name || "Untitled"}`);
   pop.innerHTML = `
     <div class="pop-head">
       <span class="pop-preview"></span>
@@ -1956,9 +1982,9 @@ function keepNoteDraft() {
   if (!NOTE_EDIT) return;
   if (shownItems().some(i => i.uid === NOTE_EDIT.uid)) return;
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
-  const v = NOTE_EDIT.draft;
+  const v = it ? noteToSave(it, NOTE_EDIT.draft) : null;
   NOTE_EDIT = null;
-  if (it && v !== (it.desc || "")) edit(it, { desc: v }, { render: false });
+  if (v !== null) edit(it, { desc: v }, { render: false });
 }
 
 /** A folder name in a status line: at most SHORT_NAME characters. */
@@ -2549,10 +2575,11 @@ function warnFillLoss() {
   });
 }
 
+/** Whether Save in the open note editor would change its note (noteToSave). */
 function noteIsChanged() {
   if (!NOTE_EDIT || !DATA) return false;
   const it = allItems().find(i => i.uid === NOTE_EDIT.uid);
-  return !!it && NOTE_EDIT.draft !== (it.desc || "");
+  return !!it && noteToSave(it, NOTE_EDIT.draft) !== null;
 }
 
 function resetAll({ history: stepBack = true } = {}) {
@@ -2605,12 +2632,10 @@ function requestStartOver() {
   const ret = document.activeElement;
   flushDeferred();                 // a name just left: its rename, or its merge offer, first
   if (CONFIRM) return;
-  const n = unexportedChanges();
   openConfirm({
     title: "Start over?",
-    body: n
-      ? `This discards ${n} unexported change${n === 1 ? "" : "s"}.`
-      : "This clears the current map.",
+    // No count, as in "Leave this map?" (owner, 2026-10-25: keep it simple).
+    body: unexportedChanges() ? "Changes will be lost." : "This clears the current map.",
     ret,
     buttons: [
       { label: "Cancel", initial: true, cancel: true, run: () => closeConfirm() },
@@ -2696,9 +2721,14 @@ window.addEventListener("DOMContentLoaded", () => {
   wireRowDrag();
   wirePointerHeld();
   wireTip();
-  // A note of only spaces and line breaks would give an empty name, which the
-  // name field refuses: leave that row alone.
-  menuAct("#bulk-desc", () => bulk(it => { const n = oneLine(it.desc || ""); return n ? { name: n } : {}; }));
+  // The note cleaned as a name (CairnRename.cleanName, the rule of every name
+  // edit): its lines joined by a space, trimmed. A note of only spaces and line
+  // breaks would blank the name: that row is left alone (2026-10-25), as is
+  // one whose name is that already.
+  menuAct("#bulk-desc", () => bulk(it => {
+    const n = CairnRename.cleanName(it.desc || "");
+    return n && n !== it.name ? { name: n } : {};
+  }));
   menuAct("#bulk-exclude", () => bulk({ included: false }));
   menuAct("#bulk-include", () => bulk({ included: true }));
   // Every nav's Help (top bar, search row, footer) opens the dialog here.
