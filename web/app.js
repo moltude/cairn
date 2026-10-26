@@ -259,8 +259,15 @@ function showStage(name) {
   const slot = name === "edit" ? $("#status-rail") : $("#status-top");
   if ($("#status").parentNode !== slot) slot.appendChild($("#status"));
   window.scrollTo(0, 0);
+  // The control that had focus went with the old screen: focus the new
+  // screen's heading (tabindex -1, no ring), so Tab goes on from there and a
+  // screen reader says where it is; and the tab's title names it (A11Y-02).
+  document.title = STAGE_TITLE[name];
+  $(STAGE_HEADING[name]).focus({ preventScroll: true });
   syncUnloadGuard();
 }
+const STAGE_TITLE = { drop: document.title, edit: "Cairn — Edit", done: "Cairn — Export" };
+const STAGE_HEADING = { drop: "#drop-stage h1", edit: "#map-title", done: "#done-stage h1" };
 
 /* ---------- browser Back and Forward (UI-37) ----------
    Each stage is a history entry: drop (replaced in at boot), edit (pushed on
@@ -2885,6 +2892,9 @@ window.addEventListener("DOMContentLoaded", () => {
     el.insertAdjacentHTML("beforeend", UI_ICON[el.dataset.uiIcon] || "");
   });
   wireDrop();
+  // Skip to the list (A11Y-22): to the search, without a #filter history entry
+  // (each stage is one entry, UI-37).
+  $("#edit-stage .skip-link").onclick = e => { e.preventDefault(); $("#filter").focus(); };
   $("#filter").oninput = e => { FILTERS.q = e.target.value; renderFolders(); };
   document.querySelectorAll("#type-filter [data-kind]").forEach(b => b.onclick = () => setKind(b.dataset.kind));
   document.querySelectorAll(".rail .facet[data-sec] .sec-h").forEach(h =>

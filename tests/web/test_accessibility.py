@@ -645,3 +645,118 @@ def test_only_the_screen_shown_is_free_of_the_hidden_attribute(fresh_page: Page)
     assert shown() == ["done"]
     page.click("#back")
     assert shown() == ["edit"]
+
+
+# --- A11Y-02: focus and the page title follow the screen ---------------------------------
+
+LANDING_TITLE = "Cairn — CalTopo to onX"
+FX = FIXTURE.parent.parent
+
+
+def test_focus_moves_to_the_new_screens_heading_on_every_stage_change(fresh_page: Page):
+    """A11Y-02: after a file load, Export, Back, the browser's Forward and Back, and Start
+    over, focus is on the new screen's heading (not <body>), and the tab's title names the
+    screen: "Cairn — Edit", "Cairn — Export", the landing page's own title again."""
+    page = fresh_page
+    expect(page).to_have_title(LANDING_TITLE)
+    _map(page, [("w", "Camp", "")])
+    expect(page.locator("#map-title")).to_be_focused()
+    expect(page).to_have_title("Cairn — Edit")
+    page.locator("#export").focus()
+    page.keyboard.press("Enter")
+    done_h1 = page.locator("#done-stage h1")
+    expect(done_h1).to_be_focused()
+    expect(page).to_have_title("Cairn — Export")
+    page.locator("#back").focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#map-title")).to_be_focused()
+    expect(page).to_have_title("Cairn — Edit")
+    page.go_forward()
+    expect(done_h1).to_be_focused()
+    expect(page).to_have_title("Cairn — Export")
+    page.go_back()
+    expect(page.locator("#map-title")).to_be_focused()
+    page.locator("#edit-stage .newmap").focus()
+    page.keyboard.press("Enter")
+    page.click("#confirm-actions button:text-is('Start over')")
+    expect(page.locator("#drop-stage h1")).to_be_focused()
+    expect(page).to_have_title(LANDING_TITLE)
+
+
+def test_a_focused_heading_draws_no_focus_ring(fresh_page: Page):
+    """A11Y-02: the heading takes focus, not a control's look: no ring, even after a key."""
+    page = fresh_page
+    _map(page, [("w", "Camp", "")])
+    page.locator("#export").focus()
+    page.keyboard.press("Enter")
+    h1 = page.locator("#done-stage h1")
+    expect(h1).to_be_focused()
+    assert h1.evaluate("e => getComputedStyle(e).outlineStyle") == "none"
+    assert page.locator("#map-title").evaluate("e => getComputedStyle(e).outlineStyle") == "none"
+
+
+def test_the_fill_warning_on_load_returns_focus_to_the_map_title(fresh_page: Page):
+    """A11Y-02: a dialog that opens with the map (the area-fill warning) takes focus; closing
+    it puts focus on the map's title, not the page."""
+    page = fresh_page
+    page.set_input_files("#file", [str(FX / "onx_exports" / "areas-after-edit.gpx"),
+                                   str(FX / "onx_exports" / "areas-after-edit.kml")])
+    expect(page.locator("#confirm")).to_be_visible(timeout=30000)
+    page.keyboard.press("Escape")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator("#map-title")).to_be_focused()
+
+
+def test_focus_and_title_follow_the_screen_under_the_enforced_csp(csp_page: Page):
+    """A11Y-02 under the production CSP (DOM waits only)."""
+    page = csp_page
+    page.set_input_files("#file", files=[{"name": "a11y.json", "mimeType": "application/json",
+                                          "buffer": item_map([("w", "Camp", "")], "Trip").encode("utf-8")}])
+    expect(page.locator("body")).to_have_attribute("data-stage", "edit", timeout=30000)
+    expect(page.locator("#map-title")).to_be_focused()
+    expect(page).to_have_title("Cairn — Edit")
+    page.keyboard.press("Tab")
+    expect(page.locator("#edit-stage .skip-link")).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(page.locator("#filter")).to_be_focused()
+
+
+# --- A11Y-22: skip links -----------------------------------------------------------------
+
+
+def test_skip_to_the_list_is_the_first_tab_stop_after_the_map_title(fresh_page: Page):
+    """A11Y-22: from the map title (where focus lands on load) Tab reaches "Skip to the
+    list", shown only while focused; Enter goes to the search with no history entry."""
+    page = fresh_page
+    _wide(page)
+    _map(page, [("w", "Camp", "")])
+    link = page.locator("#edit-stage .skip-link")
+    assert link.bounding_box()["width"] <= 1
+    expect(link).to_have_text("Skip to the list")
+    depth = page.evaluate("history.length")
+    page.keyboard.press("Tab")
+    expect(link).to_be_focused()
+    box = link.bounding_box()
+    assert box["width"] > 60 and box["height"] >= 24 and box["x"] >= 0 and box["y"] >= 0, box
+    page.keyboard.press("Enter")
+    expect(page.locator("#filter")).to_be_focused()
+    assert page.evaluate("[history.length, location.hash]") == [depth, ""]
+    assert link.bounding_box()["width"] <= 1
+
+
+@pytest.mark.parametrize("path", ["faq.html", "walkthrough.html"])
+def test_doc_pages_first_tab_stop_skips_to_the_content(page_on, path):
+    """A11Y-22: on the FAQ and the walkthrough the first Tab stop is "Skip to the
+    content"; Enter moves focus to the page's main content (no ring around it)."""
+    page = page_on(path)
+    page.keyboard.press("Tab")
+    link = page.locator(".skip-link")
+    expect(link).to_be_focused()
+    expect(link).to_have_text("Skip to the content")
+    assert link.bounding_box()["width"] > 60
+    page.keyboard.press("Enter")
+    main = page.locator("main#content")
+    expect(main).to_be_focused()
+    assert main.evaluate("e => getComputedStyle(e).outlineStyle") == "none"
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.querySelector('main').contains(document.activeElement)")

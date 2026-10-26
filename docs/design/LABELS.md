@@ -28,7 +28,10 @@ There is no footer nav (UI-38). Nav on every page: App · Help · FAQ · Walkthr
 | Walkthrough | nav link | same | idx:31, idx:106 | — |
 | GitHub | nav link | same | idx:32, idx:107 | — |
 | Site (aria-label) | nav label | nav | idx:27, idx:102 | — |
-| `Cairn — CalTopo to onX` | page title | browser tab | idx:6 | `<title>` |
+| `Cairn — CalTopo to onX` | page title (the drop screen) | browser tab | idx:6 | `<title>` |
+| `Cairn — Edit` · `Cairn — Export` | page title on the edit and export screens; the drop screen's comes back with it (A11Y-02) | browser tab | app `STAGE_TITLE` | `document.title` |
+| Skip to the list | skip link, shown only while focused; the first Tab stop after the map title, to the search (A11Y-22) | edit screen rail | idx `.rail-head` | `.skip-link` |
+| Skip to the content | skip link, shown only while focused; the page's first Tab stop, to `main#content` (A11Y-22) | faq.html, walkthrough.html | build_faq_page.py, wt | `.skip-link` |
 | `CalTopo to onX, with icons and colors that still mean something.` | meta description | head | idx:7 | — |
 | `Cairn FAQ`, `Cairn Walkthrough` | page titles | tabs | faq.html:10, wt:10 | — |
 | Status line (empty until a message) | status region | Top bar slot on drop/export; rail foot on edit | idx:26, idx:88 | `#status`, `#status-top`, `#status-rail` |

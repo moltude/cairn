@@ -38,7 +38,7 @@
   <div class="drop-copy">
     <span class="kicker">CalTopo → onX Backcountry</span>
     <p class="tagline">CalTopo to onX, with icons and colors that still mean something.</p>
-    <h1>Move your map without losing its icons, colors or folders.</h1>
+    <h1 tabindex="-1">Move your map without losing its icons, colors or folders.</h1>
     <p class="lede">onX can't read CalTopo's full GeoJSON export, and CalTopo's GPX and KML
       exports drop your icons, colors and folders, so your map lands in onX as a pile of identical
       pins and lines. Cairn carries them across and lets you review and edit names, notes, icons and
@@ -62,7 +62,10 @@
         <div class="wordmark"><span class="cairn-mark" data-ui-icon="cairn"></span><span>Cairn</span></div>
         <span id="map-label" class="label">CalTopo map</span>
       </div>
-      <div class="title-block"><h1 id="map-title"></h1></div>
+      <div class="title-block"><h1 id="map-title" tabindex="-1"></h1></div>
+      <!-- The first Tab stop after the title, where focus lands on load: past the
+           filters to the search (A11Y-22). Shown only while it has focus. -->
+      <a href="#filter" class="sr-only skip-link">Skip to the list</a>
     </div>
     <!-- Filters (UI-28): three sections that fold. Folding only hides the list;
          the filter picked in it stays applied and its header shows a summary. -->
@@ -135,7 +138,7 @@
 <main id="done-stage" class="stage done hidden" hidden>
   <div class="done-head">
     <span class="kicker">Export</span>
-    <h1>Your files are ready</h1>
+    <h1 tabindex="-1">Your files are ready</h1>
     <div class="done-actions">
       <button id="download" type="button" class="btn primary big">Download all</button>
       <span class="done-hint">One zip with every folder and instructions.txt</span>

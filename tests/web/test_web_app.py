@@ -189,9 +189,12 @@ def test_top_bar_help_opens_help_from_the_app(fresh_page: Page):
 def test_the_app_chrome_has_only_the_site_nav(fresh_page: Page):
     """The old Help / FAQ / Walkthrough links in the top bar and the rail are
     gone; the top bar carries the site nav and nothing else clickable."""
+    # DEVIATION (A11Y-22, round 4): the rail head's "Skip to the list" (shown only while
+    # focused) is not one of the old links.
     extra = fresh_page.locator("#topbar a:not(.site-nav *), #topbar button:not(.site-nav *), "
-                               ".rail-head a, .rail-head button")
+                               ".rail-head a:not(.skip-link), .rail-head button")
     assert extra.count() == 0
+    assert fresh_page.locator(".rail-head a").count() == 1
     assert fresh_page.locator("#topbar nav.site-nav").count() == 1
 
 
