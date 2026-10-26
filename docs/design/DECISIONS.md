@@ -1250,13 +1250,29 @@ What was built:
   default), the same layout for notes (multi-line boxes). Plain text, every occurrence, `$` and `\`
   literal. **An empty Find replaces the whole value** (RenameA2: three "Campsite - Oct …" become
   "Campsite"); while Find and Replace with are both empty nothing changes.
+- **Whole words only** (owner, 2026-10-25 evening; always on, no toggle). A match never starts or
+  ends inside a word: "TH" doesn't touch "Sawtooth", "Trail" doesn't touch "Trailhead". Letters
+  (with their accents) and digits are word characters, so "TH2" isn't found by "TH"; spaces,
+  punctuation and symbols are boundaries, so "TH." is found and keeps its full stop and "Bob's" is
+  found by "Bob". Each Chinese or Japanese character (Han, hiragana, katakana) is a word of its own,
+  so "山" is still found in "日本語の山". Korean (Hangul) is written with spaces and follows the
+  ordinary rule. A boundary is needed only at an edge of the Find that is a word character, so
+  "(rainy)" and " - " are found wherever they occur. Known limit: Thai and other scripts written
+  without spaces are ordinary word characters, so a Find there matches only a whole unspaced run.
+  Matches go left to right without overlapping.
 - **Notes**: Add before and Add after join with a line break. In a note's fields Enter starts a line
   and Ctrl / Cmd + Enter saves (the note editor's rule); in a name's, Enter saves. Never while an
   input method is composing.
 - **Rows**: changed rows first, then the rest, at most 200 drawn ("and N more" below). An unchanged
-  row reads "No change". A note's row shows whose note it is. The new part of each
-  After value is highlighted (the mockups' green): one span from the first change to the last, none
-  for a pure deletion. **Names are optional**: a result that is
+  row reads "No change". A note's row shows whose note it is. **Each replaced match is
+  highlighted** in the After value (the mockups' green; owner, 2026-10-25 evening, replacing one
+  span from the first change to the last). Add before and Add after highlight the added text (not
+  a note's joining line break); an empty Find and Replace the note highlight the whole new value.
+  Nothing is highlighted for a pure deletion, or on a row whose clean-up moved text in a way the
+  highlight can't follow (a tab or line break collapsed inside a name, a character XML forbids
+  dropped from the middle, an edge trimmed into the added text): no highlight rather than a wrong
+  one. The highlight never splits a letter from its accent or an emoji sequence. `web/rename.js`
+  works out what was inserted; the dialog only draws it. **Names are optional**: a result that is
   empty (a whitespace-only replacement included, trimmed) shows the greyed placeholder "Untitled" and
   is saved and exported as an empty name; it never blocks Save. A missing note is a blank cell.
 - **Warn, don't block.** A note pushed over onX's 512 bytes gets the caution mark's sentence (UI-34)

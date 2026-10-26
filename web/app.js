@@ -1689,7 +1689,8 @@ function openTextBulk(field) {
   const rows = items.map(i => ({ uid: i.uid, name: i.name, desc: i.desc, kind: i.kind }));
   BULK = {
     uids: new Set(rows.map(r => r.uid)), rows, byUid: new Map(rows.map(r => [r.uid, r])),
-    ctx: { noteLimit: NOTE_LIMIT }, ret: $("#more-btn"),
+    // NAME_LIMIT (onX's 255-byte name cut) is read at boot like NOTE_LIMIT; 255 until then.
+    ctx: { noteLimit: NOTE_LIMIT, nameLimit: typeof NAME_LIMIT === "number" ? NAME_LIMIT : 255 }, ret: $("#more-btn"),
     text: { field, timer: null, spec: { field, mode: "prefix", text: "", find: "", repl: "", matchCase: false } },
   };
   const d = $("#mark-dialog");
@@ -1798,43 +1799,66 @@ function textCell(cls, v, names) {
   if (names && !v) return `<span class="${cls} is-placeholder">Untitled</span>`;
   return `<span class="${cls}"${v ? ` title="${esc(v)}"` : ""}>${esc(v)}</span>`;
 }
-/** after as HTML, its new part marked (.hit, the mockups' highlight): what
-    lies between the start and the end it shares with before, compared by
-    code point so a surrogate pair is never split. One span from the first
-    change to the last. endFirst (Add before) matches the shared end first,
-    so "BR · " before "Bass" is what's marked, not "R · B". The boundaries
-    widen to keep a combining mark, a variation selector, a skin tone, a ZWJ
-    sequence or a flag whole. A pure deletion has nothing new to mark. The
-    text is after's, exactly. */
-const JOINS = /[\p{M}‍︀-️\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u;
+/** after as HTML with each of the core's marks highlighted (.hit, the
+    mockups' green): every replaced match, the text Add before / Add after
+    added, or the whole new value (UI-39; web/rename.js decides what was
+    inserted, the dialog only draws it). A mark's edges widen so a combining
+    mark, a variation selector, a skin tone, a ZWJ sequence, a flag or a
+    surrogate pair is never split; marks that then touch are drawn as one.
+    No marks (a pure deletion, or cleaning the ranges can't follow) is plain
+    text. The text is after's, exactly. */
+const JOINS = /[\p{M}\u200D\uFE00-\uFE0F\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u;
 const isRI = c => c >= "\u{1F1E6}" && c <= "\u{1F1FF}";
-function markChange(before, after, endFirst = false) {
-  const a = Array.from(before), b = Array.from(after);
-  const head = max => { let n = 0; while (n < max && a[n] === b[n]) n++; return n; };
-  const tail = max => { let n = 0; while (n < max && a[a.length - 1 - n] === b[b.length - 1 - n]) n++; return n; };
-  const most = Math.min(a.length, b.length);
-  let s, e;
-  if (endFirst) { e = tail(most); s = head(most - e); }
-  else { s = head(most); e = tail(most - s); }
-  let t = b.length - e;
-  if (t <= s) return esc(after);
-  const odd = (i, step) => { let k = 0; while (b[i] && isRI(b[i])) { k++; i += step; } return k % 2 === 1; };
-  while (s > 0 && (JOINS.test(b[s]) || b[s - 1] === "‍" || (isRI(b[s]) && odd(s - 1, -1)))) s--;
-  while (t < b.length && (JOINS.test(b[t]) || b[t - 1] === "‍" || (isRI(b[t]) && odd(t - 1, -1)))) t++;
-  return esc(b.slice(0, s).join("")) + `<span class="hit">${esc(b.slice(s, t).join(""))}</span>` + esc(b.slice(t).join(""));
+function markRanges(after, marks) {
+  if (!marks || !marks.length) return esc(after);
+  const b = Array.from(after);
+  // Code point of each UTF-16 offset: a start inside a pair moves to the pair, an end past it.
+  const cp = new Array(after.length + 1);
+  let u = 0;
+  b.forEach((ch, i) => { for (let k = 0; k < ch.length; k++) cp[u++] = i + (k ? 0.5 : 0); });
+  cp[u] = b.length;
+  const odd = i => { let k = 0; while (b[i] && isRI(b[i])) { k++; i--; } return k % 2 === 1; };
+  const joined = i => i > 0 && i < b.length &&
+    (JOINS.test(b[i]) || b[i - 1] === "\u200D" || (isRI(b[i]) && odd(i - 1)));
+  const spans = [];
+  for (const [ms, me] of marks) {
+    let s = Math.floor(cp[ms]), t = Math.ceil(cp[me]);
+    if (!(t > s)) continue;
+    while (joined(s)) s--;
+    while (joined(t)) t++;
+    const last = spans[spans.length - 1];
+    if (last && s <= last[1]) last[1] = Math.max(last[1], t);
+    else spans.push([s, t]);
+  }
+  let html = "", at = 0;
+  for (const [s, t] of spans) {
+    html += esc(b.slice(at, s).join("")) + `<span class="hit">${esc(b.slice(s, t).join(""))}</span>`;
+    at = t;
+  }
+  return html + esc(b.slice(at).join(""));
 }
-/** A changed row's After cell, its new part marked; an empty name is the
-    "Untitled" placeholder. A note is compared in its written form (the form
-    after is in), so trimmed space or a CR isn't counted as new. */
-function afterCell(r, names, endFirst) {
+/** A changed row's After cell, its marks highlighted; an empty name is the
+    "Untitled" placeholder. */
+function afterCell(r, names) {
   if (!r.after) return textCell("na-after", r.after, names);
-  const base = names ? r.before : writtenNote(r.before);
-  return `<span class="na-after" title="${esc(r.after)}">${markChange(base, r.after, endFirst)}</span>`;
+  return `<span class="na-after" title="${esc(r.after)}">${markRanges(r.after, r.marks)}</span>`;
 }
-/** The sentence under a row: "No change", or the long-note caution (UI-34). */
+/** The name twin of the long-note sentence (tracker 7.4 L1): onX's importer
+    keeps the first nameLimit UTF-8 bytes of a name; N counts the characters
+    past them, as noteOverflow does for notes. */
+function bulkNameSentence(name, limit) {
+  let upTo = 0, cut = 0;
+  for (const ch of name) { upTo += CairnRename.noteBytes(ch); if (upTo > limit) cut++; }
+  return `onX imports only the first ${limit} bytes of a name. About ${plural(Math.max(cut, 1), "character")} will be cut.`;
+}
+/** The sentence under a row: "No change", the long-note caution (UI-34), or a
+    name onX will cut or can't import without (tracker 7.4 L1, N1). All warn;
+    none blocks Save. */
 function textFlag(r) {
   if (r.flags.includes("unchanged")) return "No change";
   if (r.flags.includes("note-over-limit")) return longNoteSentence(r.after) || "";
+  if (r.flags.includes("name-over-limit")) return bulkNameSentence(r.after, BULK.ctx.nameLimit);
+  if (r.flags.includes("name-empty")) return "Needs a name to export.";
   return "";
 }
 
@@ -1862,7 +1886,7 @@ function drawTextBulk() {
     }
     const flag = textFlag(r);
     return `<div class="na-row" data-uid="${esc(r.uid)}" data-flags="${esc(r.flags.join(" "))}">${src}${UI_ICON.arrow}` +
-      `${same(r) ? textCell("na-after", r.after, names) : afterCell(r, names, t.spec.mode === "prefix")}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
+      `${same(r) ? textCell("na-after", r.after, names) : afterCell(r, names)}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
   }).join("") + (more > 0 ? `<div class="na-more">and ${more.toLocaleString("en-US")} more</div>` : "");
   const d = $("#mark-dialog");
   d.querySelector(".na-rows").innerHTML = html;

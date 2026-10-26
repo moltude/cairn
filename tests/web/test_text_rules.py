@@ -266,12 +266,17 @@ def test_find_and_replace_changes_every_match_in_a_name_and_the_export_carries_t
     assert sorted(n for n, _d in _gpx_items(_export_zip(page))) == sorted(want.values())
 
 
-def test_find_aa_changes_adjacent_and_overlapping_text_left_to_right_and_exports_it(fresh_page: Page):
+def test_find_changes_adjacent_and_overlapping_words_left_to_right_and_exports_it(fresh_page: Page):
+    """DEVIATION (tracker 7.4 W1): was test_find_aa_changes_adjacent_and_overlapping_text_
+    left_to_right_and_exports_it, "aa" in "aaaa" / "aaa" / "aaaaa", which a whole-word Find
+    no longer touches ("aaaa" stays, pinned here). Same intent with whole words."""
     page = fresh_page
-    want = {"aaaa": "bb", "aaa": "ba", "aaaaa": "bba"}
+    # Find "aa aa": overlapping in "aa aa aa" (left to right), adjacent twice in the five.
+    want = {"aa aa": "b", "aa aa aa": "b aa", "aa aa aa aa aa": "b b aa", "aaaa": "aaaa"}
     _map(page, [("w", n, "") for n in want])
     uids = [_uid(page, n) for n in want]
-    _bulk_replace_all(page, uids, "rename", "aa", "b")
+    rows = _bulk_replace_all(page, uids, "rename", "aa aa", "b")
+    assert {u: a for u, _b, a, _f in rows} == dict(zip(uids, want.values()))
     assert [_item(page, u)["name"] for u in uids] == list(want.values())
     assert sorted(n for n, _d in _gpx_items(_export_zip(page))) == sorted(want.values())
 
