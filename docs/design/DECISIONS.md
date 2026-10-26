@@ -1078,6 +1078,9 @@ Status: decided 2026-10-23 (owner, round 4).
   slot). Every row keeps the slot, an excluded one too, so all notes start in line.
 - The export screen's long-note warning names the items (up to 8, then "and N more").
 - Round 5: UI-30's load dialog now skips a transparent fill too, matching the mark (owner).
+- 2026-10-25 (UI-40): the same mark after a name onX will cut (over 255 bytes) or that the export
+  needs ("Needs a name to export."), and after a folder's name in its header when onX will cut it
+  (over 50 characters).
 
 ### UI-35 — Sort by name; pin colour apart from line colour
 Status: decided 2026-10-23 (owner, round 4); the dialog awaits the owner's look at
@@ -1205,6 +1208,8 @@ Status: decided 2026-10-25 (owner, on the Phase 0 canvas, then a second round th
 names are optional). Plan and tests: docs/plans/BULK_RENAME.md (revision 4). Mockups: the Phase 0
 canvas (https://claude.ai/artifact/5F9oPZLuGRuqU2TaNY8rCN), RenameA, RenameA2, NoteA, NoteA2.
 Engine side: ENG-09.
+In part superseded by UI-40 (2026-10-25): names stay optional while editing but an export needs one,
+and names and folder names onX will cut are marked outside this dialog.
 
 Two items in **More**, after **Move to…**: **Rename…** (names) and **Change note…** (notes), on the
 ticked rows (UI-17, UI-23: only rows on screen). Each opens the several-items dialog (UI-36) in a
@@ -1304,3 +1309,48 @@ Status: decided 2026-10-25 (engine work shipped before the dialogs, for UI-39).
   are legal XML and user data: they pass unchanged, as ENG-06 requires for names.
 - **instructions.txt** marks a long note or a lost hole on the very item, by its position in the
   file, not on every item with that name (`a192c34`).
+
+### UI-40 — onX's name limits, warned like long notes; a name to export
+Status: decided 2026-10-25 (owner, round 3: L1 and N1, docs/plans/BULK_RENAME_PROGRESS.md section
+7.4), after a live import run (`docs/testing/ONX_LIMITS_2026-10-25.md`). Supersedes plan decision 8
+(no long-name flag) and, at export only, decision 17 (names are optional): a name may still be blank
+while editing.
+
+What the live run measured, in the owner's onX account (ZZTEST probes, imports only): onX's importer
+keeps the first **255 UTF-8 bytes** of a waypoint, track or area name, cut on a character boundary
+(an accented 266-byte name came back as 254 bytes; 254 letters and an emoji lost the emoji); its
+folder rename dialog stops typing at **50 characters**; and it never keeps an **empty name**: it makes
+one up ("Imported waypoint markup <timestamp>"). That also answers UI-39's "not verified in onX" for an
+empty name and a 300-character name.
+
+**L1: warn, never cut** (as for notes over 512 bytes, UI-34):
+- `web/bridge.py` `ONX_IMPORT_NAME_LIMIT = 255` (bytes, the note's measure: `CairnRename.noteBytes`
+  on the name as written) and `ONX_FOLDER_NAME_LIMIT = 50` (characters as a browser's `maxlength`
+  counts them, UTF-16 units, so an emoji is two), read at boot into `NAME_LIMIT` / `FOLDER_NAME_LIMIT`.
+  Cairn's own folder name cap (100, UI-32) is unchanged.
+- A caution mark after an included item's name over 255 bytes: "onX imports only the first 255 bytes
+  of a name. About N characters will be cut." After a folder's name in its header, when the folder
+  has an included item: "onX keeps only the first 50 characters of a folder name. About N characters
+  will be cut." The rail has none (its entries are buttons; the header is the folder's one place).
+- The export screen, in the long-note warning's words, one warning each: "Name “A” is over the
+  length limit and will be truncated by onX." / "Names “A”, “B” and N more are …" and "Folder name
+  “A” is …" / "Folder names …". All three lists shorten a name past 48 characters.
+- instructions.txt: "(over the length limit; onX will cut this name)" under the item (above the
+  note's line when it has both), and "(over the length limit; onX will cut this folder name)" on its
+  own line under the folder's "rename to:", which stays the name alone.
+
+**N1: a name is required to export**, with a one-click fix:
+- An included item whose name is blank as written (the characters XML forbids dropped, then
+  trimmed) gets "Needs a name to export." after its name. Excluded items and items with no
+  coordinates are not written, so they don't count.
+- Export asks, after a taken folder name's merge offer and "Save your note?": "N items need a
+  name" ("1 item needs a name"), **Cancel** (the default) · **Name them Untitled**. The action stores
+  "Untitled" on each, as ordinary edits, then exports. Cancel sets the status "N items need a name."
+  and focuses the first such name on screen; when a filter or a collapsed folder hides every one, it
+  clears the filters and opens that folder.
+- `export_zip` refuses one anyway (`"An item needs a name."`) before writing anything, so no path
+  writes an empty `<name>`.
+- The owner chose a block plus a one-click fix after hearing that Bitterroots alone has 7 blank
+  names (6 lines and an area), rather than a block alone. The fix writes "Untitled", the placeholder
+  used everywhere (orchestrator; the alternative was the kind, "Untitled line"). Exporting a blank
+  name and letting onX name it was not kept: onX's name is a timestamp.
