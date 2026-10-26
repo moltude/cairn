@@ -90,5 +90,34 @@ folder **ZZTEST limits-2026-10-25 names** (7 waypoints, 1 track, 1 area) and fol
 limits-2026-10-25 empty name** (1 waypoint, 1 track). Both folders were renamed from onX's
 "Import 10/25/26 18:29" / "18:34" so they are easy to find.
 
-**Not run** (still in TODO.md): RTL, identical, emoji-only and NBSP/ZWSP names; the Import Complete
-card's "Add to"; re-importing the dropped 3,000+ character note.
+## Second run: names and the long note (2026-10-25, 20:43 MDT)
+
+Payloads: `tests/fixtures/roundtrip/names-2026-10-25/` (gitignored; README tracked). One import of two files
+into a new folder (renamed **ZZTEST names-2026-10-25**): Cairn's export of 8 waypoints with unusual names, and
+`tests/fixtures/onx_real/onx_web_line_long_note.gpx` with its name changed to "ZZTEST long note route"
+(its 3,166-character, 3,172-byte note untouched). "9 Items Imported Successfully".
+
+| probe | sent | stored by onX |
+|---|---|---|
+| RTL | `ZZTEST rtl مجلد عربي` | identical |
+| two identical names | `ZZTEST twin` × 2 | both imported, both identical |
+| emoji only | `🏔️🔥` | identical |
+| NBSP and ZWSP | `ZZTEST nbsp zwsp​name` | identical (both characters kept) |
+| bidi override | `ZZTEST bidi a‮b` | identical |
+| combining accent | `ZZTEST combining é` | identical (not normalised to é) |
+| the long-note route, GPX alone | 3,172-byte note | imported as a **Line**; note cut to **512 bytes**, not dropped |
+
+**Conclusions.** onX keeps unusual names exactly as written: no normalisation, no stripping of NBSP, ZWSP or
+bidi controls, and duplicates are fine (the bulk-rename twins and Campsite cases are safe). The 3,000+
+character note dropped on 2026-10-22 is cut, not dropped, when its GPX is imported alone, which points at the
+KML of that pair (onX ignores KML ExtendedData) rather than at a size rule. onX stored the note with its own
+`name=… / notes=…` lines, as the FAQ already says.
+
+**Import Complete → "…" → Add to Folder** (tried once, into ZZTEST limits-2026-10-25 names): "Add 9 Items to
+a Folder" lists every folder plus "Create New Folder"; choosing one says "9 item(s) added to folder." The items
+are **added, not moved**: they are now in both the new import folder (9) and the chosen one (9 → 18). So a
+fresh import can be put into an existing folder; the empty-handed "Import …" folder onX made stays behind.
+Whether deleting that folder also deletes its markups was not tested (nothing is deleted in these runs).
+
+**Created by the second run:** folder **ZZTEST names-2026-10-25** (8 waypoints, 1 line); the same 9 items are
+also in **ZZTEST limits-2026-10-25 names**. Nothing was deleted.

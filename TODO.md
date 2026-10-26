@@ -65,33 +65,12 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
   extensions and `<desc>` lines, or only name and location? Decides whether the round trip
   works from a phone or only from onX on a computer.
 * **Track times and waypoint elevation** (P7): does onX read `<time>` and `<ele>` on import?
-* **Bulk rename onX probe, the rest** (owner-run): an RTL name, two identical names, an emoji-only name, a
-  name with NBSP and ZWSP. The length and empty-name probes ran live on 2026-10-25
-  (`docs/testing/ONX_LIMITS_2026-10-25.md`): names keep 255 UTF-8 bytes, notes 512, folder renames stop at
-  50 characters, an empty name becomes "Imported waypoint markup <timestamp>". Two ZZTEST folders from that
-  run are in the account to delete.
-* **The "…" on onX's Import Complete card** offers Add to (folder), per onX's code: try it once.
-  If it moves a fresh import into an existing folder, the round-trip FAQ's "no way into an
-  existing folder" needs softening.
-* **The dropped 3,000+ character note**: re-import `tests/fixtures/onx_real/onx_web_line_long_note.gpx`
-  alone (no KML). It is an onX Route, whose typed notes have no cap; this separates "the KML was
-  used" from "a size rule".
-* **One styled CalTopo export** (GeoJSON + KML + GPX of one small map with a dotted line, an
-  arrow line, an unfoldered marker, a multi-part area and an area with a hole). Answers:
-  * CalTopo's `pattern` values for dotted and arrow lines (only solid and one dash are known;
-    the rest export as solid);
-  * what CalTopo's GPX does with an area, and whether its `DisplayColor` is exact or nearest;
-  * how CalTopo's KML writes a multi-part area and a hole;
-  * what the `#1.0` at the end of every icon `cfg` means (not marker size);
-  * whether to map the KML's "Points" / "LineStrings" / "Polygons" folders for unfoldered items
-    to "Unorganized", as the GeoJSON gets.
-* **Can onX keep a hole in an area?** An area with a cutout (an inner ring) is written as its
-  outer ring only, because a GPX onX Area route has one outline (ENG-05, provisional). Untested
-  in onX: whether any import path keeps the hole, or whether writing each hole as its own area
-  is better. No real map so far has had one.
-* **Do line breaks in notes survive into onX?** Probe: a GPX whose `<desc>` has literal
-  newlines, `&#10;`, escaped `<br>`, and a blank line; import, read Notes on web and phone, then
-  type a two-line note in onX and export it.
+* **Cleanup in onX** (owner): delete the ZZTEST folders the 2026-10-25 runs created (ZZTEST limits-2026-10-25
+  names, ZZTEST limits-2026-10-25 empty name, ZZTEST names-2026-10-25). Every probe in
+  `docs/testing/ONX_LIMITS_2026-10-25.md` has run: names keep 255 UTF-8 bytes and every unusual character,
+  notes 512 bytes (the "dropped" long note is cut when its GPX is imported alone), folder renames stop at 50,
+  a blank name becomes "Imported waypoint markup <timestamp>", and Import Complete → Add to Folder adds a
+  fresh import to an existing folder.
 
 ## Next feature: bulk rename and note change
 
