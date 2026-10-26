@@ -171,6 +171,13 @@ SNAP_JS = r"""
   const a = document.activeElement;
   out.focus = a === document.body ? 'BODY' : (a ? (a.id || a.dataset?.fk || a.className || a.tagName) : null);
   out.selcount = document.querySelector('#selcount').textContent;
+  // N1 (2026-10-25): the items Export would ask to name, and the rows marked
+  // "Needs a name to export." (a blank name is legal while editing).
+  out.needsName = typeof needsName === 'function'
+    ? DATA.groups.flatMap(g => g.items).filter(needsName).map(i => i.uid) : null;
+  out.nameMarks = [...document.querySelectorAll('#folders tr[data-uid] .name-caution')]
+    .filter(e => e.getAttribute('aria-label') === 'Needs a name to export.').map(e => e.closest('tr').dataset.uid);
+  out.renderedRows = [...document.querySelectorAll('#folders tr[data-uid]')].map(r => r.dataset.uid);
   return out;
 }
 """
@@ -187,7 +194,10 @@ class Violation(Exception):
 
 
 # Bulk rename and note change (docs/plans/BULK_RENAME.md 3.1, decision 13).
-BULK_FLAGS = {"unchanged", "note-over-limit", "chars-removed"}
+# name-over-limit and name-empty: the dialog's name flags (round 3, L1 / N1; Track U).
+BULK_FLAGS = {"unchanged", "note-over-limit", "chars-removed", "name-over-limit", "name-empty"}
+NAME_THEM = "Name them Untitled"
+NEEDS_NAME = "Needs a name to export."
 BULK_PREVIEW_ROWS = 200
 BULK_NAME_TEXT = ["x ", " x", "Base ", " 2", "⟦", "zz ", "1", "Camp", "Campsite", "Trip 3", "-", "  "]
 BULK_NOTE_TEXT = ["see north", "line1\nline2", "\n", "\n\n  \n", "日" * 200, "a" * 600, "x" * 511,
@@ -415,6 +425,13 @@ class Session:
             raise Violation("item_name_not_string", f"{bad[:3]} after {label}")
         if s["xmlBad"]:
             raise Violation("xml_forbidden_char_stored", f"{s['xmlBad'][:3]} after {label}")
+        # 11. N1: a blank name is legal while editing, and its row says it needs
+        #     a name before export: exactly the rendered rows Export would ask about.
+        if s["needsName"] is not None:
+            rendered = set(s["renderedRows"])
+            want = sorted(u for u in s["needsName"] if u in rendered)
+            if sorted(s["nameMarks"]) != want:
+                raise Violation("needs_name_marks", f"marked {sorted(s['nameMarks'])[:4]} vs {want[:4]} after {label}")
         if s["bulkKind"] and not s["previewPending"]:
             self.check_preview(s, label)
         return s
@@ -1434,20 +1451,78 @@ class Session:
         return self.export_and_verify(rng, s), False
 
     # ---- export verification
+    def names_confirm_open(self):
+        p = self.page
+        return p.locator("#confirm").is_visible() and bool(re.fullmatch(
+            r"(1 item needs|[\d,]+ items need) a name", p.locator("#confirm-title").inner_text().strip()))
+
+    def answer_names(self, rng):
+        """The "N items need a name" confirm (N1): check it, then Cancel (by the
+        button, Esc or Enter, its default) or Name them Untitled, and check what
+        each did. Returns what was pressed, for the trail."""
+        p = self.page
+        s0 = self.snap()
+        blank = s0["needsName"] or []
+        n = len(blank)
+        title = p.locator("#confirm-title").inner_text().strip()
+        want = "1 item needs a name" if n == 1 else f"{n:,} items need a name"
+        if not n or title != want:
+            raise Violation("names_confirm_title", f"{title!r} with {n} blank-named items")
+        labels = p.locator("#confirm-actions button").all_inner_texts()
+        if labels != ["Cancel", NAME_THEM]:
+            raise Violation("names_confirm_buttons", f"{labels}")
+        r = rng.random()
+        if r < 0.45:
+            how = "Cancel" if r < 0.25 else "Escape" if r < 0.35 else "Enter(default)"
+            if how == "Cancel":
+                p.locator("#confirm-actions button").nth(0).click()
+            else:
+                p.keyboard.press(how.split("(")[0])
+            self.settle()
+            s1 = self.snap()
+            status = "1 item needs a name." if n == 1 else f"{n:,} items need a name."
+            if s1["confirm"] or s1["stage"] != "edit":
+                raise Violation("names_cancel", f"confirm={s1['confirm']} stage={s1['stage']} after {how}")
+            if s1["status"]["text"] != status:
+                raise Violation("names_cancel_status", f"{s1['status']['text']!r} vs {status!r}")
+            focused = p.evaluate("() => { const a = document.activeElement;"
+                                 " return a && a.classList.contains('name-in') ? a.closest('tr').dataset.uid : null; }")
+            if focused not in blank:
+                raise Violation("names_cancel_focus", f"focus on {s1['focus']!r}, not a blank name")
+            if s1["names"] != s0["names"]:
+                raise Violation("names_cancel_renamed", "Cancel changed a name")
+        else:
+            how = NAME_THEM
+            p.locator("#confirm-actions button").nth(1).click()
+            self.settle()
+            names = p.evaluate("uids => uids.map(u => allItems().find(i => i.uid === u).name)", blank)
+            if names != ["Untitled"] * n:
+                raise Violation("names_not_untitled", f"{names[:3]}")
+        return how
+
     def export_and_verify(self, rng, s):
         p = self.page
         included = [u for u, it in s["items"].items() if it["included"]]
         p.click("#export"); self.settle(50)
+        trail = []
+        # Up to two confirms in turn: "Save your note?", then "N items need a
+        # name" (N1). The pick at each is recorded in the trail.
+        for _ in range(3):
+            if not self.snap()["confirm"]:
+                break
+            if self.names_confirm_open():
+                trail.append("names:" + self.answer_names(rng))
+            else:
+                trail.append("confirm:" + self.answer_confirm(rng))
         st = self.snap()
-        if st["confirm"]:   # unsaved note prompt
-            self.answer_confirm(rng)
-            st = self.snap()
         if st["stage"] != "done":
             if not included and "excluded" in st["status"]["text"]:
-                return ("export", "all excluded")
+                return ("export", "all excluded", *trail)
+            if trail and trail[-1].startswith("names:") and trail[-1] != "names:" + NAME_THEM:
+                return ("export", "stayed (names cancel)", *trail)
             if st.get("note") or st["confirm"]:
-                return ("export", "stayed (note cancel)")
-            raise Violation("export_did_not_finish", f"{st['status']} included={len(included)}")
+                return ("export", "stayed (note cancel)", *trail)
+            raise Violation("export_did_not_finish", f"{st['status']} included={len(included)} {trail}")
         self.exports += 1
         # Round 3: an export writes every change so far, so Start over has none to count.
         left = p.evaluate("unexportedChanges()")
@@ -1456,7 +1531,7 @@ class Session:
         res = self.verify_export(rng)
         p.wait_for_timeout(300)
         p.click("#back"); self.settle()
-        return ("export", res)
+        return ("export", res, *trail)
 
     def verify_export(self, rng):
         p = self.page
@@ -1541,6 +1616,9 @@ class Session:
                 cnt += len(els)
                 for c in els:
                     nm = next((x.text or "" for x in c if x.tag.split("}")[-1] == "name"), "")
+                    # N1: no item is ever written with a blank name.
+                    if not nm.strip():
+                        raise Violation("export_empty_name", f"{f['path']}: <name>{nm!r}</name>")
                     names.append(nm)
             if cnt != len(inc):
                 raise Violation("zip_folder_items", f"{g['name']!r}: {cnt} in files vs {len(inc)} included")
