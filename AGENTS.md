@@ -37,7 +37,9 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-25, late (branch `feat/bulk-rename`, round 3: one text rule set, whole-word Find with a highlight per match, onX's name limits warned like notes, a name required to export): **2016 passed** with the web dev server up; without
+Baseline as of 2026-10-25, round 4 (branch `feat/bulk-rename`: accessibility fixes UI-41, Dependabot actions, FAQ and walkthrough retake): **2062 passed** with the web dev server up (46 accessibility tests added).
+
+Baseline before round 4, 2026-10-25, late (branch `feat/bulk-rename`, round 3: one text rule set, whole-word Find with a highlight per match, onX's name limits warned like notes, a name required to export): **2016 passed** with the web dev server up; without
 it the `tests/web` tests skip. Round 3 added 200 (text rules 39, whole-word Find and name flags 92, limits and the names confirm 69).
 
 Baseline before round 3 (bulk Rename… and Change note…): **1816 passed** with the web dev server up; without
