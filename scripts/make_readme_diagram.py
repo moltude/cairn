@@ -140,7 +140,7 @@ def lost(x, y, w=210):
     return (rect(x, y, w, 66, "r", "rl", dash=True, rx=8, sw=1.4)
             + T(x + w / 2, y + 21, "Cairn warns you about", 13, "ink", 700)
             + T(x + w / 2, y + 38, "what the onX import loses:", 13, "ink", 700)
-            + T(x + w / 2, y + 56, "Area fill · long notes", 12, "sub"))
+            + T(x + w / 2, y + 56, "Area fill · long names and notes", 12, "sub"))
 
 
 def export_box(x, y, w, h, sub=None, rows_gap=22, card_h=None):

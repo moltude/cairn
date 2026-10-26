@@ -33,6 +33,7 @@ There is no footer nav (UI-38). Nav on every page: App · Help · FAQ · Walkthr
 | Skip to the list | skip link, shown only while focused; the first Tab stop after the map title, to the search (A11Y-22) | edit screen rail | idx `.rail-head` | `.skip-link` |
 | Skip to the content | skip link, shown only while focused; the page's first Tab stop, to `main#content` (A11Y-22) | faq.html, walkthrough.html | build_faq_page.py, wt | `.skip-link` |
 | `CalTopo to onX, with icons and colors that still mean something.` | meta description | head | idx:7 | — |
+| `Cairn — CalTopo to onX` · `CalTopo to onX, with icons and colors that still mean something.` | link preview title and description (`og:title`, `og:description`; same text as the page title and meta description, change them together) | head | idx:12-13 | — |
 | `Cairn FAQ`, `Cairn Walkthrough` | page titles | tabs | faq.html:10, wt:10 | — |
 | Status line (empty until a message) | the line on screen (no role); moves between the slots | Top bar slot on drop/export; rail foot on edit | idx:26, idx:88 | `#status`, `#status-top`, `#status-rail` |
 | (the status line's words) | the status region screen readers hear: a visually hidden `role=status` that never moves (A11Y-24) | end of body | idx, app `setStatus` | `#status-live` |
