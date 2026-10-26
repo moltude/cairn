@@ -113,7 +113,7 @@
       changes no row (a bad mode, set on names, empty text, Find and Replace with both
       empty). ins lists where the inserted text sits in raw, as flat [start, end]
       pairs of UTF-16 offsets: each replacement, the added text, or the whole value. */
-  function editFor(spec, note) {
+  function editFor(spec, note, longest) {
     const mode = pick(spec, "mode");
     if (mode === "prefix" || mode === "suffix") {
       const text = str(pick(spec, "text"));
@@ -131,6 +131,12 @@
     if (mode === "replace") {
       const find = str(pick(spec, "find")), repl = str(pick(spec, "repl"));
       if (find === "") return repl === "" ? null : () => ({ raw: repl, ins: [0, repl.length] });   // Match case moot
+      // A match has as many code points as Find (a pattern character matches one input
+      // character, case folding included), so a Find with more code points than the
+      // longest value has UTF-16 units matches nothing: skip the pattern, whose first
+      // runs are slow for a very long Find (10,000 characters: about 11 ms).
+      let cps = 0;
+      for (const _ of find) if (++cps > longest) return null;
       // Built once per call; replace() resets the g flag's lastIndex, so reuse is safe.
       const re = findPattern(find, pick(spec, "matchCase") === true);
       return v => {
@@ -258,7 +264,12 @@
     const lim = (key, dflt) => { const v = pick(ctx, key); return typeof v === "number" && v >= 0 ? v : dflt; };
     const limits = { note: lim("noteLimit", NOTE_LIMIT), name: lim("nameLimit", NAME_LIMIT) };
     try {
-      const edit = f === "name" || f === "desc" ? editFor(spec, field === "desc") : null;
+      let longest = 0;
+      for (const r of list) {
+        const v = r !== null && typeof r === "object" ? str(pick(r, field)) : "";
+        if (v.length > longest) longest = v.length;
+      }
+      const edit = f === "name" || f === "desc" ? editFor(spec, field === "desc", longest) : null;
       return run(list, field, edit, limits);
     } catch (e) {
       // Never throws (a result past the engine's string length, a hostile row): every
