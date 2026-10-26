@@ -45,10 +45,12 @@ def _server_reachable() -> bool:
 
 
 # A name is needed to export (UI-40): with blank-named items to write, Export first
-# opens "N items need a name" (Cancel · Name them Untitled). Bitterroots has 7, so
-# the export helpers below press NAME_THEM there unless a test passes names=None
-# (leave the confirm up) or another button label.
+# opens "N items need a name" (Cancel · Name them Untitled; "Name it Untitled" when
+# there is one). Bitterroots has 7, so the export helpers below press the naming
+# button there unless a test passes names=None (leave the confirm up) or another
+# button label.
 NAME_THEM = "Name them Untitled"
+NAME_IT = "Name it Untitled"
 NEEDS_NAME_TITLE = re.compile(r"^(1 item needs|[\d,]+ items need) a name$")
 
 
@@ -63,7 +65,11 @@ def _answer_names(page: Page, names: str | None = NAME_THEM) -> bool:
     it); whether it was. Export runs in the click's own handler, so the confirm is
     either up or not by the time the click returns."""
     if names and _names_confirm_open(page):
-        page.click(f"#confirm-actions button:text-is('{names}')")
+        if names in (NAME_THEM, NAME_IT):     # whichever the count shows
+            page.locator("#confirm-actions button").filter(
+                has_text=re.compile(r"^Name (them|it) Untitled$")).click()
+        else:
+            page.click(f"#confirm-actions button:text-is('{names}')")
         return True
     return False
 

@@ -418,6 +418,7 @@ async function handleFiles(files) {
     return;
   }
   showDropWait(false);
+  if (CONFIRM) closeConfirm(false);   // a new file replaces the last one's error
   setStatus("Reading " + (files.length === 1 ? files[0].name : `${files.length} files`) + "…");
   try {
     const payload = await Promise.all(files.map(async f => ({ name: f.name, text: await f.text() })));
@@ -445,11 +446,34 @@ async function handleFiles(files) {
     // message and the engine's messages are already user-friendly ("No features
     // found... make sure this is a CalTopo export"); the stack above it is noise
     // to a hiker. Keep the full thing in the console for us.
-    { const why = humanError(e);
-      setStatus(why.startsWith("Failed:") ? why
-        : (files.length === 1 ? "Couldn't read that file — " : "Couldn't read those files — ") + why, "err"); }
+    // The dialog says it; the status line would say it twice (and a screen
+    // reader would hear it twice).
+    setStatus("");
+    loadFailed(humanError(e), files.length);
     console.error(e);
   }
+}
+
+/** A file that didn't load (owner 2026-10-26, A11Y-23): say so in a dialog
+    whose one button, OK, returns to a clean home page, ready for another file.
+    "Failed: Could not load file" is the whole message; any other reason is the
+    body under "Couldn't read that file". */
+function loadFailed(why, count) {
+  const failed = why.startsWith("Failed:");
+  openConfirm({
+    title: failed ? why : (count === 1 ? "Couldn't read that file" : "Couldn't read those files"),
+    body: failed ? "" : why,
+    ret: $("#pick"),
+    buttons: [
+      { label: "OK", initial: true, cancel: true, run: () => {
+          closeConfirm(false);
+          // Also clears a map the engine read but the edit screen failed to
+          // draw. No history step: the edit entry may never have been pushed.
+          resetAll({ history: false });
+          $("#pick").focus({ preventScroll: true });
+        } },
+    ],
+  });
 }
 
 /** The "Getting ready…" line is a status region: empty it when hidden, or a
@@ -1062,10 +1086,9 @@ function longFolderSentence(name) {
     ? `onX keeps only the first ${FOLDER_NAME_LIMIT} characters of a folder name. About ${plural(Math.max(cutN, 1), "character")} will be cut.`
     : null;
 }
-/** Blank as the export would write it (UI-40): nothing left once the characters
-    XML forbids are dropped and the ends trimmed (cleanNote trims U+0085 too, as
-    the bridge's Python strip() does), so this and bridge._blank_name agree. */
-const nameIsBlank = name => CairnRename.cleanNote(name ?? "") === "";
+/** Blank as the export would write it (UI-40); the same test as the dialog's
+    name-empty flag and bridge._blank_name, so the three agree. */
+const nameIsBlank = name => CairnRename.blankName(name);
 /** An item Export would write with a blank name: it needs one first (UI-40). */
 const needsName = it => it.included && !it.no_coords && nameIsBlank(it.name);
 const NEEDS_NAME = "Needs a name to export.";
@@ -1210,21 +1233,14 @@ function syncFolderBox(tr) {
  *  forbids, turns a run of whitespace holding a tab or line break into one
  *  space and trims, silently. The field then shows what is stored. A value
  *  left untouched is never cleaned (a dirty loaded name stays as loaded), and
- *  one that cleans back to the stored name is no edit.
- *
- *  `required` fields refuse to commit empty. No field uses it since names became
- *  optional (owner, 2026-10-25): an empty name shows as "Untitled".
+ *  one that cleans back to the stored name is no edit. An empty name is kept
+ *  (owner, 2026-10-25): it shows as "Untitled", and Export asks for names.
  */
-function wireTextField(el, it, key, { required = false } = {}) {
+function wireTextField(el, it, key) {
   el.addEventListener("focus", () => { el.dataset.orig = el.value; });
   const commit = now => {
     if (el.value === el.dataset.orig) return;     // untouched: never cleaned
     const v = CairnRename.cleanName(el.value);
-    if (required && !v) {
-      el.value = el.dataset.orig ?? "";
-      setStatus("An item needs a name.", "err");
-      return;
-    }
     el.value = v;                                 // what's on screen is what's stored
     el.dataset.orig = v;
     if (v === (it[key] ?? "")) return;            // cleans back to the stored value: no edit
@@ -1239,6 +1255,7 @@ function wireTextField(el, it, key, { required = false } = {}) {
   // Enter saves and Esc reverts, both staying in the field (focus never drops
   // to the page): Esc's restored value means the blur that follows sees no change.
   el.addEventListener("keydown", e => {
+    if (e.isComposing || e.keyCode === 229) return;   // the IME's Escape or Enter
     if (e.key === "Escape") {
       e.preventDefault();
       el.value = el.dataset.orig ?? "";
@@ -1302,6 +1319,7 @@ function wireNoteEditor(tr, it) {
   const ta = tr.querySelector(".desc-in");
   ta.addEventListener("input", () => { NOTE_EDIT.draft = ta.value; syncUnloadGuard(); });
   ta.addEventListener("keydown", e => {
+    if (e.isComposing || e.keyCode === 229) return;   // the IME's Escape or Enter
     if (e.key === "Escape") {
       e.preventDefault(); e.stopPropagation();
       closeNote(it, false);
@@ -1380,6 +1398,7 @@ const bulkReceipt = (n, say) => { if (n) setStatus(say(n), "ready"); };
 function updateSel() {
   const n = SEL.size;
   $("#selcount").textContent = `${n} selected`;
+  const barMoved = $("#selbar").classList.contains("hidden") !== (n === 0);
   $("#selbar").classList.toggle("hidden", n === 0);
   ["#bulk-icon", "#more-btn"].forEach(sel => {
     const el = $(sel);
@@ -1391,7 +1410,9 @@ function updateSel() {
   // style, not an icon: say what it does.
   $("#bulk-icon").textContent = !n || sel.some(i => i.kind === "waypoints") ? "Icon & color…" : "Color & style…";
   closeMenu();
-  syncStickyPad();                 // the selection bar came or went (A11Y-01)
+  // The selection bar came or went (A11Y-01): pad now, not at the
+  // ResizeObserver's turn, so a focus scroll in this same task clears it.
+  if (barMoved) syncStickyPad();
 }
 
 /* ---------- icon & color: palettes ---------- */
@@ -2910,7 +2931,7 @@ function exportOrAskForNames(ret) {
     ret,
     buttons: [
       { label: "Cancel", initial: true, cancel: true, run: () => { closeConfirm(false); showBlankNames(blank); } },
-      { label: "Name them Untitled", run: () => {
+      { label: n === 1 ? "Name it Untitled" : "Name them Untitled", run: () => {
           closeConfirm(false);
           blank.forEach(it => edit(it, { name: "Untitled" }, { render: false }));
           refreshAfterEdit();
@@ -3026,8 +3047,11 @@ window.addEventListener("DOMContentLoaded", () => {
     const n = CairnRename.cleanName(it.desc || "");
     return n && n !== it.name ? { name: n } : {};
   }), n => `Renamed ${plural(n, "item")} from their notes.`));
-  menuAct("#bulk-exclude", () => bulkReceipt(bulk({ included: false }), n => `Excluded ${plural(n, "item")}.`));
-  menuAct("#bulk-include", () => bulkReceipt(bulk({ included: true }), n => `Included ${plural(n, "item")}.`));
+  // Only the items it changes count: one already left out isn't excluded again.
+  menuAct("#bulk-exclude", () => bulkReceipt(bulk(it => it.included ? { included: false } : {}),
+    n => `Excluded ${plural(n, "item")}.`));
+  menuAct("#bulk-include", () => bulkReceipt(bulk(it => it.included ? {} : { included: true }),
+    n => `Included ${plural(n, "item")}.`));
   // Every nav's Help (top bar, search row, footer) opens the dialog here.
   document.querySelectorAll(".help-open").forEach(b => b.onclick = openHelp);
   // faq.html / walkthrough.html link here as "./#help".
@@ -3064,6 +3088,8 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (e.key === "Escape") {
+      // An Escape that cancels an IME's candidate list is the IME's, not ours.
+      if (e.isComposing || e.keyCode === 229) return;
       // Priority: a drag in progress, then what's in front, then an open note,
       // then let a focused field revert its own edit, else clear the selection.
       if (DRAG) {

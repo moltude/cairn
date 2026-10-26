@@ -197,6 +197,7 @@ class Violation(Exception):
 # name-over-limit and name-empty: the dialog's name flags (UI-40).
 BULK_FLAGS = {"unchanged", "note-over-limit", "chars-removed", "name-over-limit", "name-empty"}
 NAME_THEM = "Name them Untitled"
+NAME_IT = "Name it Untitled"          # the same button when one item is blank
 NEEDS_NAME = "Needs a name to export."
 BULK_PREVIEW_ROWS = 200
 BULK_NAME_TEXT = ["x ", " x", "Base ", " 2", "⟦", "zz ", "1", "Camp", "Campsite", "Trip 3", "-", "  "]
@@ -1474,7 +1475,7 @@ class Session:
         if not n or title != want:
             raise Violation("names_confirm_title", f"{title!r} with {n} blank-named items")
         labels = p.locator("#confirm-actions button").all_inner_texts()
-        if labels != ["Cancel", NAME_THEM]:
+        if labels != ["Cancel", NAME_IT if n == 1 else NAME_THEM]:
             raise Violation("names_confirm_buttons", f"{labels}")
         r = rng.random()
         if r < 0.45:
@@ -1497,7 +1498,7 @@ class Session:
             if s1["names"] != s0["names"]:
                 raise Violation("names_cancel_renamed", "Cancel changed a name")
         else:
-            how = NAME_THEM
+            how = NAME_THEM                  # recorded as one label whatever the count
             p.locator("#confirm-actions button").nth(1).click()
             self.settle()
             names = p.evaluate("uids => uids.map(u => allItems().find(i => i.uid === u).name)", blank)

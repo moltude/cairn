@@ -4,10 +4,13 @@ in each docstring. Measured the way the audit measured (its section 5): contrast
 computed colours composited over the first opaque background, focus against the sticky
 bars by sampling points, names and roles from the accessibility tree.
 
-Held for the owner, so not tested here: A11Y-10 (swatch focus vs selection), A11Y-16
-(the After highlight), A11Y-18 (roving tabindex), A11Y-21 (the chips row on contours)."""
+Owner answers 2026-10-26: A11Y-10 a check on the chosen swatch, A11Y-16 an underline under
+the After highlight, A11Y-21 a paper panel behind the chips row, A11Y-23 a load failure is a
+dialog whose OK returns to a clean home page (tested at the end). Deferred: A11Y-18 (roving
+tabindex)."""
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
@@ -597,6 +600,24 @@ def test_exclude_include_and_use_note_as_name_leave_a_receipt(fresh_page: Page):
     expect(st).to_have_text("")
 
 
+def test_exclude_and_include_count_only_the_items_they_change(fresh_page: Page):
+    """Items already left out aren't counted again by Exclude, nor included ones by Include."""
+    page = fresh_page
+    _map(page, [("w", "A", ""), ("w", "B", ""), ("w", "C", "")])
+    st = page.locator("#status")
+    _tick(page, [_uid(page, "A")])
+    _menu_action(page, "#bulk-exclude")
+    expect(st).to_have_text("Excluded 1 item.")
+    _tick(page, [_uid(page, "B"), _uid(page, "C")])
+    _menu_action(page, "#bulk-exclude")
+    expect(st).to_have_text("Excluded 2 items.")
+    page.evaluate("setStatus('')")
+    _menu_action(page, "#bulk-exclude")
+    expect(st).to_have_text("")
+    _menu_action(page, "#bulk-include")
+    expect(st).to_have_text("Included 3 items.")
+
+
 # --- A11Y-26: the Name column header -----------------------------------------------------
 
 
@@ -985,3 +1006,87 @@ def test_a_folder_name_error_marks_the_field_invalid_until_it_is_fixed(loaded: P
     page.keyboard.press("Backspace")
     expect(page.locator("#status")).to_have_text("")
     expect(inp).not_to_have_attribute("aria-invalid", "true")
+
+
+# --- owner answers, 2026-10-26 ----------------------------------------------------------
+
+def test_the_chosen_swatch_carries_a_check_and_the_others_do_not(loaded: Page):
+    """A11Y-10: the selected swatch differs from a focused one by more than ring colour."""
+    page = loaded
+    page.locator(f"{ROW} .icon-btn").first.click()
+    chosen = page.locator('#mark-pop .swatch-btn[aria-pressed="true"]').first
+    other = page.locator('#mark-pop .swatch-btn[aria-pressed="false"]').first
+    expect(chosen).to_be_visible()
+    after = chosen.evaluate("el => { const s = getComputedStyle(el, '::after');"
+                            " return [s.content, s.borderRightWidth, s.borderBottomWidth, s.borderRightColor]; }")
+    assert after[0] not in ("none", "normal", ""), after
+    assert after[1] == "3px" and after[2] == "3px", after
+    assert after[3] == "rgb(255, 255, 255)", after
+    assert other.evaluate("el => getComputedStyle(el, '::after').content") in ("none", "normal")
+
+
+def test_the_filter_chips_row_sits_on_a_paper_panel_not_the_contours(loaded: Page):
+    """A11Y-21 (owner 2026-10-26): "Showing N" and "Clear all" get the paper panel UI-20 asks
+    for; the row's background is --paper, widened by a paper shadow."""
+    page = loaded
+    page.click("#only-attention")
+    chips = page.locator("#chips")
+    expect(chips).to_be_visible()
+    paper = page.evaluate("""() => { const d = document.createElement('div');
+        d.style.background = 'var(--paper)'; document.body.append(d);
+        const c = getComputedStyle(d).backgroundColor; d.remove(); return c; }""")
+    bg, shadow = chips.evaluate("el => { const s = getComputedStyle(el); return [s.backgroundColor, s.boxShadow]; }")
+    assert bg == paper, (bg, paper)
+    assert shadow.startswith(paper) and "6px" in shadow, shadow
+
+
+def test_the_after_highlight_is_underlined_not_only_coloured(fresh_page: Page):
+    """A11Y-16: the new part of an After value is underlined as well as shaded."""
+    page = fresh_page
+    _load_text(page, item_map([("w", "Ridge Trail Trail", "")]))
+    _tick(page, page.evaluate("allItems().map(i => i.uid)"))
+    _open_bulk(page, "rename")
+    _set_mode(page, "replace")
+    _type_spec(page, find="Trail", repl="Tr.")
+    hit = page.locator("#mark-dialog .na-after .hit").first
+    expect(hit).to_be_visible()
+    line, thickness = hit.evaluate("el => { const s = getComputedStyle(el); return [s.textDecorationLine, s.textDecorationThickness]; }")
+    assert "underline" in line and thickness == "2px", (line, thickness)
+
+
+def test_a_file_that_fails_to_load_says_so_in_a_dialog_and_ok_returns_home(fresh_page: Page):
+    """A11Y-23 (owner 2026-10-26): "Failed: Could not load file" in a dialog with one
+    button; OK closes it, leaves the status line empty, resets the file input and puts
+    focus on Choose file, on the drop screen."""
+    page = fresh_page
+    page.set_input_files("#file", files=[{"name": "broken.json", "mimeType": "application/json",
+                                          "buffer": b'{"type":"FeatureCollection","features":[{'}])
+    expect(page.locator("#confirm")).to_be_visible()
+    expect(page.locator("#confirm-title")).to_have_text("Failed: Could not load file")
+    expect(page.locator("#confirm-actions button")).to_have_text(["OK"])
+    expect(page.locator("#confirm-actions button")).to_be_focused()
+    expect(page.locator("#status")).to_have_text("")
+    page.keyboard.press("Enter")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    expect(page.locator("#pick")).to_be_focused()
+    assert page.evaluate("document.querySelector('#file').value") == ""
+
+
+
+def test_ok_after_a_load_that_failed_while_drawing_leaves_no_map_behind(fresh_page: Page):
+    """The engine read the file but drawing the edit screen threw: OK still returns to a
+    clean home page, with no half-loaded map left for Back or Forward to reach."""
+    page = fresh_page
+    page.evaluate("() => { window.renderEdit = () => { throw new Error('draw failed'); }; }")
+    page.set_input_files("#file", files=[{"name": "camp.json", "mimeType": "application/json",
+                                          "buffer": json.dumps({"type": "FeatureCollection", "features": [{
+                                              "type": "Feature", "geometry": {"type": "Point", "coordinates": [1, 2]},
+                                              "properties": {"title": "Camp"}}]}).encode()}])
+    expect(page.locator("#confirm")).to_be_visible()
+    page.keyboard.press("Enter")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    expect(page.locator("#pick")).to_be_focused()
+    assert page.evaluate("DATA") is None
+    assert page.evaluate("window.__cairnLoaded") is False

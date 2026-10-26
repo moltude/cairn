@@ -823,6 +823,16 @@ def test_replace_with_empty_can_empty_a_name_and_saves_it_blank(core):
     assert after == "" and flags == {"name-empty"} and changed == 1
 
 
+def test_a_result_the_export_would_trim_to_nothing_is_flagged_name_empty(core):
+    """U+0085 (NEL): kept by cleanName (JS trim leaves it) but trimmed by the export's
+    Python strip(), so the row would need a name. U+FEFF is the reverse: JS trim takes
+    it, the export keeps it, and a BOM-only name is a name (app.js nameIsBlank agrees)."""
+    after, flags, _ = one(core, "Camp", names_spec("replace", find="Camp", repl="\x85"))
+    assert after == "\x85" and flags == {"name-empty"}
+    assert helper(core, "blankName", "\x85 \x85", "", " \t", "\x01") == [True] * 4
+    assert helper(core, "blankName", "\ufeff", " \ufeff ", "\u200b", "a") == [False] * 4
+
+
 def test_match_case_toggle_changes_the_count_live(core):
     off = one(core, "Camp camp", names_spec("replace", find="camp", repl="x"))[0]
     on = one(core, "Camp camp", names_spec("replace", find="camp", repl="x", match_case=True))[0]

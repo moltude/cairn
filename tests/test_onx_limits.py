@@ -123,8 +123,9 @@ def test_a_name_blank_as_written_counts_as_blank(name):
         bridge.export_zip()
 
 
-@pytest.mark.parametrize("name", ["x", "Untitled", "(no name)", ".", "​", "﻿A", "\x01a\x02"],
-                         ids=["one-letter", "untitled", "no-name-text", "dot", "zwsp", "bom-a", "a-in-controls"])
+@pytest.mark.parametrize("name", ["x", "Untitled", "(no name)", ".", "\u200b", "\ufeffA", "\x01a\x02", "\ufeff"],
+                         ids=["one-letter", "untitled", "no-name-text", "dot", "zwsp", "bom-a", "a-in-controls",
+                              "bom-only"])
 def test_a_name_with_anything_left_as_written_is_a_name(name):
     assert not bridge._blank_name(name)
     items = _load({"Trip": [("w", "Wp", "")]})
