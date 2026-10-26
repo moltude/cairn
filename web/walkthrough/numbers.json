@@ -6,7 +6,7 @@
  "areas": 17,
  "default_pins": 25,
  "specific_icons": 43,
- "distinct_icons": 12,
+ "distinct_icons": 13,
  "distinct_caltopo_symbols": 13,
  "default_pin_by_symbol": {
   "point": 22,
@@ -30,12 +30,12 @@
    6
   ],
   [
-   "Water Source",
+   "Shelter",
    4
   ],
   [
-   "Shelter",
-   4
+   "Camp",
+   3
   ]
  ],
  "default_pins_after_demo_edit": 22,
