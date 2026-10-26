@@ -1402,3 +1402,10 @@ palette, UI-29), A11Y-21 (a panel behind the chips row, UI-20).
   tooltip; "Untitled" is muted italic and excluded rows dim by colour, both at 4.5:1 or better; the empty
   folder's × and the FAQ group links are at least 24px; the rail's section labels are headings; hidden
   stages carry `hidden`.
+- **Owner answers, 2026-10-26** (the four held findings): the chosen colour swatch also carries a white check
+  (A11Y-10); the After highlight in Rename… / Change note… is underlined as well as shaded (A11Y-16); a file
+  that fails to load says so in a dialog ("Failed: Could not load file", or "Couldn't read that file" with
+  the reason) whose one button, OK, returns to a clean home page, with nothing on the status line (A11Y-23);
+  one Tab stop per palette (A11Y-18) is deferred. A11Y-21 (a panel behind the chips row) is still open.
+  Accepted from Claude's suggestions the same day (UI-40): the names confirm's action reads "Name it
+  Untitled" for one item; Cancel stays its default; the fix writes plain "Untitled".

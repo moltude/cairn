@@ -418,6 +418,7 @@ async function handleFiles(files) {
     return;
   }
   showDropWait(false);
+  if (CONFIRM) closeConfirm(false);   // a new file replaces the last one's error
   setStatus("Reading " + (files.length === 1 ? files[0].name : `${files.length} files`) + "…");
   try {
     const payload = await Promise.all(files.map(async f => ({ name: f.name, text: await f.text() })));
@@ -445,11 +446,34 @@ async function handleFiles(files) {
     // message and the engine's messages are already user-friendly ("No features
     // found... make sure this is a CalTopo export"); the stack above it is noise
     // to a hiker. Keep the full thing in the console for us.
-    { const why = humanError(e);
-      setStatus(why.startsWith("Failed:") ? why
-        : (files.length === 1 ? "Couldn't read that file — " : "Couldn't read those files — ") + why, "err"); }
+    // The dialog says it; the status line would say it twice (and a screen
+    // reader would hear it twice).
+    setStatus("");
+    loadFailed(humanError(e), files.length);
     console.error(e);
   }
+}
+
+/** A file that didn't load (owner 2026-10-26, A11Y-23): say so in a dialog
+    whose one button, OK, returns to a clean home page, ready for another file.
+    "Failed: Could not load file" is the whole message; any other reason is the
+    body under "Couldn't read that file". */
+function loadFailed(why, count) {
+  const failed = why.startsWith("Failed:");
+  openConfirm({
+    title: failed ? why : (count === 1 ? "Couldn't read that file" : "Couldn't read those files"),
+    body: failed ? "" : why,
+    ret: $("#pick"),
+    buttons: [
+      { label: "OK", initial: true, cancel: true, run: () => {
+          closeConfirm(false);
+          setStatus("");
+          $("#file").value = "";
+          if (document.body.dataset.stage !== "drop") showStage("drop");
+          $("#pick").focus({ preventScroll: true });
+        } },
+    ],
+  });
 }
 
 /** The "Getting ready…" line is a status region: empty it when hidden, or a
@@ -2911,7 +2935,7 @@ function exportOrAskForNames(ret) {
     ret,
     buttons: [
       { label: "Cancel", initial: true, cancel: true, run: () => { closeConfirm(false); showBlankNames(blank); } },
-      { label: "Name them Untitled", run: () => {
+      { label: n === 1 ? "Name it Untitled" : "Name them Untitled", run: () => {
           closeConfirm(false);
           blank.forEach(it => edit(it, { name: "Untitled" }, { render: false }));
           refreshAfterEdit();

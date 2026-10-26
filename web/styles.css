@@ -322,6 +322,13 @@ tr.excluded .marker,tr.excluded .lineswatch{opacity:.55}
 /* onX's default area fill, rgba(74,144,226,0.1), drawn as a small area patch. */
 .fill-swatch{width:26px;height:22px;flex:none;border:2px solid #4A90E2;background:rgba(74,144,226,.18);border-radius:2px}
 .swatch-btn[aria-pressed=true]{outline:2px solid var(--ink);outline-offset:2px}
+/* The chosen swatch also carries a check (owner 2026-10-26, A11Y-10), so it
+   isn't told from the focused one by ring colour alone. White with a dark
+   edge reads on every onX swatch, black and white included. */
+.swatch-btn{position:relative}
+.swatch-btn[aria-pressed=true]::after{content:"";position:absolute;left:50%;top:44%;width:5px;height:10px;
+  border:solid #fff;border-width:0 3px 3px 0;transform:translate(-50%,-50%) rotate(45deg);
+  filter:drop-shadow(0 0 1px rgba(0,0,0,.9));pointer-events:none}
 .swatch-btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .icon-search,#bulk-text,#bulk-find,#bulk-repl{background:var(--card);border:1px solid var(--control);border-radius:2px;padding:8px 10px;min-height:40px;width:100%}
 .icon-search::placeholder{color:var(--muted);font-style:italic;opacity:1}
@@ -395,7 +402,9 @@ textarea#bulk-text,textarea#bulk-find,textarea#bulk-repl{line-height:1.5;resize:
    No padding: inside a word it would read as a space; the shadow widens the
    patch without moving a letter. */
 .na-after .hit{background:var(--sel-row);border-radius:2px;box-shadow:-1px 0 0 var(--sel-row),1px 0 0 var(--sel-row);
-  -webkit-box-decoration-break:clone;box-decoration-break:clone}
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;
+  /* Not by colour alone (owner 2026-10-26, A11Y-16): an underline too. */
+  text-decoration:underline;text-decoration-color:var(--green);text-decoration-thickness:2px;text-underline-offset:3px}
 /* Unchanged: the After cell gives way to "No change", the arrow fades. */
 .mark-dialog .na-row[data-flags~=unchanged] .na-after{display:none}
 .na-row[data-flags~=unchanged] .na-flag{grid-row:1;margin-top:0;font-size:14px;color:var(--muted);font-style:italic}

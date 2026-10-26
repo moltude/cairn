@@ -280,20 +280,20 @@ this is where each one stands. Tests: `tests/web/test_accessibility.py`, one or 
 | A11Y-07 | Fixed in `c85bf8d` (Style and Weight's group now holds its "Leave as is" too) |
 | A11Y-08 | Fixed in `c85bf8d` |
 | A11Y-09 | Fixed in `cab9351` |
-| A11Y-10 | Held for the owner (changes the UI-36 swatch look) |
+| A11Y-10 | Fixed 2026-10-26 (owner: a check mark on the chosen swatch) |
 | A11Y-11 | Fixed in `c85bf8d` (an aria-label that starts with the button's words, not hidden text: the empty note's words are hidden at rest) |
 | A11Y-12 | Fixed in `c85bf8d` (the why is the styled tip and an `aria-description`) |
 | A11Y-13 | Fixed in `cab9351` |
 | A11Y-14 | Fixed in `cab9351` |
 | A11Y-15 | Fixed in `cab9351` |
-| A11Y-16 | Held for the owner (adds to UI-39's highlight) |
+| A11Y-16 | Fixed 2026-10-26 (owner: an underline under the highlight) |
 | A11Y-17 | Fixed in `c85bf8d` |
-| A11Y-18 | Held for the owner (medium effort; touches UI-29's picker) |
+| A11Y-18 | Deferred by the owner 2026-10-26 |
 | A11Y-19 | Fixed in `cab9351` |
 | A11Y-20 | Fixed in `cab9351` |
 | A11Y-21 | Held for the owner (a paper panel behind the chips, UI-20) |
 | A11Y-22 | Fixed in `291a29e` (the edit screen's link is the first Tab stop after the map title, where focus lands) |
-| A11Y-23 | Folder name half fixed in `1893b26`; the JSON error's wording held for the owner (LABELS.md section 15 records "Failed: Could not load file" as the owner's choice) |
+| A11Y-23 | Folder name half fixed in `1893b26`; load failures fixed 2026-10-26 (owner: a dialog whose OK returns to a clean home page) |
 | A11Y-24 | Fixed in `fb2e2b9` (a fixed visually hidden region mirrors the line on screen) |
 | A11Y-25 | Fixed in `c85bf8d` (wording as proposed, for the owner to confirm) |
 | A11Y-26 | Fixed in `c85bf8d` |

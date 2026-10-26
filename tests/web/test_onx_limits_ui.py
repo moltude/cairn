@@ -20,7 +20,7 @@ from playwright.sync_api import Page, expect
 
 from tests.hardening_maps import _folder, _line, _poly, _pt
 from tests.web.helpers import (
-    NAME_THEM, ROW, _click_export, _export_zip, _gpx_names, _load_text, _names_confirm_open, _set,
+    NAME_IT, NAME_THEM, ROW, _click_export, _export_zip, _gpx_names, _load_text, _names_confirm_open, _set,
     export_zip_bytes,
 )
 
@@ -335,7 +335,8 @@ def test_one_blank_name_is_singular_everywhere(fresh_page: Page):
     uids = _map(page, {"Trip": [("w", "", ""), ("w", "Named", "")]})
     page.click("#export")
     expect(page.locator("#confirm-title")).to_have_text("1 item needs a name")
-    expect(page.locator("#confirm-actions button")).to_have_text(["Cancel", NAME_THEM])
+    # One item: "Name it Untitled" (owner 2026-10-26, accepting the suggestion).
+    expect(page.locator("#confirm-actions button")).to_have_text(["Cancel", NAME_IT])
     page.click("#confirm-actions button:text-is('Cancel')")
     expect(page.locator("#status")).to_have_text("1 item needs a name.")
     expect(page.locator(f'tr[data-uid="{uids[""]}"] .name-in')).to_be_focused()

@@ -255,7 +255,7 @@ highlighted (`.na-after .hit`, no text of its own).
 | Save your note? | Your note for “{name}” (or “Untitled”) hasn't been saved. (on Export, Rename… and Change note…, when the open note changed) | Keep editing, Discard, **Save** | app `askToSaveNote` |
 | “{name}” already exists | (merge, §7) | **Cancel**, Move them | app:1869-1874 |
 | 1 area will lose its fill / N areas will lose their fill | onX resets area fills to blue on import. | **Keep it / Keep them**, Leave this out / Leave these N out | app:2256-2264 |
-| 1 item needs a name / N items need a name | (none; UI-26) | **Cancel**, Name them Untitled | app `exportOrAskForNames` (on Export, after the merge offer and Save your note?; UI-40) |
+| 1 item needs a name / N items need a name | (none; UI-26) | **Cancel**, Name it Untitled (one item) / Name them Untitled | app `exportOrAskForNames` (on Export, after the merge offer and Save your note?; UI-40) |
 
 ## 10. Export screen
 
@@ -293,7 +293,7 @@ highlighted (`.na-after .hit`, no text of its own).
 | Text | Class | Source |
 |---|---|---|
 | Reading {name} … / Reading N files… | info | app:360 |
-| Couldn't read that file — {reason} / Couldn't read those files — {reason} | err | app:386 |
+| A file that didn't load (owner 2026-10-26, A11Y-23): a dialog, not the status line. Title **Failed: Could not load file** (alone), or **Couldn't read that file** / **Couldn't read those files** with the reason as its body; one button, **OK**, back to a clean home page | dialog | app `loadFailed` |
 | Failed: {reason} (engine boot) | err | app:239 |
 | Couldn't load the map engine (HTTP N). | err | app:208 |
 | Changed N item(s). / line(s). / area(s). (Rename… and Change note…: always item(s)) | ready | app:1541-1542, app `applyTextBulk` |

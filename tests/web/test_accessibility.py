@@ -4,8 +4,10 @@ in each docstring. Measured the way the audit measured (its section 5): contrast
 computed colours composited over the first opaque background, focus against the sticky
 bars by sampling points, names and roles from the accessibility tree.
 
-Held for the owner, so not tested here: A11Y-10 (swatch focus vs selection), A11Y-16
-(the After highlight), A11Y-18 (roving tabindex), A11Y-21 (the chips row on contours)."""
+Owner answers 2026-10-26: A11Y-10 a check on the chosen swatch, A11Y-16 an underline under
+the After highlight, A11Y-23 a load failure is a dialog whose OK returns to a clean home page
+(tested at the end). Still held: A11Y-18 (roving tabindex, deferred), A11Y-21 (the chips row
+on contours)."""
 from __future__ import annotations
 
 import re
@@ -985,3 +987,54 @@ def test_a_folder_name_error_marks_the_field_invalid_until_it_is_fixed(loaded: P
     page.keyboard.press("Backspace")
     expect(page.locator("#status")).to_have_text("")
     expect(inp).not_to_have_attribute("aria-invalid", "true")
+
+
+# --- owner answers, 2026-10-26 ----------------------------------------------------------
+
+def test_the_chosen_swatch_carries_a_check_and_the_others_do_not(loaded: Page):
+    """A11Y-10: the selected swatch differs from a focused one by more than ring colour."""
+    page = loaded
+    page.locator(f"{ROW} .icon-btn").first.click()
+    chosen = page.locator('#mark-pop .swatch-btn[aria-pressed="true"]').first
+    other = page.locator('#mark-pop .swatch-btn[aria-pressed="false"]').first
+    expect(chosen).to_be_visible()
+    after = chosen.evaluate("el => { const s = getComputedStyle(el, '::after');"
+                            " return [s.content, s.borderRightWidth, s.borderBottomWidth, s.borderRightColor]; }")
+    assert after[0] not in ("none", "normal", ""), after
+    assert after[1] == "3px" and after[2] == "3px", after
+    assert after[3] == "rgb(255, 255, 255)", after
+    assert other.evaluate("el => getComputedStyle(el, '::after').content") in ("none", "normal")
+
+
+def test_the_after_highlight_is_underlined_not_only_coloured(fresh_page: Page):
+    """A11Y-16: the new part of an After value is underlined as well as shaded."""
+    page = fresh_page
+    _load_text(page, item_map([("w", "Ridge Trail Trail", "")]))
+    _tick(page, page.evaluate("allItems().map(i => i.uid)"))
+    _open_bulk(page, "rename")
+    _set_mode(page, "replace")
+    _type_spec(page, find="Trail", repl="Tr.")
+    hit = page.locator("#mark-dialog .na-after .hit").first
+    expect(hit).to_be_visible()
+    line, thickness = hit.evaluate("el => { const s = getComputedStyle(el); return [s.textDecorationLine, s.textDecorationThickness]; }")
+    assert "underline" in line and thickness == "2px", (line, thickness)
+
+
+def test_a_file_that_fails_to_load_says_so_in_a_dialog_and_ok_returns_home(fresh_page: Page):
+    """A11Y-23 (owner 2026-10-26): "Failed: Could not load file" in a dialog with one
+    button; OK closes it, leaves the status line empty, resets the file input and puts
+    focus on Choose file, on the drop screen."""
+    page = fresh_page
+    page.set_input_files("#file", files=[{"name": "broken.json", "mimeType": "application/json",
+                                          "buffer": b'{"type":"FeatureCollection","features":[{'}])
+    expect(page.locator("#confirm")).to_be_visible()
+    expect(page.locator("#confirm-title")).to_have_text("Failed: Could not load file")
+    expect(page.locator("#confirm-actions button")).to_have_text(["OK"])
+    expect(page.locator("#confirm-actions button")).to_be_focused()
+    expect(page.locator("#status")).to_have_text("")
+    page.keyboard.press("Enter")
+    expect(page.locator("#confirm")).to_be_hidden()
+    expect(page.locator("body")).to_have_attribute("data-stage", "drop")
+    expect(page.locator("#pick")).to_be_focused()
+    assert page.evaluate("document.querySelector('#file').value") == ""
+
