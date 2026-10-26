@@ -37,7 +37,10 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-25 (bulk Rename… and Change note…, branch `feat/bulk-rename`): **1816 passed** with the web dev server up; without
+Baseline as of 2026-10-25, late (branch `feat/bulk-rename`, round 3: one text rule set, whole-word Find with a highlight per match, onX's name limits warned like notes, a name required to export): **2016 passed** with the web dev server up; without
+it the `tests/web` tests skip. Round 3 added 200 (text rules 39, whole-word Find and name flags 92, limits and the names confirm 69).
+
+Baseline before round 3 (bulk Rename… and Change note…): **1816 passed** with the web dev server up; without
 it the `tests/web` tests skip. The feature added 427: 135 core tests of `web/rename.js` (`tests/web/test_rename_core.py`), 206 bridge and writer tests
 (`tests/test_bulk_prereqs.py`, `tests/test_bulk_round_trip.py`), 83 dialog tests (`tests/web/test_bulk_text.py`) and 3 timing tests (`tests/web/test_bulk_perf.py`).
 Before it, 1389 (the 2026-10-25 leftovers: multi-geometries split, XML-forbidden characters dropped by the writers, instructions.txt marks by item not name, note-as-name blank guard, save_user_mapping path required). (The label inventory test added 2 on 2026-10-25; the leftovers 10 before that; before them 1377, and 1367 before the small engine fixes.)

@@ -14,6 +14,14 @@ roadmap and the 2026-08-29 audits are archived (`git show cdd25f3:docs/<name>`).
 
 Small engine fixes: none open (the last ones shipped 2026-10-25, below).
 
+* **Accessibility (WCAG 2.2 A/AA audit, 2026-10-25):** 29 findings, no blockers, in
+  [`docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md`](docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md).
+  Top five, all small: focus hidden under the sticky bars (A11Y-01), focus lost and no page title
+  change after a screen change (A11Y-02), the Now → After lists read poorly by screen readers
+  (A11Y-03, -06), filter and selection counts not announced (A11Y-04), focus vs selection in the
+  More menu and swatches (A11Y-09, -10). A11Y-05 (nameless rows named "Select ") is fixed. Fixes
+  that touch a decision (UI-26, UI-36, UI-39, ENG-02) need the owner's OK first.
+
 Wording follow-up (owner, 2026-10-25; LABELS.md §15 #8):
 
 * **Error and failure messages: one pattern.** Today's variants, all to review together:

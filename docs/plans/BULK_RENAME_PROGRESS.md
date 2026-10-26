@@ -917,7 +917,7 @@ The owner may reword.
 | track | owns | state |
 |---|---|---|
 | U whole-word Find, per-match highlight, core flags (**done**, merged) | `web/rename.js` (whole-word matching; per-row match marks for the highlight; flags `name-over-limit` (UTF-8 bytes > `ctx.nameLimit`, default 255) and `name-empty` (a name result that is ""), both on changed rows only, warn-only); in `web/app.js` only the dialog: `openTextBulk` (ctx gets `nameLimit: NAME_LIMIT`), `drawTextBulk`, `afterCell` / `markChange`, `textFlag` (sentences from 7.4); tests in `tests/web/test_rename_core.py`, `tests/web/test_bulk_text.py`, `tests/web/test_text_rules.py`, `tests/bulk_rename_vectors.py`; DECISIONS UI-39 matching and highlight lines | running |
-| V limits and name-required outside the dialog (**stopped, unmerged**) | `web/bridge.py` (`ONX_IMPORT_NAME_LIMIT = 255` bytes, `ONX_FOLDER_NAME_LIMIT = 50` characters, instructions.txt lines, an export guard), `web/app.js` everything outside the dialog (`NAME_LIMIT` / `FOLDER_NAME_LIMIT` read at boot like `NOTE_LIMIT`; row and folder caution marks; Export blocked with the 7.4 status; the export screen warning), `scripts/qa/fuzz_ui.py`, every test that exports a blank name or expects a long name unflagged outside the core, `docs/design/{DECISIONS,LABELS}.md`, `docs/FAQ.md` + `web/faq.html` | running |
+| V limits and name-required outside the dialog (**done**, merged) | `web/bridge.py` (`ONX_IMPORT_NAME_LIMIT = 255` bytes, `ONX_FOLDER_NAME_LIMIT = 50` characters, instructions.txt lines, an export guard), `web/app.js` everything outside the dialog (`NAME_LIMIT` / `FOLDER_NAME_LIMIT` read at boot like `NOTE_LIMIT`; row and folder caution marks; Export blocked with the 7.4 status; the export screen warning), `scripts/qa/fuzz_ui.py`, every test that exports a blank name or expects a long name unflagged outside the core, `docs/design/{DECISIONS,LABELS}.md`, `docs/FAQ.md` + `web/faq.html` | running |
 
 **N1 refined (owner, 2026-10-25, after hearing Bitterroots has 7 blank-named items): block, plus a one-click fix.**
 Export with blank-named included items opens a confirm: title "N items need a name" (no period; "1 item needs a
@@ -1167,4 +1167,34 @@ everywhere. Alternative: the kind ("Untitled line", "Untitled area", "Untitled w
 - Not changed: scripts/dark_divide_parity.py and scripts/onx_roundtrip.py call `bridge.export_zip()` directly;
   Dark Divide has no blank names (its tests pass); onX exports never carry one. scripts/qa/probes/probe4.py
   clicks Export on a map it builds (a one-off repro, left as is).
-- (orchestrator) Stopped mid-work when the usage limit was reached; its commits stay on `round3/v-limits`, not merged.
+- 21:00 before the merge: web suite **521 passed** (10 min 31 s, port 8789; 499 + 22 new), non-web 1403.
+  `a5619d5` a comment fix.
+- 21:05 `4a6d1a6` merged feat/bulk-rename (Track U) as the coordinator asked: no conflicts (U's app.js
+  hunks are in the dialog, mine outside it).
+- `77cd631` DECISION (coordinator allowed it): U's `bulkNameSentence(name, limit)` folded into
+  `longNameSentence` (the row mark's sentence; the core's `after` is already the cleaned name, so the
+  measure is the same) and `name-empty` returns `NEEDS_NAME`. Same strings and counts: test_bulk_text's
+  name tests and test_onx_limits_ui.py pass (58). Alternative: keep two copies of the sentence.
+- `a2e4f87` U's handoff: DECISIONS UI-39 "Rows" (an empty result is saved blank, Export then asks to name
+  it Untitled) and "Warn, don't block" (the two name sentences; duplicates still get no line); LABELS 5.1
+  rows for the dialog's two name sentences; docs/plans/BULK_RENAME.md 3.1 one note ("Superseded in part by
+  the progress tracker's section 7.4 …"); fuzzer `bulk_spec` draws a whole word of a ticked value as Find
+  35% of the time (W1), slices 25%, empty 15%, the pool the rest. `BULK_FLAGS` already had both flags.
+- Non-web after the merge: **1403 passed**.
+- 21:40 final runs at `a2e4f87`: web suite (tests/web, port 8789) **613 passed** (12 min 43 s; 521 mine +
+  U's 92); non-web **1403 passed**; total 2016. Fuzz smoke, all ok: wave 1 `--maps
+  bitterroots,hostile,twins,big1500 --seeds 1 --n 150 --every-map` (exports 7 / 9 / 9 / 9) and wave 2 on
+  big200, onx_areas, onx_trips, bitterroots, 150 each (exports 4 / 4 / 1 / 4); the names confirm came up
+  in 5 of those exports (Cancel 2, Name them Untitled 3), every check green, no blank `<name>`. Dev server
+  stopped.
+- Unfinished / for the owner: the walkthrough screenshots were not regenerated; no 1440x900 side-by-side
+  pass of every page (only the new states were screenshotted, by eye, scratch only); owner questions:
+  "Name it Untitled" for one item, Cancel vs Name them Untitled as the default, the name mark's place
+  (after the field, close to the note's mark on a row with both).
+- (orchestrator) Resumed after the session limit, finished, merged into `feat/bulk-rename`.
+- (orchestrator, round-3 integration) Chrome click-through on the merged build: Bitterroots shows 7 "Needs a name to
+  export." marks; Export opens "7 items need a name" (Cancel focused); Cancel sets "7 items need a name." and
+  focuses the first blank name; Name them Untitled names all 7 and finishes the export. A 300-character name shows
+  "onX imports only the first 255 bytes of a name. About 45 characters will be cut." The first full run failed
+  one timing test (a 10,000-character Find took ~11 ms against 10); fixed in `a771908` (skip the pattern when
+  Find is longer than every value). Full suite after it: **2016 passed**. AGENTS.md baseline updated.
