@@ -39,7 +39,9 @@ from tests.naughty_strings import NAUGHTY, NAUGHTY_TEXTS
 REPO = Path(__file__).resolve().parents[2]
 RENAME_JS = REPO / "web" / "rename.js"
 LIMIT = 512
-FLAGS = {"unchanged", "note-over-limit", "chars-removed"}
+NAME_LIMIT = 255      # onX's importer keeps the first 255 UTF-8 bytes of a name (tracker 7.4 L3)
+# DEVIATION (tracker 7.4 L1, N1): two name flags join the plan's three; both warn only.
+FLAGS = {"unchanged", "note-over-limit", "chars-removed", "name-over-limit", "name-empty"}
 
 sys.path.insert(0, str(REPO))
 from cairn.core.writers import xml_safe as writer_xml_safe  # noqa: E402
@@ -80,7 +82,8 @@ _HARNESS = r"""
       const ms = performance.now() - t0;
       return { ok: true, ms, result: {
         changed: out.changed,
-        rows: out.rows.map(r => ({ uid: r.uid, before: U(r.before), after: U(r.after), flags: r.flags })),
+        rows: out.rows.map(r => ({ uid: r.uid, before: U(r.before), after: U(r.after), flags: r.flags,
+                                   marks: r.marks })),
       } };
     } catch (e) {
       return { ok: false, error: String((e && e.stack) || e) };
@@ -186,6 +189,87 @@ def _combine(s):
     """A decoded string with every valid surrogate pair as one code point (it is
     already, from utf-16 decoding; this is for strings built in Python)."""
     return s.encode("utf-16-le", "surrogatepass").decode("utf-16-le", "surrogatepass")
+
+
+def units(s):
+    """Length of s in UTF-16 code units, the unit of the core's marks."""
+    return len(s.encode("utf-16-le", "surrogatepass")) // 2
+
+
+def uslice(s, a, b):
+    """s[a:b] counted in UTF-16 code units."""
+    return s.encode("utf-16-le", "surrogatepass")[2 * a:2 * b].decode("utf-16-le", "surrogatepass")
+
+
+def marked(page, before, sp, ctx=None):
+    """(after, flags as a set, the marked texts) for one row."""
+    field = sp["field"]
+    res = transform(page, [_row(uid="u0", **{field: before})], sp, ctx)
+    (row,) = res["rows"]
+    return row["after"], set(row["flags"]), [uslice(row["after"], s, e) for s, e in row["marks"]]
+
+
+# --- whole words (tracker 7.4 W1): an independent reading, for the properties --------
+
+_CLASSES_JS = r"""
+(cps) => {
+  const word = /^[\p{L}\p{M}\p{N}]$/u;
+  const own = /^[\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}]$/u;
+  return cps.map(c => { const s = String.fromCodePoint(c); return [word.test(s), own.test(s)]; });
+}
+"""
+
+
+def char_classes(page, texts) -> dict:
+    """{code point: (a word character, a Han or kana character)} for every code point in
+    texts, from the browser's Unicode tables: the oracle below shares the tables with the
+    core, not its code."""
+    cps = sorted({ord(c) for t in texts for c in _combine(t)})
+    return {cp: tuple(v) for cp, v in zip(cps, page.evaluate(_CLASSES_JS, cps))}
+
+
+def word_spans(s, find, classes):
+    """Where find (non-empty) matches s case-sensitively as whole words, left to right
+    without overlaps, as (start, end) code point indices. A match edge that is a word
+    character other than Han or kana must not touch another such character."""
+    def joins(c):
+        word, own = classes[ord(c)]
+        return word and not own
+    head, tail, m = joins(find[0]), joins(find[-1]), len(find)
+    out, i = [], 0
+    while i + m <= len(s):
+        if (s.startswith(find, i) and not (head and i > 0 and joins(s[i - 1]))
+                and not (tail and i + m < len(s) and joins(s[i + m]))):
+            out.append((i, i + m))
+            i += m
+        else:
+            i += 1
+    return out
+
+
+def replace_words(before, find, repl, classes):
+    """(raw, inserted ranges in UTF-16 units) for a case-sensitive whole-word replace."""
+    raw, ins, at = "", [], 0
+    for s, e in word_spans(before, find, classes):
+        raw += before[at:s]
+        ins.append([units(raw), units(raw) + units(repl)])
+        raw += repl
+        at = e
+    return raw + before[at:], ins
+
+
+def _words(s):
+    """Rough runs of letters, marks and digits (for the generator only)."""
+    import unicodedata
+    out, cur = [], ""
+    for c in s:
+        if unicodedata.category(c)[0] in "LMN":
+            cur += c
+        else:
+            if cur:
+                out.append(cur)
+            cur = ""
+    return out + ([cur] if cur else [])
 
 
 # --- the page ------------------------------------------------------------------------
@@ -364,8 +448,10 @@ def test_note_bytes_in_the_dialog_match_instructions_txt(core):
 
 
 def test_a_3000_character_name_is_stored_whole_and_exported_whole(core):
+    """Kept whole, never cut. DEVIATION (tracker 7.4 L1, superseding the plan's decision 8,
+    no long-name flag): a name over onX's 255 bytes is now flagged name-over-limit."""
     after, flags, _ = one(core, "Camp", names_spec("prefix", text="x" * 3000))
-    assert after == "x" * 3000 + "Camp" and flags == set()
+    assert after == "x" * 3000 + "Camp" and flags == {"name-over-limit"}
 
 
 def test_a_find_string_longer_than_10k_characters_does_not_hang(core):
@@ -423,9 +509,11 @@ def test_a_paired_emoji_survives_the_surrogate_strip(core):
 
 
 def test_turkish_dotted_i_does_not_cross_match_case_insensitively(core):
+    """DEVIATION (tracker 7.4 W1, whole words): the second find was "İ" alone, which no
+    longer matches inside the word; "İSTANBUL" shows the same thing, İ matching only İ."""
     _, flags, changed = one(core, "İstanbul", names_spec("replace", find="istanbul", repl="X"))
     assert flags == {"unchanged"} and changed == 0
-    after, _, changed = one(core, "İstanbul", names_spec("replace", find="İ", repl="I"))
+    after, _, changed = one(core, "İstanbul", names_spec("replace", find="İSTANBUL", repl="Istanbul"))
     assert after == "Istanbul" and changed == 1
 
 
@@ -439,11 +527,15 @@ def test_final_sigma_matches_sigma_without_match_case_and_only_itself_with_it(co
     """Not the plan's test_final_sigma_matches_only_itself: the core uses the browser's
     own RegExp "iu" folding (tracker 5.0 decision), and Unicode simple case folding maps
     final sigma to sigma. So with Match case off "σ" matches σ, σ and ς (3); with it on,
-    only the two σ."""
-    off, _, _ = one(core, "Οδυσσεύς", names_spec("replace", find="σ", repl="x"))
-    on, _, _ = one(core, "Οδυσσεύς", names_spec("replace", find="σ", repl="x", match_case=True))
-    assert off == "Οδυxxεύx" and off.count("x") == 3
-    assert on == "Οδυxxεύς" and on.count("x") == 2
+    only the two σ. DEVIATION (tracker 7.4 W1, whole words): the letters stood inside
+    "Οδυσσεύς", where a one-letter Find no longer matches; here each is a word."""
+    off, _, _ = one(core, "σ σ ς", names_spec("replace", find="σ", repl="x"))
+    on, _, _ = one(core, "σ σ ς", names_spec("replace", find="σ", repl="x", match_case=True))
+    assert off == "x x x" and off.count("x") == 3
+    assert on == "x x ς" and on.count("x") == 2
+    _, flags, _ = one(core, "Οδυσσεύς", names_spec("replace", find="σ", repl="x"))
+    assert flags == {"unchanged"}
+    assert one(core, "ΟΔΥΣΣΕΥΣ", names_spec("replace", find="οδυσσευς", repl="x"))[0] == "x"
 
 
 def test_zero_width_space_and_bom_are_kept_in_names(core):
@@ -482,8 +574,12 @@ def test_fullwidth_and_halfwidth_are_different_characters(core):
 
 
 def test_a_name_of_only_combining_marks_is_kept_not_shown_as_untitled(core):
-    after, flags, changed = one(core, "x\u0301", names_spec("replace", find="x", repl=""))
+    """DEVIATION (tracker 7.4 W1): "x" no longer matches the "x" of "x\\u0301" (a letter
+    with its mark is one word), so the mark stands apart here: "x \\u0301"."""
+    after, flags, changed = one(core, "x \u0301", names_spec("replace", find="x", repl=""))
     assert after == "\u0301" and flags == set() and changed == 1
+    _, flags, _ = one(core, "x\u0301", names_spec("replace", find="x", repl=""))
+    assert flags == {"unchanged"}
 
 
 def test_emoji_only_names_show_as_themselves_and_sort_stably(core):
@@ -576,9 +672,10 @@ def test_cdata_terminator_and_entities_survive_as_text(core):
 
 
 def test_dollar_patterns_in_the_replacement_are_literal(core):
+    """DEVIATION (tracker 7.4 W1): "bab" became "b a b", so the find is a whole word."""
     repl = "$&$1$$$`$'"
     assert one(core, "a", names_spec("replace", find="a", repl=repl))[0] == repl
-    assert one(core, "bab", names_spec("replace", find="a", repl=repl))[0] == "b" + repl + "b"
+    assert one(core, "b a b", names_spec("replace", find="a", repl=repl))[0] == "b " + repl + " b"
 
 
 def test_backslashes_in_find_and_replace_are_literal(core):
@@ -612,18 +709,32 @@ EVERY_MATCH = [
 
 @pytest.mark.parametrize("field,before,find,match_case,after", EVERY_MATCH)
 def test_find_and_replace_changes_every_occurrence_in_a_field(core, field, before, find, match_case, after):
+    """DEVIATION (tracker 7.4 L1): the far-apart name is 700 bytes, so it now carries
+    name-over-limit; the matches are what this test is about."""
     sp = spec("replace", field=field, find=find, repl="Path", match_case=match_case)
-    assert one(core, before, sp) == (after, set(), 1)
+    long_name = field == "name" and len(after.encode("utf-8")) > NAME_LIMIT
+    assert one(core, before, sp) == (after, {"name-over-limit"} if long_name else set(), 1)
 
 
-@pytest.mark.parametrize("before,after", [
-    pytest.param("aaaa", "bb", id="adjacent-matches-aaaa-to-bb"),
-    pytest.param("aaa", "ba", id="overlapping-aaa-goes-left-to-right"),
-    pytest.param("aaaaa", "bba", id="overlapping-aaaaa-goes-left-to-right"),
+@pytest.mark.parametrize("before,find,after", [
+    pytest.param("aa aa", "aa", "b b", id="adjacent-words-aa-aa-to-b-b"),
+    pytest.param("aa aa aa", "aa aa", "b aa", id="overlapping-aa-aa-aa-goes-left-to-right"),
+    pytest.param("aa aa aa aa aa", "aa aa", "b b aa", id="overlapping-five-words-goes-left-to-right"),
+    pytest.param("----", "--", "bb", id="adjacent-punctuation-needs-no-boundary"),
+    pytest.param("---", "--", "b-", id="overlapping-punctuation-goes-left-to-right"),
 ])
-def test_find_aa_replaces_adjacent_and_overlapping_text_left_to_right(core, before, after):
-    got, flags, changed = one(core, before, names_spec("replace", find="aa", repl="b"))
+def test_find_replaces_adjacent_and_overlapping_text_left_to_right(core, before, find, after):
+    """DEVIATION (tracker 7.4 W1): was test_find_aa_replaces_adjacent_and_overlapping_text_
+    left_to_right on "aaaa" / "aaa" / "aaaaa", where "aa" now matches nothing (inside a
+    word). Same intent with whole words, and with punctuation, which needs no boundary."""
+    got, flags, changed = one(core, before, names_spec("replace", find=find, repl="b"))
     assert (got, flags, changed) == (after, set(), 1)
+
+
+@pytest.mark.parametrize("before", ["aaaa", "aaa", "aaaaa"])
+def test_find_aa_matches_nothing_inside_a_longer_word(core, before):
+    _, flags, changed = one(core, before, names_spec("replace", find="aa", repl="b"))
+    assert flags == {"unchanged"} and changed == 0
 
 
 @pytest.mark.parametrize("field", ["name", "desc"])
@@ -645,10 +756,12 @@ def test_empty_find_replaces_the_whole_name(core, match_case):
 
 
 def test_empty_find_with_a_whitespace_only_replacement_saves_blank_names(core):
+    """DEVIATION (tracker 7.4 N1): a blank result is flagged name-empty (warn only); it
+    still counts as a change and is still saved."""
     res = transform(core, _rows(["Camp A", "Camp B", "Lake", "Trail 1", "Peak"]),
                     names_spec("replace", find="", repl="  "))
     assert [r["after"] for r in res["rows"]] == [""] * 5
-    assert all(r["flags"] == [] for r in res["rows"]) and res["changed"] == 5
+    assert all(r["flags"] == ["name-empty"] for r in res["rows"]) and res["changed"] == 5
 
 
 def test_empty_find_replaces_the_whole_note_like_replace_the_note(core):
@@ -699,12 +812,14 @@ def test_set_mode_with_a_blank_note_on_a_row_with_no_note_is_unchanged(core):
 
 
 def test_overlapping_matches_replace_left_to_right(core):
-    assert one(core, "aaa", names_spec("replace", find="aa", repl="b"))[0] == "ba"
+    """DEVIATION (tracker 7.4 W1): was "aaa" find "aa" -> "ba"; whole words now."""
+    assert one(core, "aa aa aa", names_spec("replace", find="aa aa", repl="b"))[0] == "b aa"
 
 
 def test_replace_with_empty_can_empty_a_name_and_saves_it_blank(core):
+    """DEVIATION (tracker 7.4 N1): flagged name-empty, still a change."""
     after, flags, changed = one(core, "Camp", names_spec("replace", find="Camp", repl=""))
-    assert after == "" and flags == set() and changed == 1
+    assert after == "" and flags == {"name-empty"} and changed == 1
 
 
 def test_match_case_toggle_changes_the_count_live(core):
@@ -728,8 +843,9 @@ def test_replace_result_is_trimmed_but_inner_spaces_are_kept_for_names(core):
 
 
 def test_whitespace_only_results_are_trimmed_to_blank_and_shown_untitled(core):
+    """DEVIATION (tracker 7.4 N1): flagged name-empty, still a change."""
     after, flags, changed = one(core, "Camp", names_spec("replace", find="Camp", repl=" \t\n "))
-    assert after == "" and flags == set() and changed == 1
+    assert after == "" and flags == {"name-empty"} and changed == 1
     after, flags, changed = one(core, "", names_spec("prefix", text="  "))
     assert flags == {"unchanged"} and changed == 0 and after == ""
 
@@ -784,14 +900,15 @@ def test_pinned_vectors_give_what_they_were_pinned_at(core, label):
 
 
 def test_match_case_on_can_change_a_row_that_match_case_off_leaves_alone(core):
-    """Left-to-right matching means Match case off is not a superset of on: "Aaa" find
-    "aa" replace "Aa" changes with Match case on ("AAa") and not with it off (its "Aa"
-    match at 0 blocks the one at 1). Why property 9's generator rules out self-overlapping
-    finds."""
+    """Left-to-right matching means Match case off is not a superset of on: "Aa aa aa"
+    find "aa aa" replace "Aa aa" changes with Match case on ("Aa Aa aa") and not with it
+    off (its "Aa aa" match at 0 blocks the one at 3). Why property 9's generator rules out
+    self-overlapping finds. DEVIATION (tracker 7.4 W1): was "Aaa" find "aa" replace "Aa",
+    which whole-word matching no longer touches at all."""
     on = PINNED["match_case_overlap_on"]
     off = PINNED["match_case_overlap_off"]
-    r_on = transform(core, [_row(uid="u0", name="Aaa")], on[1])
-    r_off = transform(core, [_row(uid="u0", name="Aaa")], off[1])
+    r_on = transform(core, [_row(uid="u0", name="Aa aa aa")], on[1])
+    r_off = transform(core, [_row(uid="u0", name="Aa aa aa")], off[1])
     assert r_on["changed"] == 1 and r_off["changed"] == 0
 
 
@@ -826,13 +943,19 @@ def gen_vector(rnd: random.Random, *, field=None, mode=None, maxrows=6):
     find = ""
     if mode == "replace" and rnd.random() < 0.8:
         src = rnd.choice(rows).get(field) or ""
+        words = _words(_combine(src))
         if src and rnd.random() < 0.7:
-            a = rnd.randrange(len(src))
-            find = src[a:a + rnd.randint(1, 3)]
+            # Whole words since tracker 7.4 W1: mostly a word of a row (it matches),
+            # else a slice, which often starts or ends inside a word (it doesn't).
+            if words and rnd.random() < 0.6:
+                find = rnd.choice(words)
+            else:
+                a = rnd.randrange(len(src))
+                find = src[a:a + rnd.randint(1, 3)]
         else:
             find = gen_text(rnd, 3)
     repl = gen_text(rnd, 5) if rnd.random() < 0.8 else ""
-    ctx = {"noteLimit": rnd.choice([LIMIT, 8, 16, 40])}
+    ctx = {"noteLimit": rnd.choice([LIMIT, 8, 16, 40]), "nameLimit": rnd.choice([NAME_LIMIT, 4, 8, 16])}
     return {"rows": rows, "spec": spec(mode, text=text, find=find, repl=repl,
                                         match_case=rnd.random() < 0.5, field=field), "ctx": ctx}
 
@@ -912,9 +1035,12 @@ _PLAIN = list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,;
 
 def test_property_6_dollar_patterns_stay_literal(core):
     """With find and repl non-empty and neither inside the other, the replacement shows
-    up at least as often as find did. repl is drawn from non-space printables (and the
-    $ patterns): cleaning collapses tabs and line breaks and trims outer whitespace, which
-    would change a repl holding them and break the count for a reason that isn't $."""
+    up at least as often as find matched as a whole word, case-sensitively (Match case
+    off only adds matches). repl is drawn from non-space printables (and the $ patterns):
+    cleaning collapses tabs and line breaks and trims outer whitespace, which would change
+    a repl holding them and break the count for a reason that isn't $.
+    DEVIATION (tracker 7.4 W1): the count was before.count(find), every substring; it is
+    now word_spans, the whole-word matches, so the property keeps its meaning."""
     rnd = random.Random(106)
     vs = []
     while len(vs) < 300:
@@ -925,11 +1051,18 @@ def test_property_6_dollar_patterns_stay_literal(core):
             continue
         v["spec"]["repl"] = repl
         vs.append(v)
+    field_of = lambda v: v["spec"]["field"]   # noqa: E731
+    classes = char_classes(core, [_before(row, field_of(v)) for v in vs for row in v["rows"]]
+                           + [v["spec"]["find"] for v in vs])
+    matched = 0
     for v, res in zip(vs, _results(core, vs)):
-        field, find, repl = v["spec"]["field"], v["spec"]["find"], v["spec"]["repl"]
+        field, find, repl = field_of(v), _combine(v["spec"]["find"]), v["spec"]["repl"]
         for r, row in zip(res["rows"], v["rows"]):
             before = _combine(_before(row, field))
-            assert _combine(r["after"]).count(repl) >= before.count(_combine(find)), (v, r)
+            n = len(word_spans(before, find, classes))
+            matched += n
+            assert _combine(r["after"]).count(repl) >= n, (v, r)
+    assert matched >= 100, matched     # the generator does reach whole-word matches
 
 
 def test_property_7_changed_counts_the_rows_not_flagged_unchanged(core):
@@ -955,10 +1088,25 @@ def test_property_8_note_over_limit_iff_the_note_bytes_exceed_the_limit(core):
         for r in res["rows"]:
             over = "unchanged" not in r["flags"] and utf8_len(r["after"]) > limit
             assert ("note-over-limit" in r["flags"]) == over, (v, r)
+        assert not any({"name-over-limit", "name-empty"} & set(r["flags"]) for r in res["rows"]), v
     rnd = random.Random(1080)
     vs = [gen_vector(rnd, field="name") for _ in range(100)]
     for v, res in zip(vs, _results(core, vs)):
         assert not any("note-over-limit" in r["flags"] for r in res["rows"]), v
+
+
+def test_property_name_over_limit_iff_a_changed_name_is_over_the_name_limit_in_bytes(core):
+    """Tracker 7.4 L1: the twin of property 8, with the same byte measure (UTF-8)."""
+    rnd = random.Random(1081)
+    vs = [gen_vector(rnd, field="name") for _ in range(300)]
+    flagged = 0
+    for v, res in zip(vs, _results(core, vs)):
+        limit = v["ctx"]["nameLimit"]
+        for r in res["rows"]:
+            over = "unchanged" not in r["flags"] and utf8_len(r["after"]) > limit
+            flagged += over
+            assert ("name-over-limit" in r["flags"]) == over, (v, r)
+    assert flagged >= 30, flagged
 
 
 _FOLD_EXCLUDED = set("İı\u212a\u017f")
@@ -981,7 +1129,9 @@ def test_property_9_match_case_on_changes_a_subset_of_the_rows_it_changes_off(co
         if rnd.random() < 0.7:    # plant a case variant so there is something to match
             r0 = rnd.choice(v["rows"])
             variant = "".join(rnd.choice([c.lower(), c.upper()]) for c in find)
-            r0[field] = (r0.get(field) or "") + rnd.choice(["", " "]) + variant
+            # DEVIATION (tracker 7.4 W1): planted as a word of its own (it was glued on
+            # with "" or " ", and glued on it would now match nothing).
+            r0[field] = (r0.get(field) or "") + rnd.choice([" ", "-", "("]) + variant + rnd.choice(["", ".", " x"])
         if any(c in _FOLD_EXCLUDED for row in v["rows"] for c in (row.get(field) or "")):
             continue
         repl = "".join(rnd.choice(letters) for _ in range(rnd.randint(0, 3)))
@@ -1034,12 +1184,16 @@ def test_property_11_a_blank_name_comes_only_from_a_blank_cleaned_result(core):
             if r["after"] == "":
                 assert ("unchanged" in r["flags"]) == (before == ""), (v, r)
                 assert "note-over-limit" not in r["flags"]
+            # Tracker 7.4 N1: a changed row whose name is now blank says so (warn only).
+            assert ("name-empty" in r["flags"]) == (r["after"] == "" and "unchanged" not in r["flags"]), (v, r)
             if "Untitled" in r["after"]:
                 assert "Untitled" in before or "Untitled" in typed, (v, r)
 
 
-def test_property_12_flags_are_only_the_three_known_ones(core):
-    """No "empty" (decision 17), no duplicate flag (decision 3); "unchanged" stands alone."""
+def test_property_12_flags_are_only_the_known_ones(core):
+    """No "empty" blocking flag (decision 17), no duplicate flag (decision 3); "unchanged"
+    stands alone. DEVIATION (tracker 7.4 L1, N1): was ..._the_three_known_ones; the name
+    flags name-over-limit and name-empty (both warn only) make five."""
     rnd = random.Random(112)
     vs = [gen_vector(rnd) for _ in range(300)]
     for v, res in zip(vs, _results(core, vs)):
@@ -1069,3 +1223,301 @@ def test_property_chars_removed_iff_the_raw_value_held_a_forbidden_character(cor
             else:
                 dirty = bool(_XML_INVALID_RE.search(_combine(raw)))
                 assert ("chars-removed" in r["flags"]) == dirty, (v, r)
+
+
+# =====================================================================================
+# Whole words (tracker 7.4 W1): a match never starts or ends inside a word
+# =====================================================================================
+
+WHOLE_WORDS = [
+    # (before, find, repl, after; None = no match, the row is unchanged)
+    pytest.param("Sawtooth TH", "TH", "Trailhead", "Sawtooth Trailhead", id="th-is-never-found-inside-sawtooth"),
+    pytest.param("Trailhead", "Trail", "Path", None, id="trail-is-never-found-inside-trailhead"),
+    pytest.param("Trail Trailhead Trail", "Trail", "Path", "Path Trailhead Path", id="only-the-whole-words-change"),
+    pytest.param("TH.", "TH", "Trailhead", "Trailhead.", id="a-full-stop-is-a-boundary-and-is-kept"),
+    pytest.param("Bob's Camp", "Bob", "Rob", "Rob's Camp", id="an-apostrophe-is-a-boundary"),
+    pytest.param("Bob’s Camp", "Bob", "Rob", "Rob’s Camp", id="a-curly-apostrophe-is-a-boundary"),
+    pytest.param("Lake-TH", "TH", "Trailhead", "Lake-Trailhead", id="a-hyphen-is-a-boundary"),
+    pytest.param("(TH)", "TH", "Trailhead", "(Trailhead)", id="brackets-are-boundaries"),
+    pytest.param("TH/Camp", "TH", "Trailhead", "Trailhead/Camp", id="a-slash-is-a-boundary"),
+    pytest.param("TH_2", "TH", "Trailhead", "Trailhead_2", id="an-underscore-is-a-boundary"),
+    pytest.param("Camp\u00A0A", "A", "B", "Camp\u00A0B", id="a-no-break-space-is-a-boundary"),
+    pytest.param("A\U0001f525B", "A", "X", "X\U0001f525B", id="an-emoji-is-a-boundary"),
+    pytest.param("TH2", "TH", "Trailhead", None, id="a-digit-after-is-part-of-the-word"),
+    pytest.param("2TH", "TH", "Trailhead", None, id="a-digit-before-is-part-of-the-word"),
+    pytest.param("Camp2", "2", "3", None, id="a-digit-inside-a-word-is-not-found"),
+    pytest.param("Camp 2", "2", "3", "Camp 3", id="a-number-on-its-own-is-found"),
+    pytest.param("Café", "Caf", "X", None, id="an-accented-letter-is-a-letter"),
+    pytest.param("Cafe\u0301", "Cafe", "X", None, id="a-combining-accent-belongs-to-its-letter"),
+    pytest.param("Zürich Ost", "Zürich", "Zurich", "Zurich Ost", id="an-accented-word-is-found-whole"),
+]
+
+
+@pytest.mark.parametrize("before,find,repl,after", WHOLE_WORDS)
+def test_find_matches_whole_words_only(core, before, find, repl, after):
+    got, flags, changed = one(core, before, names_spec("replace", find=find, repl=repl))
+    if after is None:
+        assert (got, flags, changed) == (before, {"unchanged"}, 0)
+    else:
+        assert (got, flags, changed) == (after, set(), 1)
+
+
+EDGES = [
+    pytest.param("Campsite - Oct 9th (rainy)", "(rainy)", "", "Campsite - Oct 9th",
+                 id="a-find-in-brackets-matches-after-a-space"),
+    pytest.param("x(rainy)y", "(rainy)", "", "xy", id="a-find-in-brackets-needs-no-boundary-at-all"),
+    pytest.param("a - b", " - ", " · ", "a · b", id="a-spaced-dash-matches-between-words"),
+    pytest.param("Camp...", "...", "…", "Camp…", id="punctuation-only-matches-anywhere"),
+    pytest.param("Oct 9th (rainy)", "9th (", "10th (", "Oct 10th (rainy)",
+                 id="a-word-edge-is-still-checked-before-9th"),
+    pytest.param("Oct 19th (rainy)", "9th (", "10th (", None, id="9th-is-not-found-inside-19th"),
+    pytest.param("(rainy)", "rainy)", "dry)", "(dry)", id="a-word-start-after-a-bracket"),
+    pytest.param("(brainy)", "rainy)", "dry)", None, id="rainy-is-not-found-inside-brainy"),
+]
+
+
+@pytest.mark.parametrize("before,find,repl,after", EDGES)
+def test_a_find_that_starts_or_ends_with_punctuation_or_space_checks_only_its_word_edges(
+        core, before, find, repl, after):
+    got, flags, changed = one(core, before, names_spec("replace", find=find, repl=repl))
+    if after is None:
+        assert (got, flags, changed) == (before, {"unchanged"}, 0)
+    else:
+        assert (got, flags, changed) == (after, set(), 1)
+
+
+OWN_WORDS = [
+    pytest.param("日本語の山", "山", "岳", "日本語の岳",
+                 id="han-a-mountain-at-the-end"),
+    pytest.param("日本語の山", "日本", "X", "X語の山",
+                 id="han-two-characters-at-the-start"),
+    pytest.param("山岳", "山", "X", "X岳", id="han-inside-a-compound"),
+    pytest.param("\U00020000山", "山", "X", "\U00020000X", id="han-after-an-astral-han-character"),
+    pytest.param("ひらがな", "が", "ガ", "ひらガな", id="hiragana"),
+    pytest.param("東京タワー", "タワー", "Tower", "東京Tower",
+                 id="katakana-with-the-prolonged-sound-mark"),
+    pytest.param("ラーメン屋", "メン", "X", "ラーX屋",
+                 id="katakana-inside-a-word"),
+    pytest.param("山A", "A", "B", "山B", id="a-latin-letter-after-han-is-a-word"),
+    pytest.param("A山", "A", "B", "B山", id="a-latin-letter-before-han-is-a-word"),
+    pytest.param("第2号", "2", "3", "第3号", id="a-digit-between-han-characters-is-a-word"),
+]
+
+
+@pytest.mark.parametrize("before,find,repl,after", OWN_WORDS)
+def test_han_and_kana_characters_are_words_of_their_own(core, before, find, repl, after):
+    assert one(core, before, names_spec("replace", find=find, repl=repl)) == (after, set(), 1)
+
+
+@pytest.mark.parametrize("before,find,after", [
+    pytest.param("서울시", "서울", None, id="seoul-is-not-found-inside-seoul-city"),
+    pytest.param("서울시", "시", None, id="city-is-not-found-at-the-end-of-a-word"),
+    pytest.param("서울 시청", "서울", "X 시청", id="a-spaced-word-is-found"),
+])
+def test_hangul_is_an_ordinary_word_character(core, before, find, after):
+    """Korean is written with spaces, so Hangul follows the Latin rule."""
+    got, _flags, changed = one(core, before, names_spec("replace", find=find, repl="X"))
+    assert (got, changed) == ((before, 0) if after is None else (after, 1))
+
+
+@pytest.mark.parametrize("before,after", [
+    pytest.param("ภ\u0E39เขาไฟ", None, id="inside-an-unspaced-run-nothing"),
+    pytest.param("ภ\u0E39 เขา", "ภ\u0E39 X", id="a-run-of-its-own-is-found"),
+])
+def test_thai_has_no_spaces_so_a_find_matches_only_a_whole_run(core, before, after):
+    """A known limit (DECISIONS UI-39): Thai and other scripts written without spaces are
+    ordinary word characters, so a Find matches only a whole unspaced run."""
+    got, _flags, changed = one(core, before, names_spec("replace", find="เขา", repl="X"))
+    assert (got, changed) == ((before, 0) if after is None else (after, 1))
+
+
+def test_match_case_with_whole_words(core):
+    before = "TH th Th Sawtooth SOUTH"
+    assert one(core, before, names_spec("replace", find="th", repl="X"))[0] == "X X X Sawtooth SOUTH"
+    assert one(core, before, names_spec("replace", find="th", repl="X", match_case=True))[0] == \
+        "TH X Th Sawtooth SOUTH"
+
+
+# =====================================================================================
+# The highlight: marks, ranges into after (tracker 7.4 W2)
+# =====================================================================================
+
+MARKS = [
+    pytest.param("Ridge Trail Trail", names_spec("replace", find="Trail", repl="Path"),
+                 "Ridge Path Path", ["Path", "Path"], id="each-replaced-match"),
+    pytest.param("Sawtooth TH", names_spec("replace", find="TH", repl="Trailhead"),
+                 "Sawtooth Trailhead", ["Trailhead"], id="only-the-whole-word-match"),
+    pytest.param("Trail at the top\nthen the Trail down", notes_spec("replace", find="Trail", repl="Path"),
+                 "Path at the top\nthen the Path down", ["Path", "Path"], id="matches-on-two-lines-of-a-note"),
+    pytest.param("Camp A", names_spec("replace", find="a", repl="a"), "Camp a", ["a"],
+                 id="a-match-replaced-by-another-case-is-marked"),
+    pytest.param("\U0001f525 Trail", names_spec("replace", find="Trail", repl="Path"),
+                 "\U0001f525 Path", ["Path"], id="offsets-count-utf16-units-after-an-emoji"),
+    pytest.param("Camp", names_spec("prefix", text="Base "), "Base Camp", ["Base "],
+                 id="add-before-marks-the-added-text"),
+    pytest.param("Camp", names_spec("suffix", text=" 2"), "Camp 2", [" 2"], id="add-after-marks-the-added-text"),
+    pytest.param("line one", notes_spec("prefix", text="Top"), "Top\nline one", ["Top"],
+                 id="a-notes-add-before-marks-the-text-not-the-line-break"),
+    pytest.param("", notes_spec("suffix", text="End"), "End", ["End"], id="add-after-on-a-blank-note"),
+    pytest.param("Campsite - Oct 9th (rainy)", names_spec("replace", find="", repl="Campsite"),
+                 "Campsite", ["Campsite"], id="an-empty-find-marks-the-whole-new-value"),
+    pytest.param("old", notes_spec("set", text="see north"), "see north", ["see north"],
+                 id="replace-the-note-marks-the-whole-new-note"),
+    pytest.param("Bear Creek Trail", names_spec("replace", find="Trail", repl=""), "Bear Creek", [],
+                 id="a-pure-deletion-marks-nothing"),
+    pytest.param(" Camp ", names_spec("prefix", text="x"), "x Camp", ["x"],
+                 id="trimming-only-the-old-value-is-followed"),
+    pytest.param("\x01Camp Trail", names_spec("replace", find="Trail", repl="Path"), "Camp Path", ["Path"],
+                 id="a-forbidden-character-dropped-at-the-start-is-followed"),
+    pytest.param("Camp\x01 Trail", names_spec("replace", find="Trail", repl="Path"), "Camp Path", [],
+                 id="a-forbidden-character-dropped-inside-falls-back-to-no-marks"),
+    pytest.param("Camp\tTrail", names_spec("replace", find="Trail", repl="Path"), "Camp Path", [],
+                 id="a-tab-collapsed-inside-a-name-falls-back-to-no-marks"),
+    pytest.param("Camp A", names_spec("replace", find="Camp", repl="  "), "A", [],
+                 id="an-edge-trimmed-into-a-replacement-falls-back-to-no-marks"),
+    pytest.param("Camp", names_spec("prefix", text="  Base "), "Base Camp", [],
+                 id="added-text-trimmed-at-its-edge-falls-back-to-no-marks"),
+    pytest.param("Camp", names_spec("replace", find="Camp", repl=""), "", [], id="a-blank-result-has-no-marks"),
+]
+
+
+@pytest.mark.parametrize("before,sp,after,texts", MARKS)
+def test_marks_cover_each_inserted_text(core, before, sp, after, texts):
+    got, flags, marked_texts = marked(core, before, sp)
+    assert got == after and "unchanged" not in flags
+    assert marked_texts == texts
+
+
+def test_an_unchanged_row_has_no_marks(core):
+    res = transform(core, _rows(["Trailhead", "Camp", ""]), names_spec("replace", find="Trail", repl="Path"))
+    assert [r["marks"] for r in res["rows"]] == [[], [], []]
+
+
+# =====================================================================================
+# Name flags (tracker 7.4 L1, N1): warn only, on changed rows only
+# =====================================================================================
+
+@pytest.mark.parametrize("name,nbytes", [
+    pytest.param("a" * 255, 255, id="255-ascii-bytes"),
+    pytest.param("a" * 256, 256, id="256-ascii-bytes"),
+    pytest.param("é" * 127 + "a", 255, id="255-bytes-of-two-byte-letters"),
+    pytest.param("é" * 128, 256, id="256-bytes-of-two-byte-letters"),
+    pytest.param("日" * 85, 255, id="255-bytes-of-han"),
+    pytest.param("日" * 86, 258, id="258-bytes-of-han"),
+    pytest.param("a" * 251 + "\U0001f525", 255, id="255-bytes-ending-in-an-emoji"),
+    pytest.param("a" * 252 + "\U0001f525", 256, id="256-bytes-with-the-emoji-straddling-the-cut"),
+])
+def test_a_name_over_255_bytes_is_flagged_and_kept_whole(core, name, nbytes):
+    assert len(name.encode("utf-8")) == nbytes
+    after, flags, changed = one(core, "Camp", names_spec("replace", find="", repl=name))
+    assert after == name and changed == 1
+    assert flags == ({"name-over-limit"} if nbytes > NAME_LIMIT else set())
+
+
+def test_the_name_limit_comes_from_ctx_and_defaults_to_255(core):
+    def flags_for(name, ctx):
+        (row,) = transform(core, [_row(uid="u0", name="Camp")], names_spec("replace", repl=name), ctx)["rows"]
+        return set(row["flags"])
+    assert flags_for("a" * 11, {"nameLimit": 10}) == {"name-over-limit"}
+    assert flags_for("a" * 10, {"nameLimit": 10}) == set()
+    for ctx in ({"noteLimit": LIMIT}, {"nameLimit": None}, {"nameLimit": "255"}, {"nameLimit": -1},
+                {"nameLimit": float("nan")}):
+        assert flags_for("a" * 256, ctx) == {"name-over-limit"}, ctx
+        assert flags_for("a" * 255, ctx) == set(), ctx
+
+
+def test_an_empty_name_result_is_flagged_name_empty_and_still_counts_as_a_change(core):
+    after, flags, changed = one(core, "Camp", names_spec("replace", find="Camp", repl=""))
+    assert (after, flags, changed) == ("", {"name-empty"}, 1)
+
+
+def test_name_flags_are_on_changed_rows_only(core):
+    """A long or blank name nobody changed is left to the list's own marks (Track V)."""
+    for sp in (names_spec("replace", find="zzz", repl="x"), names_spec("prefix", text="  "),
+               names_spec("prefix")):
+        res = transform(core, _rows(["", "a" * 300]), sp)
+        assert [r["flags"] for r in res["rows"]] == [["unchanged"], ["unchanged"]], sp
+
+
+def test_notes_never_get_name_flags(core):
+    for text in ("", "a" * 300):
+        _after, flags, changed = one(core, "abc", notes_spec("set", text=text))
+        assert flags == set() and changed == 1, len(text)
+
+
+# =====================================================================================
+# Properties of whole words and marks
+# =====================================================================================
+
+
+def test_property_whole_word_find_agrees_with_an_independent_oracle_when_match_case_is_on(core):
+    """With Match case on, a Python reading of the rule (word_spans) gives the same after,
+    and, when cleaning left raw as it was, the same marks; otherwise every mark still
+    covers exactly the replacement. 300 seeded vectors."""
+    rnd = random.Random(115)
+    vs = []
+    for _ in range(300):
+        v = gen_vector(rnd, mode="replace")
+        sp = v["spec"]
+        sp["matchCase"] = True
+        if not sp["find"]:
+            words = [w for row in v["rows"] for w in _words(_combine(row.get(sp["field"]) or ""))]
+            sp["find"] = rnd.choice(words) if words else "x"
+        vs.append(v)
+    classes = char_classes(core, [row.get(v["spec"]["field"]) or "" for v in vs for row in v["rows"]]
+                           + [v["spec"]["find"] for v in vs])
+    hits = 0
+    for v, res in zip(vs, _results(core, vs)):
+        field = v["spec"]["field"]
+        find, repl = _combine(v["spec"]["find"]), _combine(v["spec"]["repl"])
+        clean = py_clean_name if field == "name" else py_clean_note
+        for r, row in zip(res["rows"], v["rows"]):
+            before = _combine(_before(row, field))
+            raw, ins = replace_words(before, find, repl, classes)
+            after = clean(raw)
+            same = before if field == "name" else py_written_note(before)
+            if raw == before or after == same:
+                assert (r["flags"], r["after"], r["marks"]) == (["unchanged"], before, []), (v, r)
+                continue
+            hits += 1
+            assert r["after"] == after and "unchanged" not in r["flags"], (v, r)
+            if after == raw:
+                assert r["marks"] == [m for m in ins if m[0] != m[1]], (v, r)
+            else:
+                assert all(uslice(after, s, e) == repl for s, e in r["marks"]), (v, r)
+    assert hits >= 100, hits
+
+
+def test_property_marks_are_ordered_inside_after_and_cover_only_inserted_text(core):
+    """Every mode, Match case on or off: marks are non-empty, in order, without overlaps,
+    inside after, and each covers exactly the inserted text (Replace with, or the Text
+    field). Where the raw value is known and cleaning left it alone, the one mark is
+    exactly where the text went."""
+    rnd = random.Random(116)
+    vs = [gen_vector(rnd) for _ in range(300)]
+    exact = 0
+    for v, res in zip(vs, _results(core, vs)):
+        sp = v["spec"]
+        field, mode = sp["field"], sp["mode"]
+        inserted = _combine(sp["repl"] if mode == "replace" else sp["text"])
+        clean = py_clean_name if field == "name" else py_clean_note
+        join = "" if field == "name" else "\n"
+        for r, row in zip(res["rows"], v["rows"]):
+            marks = r["marks"]
+            if "unchanged" in r["flags"]:
+                assert marks == [], (v, r)
+                continue
+            ends = [x for m in marks for x in m]
+            assert ends == sorted(ends) and all(s < e for s, e in marks), (v, r)
+            assert not ends or ends[-1] <= units(r["after"]), (v, r)
+            assert all(uslice(r["after"], s, e) == inserted for s, e in marks), (v, r)
+            if mode == "replace" and sp["find"]:
+                continue
+            before = _combine(_before(row, field))
+            raw = (inserted + join + before if mode == "prefix" else before + join + inserted
+                   if mode == "suffix" else inserted)
+            if clean(raw) == raw and inserted:
+                start = 0 if mode != "suffix" else units(raw) - units(inserted)
+                assert marks == [[start, start + units(inserted)]], (v, r)
+                exact += 1
+    assert exact >= 100, exact

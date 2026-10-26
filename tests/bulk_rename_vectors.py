@@ -103,23 +103,25 @@ ROUND_TRIP_NAMES = [
     ("prefix_collapses_tab_and_newline", "Camp\tA \n B", spec("prefix", text="x"), "xCamp A B"),
     ("prefix_keeps_space_runs", "Camp  A", spec("prefix", text="x"), "xCamp  A"),
     ("prefix_long_3000", "Camp", spec("prefix", text="x" * 3000), "x" * 3000 + "Camp"),
-    ("dollar_patterns_literal", "bab", spec("replace", find="a", repl="$&$1$$$`$'"),
-     "b$&$1$$$`$'b"),
+    # Find matches whole words only (tracker 7.4 W1), so the find stands alone in "b a b".
+    ("dollar_patterns_literal", "b a b", spec("replace", find="a", repl="$&$1$$$`$'"),
+     "b $&$1$$$`$' b"),
     ("backslashes_literal", "a\\b", spec("replace", find="\\", repl="\\\\"), "a\\\\b"),
     ("regex_specials_literal", "x.*+?^$()[]{}|y", spec("replace", find=".*+?^$()[]{}|", repl="-"),
      "x-y"),
-    ("overlapping_left_to_right", "aaa", spec("replace", find="aa", repl="b"), "ba"),
+    ("overlapping_left_to_right", "aa aa aa", spec("replace", find="aa aa", repl="b"), "b aa"),
     ("match_case_off_both", "Camp camp", spec("replace", find="camp", repl="Site"), "Site Site"),
     ("match_case_on_one", "Camp camp", spec("replace", find="camp", repl="Site", match_case=True),
      "Camp Site"),
-    ("final_sigma_case_off", "Οδυσσεύς", spec("replace", find="σ", repl="s"), "Οδυssεύs"),
-    ("turkish_dotted_i", "İstanbul", spec("replace", find="İ", repl="I"), "Istanbul"),
+    ("final_sigma_case_off", "σ σ ς", spec("replace", find="σ", repl="s"), "s s s"),
+    ("turkish_dotted_i", "İstanbul", spec("replace", find="İSTANBUL", repl="Istanbul"), "Istanbul"),
     ("empty_find_whole_value", CAMPSITES[0], spec("replace", repl="Campsite"), "Campsite"),
     ("empty_find_whitespace_is_blank", "Camp B", spec("replace", repl="  "), ""),
     ("find_consumes_the_name", "Camp", spec("replace", find="Camp"), ""),
     ("whitespace_result_is_blank", "Camp", spec("replace", find="Camp", repl=" \t\n "), ""),
     ("trim_keeps_inner_spaces", "X Camp A", spec("replace", find="Camp", repl="  "), "X    A"),
-    ("combining_mark_left_alone", "x\u0301", spec("replace", find="x"), "\u0301"),
+    # "x" followed by its accent is one word, so the mark is a word of its own here.
+    ("combining_mark_left_alone", "x \u0301", spec("replace", find="x"), "\u0301"),
     ("emoji_only", "Camp", spec("replace", repl="🔥"), "🔥"),
     ("typed_untitled", "Camp", spec("replace", repl="Untitled"), "Untitled"),
     ("typed_no_name", "Lake", spec("replace", repl="(no name)"), "(no name)"),
@@ -154,12 +156,13 @@ ROUND_TRIP_NOTES = [
 # expected is [(after, flags)] per row, flags as a set. Each has a test of its own in
 # tests/web/test_rename_core.py that says why it is here.
 PINNED = {
-    # Left-to-right matching: with Match case off "Aa" matches at 0 and blocks the match
-    # at 1, so the replacement rewrites "Aa" to itself and the row is unchanged; with it
-    # on, "aa" matches at 1 and the row changes. So rows changed with Match case on are
-    # NOT always a subset of those changed with it off (plan 6.1 property 9).
-    "match_case_overlap_on": ([("Aaa", "")], spec("replace", find="aa", repl="Aa", match_case=True),
-                              [("AAa", set())]),
-    "match_case_overlap_off": ([("Aaa", "")], spec("replace", find="aa", repl="Aa"),
-                               [("Aaa", {"unchanged"})]),
+    # Left-to-right matching: with Match case off "Aa aa" matches at 0 and blocks the
+    # match at 3, so the replacement rewrites "Aa aa" to itself and the row is unchanged;
+    # with it on, "aa aa" matches at 3 and the row changes. So rows changed with Match case
+    # on are NOT always a subset of those changed with it off (plan 6.1 property 9). Whole
+    # words since tracker 7.4 W1 (it was "Aaa" find "aa", which no longer matches at all).
+    "match_case_overlap_on": ([("Aa aa aa", "")], spec("replace", find="aa aa", repl="Aa aa", match_case=True),
+                              [("Aa Aa aa", set())]),
+    "match_case_overlap_off": ([("Aa aa aa", "")], spec("replace", find="aa aa", repl="Aa aa"),
+                               [("Aa aa aa", {"unchanged"})]),
 }
