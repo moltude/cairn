@@ -121,6 +121,9 @@ body[data-stage=edit]{font-size:13px}
 .sec-h{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;
   border-top:1px solid var(--contour);padding:10px 0 6px;cursor:pointer;color:var(--ink);text-align:left}
 .rail-head+.facet .sec-h{border-top:none}
+/* Each header button sits in an h2 for heading navigation (A11Y-27); the h2 adds
+   no look of its own. */
+.sec-wrap{font:inherit;margin:0}
 .sec-h .label{flex:none}
 .sec-sum{flex:1 1 auto;min-width:0;text-align:right;font-size:12px;color:var(--muted);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

@@ -248,7 +248,13 @@ async function boot() {
 /** Show one of drop / edit / done, and move the single #status node into
     that screen's slot (the top bar on drop/done, the rail on edit). */
 function showStage(name) {
-  ["drop", "edit", "done"].forEach(s => $(`#${s}-stage`).classList.toggle("hidden", s !== name));
+  // The class hides (styles.css); the attribute is what HTML asks of the two
+  // <main>s not shown (A11Y-28).
+  ["drop", "edit", "done"].forEach(s => {
+    const el = $(`#${s}-stage`);
+    el.classList.toggle("hidden", s !== name);
+    el.hidden = s !== name;
+  });
   document.body.dataset.stage = name;
   const slot = name === "edit" ? $("#status-rail") : $("#status-top");
   if ($("#status").parentNode !== slot) slot.appendChild($("#status"));
@@ -736,7 +742,7 @@ function folderSection(g, items) {
       <colgroup><col class="c-sel"><col class="c-name"><col class="c-note"><col class="c-icon"></colgroup>
       <thead><tr>
         <th class="selcol"><input type="checkbox" class="folder-all" data-fk="all|${esc(g.key)}" aria-label="Select all shown in ${esc(g.name)}"></th>
-        <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}" aria-label="Sort ${esc(g.name)} by name">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
+        <th class="name-th" aria-sort="${ARIA_SORT[sort]}"><button type="button" class="sort-btn" data-fk="sort|${esc(g.key)}" data-sort="${sort || "none"}">Name${sortIcon(sort)}</button></th><th class="note-th"><span>Note</span></th><th>Icon</th>
       </tr></thead><tbody></tbody></table></div>`;
   el.querySelector("tbody")._own = true;
   const fbox = el.querySelector(".folder-all");
@@ -809,7 +815,7 @@ const firstLine = s => String(s || "").split("\n").map(l => l.trim()).find(Boole
    focus, with line breaks kept, inside the window, selectable and copyable
    (the pointer may move onto it), and gone on Esc. Not the native `title`:
    it drops line breaks on some platforms and can't be styled. */
-const TIP_SRC = ".name-in, .note-btn, .caution";
+const TIP_SRC = ".name-in, .note-btn, .caution, .icon-btn, .line-btn";
 const TIP_HOVER_MS = 450, TIP_FOCUS_MS = 150;   // how long a hover / keyboard focus waits for the tip
 const TIP_GRACE_MS = 200;      // leaving the control or the tip: time to cross from one to the other
 const PRESS_FOCUS_MS = 300;    // focus this soon after a press came from the pointer, not the keyboard
@@ -822,6 +828,8 @@ function tipText(src, viaKey = false) {
   const tr = src.closest("tr[data-uid]");
   const it = tr && allItems().find(i => i.uid === tr.dataset.uid);
   if (!it) return null;
+  // A marker: why it is what it is, always (A11Y-12).
+  if (src.matches(".icon-btn, .line-btn")) return whyText(it) || null;
   if (src.classList.contains("name-in")) {
     // Not while typing in it (the field shows what is typed), unless it was
     // just reached by keyboard.
@@ -1017,6 +1025,24 @@ function fillCaution(it) {
 const cautionMark = (fk, text, cls = "") =>
   `<span class="caution${cls}" tabindex="0" role="img" data-fk="${fk}" aria-label="${esc(text)}">${UI_ICON.caution}</span>`;
 
+/** Why a row's icon (or a line's or area's colour) is what it is: the styled
+    tip on the marker (hover or keyboard focus) and, for screen readers, its
+    aria-description (A11Y-12; it was the native title, which keyboard focus
+    never shows). */
+const whyText = it => it.kind === "waypoints" ? it.why || "" : `${colorName(it.color)} — ${it.why || ""}`;
+/** The note button. Its name starts with the words it shows (A11Y-11), so a
+    voice user can say them: "{first line}, note for {name}", or for a missing
+    note "Add a note for {name}" ("Add a note" shows on hover or keyboard focus).
+    An aria-label rather than hidden text in the button: the empty note's words
+    are visibility:hidden at rest, which would drop them from a name built from
+    the content. */
+function noteButton(it, fk) {
+  const line = firstLine(it.desc), who = it.name || "Untitled";
+  const name = line ? `${line}, note for ${who}` : `Add a note for ${who}`;
+  return `<button type="button" class="note-btn" data-fk="${fk}note" aria-label="${esc(name)}">
+        <span class="note-text${line ? "" : " empty"}">${esc(line || "Add a note")}</span>${UI_ICON.pencil}</button>`;
+}
+
 /** The row for item `it`: `old` (its live row, if it has one) when that is
     still right or can be patched to be, else a new one. */
 function row(it, old = null) {
@@ -1036,15 +1062,14 @@ function row(it, old = null) {
     <td class="namecol"><div class="name-cell"><input class="name-in" data-fk="${fk}name" aria-label="Name of ${esc(it.name || "Untitled")}" placeholder="Untitled" value="${esc(it.name)}">${nameMark ? cautionMark(`${fk}namecaution`, nameMark, " name-caution") : ""}</div>${it.included ? ""
       : `<span class="exc-label">Excluded</span><button type="button" class="exc-chip" data-fk="${fk}include" aria-label="Include ${esc(it.name || "Untitled")}" title="Left out of the export. Click to put it back.">Include</button>`}</td>
     <td class="notecol">${noteOpen ? noteEditor(it) :
-      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}<button type="button" class="note-btn" data-fk="${fk}note" aria-label="Open note for ${esc(it.name || "Untitled")}">
-        <span class="note-text${firstLine(it.desc) ? "" : " empty"}">${esc(firstLine(it.desc) || "Add a note")}</span>${UI_ICON.pencil}</button></div>`}</td>
+      `<div class="note-cell">${caution ? cautionMark(`${fk}caution`, caution) : `<span class="caution-slot" aria-hidden="true"></span>`}${noteButton(it, fk)}</div>`}</td>
     <td class="iconcol">${isWp
-      ? `<button type="button" class="icon-btn" data-fk="${fk}mark" title="${esc(it.why)}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
-          ? `<span class="whymark" title="${esc(it.why)}">Default pin</span>`
+      ? `<button type="button" class="icon-btn" data-fk="${fk}mark" aria-description="${esc(whyText(it))}" aria-label="${esc(iconLabel)}, ${esc(cname)}. Change icon or color">${markerSVG(it.icon, it.hex, 22, 28)}${it.needs_attention
+          ? `<span class="whymark">Default pin</span>`
           // An icon an onX file named that isn't in onX's list (Phase 2 flags
           // it): kept and exported as is, but marked so it gets a look.
           : `<span class="icon-name${it.unknown_icon ? " unknown-icon" : ""}">${esc(it.icon)}</span>`}</button>`
-      : `<div class="icon-cell"><button type="button" class="line-btn" data-fk="${fk}mark" title="${esc(cname)} — ${esc(it.why)}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>${fillMark ? cautionMark(`${fk}fillcaution`, fillMark, " fill-caution") : ""}</div>`}</td>`;
+      : `<div class="icon-cell"><button type="button" class="line-btn" data-fk="${fk}mark" aria-description="${esc(whyText(it))}" aria-label="${rowKindWord(it)}, ${esc(cname)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}. Change ${it.kind === "tracks" ? "line" : "area"}">${lineSVG(it.hex, it.kind, 22, 19, it.style, it.weight)}<span class="icon-name kind">${rowKindWord(it)}</span></button>${fillMark ? cautionMark(`${fk}fillcaution`, fillMark, " fill-caution") : ""}</div>`}</td>`;
   // Unchanged since it was last drawn: leave it be. (Its classes are checked
   // too: openPop, a tick and a drag set some directly.)
   if (old && old._html === html && old.className === cls) return old;
@@ -1264,15 +1289,21 @@ function setSelectAll(on) {
   renderFolders();
 }
 
+/** Patch every selected item; returns how many took a patch. */
 function bulk(patch) {
+  let n = 0;
   selectedItems().forEach(it => {
     const p = typeof patch === "function" ? patch(it) : patch;
     // An empty patch is no edit: it must not leave an empty EDITS entry, which
     // Start over and the leave prompts would count as a change.
-    if (Object.keys(p).length) edit(it, p, { render: false });
+    if (Object.keys(p).length) { edit(it, p, { render: false }); n++; }
   });
   refreshAfterEdit();
+  return n;
 }
+/** More's actions that act at once end with a receipt, like every other bulk
+    action (A11Y-25); nothing when nothing changed. */
+const bulkReceipt = (n, say) => { if (n) setStatus(say(n), "ready"); };
 
 function updateSel() {
   const n = SEL.size;
@@ -1316,11 +1347,19 @@ const weightLabel = w => WEIGHT_NAMES[w] || (w === "2.0" ? "Extra thin" : "Thin"
 const LEAVE = "Leave as is";
 const leaveChip = (cls, on, row = "") =>
   `<button type="button" class="reset-chip ${cls}"${row ? ` data-row="${row}"` : ""} aria-pressed="${on}">${LEAVE}</button>`;
-const secHead = (label, chip = "") => `<div class="sec-row"><span class="label">${label}</span>${chip}</div>`;
+const secHead = (label, chip = "", id = "") =>
+  `<div class="sec-row"><span class="label"${id ? ` id="${id}"` : ""}>${label}</span>${chip}</div>`;
+/* Each row of the popover and the dialog is a group named by its label line
+   (A11Y-07), so its "Leave as is" and its swatches say whose they are: two
+   "Blue"s in an area's popover, two "Leave as is" in a mixed dialog. */
+let GROUP_N = 0;
+const groupId = () => `sec-label-${++GROUP_N}`;
+const groupAttrs = id => `role="group" aria-labelledby="${id}"`;
 /** A colour row: `leave` adds the chip (several items), `current` presses a swatch (one item). */
 function colorRowHTML(row, label, colors, { leave = false, current = null, spread = false } = {}) {
-  return `<div class="pop-sec color-sec" data-row="${row}">
-      ${secHead(label, leave ? leaveChip("color-reset", true, row) : "")}
+  const id = groupId();
+  return `<div class="pop-sec color-sec" data-row="${row}" ${groupAttrs(id)}>
+      ${secHead(label, leave ? leaveChip("color-reset", true, row) : "", id)}
       <div class="palette${spread ? " spread" : ""}" data-row="${row}">${paletteHTML(colors, current)}</div>
     </div>`;
 }
@@ -1329,10 +1368,12 @@ function colorRowHTML(row, label, colors, { leave = false, current = null, sprea
 function lineOptsHTML(style, weight, leave = false) {
   const tog = (attr, k, name, glyph, on) =>
     `<button type="button" class="tog" data-${attr}="${k}" aria-label="${name}" title="${name}" aria-pressed="${on}">${glyph}</button>`;
+  // The group is the whole column, so its "Leave as is" is in it too (A11Y-07).
+  const s = groupId(), w = groupId();
   return `<div class="pop-sec line-opts">
-      <div class="opt-group">${secHead("Style", leave ? leaveChip("style-reset", !style) : "")}<div class="toggles" role="group" aria-label="Style">${
+      <div class="opt-group" ${groupAttrs(s)}>${secHead("Style", leave ? leaveChip("style-reset", !style) : "", s)}<div class="toggles">${
         Object.keys(STYLE_NAMES).map(k => tog("style", k, STYLE_NAMES[k], lineGlyphSVG(k), k === style)).join("")}</div></div>
-      <div class="opt-group">${secHead("Weight", leave ? leaveChip("weight-reset", !weight) : "")}<div class="toggles" role="group" aria-label="Weight">${
+      <div class="opt-group" ${groupAttrs(w)}>${secHead("Weight", leave ? leaveChip("weight-reset", !weight) : "", w)}<div class="toggles">${
         Object.keys(WEIGHT_NAMES).map(k => tog("weight", k, WEIGHT_NAMES[k], lineGlyphSVG("solid", k), k === weight)).join("")}</div></div>
     </div>`;
 }
@@ -1348,8 +1389,9 @@ function syncLineOpts(root, style, weight) {
    what the export writes; the bridge refuses any other fill. */
 const FILL_LABEL = "Blue";
 function fillRowHTML() {
-  return `<div class="pop-sec fill-sec" data-row="fill">
-      ${secHead("Fill", leaveChip("fill-reset", true))}
+  const id = groupId();
+  return `<div class="pop-sec fill-sec" data-row="fill" ${groupAttrs(id)}>
+      ${secHead("Fill", leaveChip("fill-reset", true), id)}
       <div class="palette"><button type="button" class="fill-btn" aria-pressed="false"><span class="fill-swatch" aria-hidden="true"></span>${FILL_LABEL}</button></div>
     </div>`;
 }
@@ -1394,6 +1436,7 @@ function openPop(it, anchor) {
   const isLine = it.kind === "tracks";
   const styled = hasLineStyle(it);   // a line or an area: Style and Weight below the colors
   const pop = $("#mark-pop");
+  const iconId = groupId();
   pop.classList.toggle("line", isLine);
   pop.setAttribute("aria-label", `Change ${isWp ? "icon and color" : isLine ? "line" : "area"} for ${it.name || "Untitled"}`);
   pop.innerHTML = `
@@ -1403,8 +1446,8 @@ function openPop(it, anchor) {
     </div>
     ${isLine ? `<div class="pop-map"></div>` : ""}
     ${colorRowHTML("color", "Color", paletteFor([it]), { current: POP.color, spread: styled })}
-    ${isWp ? `<div class="pop-sec icons">
-      ${secHead("Icon", `<span class="sec-count">${DATA.icons.length} icons</span>`)}
+    ${isWp ? `<div class="pop-sec icons" ${groupAttrs(iconId)}>
+      ${secHead("Icon", `<span class="sec-count">${DATA.icons.length} icons</span>`, iconId)}
       <input type="search" class="icon-search" aria-label="Find an icon" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : styled ? lineOptsHTML(POP.style, POP.weight) : ""}
@@ -1528,6 +1571,7 @@ function openBulk() {
   const hasLn = items.some(hasLineStyle);
   const hasArea = items.some(i => i.kind === "shapes");
   const mixed = hasWp && hasLn;
+  const iconId = groupId();
   const d = $("#mark-dialog");
   d.setAttribute("aria-label", `Change ${hasWp ? "icon and color" : "color and style"} for ${items.length} items`);
   d.innerHTML = `
@@ -1539,8 +1583,8 @@ function openBulk() {
         <div class="na-rows"></div>
       </div>
     </div>
-    ${hasWp ? colorRowHTML("pin", mixed ? "Waypoint color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons">
-      ${secHead("Icon", leaveChip("icon-reset", true))}
+    ${hasWp ? colorRowHTML("pin", mixed ? "Waypoint color" : "Color", DATA.colors, { leave: true }) + `<div class="pop-sec icons" ${groupAttrs(iconId)}>
+      ${secHead("Icon", leaveChip("icon-reset", true), iconId)}
       <input type="search" class="icon-search" aria-label="Find an icon for all selected waypoints" placeholder="Find an icon" autocomplete="off">
       <div class="icon-grid" role="group" aria-label="Icons"></div>
     </div>` : ""}
@@ -1594,7 +1638,15 @@ function drawBulk() {
     const afterMark = isWp ? markerSVG(toIcon, hexOf(toColor) || it.hex, 22, 28)
       : lineSVG(hexOf(toColor) || it.hex, it.kind, 22, 20, BULK.style || it.style, BULK.weight || it.weight);
     // The drawn marks show the change; no "Camp · Blue" words beside them (UI-26).
-    return `<span class="na-cell">${nowMark}<span class="na-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span></span>${UI_ICON.arrow}` +
+    // A screen reader gets them as hidden words after the name (A11Y-03): what
+    // each mark draws, "Now …. After …." Inside the first cell, so the grid
+    // keeps three cells per row.
+    const now = isWp ? `${it.needs_attention ? "Default pin" : it.icon}, ${colorName(it.color)}`
+      : `${rowKindWord(it)}, ${colorName(it.color)}, ${styleLabel(it.style)}, ${weightLabel(it.weight)}`;
+    const after = isWp ? `${BULK.icon || (it.needs_attention ? "Default pin" : it.icon)}, ${colorName(toColor)}`
+      : `${rowKindWord(it)}, ${colorName(toColor)}, ${styleLabel(BULK.style || it.style)}, ${weightLabel(BULK.weight || it.weight)}`;
+    return `<span class="na-cell">${nowMark}<span class="na-name" title="${esc(it.name || "Untitled")}">${esc(it.name || "Untitled")}</span>` +
+      `<span class="sr-only">. Now ${esc(now)}. After ${esc(after)}.</span></span>${UI_ICON.arrow}` +
       `<span class="na-cell">${afterMark}</span>`;
   }).join("");
   d.querySelectorAll(".palette[data-row]").forEach(p => {
@@ -1702,14 +1754,14 @@ function openTextBulk(field) {
     <div class="bulk-head">
       <div class="modal-head plain"><h2 id="bulk-title">${field === "name" ? "Rename" : "Change the note on"} ${plural(rows.length, "item")}</h2>
         <button type="button" class="x bulk-x" aria-label="Close">${UI_ICON.close}</button></div>
-      <div class="mode-row">${TEXT_MODES[field].map(([m, label]) =>
+      <div class="mode-row" role="group" aria-label="Change">${TEXT_MODES[field].map(([m, label]) =>
         `<button type="button" class="tog mode-tog" data-mode="${m}" aria-pressed="false">${label}</button>`).join("")}</div>
       <div class="text-fields"></div>
     </div>
     <div class="pop-sec text-preview">
       <div class="now-after">
         <span class="label">Now</span><span></span><span class="label">After</span>
-        <div class="na-rows"></div>
+        <div class="na-rows" role="list"></div>
       </div>
     </div>
     <div class="pop-foot">
@@ -1875,12 +1927,17 @@ function drawTextBulk() {
     if (!names) {
       // A note's row says whose note it is.
       const name = (BULK.byUid.get(r.uid) || {}).name || "";
-      src = `<div class="na-src"><span class="na-name${name ? "" : " untitled"}"${name ? ` title="${esc(name)}"` : ""}>${esc(name || "Untitled")}</span>${before}</div>`;
+      src = `<div class="na-src"><span class="sr-only">Note for </span><span class="na-name${name ? "" : " untitled"}"${name ? ` title="${esc(name)}"` : ""}>${esc(name || "Untitled")}</span>` +
+        `<span class="sr-only">, now </span>${before}</div>`;
     }
     const flag = textFlag(r);
-    return `<div class="na-row" data-uid="${esc(r.uid)}" data-flags="${esc(r.flags.join(" "))}">${src}${UI_ICON.arrow}` +
+    // A list of rows, each read in words where the screen draws an arrow
+    // (A11Y-06): "Now X, after Y" ("Note for N, now X, after Y"); an unchanged
+    // row "Now X, No change". Hidden spans beside the cells, never in them.
+    return `<div class="na-row" role="listitem" data-uid="${esc(r.uid)}" data-flags="${esc(r.flags.join(" "))}">${names ? `<span class="sr-only">Now </span>` : ""}${src}${UI_ICON.arrow}` +
+      `<span class="sr-only">${same(r) ? ", " : ", after "}</span>` +
       `${same(r) ? textCell("na-after", r.after, names) : afterCell(r, names)}<span class="na-flag">${flag && !same(r) ? UI_ICON.caution : ""}${esc(flag)}</span></div>`;
-  }).join("") + (more > 0 ? `<div class="na-more">and ${more.toLocaleString("en-US")} more</div>` : "");
+  }).join("") + (more > 0 ? `<div class="na-more" role="listitem">and ${more.toLocaleString("en-US")} more</div>` : "");
   const d = $("#mark-dialog");
   d.querySelector(".na-rows").innerHTML = html;
   const summary = `${res.changed.toLocaleString("en-US")} will change · ${unchanged.length.toLocaleString("en-US")} unchanged`;
@@ -2853,6 +2910,14 @@ window.addEventListener("DOMContentLoaded", () => {
     else if (e.key === "ArrowUp") go(i < 0 ? -1 : i - 1);
     else if (e.key === "Home") go(0);
     else if (e.key === "End") go(-1);
+    else if (e.key === "Tab") {
+      // The items aren't Tab stops (tabindex -1, the ARIA menu pattern; A11Y-17):
+      // Tab closes the menu and goes on from More, to Clear (Shift+Tab: Icon &
+      // color…). More takes focus first, before its menu is hidden; the Tab
+      // itself is not prevented.
+      $("#more-btn").focus();
+      closeMenu();
+    }
   };
   const menuAct = (id, fn) => $(id).onclick = () => { closeMenu(); fn(); };
   menuAct("#bulk-move", openMoveTo);
@@ -2865,12 +2930,12 @@ window.addEventListener("DOMContentLoaded", () => {
   // edit): its lines joined by a space, trimmed. A note of only spaces and line
   // breaks would blank the name: that row is left alone (2026-10-25), as is
   // one whose name is that already.
-  menuAct("#bulk-desc", () => bulk(it => {
+  menuAct("#bulk-desc", () => bulkReceipt(bulk(it => {
     const n = CairnRename.cleanName(it.desc || "");
     return n && n !== it.name ? { name: n } : {};
-  }));
-  menuAct("#bulk-exclude", () => bulk({ included: false }));
-  menuAct("#bulk-include", () => bulk({ included: true }));
+  }), n => `Renamed ${plural(n, "item")} from their notes.`));
+  menuAct("#bulk-exclude", () => bulkReceipt(bulk({ included: false }), n => `Excluded ${plural(n, "item")}.`));
+  menuAct("#bulk-include", () => bulkReceipt(bulk({ included: true }), n => `Included ${plural(n, "item")}.`));
   // Every nav's Help (top bar, search row, footer) opens the dialog here.
   document.querySelectorAll(".help-open").forEach(b => b.onclick = openHelp);
   // faq.html / walkthrough.html link here as "./#help".
@@ -2903,6 +2968,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (CONFIRM) trapTab(e, $("#confirm .modal-card"));
       else if (!$("#help").classList.contains("hidden")) trapTab(e, $("#help .modal-card"));
       else if (BULK) trapTab(e, $("#mark-dialog"));
+      else if (POP) trapTab(e, $("#mark-pop"));   // like Move to…: Tab stays in it (A11Y-08)
       return;
     }
     if (e.key === "Escape") {

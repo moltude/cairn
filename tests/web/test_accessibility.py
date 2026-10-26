@@ -287,3 +287,361 @@ def test_walkthrough_landing_shot_alt_says_what_the_picture_shows(page_on):
     page = page_on("walkthrough.html")
     alt = page.locator('img[src="walkthrough/01-landing.webp"]').get_attribute("alt")
     assert alt == "Cairn's landing page: what it does, and a drop zone for a CalTopo export"
+
+
+# --- shared: one node of the accessibility tree ------------------------------------------
+
+
+def _ax(page: Page, selector: str) -> dict:
+    """Role, name and description of the first element matching selector, from Chrome's
+    accessibility tree (CDP)."""
+    cdp = page.context.new_cdp_session(page)
+    try:
+        root = cdp.send("DOM.getDocument", {"depth": 0})["root"]["nodeId"]
+        nid = cdp.send("DOM.querySelector", {"nodeId": root, "selector": selector})["nodeId"]
+        node = cdp.send("Accessibility.getPartialAXTree", {"nodeId": nid, "fetchRelatives": False})["nodes"][0]
+    finally:
+        cdp.detach()
+    val = lambda k: (node.get(k) or {}).get("value", "")   # noqa: E731
+    return {"role": val("role"), "name": val("name"), "description": val("description")}
+
+
+SMALL = [("w", "Camp", "Water here\nsecond line"), ("w", "Lake", ""), ("l", "Trail", ""), ("a", "Zone", "")]
+
+
+def _select_all(page: Page) -> None:
+    page.evaluate("document.activeElement && document.activeElement.blur()")
+    page.keyboard.press("ControlOrMeta+a")
+    expect(page.locator("#selbar")).to_be_visible()
+
+
+# --- A11Y-03: the Icon & color… dialog's Now → After, in words ---------------------------
+
+
+def test_icon_and_color_dialog_rows_say_now_and_after_in_hidden_words(fresh_page: Page):
+    """A11Y-03: each Now → After row carries hidden words for its two marks ("Now Camp,
+    Red. After Summit, Blue."; a line "Line, Blue, Solid, Thin"), updated as choices are
+    picked; the drawing and its three grid cells per row are unchanged."""
+    page = fresh_page
+    _map(page, SMALL)
+    _select_all(page)
+    page.click("#bulk-icon")
+    words = page.locator("#mark-dialog .na-rows .sr-only")
+    expect(words).to_have_text([
+        ". Now Camp, Red. After Camp, Red.", ". Now Camp, Red. After Camp, Red.",
+        ". Now Line, Blue, Solid, Thin. After Line, Blue, Solid, Thin.",
+        ". Now Area, Red, Solid, Thin. After Area, Red, Solid, Thin."])
+    pin = page.get_by_role("group", name="Waypoint color")
+    pin.get_by_role("button", name="Blue", exact=True).click()
+    page.locator('#mark-dialog .icon-pick[data-icon="Summit"]').click()
+    line = page.get_by_role("group", name="Line color")
+    line.get_by_role("button", name="Purple", exact=True).click()
+    page.get_by_role("group", name="Style").get_by_role("button", name="Dashed").click()
+    page.get_by_role("group", name="Weight").get_by_role("button", name="Thick").click()
+    expect(words).to_have_text([
+        ". Now Camp, Red. After Summit, Blue.", ". Now Camp, Red. After Summit, Blue.",
+        ". Now Line, Blue, Solid, Thin. After Line, Purple, Dashed, Thick.",
+        ". Now Area, Red, Solid, Thin. After Area, Purple, Dashed, Thick."])
+    # Visually hidden, inside the first cell: still three grid cells per row.
+    assert page.locator("#mark-dialog .na-rows > *").count() == 3 * 4
+    assert words.first.evaluate("e => [getComputedStyle(e).position, e.getBoundingClientRect().width]") == ["absolute", 1]
+    snap = page.locator("#mark-dialog .now-after").aria_snapshot()
+    assert "Camp . Now Camp, Red. After Summit, Blue." in snap, snap
+
+
+def test_default_pin_rows_say_default_pin(loaded: Page):
+    """A11Y-03: a waypoint on onX's default pin reads "Default pin", as its row does."""
+    page = loaded
+    uid = page.evaluate("allItems().find(i => i.needs_attention).uid")
+    _tick(page, [uid])
+    page.click("#bulk-icon")
+    expect(page.locator("#mark-dialog .na-rows .sr-only")).to_have_text(
+        re.compile(r"^\. Now Default pin, [\w-]+\. After Default pin, [\w-]+\.$"))
+
+
+# --- A11Y-05 (verified, fixed before this round): nameless rows --------------------------
+
+
+def test_a_nameless_rows_controls_are_all_named_untitled(fresh_page: Page):
+    """A11Y-05: no control on a nameless row has a name that ends where the item's name
+    should be ("Select ", "Open note for ")."""
+    page = fresh_page
+    _map(page, [("w", "", "a note"), ("l", "", "")])
+    names = page.locator(f"{ROW} [aria-label]").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
+    assert names and not [n for n in names if n != n.strip() or re.search(r"\b(for|Select|of|Include)$", n)], names
+    assert "Select Untitled" in names and "Name of Untitled" in names
+    assert "a note, note for Untitled" in names and "Add a note for Untitled" in names
+
+
+# --- A11Y-06: the Rename… and Change note… preview --------------------------------------
+
+
+def test_rename_preview_is_a_list_read_as_now_and_after(fresh_page: Page):
+    """A11Y-06: the rows are a list; each reads "Now X, after Y" (an unchanged row "Now X,
+    No change") in hidden words where the arrow is drawn; the cells keep their text."""
+    page = fresh_page
+    _map(page, [("w", "Camp", ""), ("w", "Lake", "")])
+    _select_all(page)
+    _open_bulk(page, "rename")
+    _set_mode(page, "replace")
+    _type_spec(page, find="Camp", repl="Base")
+    rows = page.locator("#mark-dialog .na-rows")
+    assert rows.get_attribute("role") == "list"
+    assert page.locator('#mark-dialog .na-row[role="listitem"]').count() == 2
+    snap = rows.aria_snapshot()
+    assert re.search(r"listitem: Now Camp ?, after Base", snap) and re.search(r"listitem: Now Lake ?, No change", snap), snap
+    # The cells themselves hold only the values (what the tests and the eye read).
+    assert page.locator("#mark-dialog .na-row .na-before").all_text_contents() == ["Camp", "Lake"]
+    assert page.locator("#mark-dialog .na-row .na-after").first.text_content() == "Base"
+    # The hidden words don't take a grid cell: the After value is still in column 3.
+    geo = page.locator("#mark-dialog .na-row").first.evaluate("""r => {
+      const x = s => r.querySelector(s).getBoundingClientRect().left;
+      return [x('.na-before'), x(':scope > svg'), x('.na-after')]; }""")
+    assert geo[0] < geo[1] < geo[2], geo
+
+
+def test_change_note_preview_says_whose_note_each_row_is(fresh_page: Page):
+    """A11Y-06: a note's row reads "Note for Camp, now <note>, after <note>"."""
+    page = fresh_page
+    _map(page, [("w", "Camp", "old"), ("w", "Lake", "")])
+    _select_all(page)
+    _open_bulk(page, "note")
+    _type_spec(page, text="new")
+    snap = page.locator("#mark-dialog .na-rows").aria_snapshot()
+    assert re.search(r"listitem: Note for Camp ?, now old ?, after new old", snap), snap
+    assert re.search(r"listitem: Note for Lake ?, now ?, after new", snap), snap
+    expect(page.locator("#mark-dialog .na-src .na-name")).to_have_text(["Camp", "Lake"])
+
+
+def test_a_long_preview_ends_with_and_n_more_as_a_list_item(fresh_page: Page):
+    """A11Y-06: "and N more" under a cut list is an item of that list, so the list holds
+    only items."""
+    page = fresh_page
+    _map(page, [("w", f"P{k}", "") for k in range(203)])
+    _select_all(page)
+    _open_bulk(page, "rename")
+    _type_spec(page, text="x")
+    more = page.locator("#mark-dialog .na-rows > .na-more")
+    expect(more).to_have_text("and 3 more")
+    assert more.get_attribute("role") == "listitem"
+    assert page.locator("#mark-dialog .na-rows > :not([role=listitem])").count() == 0
+
+
+# --- A11Y-07: each row of the popover and the dialog is a named group --------------------
+
+
+def test_an_areas_popover_tells_its_two_blues_apart(fresh_page: Page):
+    """A11Y-07: the area popover's Color and Fill rows are groups named by their labels,
+    so each of its two "Blue" buttons is in a named group."""
+    page = fresh_page
+    _map(page, SMALL)
+    page.locator(f'tr[data-uid="{_uid(page, "Zone")}"] .line-btn').click()
+    pop = page.locator("#mark-pop")
+    for g in ("Color", "Style", "Weight", "Fill"):
+        expect(pop.get_by_role("group", name=g, exact=True)).to_have_count(1)
+    expect(pop.get_by_role("group", name="Color", exact=True).get_by_role("button", name="Blue", exact=True)).to_have_count(1)
+    expect(pop.get_by_role("group", name="Fill", exact=True).get_by_role("button", name="Blue", exact=True)).to_have_count(1)
+
+
+def test_every_leave_as_is_in_a_mixed_dialog_is_in_a_named_group(fresh_page: Page):
+    """A11Y-07: in a mixed Icon & color… dialog each "Leave as is" sits in the group of its
+    row: Waypoint color, Icon, Line color, Style, Weight, Fill."""
+    page = fresh_page
+    _map(page, SMALL)
+    _select_all(page)
+    page.click("#bulk-icon")
+    d = page.locator("#mark-dialog")
+    rows = ["Waypoint color", "Icon", "Line color", "Style", "Weight", "Fill"]
+    for g in rows:
+        expect(d.get_by_role("group", name=g, exact=True).get_by_role("button", name="Leave as is")).to_have_count(1)
+    expect(d.get_by_role("button", name="Leave as is")).to_have_count(len(rows))
+    # Unique ids: every label a group points at exists once.
+    ids = d.locator("[aria-labelledby]").evaluate_all("els => els.map(e => e.getAttribute('aria-labelledby'))")
+    assert len(ids) == len(set(ids)) and all(page.locator(f"#{i}").count() == 1 for i in ids)
+
+
+def test_rename_modes_are_a_group_named_change(fresh_page: Page):
+    """A11Y-07: the mode toggles of Rename… are a group, "Change"."""
+    page = fresh_page
+    _map(page, [("w", "Camp", "")])
+    _select_all(page)
+    _open_bulk(page, "rename")
+    grp = page.locator("#mark-dialog").get_by_role("group", name="Change", exact=True)
+    expect(grp.get_by_role("button")).to_have_text(["Add before", "Add after", "Find and replace"])
+
+
+# --- A11Y-08: Tab stays in the single-item popover ---------------------------------------
+
+
+def test_tab_and_shift_tab_stay_inside_the_single_item_popover(loaded: Page):
+    """A11Y-08: Shift+Tab from the popover's first control goes to its last (Save), Tab
+    from Save to the first; it never leaves for the list while the popover is open."""
+    page = loaded
+    page.locator(f"{ROW} .icon-btn").first.click()
+    pop = page.locator("#mark-pop")
+    expect(pop).to_be_visible()
+    first = pop.locator(".swatch-btn").first
+    first.focus()
+    page.keyboard.press("Shift+Tab")
+    expect(page.locator("#pop-apply")).to_be_focused()
+    page.keyboard.press("Tab")
+    expect(first).to_be_focused()
+    for _ in range(30):
+        page.keyboard.press("Shift+Tab")
+        assert page.evaluate("document.querySelector('#mark-pop').contains(document.activeElement)")
+    expect(pop).to_be_visible()
+
+
+# --- A11Y-11: the note button's name starts with its words -------------------------------
+
+
+def test_a_note_buttons_name_starts_with_the_words_it_shows(fresh_page: Page):
+    """A11Y-11: "Water here, note for Camp" (the first line, then whose); a missing note
+    "Add a note for Lake"."""
+    page = fresh_page
+    _map(page, SMALL)
+    camp = page.locator(f'tr[data-uid="{_uid(page, "Camp")}"]')
+    expect(camp.get_by_role("button", name="Water here, note for Camp", exact=True)).to_have_count(1)
+    expect(camp.locator(".note-text")).to_have_text("Water here")
+    lake = page.locator(f'tr[data-uid="{_uid(page, "Lake")}"]')
+    expect(lake.get_by_role("button", name="Add a note for Lake", exact=True)).to_have_count(1)
+
+
+# --- A11Y-12: why a marker is what it is, on keyboard focus too --------------------------
+
+
+def test_a_markers_why_shows_in_the_styled_tip_on_keyboard_focus(loaded: Page):
+    """A11Y-12: Tab onto a marker shows its "why" in the styled tip (no native title, so
+    no second tooltip); screen readers get it as the marker's description."""
+    page = loaded
+    _wide(page)
+    page.mouse.move(0, 0)
+    it = page.evaluate("(() => { const i = allItems().find(i => i.kind === 'waypoints' && i.needs_attention); return {uid: i.uid, why: i.why}; })()")
+    row = page.locator(f'tr[data-uid="{it["uid"]}"]')
+    row.locator(".note-btn").focus()
+    page.keyboard.press("Tab")
+    btn = row.locator(".icon-btn")
+    expect(btn).to_be_focused()
+    tip = page.locator("#tip")
+    expect(tip).to_be_visible()
+    expect(tip).to_have_text(it["why"])
+    expect(btn).to_have_attribute("aria-describedby", "tip")
+    assert page.locator(".icon-btn[title], .line-btn[title], .whymark[title]").count() == 0
+    assert _ax(page, f'tr[data-uid="{it["uid"]}"] .icon-btn')["description"] == it["why"]
+    page.keyboard.press("Escape")
+    expect(tip).to_be_hidden()
+
+
+def test_a_lines_tip_names_its_colour_and_why(fresh_page: Page):
+    """A11Y-12: a line's tip (and description) is "{Color} — {why}", the old title's words."""
+    page = fresh_page
+    _map(page, SMALL)
+    sel = f'tr[data-uid="{_uid(page, "Trail")}"] .line-btn'
+    page.locator(sel).hover()
+    expect(page.locator("#tip")).to_have_text(re.compile(r"^Blue — .+"))
+    assert _ax(page, sel)["description"].startswith("Blue — ")
+
+
+def test_help_says_hover_or_focus_a_marker(loaded: Page):
+    """A11Y-12: Help's line reads "Hover or focus a marker to see why"."""
+    expect(loaded.locator("#help .help-body")).to_contain_text("Hover or focus a marker to see why.")
+
+
+# --- A11Y-17: Tab leaves the More menu ---------------------------------------------------
+
+
+def test_tab_closes_the_more_menu_and_goes_on_from_more(loaded: Page):
+    """A11Y-17: the items aren't Tab stops; Tab closes the menu and goes on to Clear,
+    Shift+Tab to Icon & color…; the arrows still move between items."""
+    page = loaded
+    page.locator(f"{ROW} .sel-box").first.check()
+    items = page.locator("#more-menu [role=menuitem]")
+    assert set(items.evaluate_all("els => els.map(e => e.getAttribute('tabindex'))")) == {"-1"}
+    more = page.locator("#more-btn")
+    more.focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#bulk-move")).to_be_focused()
+    page.keyboard.press("ArrowDown")
+    expect(page.locator("#bulk-rename")).to_be_focused()
+    page.keyboard.press("Tab")
+    expect(page.locator("#more-menu")).to_be_hidden()
+    expect(more).to_have_attribute("aria-expanded", "false")
+    expect(page.locator("#clear-sel")).to_be_focused()
+    more.focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#bulk-move")).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    expect(page.locator("#more-menu")).to_be_hidden()
+    expect(page.locator("#bulk-icon")).to_be_focused()
+
+
+# --- A11Y-25: Exclude, Include and Use note as name leave a receipt ----------------------
+
+
+def test_exclude_include_and_use_note_as_name_leave_a_receipt(fresh_page: Page):
+    """A11Y-25: "Excluded 2 items.", "Included 2 items.", "Renamed 1 item from their
+    notes." (a row whose note is blank is left alone and not counted)."""
+    page = fresh_page
+    _map(page, [("w", "A", "North camp"), ("w", "B", "")])
+    _tick(page, [_uid(page, "A"), _uid(page, "B")])
+    st = page.locator("#status")
+    _menu_action(page, "#bulk-exclude")
+    expect(st).to_have_text("Excluded 2 items.")
+    _menu_action(page, "#bulk-include")
+    expect(st).to_have_text("Included 2 items.")
+    _menu_action(page, "#bulk-desc")
+    expect(st).to_have_text("Renamed 1 item from their notes.")
+    # Nothing left to rename: no receipt.
+    page.evaluate("setStatus('')")
+    _menu_action(page, "#bulk-desc")
+    expect(st).to_have_text("")
+
+
+# --- A11Y-26: the Name column header -----------------------------------------------------
+
+
+def test_name_column_header_is_named_name_and_keeps_its_sort_state(loaded: Page):
+    """A11Y-26: the header and its sort button are named "Name", not "Sort X by name";
+    the order is the header's aria-sort."""
+    page = loaded
+    n = page.locator("section.folder").count()
+    expect(page.get_by_role("columnheader", name="Name", exact=True)).to_have_count(n)
+    expect(page.get_by_role("button", name=re.compile(r"^Sort "))).to_have_count(0)
+    th = page.locator("th.name-th").first
+    th.get_by_role("button", name="Name", exact=True).click()
+    expect(th).to_have_attribute("aria-sort", "ascending")
+
+
+# --- A11Y-27: the rail's filter sections are headings ------------------------------------
+
+
+def test_rail_filter_sections_are_level_2_headings_that_look_unchanged(loaded: Page):
+    """A11Y-27: Type, Folders and Icon are h2s around their fold buttons; the h2 adds no
+    weight, size or margin (the labels stay 10px, regular)."""
+    page = loaded
+    for name in ("Type", "Folders", "Icon"):
+        h = page.get_by_role("heading", name=name, level=2, exact=True)
+        expect(h).to_have_count(1)
+        expect(h.get_by_role("button", name=name, exact=True)).to_have_attribute("aria-expanded", "true")
+    look = page.locator(".rail .sec-wrap").evaluate_all("""els => els.map(h => { const s = getComputedStyle(h), l = getComputedStyle(h.querySelector('.label'));
+      return [s.fontWeight, s.fontSize, s.marginTop, s.marginBottom, l.fontWeight, l.fontSize,
+              Math.round(h.getBoundingClientRect().height) === Math.round(h.querySelector('.sec-h').getBoundingClientRect().height)]; })""")
+    assert look == [["400", "13px", "0px", "0px", "400", "10px", True]] * 3, look
+
+
+# --- A11Y-28: one <main> not hidden ------------------------------------------------------
+
+
+def test_only_the_screen_shown_is_free_of_the_hidden_attribute(fresh_page: Page):
+    """A11Y-28: the two stages not shown carry the hidden attribute (HTML's rule for extra
+    <main>s), on every stage."""
+    page = fresh_page
+    shown = lambda: page.evaluate("['drop', 'edit', 'done'].filter(s => !document.getElementById(s + '-stage').hidden)")   # noqa: E731
+    assert shown() == ["drop"]
+    _map(page, [("w", "Camp", "")])
+    assert shown() == ["edit"]
+    page.click("#export")
+    expect(page.locator("body")).to_have_attribute("data-stage", "done")
+    assert shown() == ["done"]
+    page.click("#back")
+    assert shown() == ["edit"]

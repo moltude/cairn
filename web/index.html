@@ -55,7 +55,7 @@
 </main>
 
 <!-- 2. EDIT -->
-<div id="edit-stage" class="stage edit hidden">
+<div id="edit-stage" class="stage edit hidden" hidden>
   <aside class="rail" aria-label="Map and filters">
     <div class="rail-head">
       <div class="rail-brand">
@@ -67,7 +67,7 @@
     <!-- Filters (UI-28): three sections that fold. Folding only hides the list;
          the filter picked in it stays applied and its header shows a summary. -->
     <section class="facet" data-sec="type">
-      <button type="button" class="sec-h" data-fk="sec|type" aria-expanded="true" aria-controls="type-filter"><span class="label">Type</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
+      <h2 class="sec-wrap"><button type="button" class="sec-h" data-fk="sec|type" aria-expanded="true" aria-controls="type-filter"><span class="label">Type</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button></h2>
       <div id="type-filter" class="facet-list" role="group" aria-label="Filter by type">
         <button type="button" class="facet-btn" data-kind="" data-fk="type|all" aria-pressed="true"><span class="facet-name">All</span><span class="facet-count"></span></button>
         <!-- All first, then alphabetical (owner, 2026-10-24); only the kinds the map has. -->
@@ -77,11 +77,11 @@
       </div>
     </section>
     <section class="facet" data-sec="folders">
-      <button type="button" class="sec-h" data-fk="sec|folders" aria-expanded="true" aria-controls="folder-facets"><span class="label">Folders</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
+      <h2 class="sec-wrap"><button type="button" class="sec-h" data-fk="sec|folders" aria-expanded="true" aria-controls="folder-facets"><span class="label">Folders</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button></h2>
       <div id="folder-facets" class="facet-list" role="group" aria-label="Filter by folder"></div>
     </section>
     <section class="facet" data-sec="icon">
-      <button type="button" class="sec-h" data-fk="sec|icon" aria-expanded="true" aria-controls="icon-facets"><span class="label">Icon</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button>
+      <h2 class="sec-wrap"><button type="button" class="sec-h" data-fk="sec|icon" aria-expanded="true" aria-controls="icon-facets"><span class="label">Icon</span><span class="sec-sum"></span><span class="caret" aria-hidden="true"></span></button></h2>
       <div id="icon-facets" class="facet-list" role="group" aria-label="Filter by icon"></div>
     </section>
     <div class="rail-foot">
@@ -116,12 +116,12 @@
       <div class="menu-wrap">
         <button id="more-btn" type="button" class="btn small" aria-haspopup="menu" aria-expanded="false" disabled>More<span data-ui-icon="chevron"></span></button>
         <div id="more-menu" class="menu hidden" role="menu" aria-label="More actions">
-          <button id="bulk-move" type="button" role="menuitem" aria-haspopup="dialog">Move to…</button>
-          <button id="bulk-rename" type="button" role="menuitem" aria-haspopup="dialog">Rename…</button>
-          <button id="bulk-note" type="button" role="menuitem" aria-haspopup="dialog">Change note…</button>
-          <button id="bulk-desc" type="button" role="menuitem">Use note as name</button>
-          <button id="bulk-exclude" type="button" role="menuitem">Exclude</button>
-          <button id="bulk-include" type="button" role="menuitem">Include</button>
+          <button id="bulk-move" type="button" role="menuitem" tabindex="-1" aria-haspopup="dialog">Move to…</button>
+          <button id="bulk-rename" type="button" role="menuitem" tabindex="-1" aria-haspopup="dialog">Rename…</button>
+          <button id="bulk-note" type="button" role="menuitem" tabindex="-1" aria-haspopup="dialog">Change note…</button>
+          <button id="bulk-desc" type="button" role="menuitem" tabindex="-1">Use note as name</button>
+          <button id="bulk-exclude" type="button" role="menuitem" tabindex="-1">Exclude</button>
+          <button id="bulk-include" type="button" role="menuitem" tabindex="-1">Include</button>
         </div>
       </div>
       <button id="clear-sel" type="button" class="linkbtn push">Clear</button>
@@ -132,7 +132,7 @@
 </div>
 
 <!-- 3. EXPORT (UI-31): one box per folder, filled by app.js renderRunbook -->
-<main id="done-stage" class="stage done hidden">
+<main id="done-stage" class="stage done hidden" hidden>
   <div class="done-head">
     <span class="kicker">Export</span>
     <h1>Your files are ready</h1>
@@ -179,7 +179,7 @@
 
     <h3>2 · Review the icons</h3>
     <p>Cairn picks the closest onX icon for each CalTopo symbol and draws each waypoint as onX
-       will. Hover a marker to see <b>why</b>. A waypoint with no symbol and no clue in its name
+       will. Hover or focus a marker to see <b>why</b>. A waypoint with no symbol and no clue in its name
        gets onX's <i>Default pin</i>, which is often fine (mile markers, numbered stops). Picking
        any icon, even <i>Location</i> (the default pin), marks it reviewed. Click a marker to
        change its icon and color, or a line's or area's color, style and weight.</p>

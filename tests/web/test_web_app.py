@@ -646,8 +646,9 @@ def test_every_waypoint_explains_its_icon(fresh_page):
     )
     assert missing == [], f"items with no explanation: {missing[:5]}"
 
-    # every icon chip carries it as a tooltip
-    chips = fresh_page.locator(".icon-btn[title]").count()
+    # every icon chip carries it as a tooltip. DEVIATION (A11Y-12, round 4): in the styled
+    # tip and the marker's aria-description, no longer its native title.
+    chips = fresh_page.locator(".icon-btn[aria-description]:not([title])").count()
     waypoints = fresh_page.evaluate(
         "DATA.groups.flatMap(g => g.items).filter(i => i.kind === 'waypoints').length"
     )
@@ -2027,17 +2028,19 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
     # onX's own icons, shown unchanged, explained, and none needing attention.
     expect(page.locator(f"{ROW} .icon-btn .icon-name")).to_have_text(
         ["Climbing", "Campsite", "Hazard"])
+    # DEVIATION (A11Y-12, round 4): the why is the marker's aria-description (and its
+    # styled tip), not its native title.
     for i in (0, 2):
         expect(page.locator(f"{ROW} .icon-btn").nth(i)).to_have_attribute(
-            "title", "Kept from your onX file.")
+            "aria-description", "Kept from your onX file.")
     expect(page.locator(f"{ROW}.attention")).to_have_count(0)
     # The fixture's "Campsite" isn't in onX's icon list: kept, but marked and explained.
     expect(page.locator(f"{ROW} .icon-name.unknown-icon")).to_have_text(["Campsite"])
     expect(page.locator(f"{ROW} .icon-btn").nth(1)).to_have_attribute(
-        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn't know"))
+        "aria-description", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn't know"))
     # The lines' color came from the file too.
     expect(page.locator(f"{ROW} .line-btn").first).to_have_attribute(
-        "title", re.compile(r"Kept from your onX file\.$"))
+        "aria-description", re.compile(r"Kept from your onX file\.$"))
     # The type filter keeps the one word "Lines" (UI-18) and still finds the Track.
     page.click('#type-filter [data-kind="tracks"]')
     expect(page.locator(ROW)).to_have_count(2)

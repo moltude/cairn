@@ -62,11 +62,11 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | CalTopo map / onX map / Map | label over map title; by source dialect | idx:63, app:429 | `#map-label` |
 | {map title}; Untitled map; "{first} + N more" | h1 | app:419-421 | `#map-title` |
 | Map and filters | aside aria-label | idx:59 | `.rail` |
-| Type | section header (folds) | idx:70 | `[data-sec=type] .sec-h` |
+| Type | section header (folds); the button sits in an `h2` (A11Y-27) | idx:70 | `[data-sec=type] .sec-h` |
 | Filter by type | group aria-label | idx:71 | `#type-filter` |
 | All | facet button | idx:72, app:500 | `data-kind=""` |
 | Areas / Lines / Waypoints | facet buttons | idx:74-76 | `data-kind=…` |
-| Folders | section header | idx:80 | `[data-sec=folders]` |
+| Folders | section header (`h2`, as Type) | idx:80 | `[data-sec=folders]` |
 | Filter by folder | aria-label | idx:81 | `#folder-facets` |
 | All | facet button (first in Folders) | app:592 | `.facet-btn` |
 | {folder name} + count; "here now" while a drag is over its own folder | facet button | app:569 | `.facet-btn[data-drop]` |
@@ -74,7 +74,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | + New folder | button and drop target | app:598 | `.new-folder` |
 | Folder name | aria-label of the name field | app:773 | `.folder-name-in` |
 | Up to 100 characters | tooltip on the name field | app:1771 | `.folder-name-in` |
-| Icon | section header | idx:84 | `[data-sec=icon]` |
+| Icon | section header (`h2`, as Type) | idx:84 | `[data-sec=icon]` |
 | Filter by icon | aria-label | idx:85 | `#icon-facets` |
 | Default pin | facet checkbox (first) | app:622 | `#only-attention` |
 | Waypoints that fell back to onX's default pin | tooltip | app:620 | `label.default-pin` |
@@ -105,7 +105,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | N item(s) / N of M shown / Empty | sub-line | app:721-722, app:764 | `.folder-sub` |
 | Expand {folder} / Collapse {folder} | aria-label | app:727 | `.collapse` |
 | Select all shown in {folder} | aria-label of header checkbox | app:732 | `.folder-all` |
-| Name (sort button) / Sort {folder} by name | column header / aria-label | app:733 | `.sort-btn` |
+| Name (sort button) | column header; the button's name is its text, the order is the header's `aria-sort` (A11Y-26: the aria-label "Sort {folder} by name" is gone) | app `folderSection` | `.sort-btn` |
 | Note · Icon | column headers | app:733 | `.note-th` |
 | New folder / New folder 2 … | default new-folder name | br:723, br:886 | — |
 | Unorganized | folder for items outside any folder | parser.py:19, br:513 | `UNORGANIZED_FOLDER_NAME` |
@@ -121,11 +121,12 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Include / Include {name} (Untitled when it has none) | button / aria-label on an excluded row | app:978 | `.exc-chip` |
 | Left out of the export. Click to put it back. | tooltip | app:978 | `.exc-chip` |
 | Add a note | empty-note button text, shown only while the row is hovered or the button has keyboard focus (owner 2026-10-25) | app:981 | `.note-text.empty` |
-| {first line of note} · Open note for {name} (Untitled when it has none) | button text · aria-label | app:980-981 | `.note-btn` |
+| {first line of note} · {first line of note}, note for {name} (Untitled when it has none) | button text · aria-label, which starts with the button's text (A11Y-11; was "Open note for {name}") | app `noteButton` | `.note-btn` |
+| Add a note for {name} (Untitled when it has none) | aria-label of an empty note's button (its "Add a note" shows only on hover or focus) | app `noteButton` | `.note-btn` |
 | {icon name} or "Default pin" | text under the marker | app:984-987 | `.icon-name`, `.whymark` |
-| {Icon}, {Color}. Change icon or color | marker aria-label | app:983 | `.icon-btn` |
+| {Icon}, {Color}. Change icon or color | marker aria-label; why it is that icon (§12.2) is its tip, on hover or keyboard focus, and its `aria-description` (A11Y-12; no `title`) | app:983 | `.icon-btn` |
 | Line / Track / Area | text on line and area rows ("Track" for onX-file tracks) | app:793-794 | `.icon-name.kind` |
-| {Line/Track/Area}, {Color}, {Style}, {Weight}. Change line / Change area | aria-label | app:988 | `.line-btn` |
+| {Line/Track/Area}, {Color}, {Style}, {Weight}. Change line / Change area | aria-label; its tip and `aria-description` are "{Color} — {why}" (A11Y-12; no `title`) | app:988 | `.line-btn` |
 | Won't export: it has no coordinates. | caution | app:947 | `.caution` |
 | onX imports only the first 512 bytes of a note. About N character(s) will be cut. | caution | app:950 | `.caution` |
 | onX will reset this area's fill to its default blue. | caution | app:957 | `.caution.fill-caution` |
@@ -146,6 +147,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Change note… | menu item; opens the Change note dialog (§5.1) | idx:121 | `#bulk-note` |
 | Use note as name | menu item | idx:122 | `#bulk-desc` |
 | Exclude · Include | menu items | idx:123-124 | `#bulk-exclude`, `#bulk-include` |
+| (every More item) | not a Tab stop (`tabindex=-1`): the arrows move through them; Tab closes the menu and goes on from More (A11Y-17) | idx:119-124 | `[role=menuitem]` |
 | Clear | link button; clears the selection | idx:125 | `#clear-sel` |
 
 ---
@@ -161,6 +163,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | No icon matches “{q}”. | empty state | app:1293 | `.grid-empty` |
 | Style: Solid / Dashed (Dotted from a file) · Weight: Thin / Thick (Extra thin from a file) | toggles | app:1219-1248 | `.tog` |
 | Fill · Blue · Leave as is | area fill section | app:1229-1266 | `.fill-btn`, `.fill-reset` |
+| (Color, Icon, Style, Weight, Fill) | each row is a group named by its label line (`role=group`, `aria-labelledby`; A11Y-07), here and in the dialog (§5) | app `groupAttrs` | `.pop-sec[role=group]`, `.opt-group` |
 | Cancel · Save | buttons | app:1325-1326 | `.pop-cancel`, `#pop-apply` |
 
 ## 5. Color & style dialog (several items)
@@ -171,6 +174,7 @@ wt:19-23 repeats the nav with Help linking to `./#help`.
 | Change icon and color for N items / Change color and style for N items | aria-label | app:1441 | `#mark-dialog` |
 | Close | aria-label of × | app:1445 | `.bulk-x` |
 | Now / After | column labels | app:1447 | `.now-after` |
+| . Now {Icon}, {Color}. After {Icon}, {Color}. / . Now {Line}, {Color}, {Style}, {Weight}. After … | hidden words after each row's name, what its two marks draw (A11Y-03; Default pin for a default pin) | app `drawBulk` | `.na-cell .sr-only` |
 | {name} or Untitled | row text | app:1506 | `.na-name` |
 | Waypoint color / Line color (mixed) · Color | section labels | app:1451-1456 | `.color-sec` |
 | Find an icon for all selected waypoints | search aria-label | app:1453 | `.icon-search` |
@@ -187,10 +191,12 @@ docs/plans/BULK_RENAME.md section 2 decision 4).
 | Rename N item(s) / Change the note on N item(s) | dialog heading (no period); names the dialog (`aria-labelledby`) | app `openTextBulk` | `#bulk-title` |
 | Close | aria-label of × | app `openTextBulk` | `.bulk-x` |
 | Add before · Add after · Find and replace (names); the same plus Replace the note (notes) | mode toggles, in this order | app `TEXT_MODES` | `.mode-tog[data-mode]` |
+| Change | aria-label of the mode toggles' group (A11Y-07) | app `openTextBulk` | `.mode-row` |
 | Text | field label (Add before, Add after, Replace the note) | app `drawTextFields` | `#bulk-text` |
 | Find · Replace with | field labels (Find and replace) | app `drawTextFields` | `#bulk-find`, `#bulk-repl` |
 | Match case | toggle (off by default) | app `drawTextFields` | `#bulk-match-case` |
 | Now / After | column labels | app `openTextBulk` | `.now-after` |
+| Now · , after · , (an unchanged row: "Now X, No change") · Note for {name}, now | hidden words around each row's cells, where the arrow is drawn; the rows are a list (A11Y-06) | app `drawTextBulk` | `.na-row .sr-only`, `.na-rows[role=list]` |
 | {item name} or Untitled | whose note it is, above each note (Change note…) | app `drawTextBulk` | `.na-src .na-name` |
 | Untitled | an empty name, Before or After, greyed (display only; stored and exported empty) | app `textCell` | `.is-placeholder` |
 | (blank) | a missing note, Before or After | app `textCell` | `.na-before`, `.na-after` |
@@ -272,6 +278,7 @@ highlighted (`.na-after .hit`, no text of its own).
 | What carries across (Name, Note, Icon, Color, Line style, Folders, Lines vs areas) · Good to know | headings / table |
 | Click a box / Shift + click / Ctrl / ⌘ + A / Header checkbox / Esc / Notes | shortcut rows |
 | More has Move to…, Rename…, Change note…, Use note as name, Exclude and Include. Rename… changes many names at once; Change note… does the same for notes. | prose in 3 · Edit in bulk |
+| Hover or focus a marker to see why. | prose in 2 · Review the icons (was "Hover a marker"; A11Y-12) |
 
 ## 12. Status line and bridge messages
 
@@ -284,13 +291,14 @@ highlighted (`.na-after .hit`, no text of its own).
 | Failed: {reason} (engine boot) | err | app:239 |
 | Couldn't load the map engine (HTTP N). | err | app:208 |
 | Changed N item(s). / line(s). / area(s). (Rename… and Change note…: always item(s)) | ready | app:1541-1542, app `applyTextBulk` |
+| Excluded N item(s). · Included N item(s). · Renamed N item(s) from their notes. | ready; More → Exclude, Include, Use note as name (A11Y-25; none when nothing changed) | app `bulkReceipt` |
 | Couldn't move / make a folder / remove / rename — {reason} | err | app:1652, 1728, 1743, 1824 |
 | Everything is excluded — include at least one item to export. | err | app:2101 |
 | 1 item needs a name. / N items need a name. | err | app `showBlankNames` (Cancel in the names confirm; UI-40) |
 | Building onX files… | info | app:2104 |
 | Export failed: {reason} · Download failed: {reason} | err | app:2118, app:2191 |
 
-### 12.2 Icon "why" text (marker tooltip; br)
+### 12.2 Icon "why" text (the marker's tip and `aria-description`; br)
 
 | Text | Source |
 |---|---|
