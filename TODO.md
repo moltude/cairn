@@ -14,6 +14,42 @@ roadmap and the 2026-08-29 audits are archived (`git show cdd25f3:docs/<name>`).
 
 Small engine fixes: none open (the last ones shipped 2026-10-25, below).
 
+* **Accessibility (WCAG 2.2 A/AA audit, 2026-10-25):** 29 findings, no blockers, in
+  [`docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md`](docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md).
+  Top five, all small: focus hidden under the sticky bars (A11Y-01), focus lost and no page title
+  change after a screen change (A11Y-02), the Now → After lists read poorly by screen readers
+  (A11Y-03, -06), filter and selection counts not announced (A11Y-04), focus vs selection in the
+  More menu and swatches (A11Y-09, -10). A11Y-05 (nameless rows named "Select ") is fixed. Fixes
+  that touch a decision (UI-26, UI-36, UI-39, ENG-02) need the owner's OK first. Done 2026-10-26: 24 fixed in
+  round 4, then A11Y-10, -16, -21 and -23 after the owner's answers. Deferred: A11Y-18 (one Tab stop per palette).
+
+Wording follow-up (owner, 2026-10-25; LABELS.md §15 #8):
+
+* **Error and failure messages: one pattern.** Today's variants, all to review together:
+  * Status-line prefixes (app.js): `Failed: {reason}` (engine boot, :239) · `Export failed: {reason}`
+    (:2120) · `Download failed: {reason}` (:2193) · `Couldn't read that file — {reason}` /
+    `Couldn't read those files — {reason}` (:386) · `Couldn't move / make a folder / remove — {reason}`
+    (:1654) · `Couldn't rename — {reason}` (:1826) · `Failed: Could not load file` (unreadable GeoJSON,
+    shown alone).
+  * Plain error sentences (app.js): `An item needs a name.` · `A folder needs a name.` ·
+    `A folder name can be up to 100 characters.` · `“{name}” already exists.` ·
+    `Everything is excluded — include at least one item to export.`
+  * Thrown inside app.js, shown after a prefix: `Couldn't load the map engine (HTTP N).` ·
+    `Lost track of item {uid}.` · `The folders no longer add up.` · `That folder name is taken.`
+  * bridge.py, shown after "Couldn't read that file —": `{file} couldn’t be read: {reader's first
+    line}` (the reader lines are `Invalid GPX file (XML parse error): …`, `GPX file is empty`,
+    `Invalid KML file (XML parse error): …`, `File does not appear to be a KML file (root element: …)`,
+    `No placemarks found in KML file`, `Failed to read GPX/KML file: …`) · `This isn't a map file
+    Cairn can read. …` · `Cairn found no waypoints, lines or areas in {names}. …` · `No file was
+    given to open.` · the input guard's 16 MB and `<!DOCTYPE>` sentences.
+  * bridge.py folder/move errors: `There is no folder '{key}' in this map.` · `No items were given
+    to move.` · `Move items to one folder: give a folder or a new folder name.` · `Unknown item(s):
+    …` · `“{name}” isn’t empty, so it can’t be removed.` · `No exported folder N. Export again.`
+  * Developer-only (shouldn't reach a user): `Unknown line style / line weight / Unsupported area
+    fill … for {uid}`.
+  Decide one prefix pattern ("Failed: …" vs "Couldn't X — …"), whether reader details are shown, and
+  curly vs straight apostrophes (bridge uses ’, app.js uses '), then apply in one pass.
+
 Web app features:
 
 * **Add another map** (UI-12): load a second CalTopo map into the one open, deduped. The engine
@@ -28,31 +64,22 @@ Each needs one sitting in onX or CalTopo. Never delete onX data without the owne
 
 * **onX phone app exports** (old roadmap P4): does the iOS app's GPX carry the `onx:`
   extensions and `<desc>` lines, or only name and location? Decides whether the round trip
-  works from a phone or only from the Web Map.
+  works from a phone or only from onX on a computer.
 * **Track times and waypoint elevation** (P7): does onX read `<time>` and `<ele>` on import?
-* **One styled CalTopo export** (GeoJSON + KML + GPX of one small map with a dotted line, an
-  arrow line, an unfoldered marker, a multi-part area and an area with a hole). Answers:
-  * CalTopo's `pattern` values for dotted and arrow lines (only solid and one dash are known;
-    the rest export as solid);
-  * what CalTopo's GPX does with an area, and whether its `DisplayColor` is exact or nearest;
-  * how CalTopo's KML writes a multi-part area and a hole;
-  * what the `#1.0` at the end of every icon `cfg` means (not marker size);
-  * whether to map the KML's "Points" / "LineStrings" / "Polygons" folders for unfoldered items
-    to "Unorganized", as the GeoJSON gets.
-* **Can onX keep a hole in an area?** An area with a cutout (an inner ring) is written as its
-  outer ring only, because a GPX onX Area route has one outline (ENG-05, provisional). Untested
-  in onX: whether any import path keeps the hole, or whether writing each hole as its own area
-  is better. No real map so far has had one.
-* **Do line breaks in notes survive into onX?** Probe: a GPX whose `<desc>` has literal
-  newlines, `&#10;`, escaped `<br>`, and a blank line; import, read Notes on web and phone, then
-  type a two-line note in onX and export it.
+* **Cleanup in onX** (owner): delete the ZZTEST folders the 2026-10-25 runs created (ZZTEST limits-2026-10-25
+  names, ZZTEST limits-2026-10-25 empty name, ZZTEST names-2026-10-25). Every probe in
+  `docs/testing/ONX_LIMITS_2026-10-25.md` has run: names keep 255 UTF-8 bytes and every unusual character,
+  notes 512 bytes (the "dropped" long note is cut when its GPX is imported alone), folder renames stop at 50,
+  a blank name becomes "Imported waypoint markup <timestamp>", and Import Complete → Add to Folder adds a
+  fresh import to an existing folder.
 
 ## Next feature: bulk rename and note change
 
-* **Rename… and Change note…** in More (UI-17), with a live before/after preview. Phased,
-  red-teamed plan for parallel implementation agents: [`docs/plans/BULK_RENAME.md`](docs/plans/BULK_RENAME.md).
-  Phase 0 needs the owner: pick the dialog mockup, say yes/no to the duplicate-name flag, approve
-  the wording.
+* **Rename… and Change note…** in More (UI-39), with a live Now → After preview: built on branch
+  `feat/bulk-rename` (2026-10-25), waiting for the owner's review on localhost. Plan:
+  [`docs/plans/BULK_RENAME.md`](docs/plans/BULK_RENAME.md); build log, decision status and open
+  questions: [`docs/plans/BULK_RENAME_PROGRESS.md`](docs/plans/BULK_RENAME_PROGRESS.md). After
+  merge: rerun the bulk-edit timing on the Vercel deployment at 1,500 / 3,000 / 10,000 items.
 
 ## Major feature: investigate, then build
 
