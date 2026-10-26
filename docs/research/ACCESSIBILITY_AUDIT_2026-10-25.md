@@ -261,3 +261,42 @@ to rebuild them.
 - Real file drag-and-drop from the desktop onto the drop zone (Choose file… is the keyboard path and
   was tested; the drop zone itself has no keyboard role, which is fine since the button does the
   same job).
+
+---
+
+## Status (round 4)
+
+Branch `round4/w-a11y` (from `feat/bulk-rename` at `eae79bb`). The findings above are unchanged;
+this is where each one stands. Tests: `tests/web/test_accessibility.py`, one or more per finding.
+
+| ID | State |
+|---|---|
+| A11Y-01 | Fixed in `1893b26` (measured `scroll-padding` on the page and the rail; the doc pages' 72px replaces the sections' `scroll-margin-top`) |
+| A11Y-02 | Fixed in `291a29e` (titles "Cairn — Edit" and "Cairn — Export"; the focused heading has no ring) |
+| A11Y-03 | Fixed in `c85bf8d` |
+| A11Y-04 | Fixed in `fb2e2b9` (reuses the words on screen: "Showing N", "Nothing matches these filters.", "N selected") |
+| A11Y-05 | Already fixed before round 4; verified in `c85bf8d` |
+| A11Y-06 | Fixed in `c85bf8d` |
+| A11Y-07 | Fixed in `c85bf8d` (Style and Weight's group now holds its "Leave as is" too) |
+| A11Y-08 | Fixed in `c85bf8d` |
+| A11Y-09 | Fixed in `cab9351` |
+| A11Y-10 | Held for the owner (changes the UI-36 swatch look) |
+| A11Y-11 | Fixed in `c85bf8d` (an aria-label that starts with the button's words, not hidden text: the empty note's words are hidden at rest) |
+| A11Y-12 | Fixed in `c85bf8d` (the why is the styled tip and an `aria-description`) |
+| A11Y-13 | Fixed in `cab9351` |
+| A11Y-14 | Fixed in `cab9351` |
+| A11Y-15 | Fixed in `cab9351` |
+| A11Y-16 | Held for the owner (adds to UI-39's highlight) |
+| A11Y-17 | Fixed in `c85bf8d` |
+| A11Y-18 | Held for the owner (medium effort; touches UI-29's picker) |
+| A11Y-19 | Fixed in `cab9351` |
+| A11Y-20 | Fixed in `cab9351` |
+| A11Y-21 | Held for the owner (a paper panel behind the chips, UI-20) |
+| A11Y-22 | Fixed in `291a29e` (the edit screen's link is the first Tab stop after the map title, where focus lands) |
+| A11Y-23 | Folder name half fixed in `1893b26`; the JSON error's wording held for the owner (LABELS.md section 15 records "Failed: Could not load file" as the owner's choice) |
+| A11Y-24 | Fixed in `fb2e2b9` (a fixed visually hidden region mirrors the line on screen) |
+| A11Y-25 | Fixed in `c85bf8d` (wording as proposed, for the owner to confirm) |
+| A11Y-26 | Fixed in `c85bf8d` |
+| A11Y-27 | Fixed in `c85bf8d` |
+| A11Y-28 | Fixed in `c85bf8d` |
+| A11Y-29 | Fixed in `cab9351` |
