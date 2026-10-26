@@ -25,7 +25,7 @@ from playwright.sync_api import Page, expect
 from tests.bulk_rename_vectors import CAMPSITES, item_map
 from tests.naughty_strings import NAUGHTY_TEXTS
 from tests.web.helpers import (
-    BASE_URL, FIXTURE, ROW, _export_zip, _gpx_descs, _gpx_names, _load_text, _open_bulk,
+    BASE_URL, BULK_FIELDS, FIXTURE, ROW, _export_zip, _gpx_descs, _gpx_names, _load_text, _open_bulk,
     _open_changed_waypoint_note, _preview_rows, _preview_seq, _save_bulk, _select_all_shown,
     _set, _set_mode, _status_count, _tick, _type_slowly, _type_spec, _wait_preview_past,
 )
@@ -1699,3 +1699,38 @@ def test_a_name_over_255_bytes_shows_the_cut_sentence_and_saves_whole(fresh_page
     expect(page.locator("#bulk-apply")).to_be_enabled()
     assert _save_bulk(page) == "Changed 1 item."
     assert _names(page, [u]) == [name]
+
+
+def test_escape_that_ends_an_ime_composition_leaves_the_dialog_open(fresh_page: Page):
+    """Escape cancels a Japanese or Chinese IME's candidate list. Chrome sends it as a
+    keydown with isComposing set; it must not also close the dialog and lose the spec."""
+    page = fresh_page
+    _map(page, [("w", "Camp", "")])
+    _tick(page, _uids(page, "Camp"))
+    _open_bulk(page, "rename")
+    field = page.locator(BULK_FIELDS["text"])
+    field.focus()
+    field.dispatch_event("keydown", {"key": "Escape", "isComposing": True, "bubbles": True})
+    expect(page.locator("#mark-dialog")).to_have_attribute("data-bulk", "rename")
+    page.keyboard.press("Escape")
+    expect(page.locator("#mark-dialog")).not_to_have_attribute("data-bulk", "rename")
+
+
+def test_escape_that_ends_an_ime_composition_keeps_a_name_or_note_being_typed(fresh_page: Page):
+    """The same for the name field (Escape reverts it) and the note editor (Escape closes it)."""
+    page = fresh_page
+    _map(page, [("w", "Camp", "")])
+    (u,) = _uids(page, "Camp")
+    name = page.locator(f'tr[data-uid="{u}"] .name-in')
+    name.click()
+    name.fill("キャンプ")
+    name.dispatch_event("keydown", {"key": "Escape", "isComposing": True, "bubbles": True})
+    expect(name).to_have_value("キャンプ")
+    page.keyboard.press("Escape")
+    expect(name).to_have_value("Camp")
+    page.locator(f'tr[data-uid="{u}"] .note-btn').click()
+    note = page.locator(".desc-in").first
+    note.fill("湖のそば")
+    note.dispatch_event("keydown", {"key": "Escape", "isComposing": True, "bubbles": True})
+    expect(note).to_be_visible()
+    expect(note).to_have_value("湖のそば")

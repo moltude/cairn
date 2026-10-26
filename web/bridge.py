@@ -313,9 +313,11 @@ def _read_one(path: Path, route: str, display_name: str):
     if route == _ROUTE_GEOJSON:
         try:
             return parse_geojson(path)
-        except ValueError:
+        except Exception:
             # The parser's messages carry a server path and developer wording;
             # the owner chose one plain line (2026-10-25, LABELS.md §15 #17).
+            # Not only ValueError: valid JSON with a wrongly typed property
+            # (a list for a note) raises AttributeError or TypeError.
             raise ValueError(GEOJSON_FAILED) from None
     try:
         if route == _ROUTE_CALTOPO_GPX:

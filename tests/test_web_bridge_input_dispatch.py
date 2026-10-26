@@ -534,6 +534,17 @@ def test_unreadable_geojson_says_one_plain_line():
         assert str(e.value) == "Failed: Could not load file"
 
 
+def test_geojson_with_a_wrongly_typed_property_says_the_same_plain_line():
+    # A list where a note belongs made the parser raise AttributeError, which reached the
+    # dialog as "'list' object has no attribute 'replace'".
+    text = json.dumps({"type": "FeatureCollection", "features": [{
+        "type": "Feature", "geometry": {"type": "Point", "coordinates": [1, 2]},
+        "properties": {"title": "Camp", "description": [1]}}]})
+    with pytest.raises(ValueError) as e:
+        bridge.load_document(text, "odd.json")
+    assert str(e.value) == "Failed: Could not load file"
+
+
 def test_dtd_is_refused_before_any_reader_runs_in_a_multi_file_load():
     ok = _file(ONX_GPX)
     bad = {"name": "evil.kml", "text": (FX / "attacks" / "quadratic_blowup.kml").read_text()}

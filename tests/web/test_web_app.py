@@ -554,13 +554,14 @@ def test_malformed_file_surfaces_error_without_breaking_app(
     bad_file.write_text(bad_content)
 
     fresh_page.set_input_files("#file", str(bad_file))
-    fresh_page.wait_for_timeout(1000)
 
-    status_text = fresh_page.text_content("#status")
-    status_class = fresh_page.get_attribute("#status", "class")
-
-    assert "err" in (status_class or "")
-    assert status_text is not None and len(status_text) > 0
+    # The failure is a dialog with one button, OK (owner 2026-10-26, A11Y-23);
+    # the status line stays empty so it isn't said twice.
+    expect(fresh_page.locator("#confirm")).to_be_visible()
+    title = fresh_page.text_content("#confirm-title") or ""
+    assert title == "Failed: Could not load file" or title.startswith("Couldn't read that file"), title
+    expect(fresh_page.locator("#confirm .confirm-actions button")).to_have_text(["OK"])
+    expect(fresh_page.locator("#status")).to_have_text("")
 
     # The app must NOT have advanced to the edit stage.
     drop_class = fresh_page.get_attribute("#drop-stage", "class") or ""
