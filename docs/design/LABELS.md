@@ -196,6 +196,8 @@ docs/plans/BULK_RENAME.md section 2 decision 4).
 | (blank) | a missing note, Before or After | app `textCell` | `.na-before`, `.na-after` |
 | No change | row sentence for an unchanged row (in place of its After) | app `textFlag` | `.na-flag` |
 | onX imports only the first 512 bytes of a note. About N character(s) will be cut. | row sentence for a note over the limit (the caution's, §3.4) | app `longNoteSentence` | `.na-flag` |
+| onX imports only the first 255 bytes of a name. About N character(s) will be cut. | row sentence for a name over the limit (flag `name-over-limit`; the row caution's, §3.4; UI-40) | app `textFlag` → `longNameSentence` | `.na-flag` |
+| Needs a name to export. | row sentence for a name left empty (flag `name-empty`; the row caution's, §3.4; UI-40) | app `textFlag` → `NEEDS_NAME` | `.na-flag` |
 | and N more | under a list cut at 200 rows (the export warning's "and N more", §10) | app `drawTextBulk` | `.na-more` |
 | N will change · M unchanged | summary, `aria-live=polite` | app `drawTextBulk` | `#bulk-summary` |
 | Cancel · Save | buttons; Save disabled while nothing changes | app `openTextBulk` | `.bulk-cancel`, `#bulk-apply` |

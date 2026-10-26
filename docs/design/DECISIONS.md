@@ -1274,9 +1274,12 @@ What was built:
   one. The highlight never splits a letter from its accent or an emoji sequence. `web/rename.js`
   works out what was inserted; the dialog only draws it. **Names are optional**: a result that is
   empty (a whitespace-only replacement included, trimmed) shows the greyed placeholder "Untitled" and
-  is saved and exported as an empty name; it never blocks Save. A missing note is a blank cell.
+  is saved as an empty name; it never blocks Save. Export then asks to name it "Untitled" (UI-40,
+  2026-10-25; it was exported as an empty name before). A missing note is a blank cell.
 - **Warn, don't block.** A note pushed over onX's 512 bytes gets the caution mark's sentence (UI-34)
-  on its row; Save stays on and nothing is cut. Duplicate names and long names get no line (UI-26: no
+  on its row; Save stays on and nothing is cut. Since 2026-10-25 (UI-40) a name gets its row mark's
+  sentence too: over onX's 255 bytes, "onX imports only the first 255 bytes of a name. About N
+  characters will be cut."; empty, "Needs a name to export.". Duplicate names get no line (UI-26: no
   warning without a consequence). Characters XML forbids are dropped (ENG-09); the row shows the result,
   with no sentence of its own.
 - **Save** works the change out again from the fields and the items as they are (the list may be a

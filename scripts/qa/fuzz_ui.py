@@ -1248,7 +1248,12 @@ class Session:
         if mode != "replace":
             return "random", mode, {"#bulk-text": rng.choice(pool)}, False
         r = rng.random()
-        if r < 0.6 and any(vals):
+        words = [w for v in vals for w in re.findall(r"\w+", v)]
+        if r < 0.35 and words:
+            # Find matches whole words only (round 3, W1): a word of a ticked value
+            # still finds something; a slice mid-word now rarely does.
+            find = rng.choice(words)
+        elif r < 0.6 and any(vals):
             v = rng.choice([v for v in vals if v]); a = rng.randrange(len(v)); find = v[a:a + rng.randint(1, 5)]
         elif r < 0.75:
             find = ""
