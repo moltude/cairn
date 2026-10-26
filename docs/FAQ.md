@@ -158,6 +158,7 @@ From onX's website code: when you tick "Import map data to a new folder", each i
 So Cairn gives you one numbered import per folder. In onX on a computer, under My Content → Import, add all of one folder's files at once, tick "Import map data to a new folder", click Import, and rename the new folder. `instructions.txt` says the same and gives the name for each folder.
 
 Some details:
+- To put an import into a folder you already have, use the **…** on onX's Import Complete card, then **Add to Folder**. The items join that folder and also stay in the new one.
 - Folders are listed and numbered by name, with numbers in order ("1 - …" before "2 - …" and "10 - …"), whatever the case. A new or renamed folder takes its place in that order. "Unorganized" (the items that weren't in any folder) always comes last.
 - Items that weren't in any CalTopo folder go in a folder called "Unorganized". You can rename it.
 - If your map has no folders at all, everything goes into one folder named after your file.

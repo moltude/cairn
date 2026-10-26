@@ -1373,3 +1373,32 @@ empty name and a 300-character name.
   names (6 lines and an area), rather than a block alone. The fix writes "Untitled", the placeholder
   used everywhere (orchestrator; the alternative was the kind, "Untitled line"). Exporting a blank
   name and letting onX name it was not kept: onX's name is a timestamp.
+
+### UI-41 — Accessibility: what changed for keyboard and screen-reader users
+Status: decided 2026-10-25 (owner: "implement the high value, low impact accessibility features" from the
+WCAG 2.2 A/AA audit, `docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md`; its "Status (round 4)" table lists
+each finding). Fixes that change an approved look were held for the owner: A11Y-10 (how a selected swatch
+differs from a focused one, UI-36), A11Y-16 (the After highlight, UI-39), A11Y-18 (one Tab stop per
+palette, UI-29), A11Y-21 (a panel behind the chips row, UI-20).
+
+- **Focus never hides under a sticky bar.** The bars' height is measured into `--sticky-h` and used as
+  `scroll-padding-top`; the rail footer likewise. The FAQ and walkthrough pad by 72px.
+- **A new screen takes focus.** Every stage change focuses its heading (no ring), and the tab title says
+  where you are: "Cairn — Edit", "Cairn — Export"; the drop screen keeps the landing title.
+- **Skip links**, visible only while focused: "Skip to the list" on the edit screen (to the search), "Skip
+  to the content" on the FAQ and the walkthrough.
+- **What is drawn is also said.** The Now → After lists of Icon & color…, Rename… and Change note… carry
+  hidden words ("Now Camp, Red. After Summit, Blue."; "Now X, after Y"). Option rows are named groups
+  (Color, Icon, Style, Weight, Fill; the Rename… modes are "Change"). This puts the picture into words; it
+  doesn't narrate (UI-26).
+- **Counts are announced.** A hidden polite region speaks "Showing N", "Nothing matches these filters." and
+  "N selected" after a filter or a bulk selection change; `#status` keeps its place on screen while a fixed
+  hidden region carries its words.
+- **Three new receipts:** "Excluded N items.", "Included N items.", "Renamed N items from their notes."
+  (nothing is said when nothing changed). Wording open for the owner.
+- **Smaller:** the More menu shows a focus ring and Tab leaves it (arrows move inside); the single-item
+  popover keeps Tab inside; the note button's name starts with its visible words; a marker's "why" shows
+  in the styled tip on hover and keyboard focus (and as its accessible description) instead of a native
+  tooltip; "Untitled" is muted italic and excluded rows dim by colour, both at 4.5:1 or better; the empty
+  folder's × and the FAQ group links are at least 24px; the rail's section labels are headings; hidden
+  stages carry `hidden`.

@@ -1198,3 +1198,71 @@ everywhere. Alternative: the kind ("Untitled line", "Untitled area", "Untitled w
   "onX imports only the first 255 bytes of a name. About 45 characters will be cut." The first full run failed
   one timing test (a 10,000-character Find took ~11 ms against 10); fixed in `a771908` (skip the pattern when
   Find is longer than every value). Full suite after it: **2016 passed**. AGENTS.md baseline updated.
+
+## 8. Remaining tasks (one branch, one PR; iterate until every row is done, then a final deep inspection)
+
+Owner, 2026-10-25 late: everything goes onto `feat/bulk-rename` and ships as one PR. Rows are added as issues turn up.
+
+| # | task | who | state |
+|---|---|---|---|
+| R1 | Remaining onX probes, live (authorised): RTL, identical, emoji-only, NBSP/ZWSP names; the Import Complete card's "Add to"; re-import the dropped long-note route alone | orchestrator (browser) | **done**: every name kept exactly; long note cut to 512 (not dropped); Add to Folder adds, doesn't move. `docs/testing/ONX_LIMITS_2026-10-25.md` |
+| R2 | `.claude/skills/cairn-tests/SKILL.md:58`: "Web Map" → "onX's web app" (owner authorised the edit) | orchestrator | **done** `4a34481` |
+| R3 | High-value, low-impact accessibility fixes from `docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md` (small effort, no owner decision touched) | track W (agent) | **done**, merged: 24 fixed, A11Y-05 verified; held for the owner: 10, 16, 18, 21, the JSON half of 23, the receipt wording of 25 |
+| R4 | Dependabot PR #46: fix it or fold it into this branch | orchestrator | **done**: its one commit cherry-picked as `002040a` (setup-uv v10.3.2, codeql-action v4.39.1, pypi-publish v1.14.3; each SHA checked against the tag). Close #46 as folded in after the big PR merges (R10) |
+| R5 | Walkthrough screenshots regenerated (`uv run --with pillow python scripts/make_walkthrough_shots.py`) and the 1440×900 cross-page review, after R3 | orchestrator | open |
+| R6 | Security review of the whole branch, after R1–R5 | orchestrator | open |
+| R7 | Final full suite, AGENTS.md baseline, final deep inspection | orchestrator | open |
+| R8 | Owner questions still open: "Name it Untitled" for one; which button is default; kind names; two marks on one row; folder-name rule | owner | open |
+| R9 | Owner-only in onX: delete the ZZTEST folders | owner | open |
+| R11 | FAQ: the round trip can use Import Complete → Add to Folder to put a fresh import into an existing folder (it adds, the new folder stays); soften "no way into an existing folder". After track W merges (W may touch the FAQ build) | orchestrator | open |
+| R10 | After merge: live check (incl. rename.js through the Worker), Vercel timing rerun, TODO Done + plan archived, branches and worktrees removed | orchestrator | after merge |
+
+### 8.W Track W log (accessibility fixes, round 4)
+
+- Branch `round4/w-a11y` from `feat/bulk-rename` at `eae79bb`. Spec: docs/research/ACCESSIBILITY_AUDIT_2026-10-25.md.
+  Scope: A11Y-01..04, 06..09, 11..15, 17, 19, 20, 22..29; A11Y-05 verified only; A11Y-10, 16, 18, 21 held
+  for the owner. Dev server on port 8797 (8790 was held by an older server from 2026-10-23, not this track's).
+- `cab9351` CSS only: A11Y-09 (More's focus ring, offset -2px), 13 (placeholder --muted italic), 14 (excluded
+  rows dim by colour; marks keep .55), 15 (icon section overflow hidden, popover overflow-y auto), 19 (empty
+  folder's x 24px; FAQ group links padding 5px, margin-top 6px -> 1px so the heading stays), 20 (FAQ # and
+  "here now" --muted), 29 (walkthrough alt). 10 tests; 9 of them fail on the old CSS (checked).
+- `c85bf8d` A11Y-03, 05 (verified only), 06, 07, 08, 11, 12, 17, 25, 26, 27, 28.
+  - DECISION A11Y-11: the note button keeps an aria-label, now "{first line}, note for {name}" / "Add a note for
+    {name}", rather than hidden text inside the button: the empty note's "Add a note" is visibility:hidden at
+    rest (owner's look), which drops it from a content name, and hidden text made Chrome's name "old note ,
+    note for Camp". Alternative: the audit's sr-only span (name from content).
+  - DECISION A11Y-12: the why moved from the native title to the styled tip and an `aria-description`, so
+    screen readers keep it as the marker's description (Chrome reads it; the tip's aria-describedby wins
+    while shown). Lines keep the title's words, "{Color} — {why}". The walkthrough's "Hover a marker to see
+    why it was chosen" is left as is (still true; only Help changed).
+  - DECISION A11Y-07: Style and Weight's group moved from the toggles to the whole column, so each
+    column's "Leave as is" is in its group too.
+  - DECISION A11Y-25: the receipt counts items that took a patch (as applyBulk does); none when 0.
+    Wording as the audit proposed: "Excluded N items." / "Included N items." / "Renamed N items from their
+    notes." (owner may reword).
+  - DEVIATION: test_text_rules two note-button names; test_web_app the why as aria-description.
+- `291a29e` A11Y-02 and 22. DECISION: the focused headings draw no ring (`h1[tabindex=-1]:focus`), so the
+  only visible change is the title; titles "Cairn — Edit" / "Cairn — Export" (the landing title's form).
+  The skip link sits in the rail head right after the title (the first Tab stop after where focus lands),
+  not as the stage's first child. DEVIATION: test_the_app_chrome_has_only_the_site_nav allows it.
+- `fb2e2b9` A11Y-04 and 24. DECISION A11Y-24: the audit's second option, a fixed visually hidden
+  `#status-live` (role=status) that setStatus mirrors; `#status` (on screen, still moved) lost its role.
+  Alternative: one status node per slot. DECISION A11Y-04: the words on screen, reused ("Showing N",
+  "Nothing matches these filters.", "N selected", so "0 selected", not the audit's "Selection cleared");
+  said only when the filters change (not on load, edits or moves) and after select all, a range, a header
+  box, Clear and Esc (not a single tick). DEVIATION: the drag status test checks the role on #status-live.
+- `1893b26` A11Y-01 and A11Y-23's folder half. DECISION A11Y-01: `--toolbar-h` left unset (the selection
+  bar keeps its 52px; setting it would move the bar 1px); the doc pages' 72px scroll padding replaces the
+  sections' scroll-margin-top (they would add up). DECISION A11Y-23: the JSON error's wording is held: the
+  owner chose "Failed: Could not load file" (LABELS 15) and the audit marks it "wording for the owner".
+- Screens by eye at 1440x900 (scratch, archive/a11y-scratch/shots): skip link focused, excluded and
+  Untitled rows, More's focus ring, both dialogs, the marker tip on focus, Shift+Tab under the selection
+  bar, export, FAQ, walkthrough, and the popover at 200%. No drift seen.
+- `d327bc2` the audit's "Status (round 4)" section. Final runs at `d327bc2`: web suite (tests/web, port
+  8797) **659 passed** (15 min 45 s; 613 + 46 in tests/web/test_accessibility.py), non-web **1403 passed**;
+  total 2062. FAQ `--check` passes. Not done: walkthrough screenshots not regenerated; the fuzzer not run.
+- Owner questions: A11Y-10 (selected vs focused swatch: a check glyph or a double ring?), A11Y-16 (an
+  underline under the After highlight, and `<mark>`?), A11Y-18 (one Tab stop per palette and icon list,
+  arrows inside: worth an M?), A11Y-21 (a paper panel behind the chips row?), A11Y-23 (the JSON error: keep
+  "Failed: Could not load file" or say what to do next?), and the receipts' words (A11Y-25).
+- (orchestrator) Merged into `feat/bulk-rename`.
