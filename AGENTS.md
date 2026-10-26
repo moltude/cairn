@@ -37,7 +37,9 @@ Never invoke `pytest` / `python` bare — always `uv run`. See `.cursor/rules/uv
 coverage table. On a narrow run that table is meaningless (it reports the whole package as mostly
 uncovered). Add `--no-cov` for narrow runs, and only trust coverage numbers from a full-suite run.
 
-Baseline as of 2026-10-26, round 5 (branch `feat/bulk-rename`: owner answers — swatch check, underlined highlight, load-failure dialog, "Name it Untitled"): **2065 passed** with the web dev server up (3 accessibility tests added).
+Baseline as of 2026-10-26, final deep inspection (branch `feat/bulk-rename`: GeoJSON errors, IME Escape, load-failure reset, one blank-name test, receipt counts): **2073 passed** with the web dev server up (8 tests added).
+
+Before it, round 5 (owner answers — swatch check, underlined highlight, load-failure dialog, "Name it Untitled"): 2065 passed (3 accessibility tests added).
 
 Baseline before round 5, 2026-10-25, round 4 (accessibility fixes UI-41, Dependabot actions, FAQ and walkthrough retake): 2062 passed (46 accessibility tests added).
 

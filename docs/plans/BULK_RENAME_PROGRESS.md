@@ -1211,7 +1211,7 @@ Owner, 2026-10-25 late: everything goes onto `feat/bulk-rename` and ships as one
 | R4 | Dependabot PR #46: fix it or fold it into this branch | orchestrator | **done**: its one commit cherry-picked as `002040a` (setup-uv v10.3.2, codeql-action v4.39.1, pypi-publish v1.14.3; each SHA checked against the tag). Close #46 as folded in after the big PR merges (R10) |
 | R5 | Walkthrough screenshots regenerated (`uv run --with pillow python scripts/make_walkthrough_shots.py`) and the 1440×900 cross-page review, after R3 | orchestrator | **done** `f477b2f` (6 shots retaken; the page's icon count 12 → 13, from main's icon fixes) |
 | R6 | Security review of the whole branch, after R1–R5 | orchestrator | **done**: no high-confidence findings; every new HTML sink escapes file data (`esc()`), text sinks use textContent, workflow pins match their tags. Round 5's one new sink (a load error's text, which can quote the file, into the dialog's title and body) checked: `openConfirm` sets both with textContent. The full rerun is part of R7's final deep inspection |
-| R7 | Final full suite, AGENTS.md baseline, final deep inspection | orchestrator | round 5 (R8's answers) built in `fe20210`; suite **2065 passed** after it, AGENTS.md updated; walkthrough 04-popover retaken (the swatch check shows; no other shot changed); fuzz smoke 8/8 green again (2 seeds × 4 maps × 150 actions, 51 exports checked, 0 harness errors). Final deep inspection (with the security rerun) started 2026-10-26 without waiting on R12, a one-line CSS change |
+| R7 | Final full suite, AGENTS.md baseline, final deep inspection | orchestrator | round 5 (R8's answers) built in `fe20210`; suite **2065 passed** after it, AGENTS.md updated; walkthrough 04-popover retaken (the swatch check shows; no other shot changed); fuzz smoke 8/8 green again (2 seeds × 4 maps × 150 actions, 51 exports checked, 0 harness errors). **Final deep inspection done 2026-10-26** (section 8.R7): security review of the whole branch, no findings; code review at high effort, 7 fixed with tests, 3 left as they are. Suite **2073 passed** after it |
 | R8 | Owner questions | owner | **answered 2026-10-26**: (a)–(f) accepted as Claude suggested (memory: cairn-accepted-suggestions-2026-10-26); (g) check mark, (h) underline, (k) load failure → dialog, OK → home: built; (i) A11Y-18 deferred; (j) A11Y-21 unanswered, still open |
 | R9 | Owner-only in onX: delete the ZZTEST folders | owner | open |
 | R11 | FAQ: the round trip can use Import Complete → Add to Folder to put a fresh import into an existing folder (it adds, the new folder stays); soften "no way into an existing folder". After track W merges (W may touch the FAQ build) | orchestrator | **done** `d6c2009` |
@@ -1267,3 +1267,32 @@ Owner, 2026-10-25 late: everything goes onto `feat/bulk-rename` and ships as one
   arrows inside: worth an M?), A11Y-21 (a paper panel behind the chips row?), A11Y-23 (the JSON error: keep
   "Failed: Could not load file" or say what to do next?), and the receipts' words (A11Y-25).
 - (orchestrator) Merged into `feat/bulk-rename`.
+
+### 8.R7 Final deep inspection (2026-10-26)
+
+Two reviews of `main...feat/bulk-rename` at `5e0813d`: a security review (the whole branch) and a
+code review at high effort. Each finding was checked against the code before acting on it.
+
+- Security: no candidate findings. Every new path from file text to the page escapes it (`esc()`) or
+  uses textContent / setAttribute / `.value`; the bulk preview's highlight escapes each piece, and a
+  cut between pieces can't split an entity; instructions.txt is plain text; the CSP and host config
+  are unchanged; workflow changes are SHA bumps only.
+- Code review, fixed (each with a test that fails without the fix):
+  - A GeoJSON file with a wrongly typed property (a list for a note) raised AttributeError inside the
+    parser, so the dialog said "'list' object has no attribute 'replace'". `_read_one` now turns any
+    GeoJSON parser error into "Failed: Could not load file".
+  - Escape that cancels an IME's candidate list (isComposing) closed the Rename / Change note dialog,
+    and reverted a name or closed a note being typed. All three now leave it to the IME.
+  - OK after a load that failed while drawing the edit screen left the read map in memory. OK now
+    clears it (resetAll, no history step).
+  - The needs-a-name test and the dialog's name-empty flag disagreed with the bridge on edge
+    characters: a BOM-only name was marked blank in the app but exported as a name; a bulk result of
+    NEL alone got no flag but then a mark. One test, `CairnRename.blankName` (Python's strip()), now
+    serves the mark, the flag and matches `bridge._blank_name`.
+  - Exclude and Include counted items already in that state ("Excluded 5 items." when 2 changed).
+  - `wireTextField`'s `required` option was dead code since names became optional; removed.
+  - `updateSel` padded for the selection bar on every selection change; now only when it shows or hides.
+- Not changed: the folder caution and the bridge measure the same text (folder names are cleaned at load
+  and at rename, so `_plain` changes nothing); the three cut sentences stay three functions (one shared
+  helper is a refactor with no change in behaviour, not worth churn this late); a GeoJSON failure in a multi-file load
+  names no file, as the owner's one-line wording has it.

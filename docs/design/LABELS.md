@@ -297,7 +297,7 @@ highlighted (`.na-after .hit`, no text of its own).
 | Failed: {reason} (engine boot) | err | app:239 |
 | Couldn't load the map engine (HTTP N). | err | app:208 |
 | Changed N item(s). / line(s). / area(s). (Rename… and Change note…: always item(s)) | ready | app:1541-1542, app `applyTextBulk` |
-| Excluded N item(s). · Included N item(s). · Renamed N item(s) from their notes. | ready; More → Exclude, Include, Use note as name (A11Y-25; none when nothing changed) | app `bulkReceipt` |
+| Excluded N item(s). · Included N item(s). · Renamed N item(s) from their notes. | ready; More → Exclude, Include, Use note as name (A11Y-25; N counts only the items it changed, none when nothing changed) | app `bulkReceipt` |
 | Couldn't move / make a folder / remove / rename — {reason} | err | app:1652, 1728, 1743, 1824 |
 | Everything is excluded — include at least one item to export. | err | app:2101 |
 | 1 item needs a name. / N items need a name. | err | app `showBlankNames` (Cancel in the names confirm; UI-40) |
