@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body class="docpage">
+<a href="#content" class="sr-only skip-link">Skip to the content</a>
 <header class="topbar">
   <a class="wordmark wordmark-link" href="./"><span class="cairn-mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h14M7 20l2-5h6l2 5M9 15l1.5-4h3L15 15M10.5 11 12 7l1.5 4"/></svg></span><span>Cairn</span></a>
   <nav class="site-nav" aria-label="Site">
@@ -24,7 +25,7 @@
   </nav>
 </header>
 <div class="doc doc-wide">
-  <main class="doc-main">
+  <main class="doc-main" id="content" tabindex="-1">
     <h1 class="sr-only">What Cairn changes between CalTopo and onX</h1>
     <p class="wt-lede">An example migrating a detailed CalTopo map of the
       <a href="https://caltopo.com/m/1KLNT" target="_blank" rel="noopener noreferrer">Bitterroots</a> to onX
@@ -59,7 +60,7 @@
       <span class="step-tag">Step 1</span>
       <h2>Export from CalTopo (GeoJSON is best) and add it to Cairn</h2>
       <p>One export, one file.</p>
-      <figure class="wt-fig"><img src="walkthrough/01-landing.webp" width="1440" height="900" alt="Cairn's landing page: three steps and a drop zone for a CalTopo export">
+      <figure class="wt-fig"><img src="walkthrough/01-landing.webp" width="1440" height="900" alt="Cairn's landing page: what it does, and a drop zone for a CalTopo export">
         <figcaption>The landing page. Drop a <code>.json</code>, <code>.geojson</code>, <code>.kml</code> or <code>.gpx</code> file.</figcaption></figure>
     </section>
 
