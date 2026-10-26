@@ -2481,7 +2481,7 @@ async function doExport() {
     items whose notes onX will cut, by name as written in straight single
     quotes, up to LONG_NOTES_SHOWN, then "and N more". */
 const LONG_NOTES_SHOWN = 8;
-/** "\u201ca\u201d, \u201cb\u201d and N more": up to LONG_NOTES_SHOWN quoted names. */
+/** Up to LONG_NOTES_SHOWN quoted names, then "and N more". */
 function nameList(quoted) {
   const n = LONG_NOTES_SHOWN;
   return quoted.length > n ? `${quoted.slice(0, n).join(", ")} and ${quoted.length - n} more` : quoted.join(", ");
