@@ -21,8 +21,7 @@ Small engine fixes: none open (the last ones shipped 2026-10-25, below).
   (A11Y-03, -06), filter and selection counts not announced (A11Y-04), focus vs selection in the
   More menu and swatches (A11Y-09, -10). A11Y-05 (nameless rows named "Select ") is fixed. Fixes
   that touch a decision (UI-26, UI-36, UI-39, ENG-02) need the owner's OK first. Done 2026-10-26: 24 fixed in
-  round 4, then A11Y-10, -16 and -23 after the owner's answers. Deferred: A11Y-18 (one Tab stop per palette).
-  Open: A11Y-21 (a paper panel behind the chips row, UI-20), unanswered.
+  round 4, then A11Y-10, -16, -21 and -23 after the owner's answers. Deferred: A11Y-18 (one Tab stop per palette).
 
 Wording follow-up (owner, 2026-10-25; LABELS.md §15 #8):
 

@@ -5,9 +5,9 @@ computed colours composited over the first opaque background, focus against the 
 bars by sampling points, names and roles from the accessibility tree.
 
 Owner answers 2026-10-26: A11Y-10 a check on the chosen swatch, A11Y-16 an underline under
-the After highlight, A11Y-23 a load failure is a dialog whose OK returns to a clean home page
-(tested at the end). Still held: A11Y-18 (roving tabindex, deferred), A11Y-21 (the chips row
-on contours)."""
+the After highlight, A11Y-21 a paper panel behind the chips row, A11Y-23 a load failure is a
+dialog whose OK returns to a clean home page (tested at the end). Deferred: A11Y-18 (roving
+tabindex)."""
 from __future__ import annotations
 
 import json
@@ -1023,6 +1023,21 @@ def test_the_chosen_swatch_carries_a_check_and_the_others_do_not(loaded: Page):
     assert after[1] == "3px" and after[2] == "3px", after
     assert after[3] == "rgb(255, 255, 255)", after
     assert other.evaluate("el => getComputedStyle(el, '::after').content") in ("none", "normal")
+
+
+def test_the_filter_chips_row_sits_on_a_paper_panel_not_the_contours(loaded: Page):
+    """A11Y-21 (owner 2026-10-26): "Showing N" and "Clear all" get the paper panel UI-20 asks
+    for; the row's background is --paper, widened by a paper shadow."""
+    page = loaded
+    page.click("#only-attention")
+    chips = page.locator("#chips")
+    expect(chips).to_be_visible()
+    paper = page.evaluate("""() => { const d = document.createElement('div');
+        d.style.background = 'var(--paper)'; document.body.append(d);
+        const c = getComputedStyle(d).backgroundColor; d.remove(); return c; }""")
+    bg, shadow = chips.evaluate("el => { const s = getComputedStyle(el); return [s.backgroundColor, s.boxShadow]; }")
+    assert bg == paper, (bg, paper)
+    assert shadow.startswith(paper) and "6px" in shadow, shadow
 
 
 def test_the_after_highlight_is_underlined_not_only_coloured(fresh_page: Page):

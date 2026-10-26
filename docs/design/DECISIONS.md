@@ -1406,6 +1406,7 @@ palette, UI-29), A11Y-21 (a panel behind the chips row, UI-20).
   (A11Y-10); the After highlight in Rename… / Change note… is underlined as well as shaded (A11Y-16); a file
   that fails to load says so in a dialog ("Failed: Could not load file", or "Couldn't read that file" with
   the reason) whose one button, OK, returns to a clean home page, with nothing on the status line (A11Y-23);
-  one Tab stop per palette (A11Y-18) is deferred. A11Y-21 (a panel behind the chips row) is still open.
+  one Tab stop per palette (A11Y-18) is deferred. Later the same day: the filter chips row gets the paper
+  panel UI-20 asks for, so "Showing N" and "Clear all" no longer sit on the contours (A11Y-21).
   Accepted from Claude's suggestions the same day (UI-40): the names confirm's action reads "Name it
   Untitled" for one item; Cancel stays its default; the fix writes plain "Untitled".

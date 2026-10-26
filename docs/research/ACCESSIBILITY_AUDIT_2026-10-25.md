@@ -291,7 +291,7 @@ this is where each one stands. Tests: `tests/web/test_accessibility.py`, one or 
 | A11Y-18 | Deferred by the owner 2026-10-26 |
 | A11Y-19 | Fixed in `cab9351` |
 | A11Y-20 | Fixed in `cab9351` |
-| A11Y-21 | Held for the owner (a paper panel behind the chips, UI-20) |
+| A11Y-21 | Fixed 2026-10-26 (owner: yes): `.chips` has a `--paper` background widened by a 6px paper shadow |
 | A11Y-22 | Fixed in `291a29e` (the edit screen's link is the first Tab stop after the map title, where focus lands) |
 | A11Y-23 | Folder name half fixed in `1893b26`; load failures fixed 2026-10-26 (owner: a dialog whose OK returns to a clean home page) |
 | A11Y-24 | Fixed in `fb2e2b9` (a fixed visually hidden region mirrors the line on screen) |
