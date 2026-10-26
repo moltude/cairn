@@ -149,11 +149,13 @@ def test_a_nameless_items_row_controls_and_popover_are_announced_as_untitled(fre
     page = fresh_page
     _map(page, [("w", "", "a note"), ("l", "", "")])
     wp, line = page.evaluate("['waypoints', 'tracks'].map(k => allItems().find(i => i.kind === k).uid)")
-    for uid in (wp, line):
+    # DEVIATION (A11Y-11, round 4): the note button's name starts with the words it shows,
+    # "{first line}, note for Untitled" or "Add a note for Untitled" (was "Open note for Untitled").
+    for uid, note_name in ((wp, "a note, note for Untitled"), (line, "Add a note for Untitled")):
         row = page.locator(f'tr[data-uid="{uid}"]')
         expect(row.get_by_role("checkbox", name="Select Untitled", exact=True)).to_have_count(1)
         expect(row.get_by_role("textbox", name="Name of Untitled", exact=True)).to_have_count(1)
-        expect(row.get_by_role("button", name="Open note for Untitled", exact=True)).to_have_count(1)
+        expect(row.get_by_role("button", name=note_name, exact=True)).to_have_count(1)
     page.locator(f'tr[data-uid="{wp}"] .icon-btn').click()
     expect(page.locator("#mark-pop")).to_have_attribute("aria-label", "Change icon and color for Untitled")
     page.keyboard.press("Escape")
@@ -194,8 +196,9 @@ def test_an_empty_note_cell_shows_add_a_note_only_on_hover_or_keyboard_focus(fre
     btn = page.locator(f'tr[data-uid="{bare}"] .note-btn')
     expect(btn).to_be_focused()
     expect(text(bare)).to_have_css("visibility", "visible")
+    # DEVIATION (A11Y-11, round 4): the name starts with the words shown, "Add a note".
     expect(page.locator(f'tr[data-uid="{bare}"]').get_by_role(
-        "button", name="Open note for Untitled", exact=True)).to_have_count(1)
+        "button", name="Add a note for Untitled", exact=True)).to_have_count(1)
 
 
 # =====================================================================================

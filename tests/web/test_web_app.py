@@ -189,9 +189,12 @@ def test_top_bar_help_opens_help_from_the_app(fresh_page: Page):
 def test_the_app_chrome_has_only_the_site_nav(fresh_page: Page):
     """The old Help / FAQ / Walkthrough links in the top bar and the rail are
     gone; the top bar carries the site nav and nothing else clickable."""
+    # DEVIATION (A11Y-22, round 4): the rail head's "Skip to the list" (shown only while
+    # focused) is not one of the old links.
     extra = fresh_page.locator("#topbar a:not(.site-nav *), #topbar button:not(.site-nav *), "
-                               ".rail-head a, .rail-head button")
+                               ".rail-head a:not(.skip-link), .rail-head button")
     assert extra.count() == 0
+    assert fresh_page.locator(".rail-head a").count() == 1
     assert fresh_page.locator("#topbar nav.site-nav").count() == 1
 
 
@@ -646,8 +649,9 @@ def test_every_waypoint_explains_its_icon(fresh_page):
     )
     assert missing == [], f"items with no explanation: {missing[:5]}"
 
-    # every icon chip carries it as a tooltip
-    chips = fresh_page.locator(".icon-btn[title]").count()
+    # every icon chip carries it as a tooltip. DEVIATION (A11Y-12, round 4): in the styled
+    # tip and the marker's aria-description, no longer its native title.
+    chips = fresh_page.locator(".icon-btn[aria-description]:not([title])").count()
     waypoints = fresh_page.evaluate(
         "DATA.groups.flatMap(g => g.items).filter(i => i.kind === 'waypoints').length"
     )
@@ -2027,17 +2031,19 @@ def test_onx_gpx_kml_pair_loads_as_one_folder_with_its_icons_kept(csp_page: Page
     # onX's own icons, shown unchanged, explained, and none needing attention.
     expect(page.locator(f"{ROW} .icon-btn .icon-name")).to_have_text(
         ["Climbing", "Campsite", "Hazard"])
+    # DEVIATION (A11Y-12, round 4): the why is the marker's aria-description (and its
+    # styled tip), not its native title.
     for i in (0, 2):
         expect(page.locator(f"{ROW} .icon-btn").nth(i)).to_have_attribute(
-            "title", "Kept from your onX file.")
+            "aria-description", "Kept from your onX file.")
     expect(page.locator(f"{ROW}.attention")).to_have_count(0)
     # The fixture's "Campsite" isn't in onX's icon list: kept, but marked and explained.
     expect(page.locator(f"{ROW} .icon-name.unknown-icon")).to_have_text(["Campsite"])
     expect(page.locator(f"{ROW} .icon-btn").nth(1)).to_have_attribute(
-        "title", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn't know"))
+        "aria-description", re.compile(r"^Your onX file uses the icon “Campsite”, which Cairn doesn't know"))
     # The lines' color came from the file too.
     expect(page.locator(f"{ROW} .line-btn").first).to_have_attribute(
-        "title", re.compile(r"Kept from your onX file\.$"))
+        "aria-description", re.compile(r"Kept from your onX file\.$"))
     # The type filter keeps the one word "Lines" (UI-18) and still finds the Track.
     page.click('#type-filter [data-kind="tracks"]')
     expect(page.locator(ROW)).to_have_count(2)
@@ -4428,9 +4434,13 @@ def test_a_pointer_drag_move_stays_announced_in_the_status_line(loaded: Page):
     page = loaded
     _wide(page)
     st = page.locator("#status")
-    assert st.get_attribute("role") == "status"
+    # DEVIATION (A11Y-24, round 4): the live region is #status-live, which never moves;
+    # #status, the line on screen that moves between the top bar and the rail, mirrors it.
+    live = page.locator("#status-live")
+    assert live.get_attribute("role") == "status" and st.get_attribute("role") is None
     _drag(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"), _rail(page, "North Roots"))
     expect(st).to_have_text("Moved 1 item to North Roots.")
+    expect(live).to_have_text("Moved 1 item to North Roots.")
     for ms in (300, 400, 1500):
         page.wait_for_timeout(ms)
         assert st.text_content() == "Moved 1 item to North Roots."
