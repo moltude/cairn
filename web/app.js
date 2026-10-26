@@ -2632,12 +2632,10 @@ function requestStartOver() {
   const ret = document.activeElement;
   flushDeferred();                 // a name just left: its rename, or its merge offer, first
   if (CONFIRM) return;
-  const n = unexportedChanges();
   openConfirm({
     title: "Start over?",
-    body: n
-      ? `This discards ${n} unexported change${n === 1 ? "" : "s"}.`
-      : "This clears the current map.",
+    // No count, as in "Leave this map?" (owner, 2026-10-25: keep it simple).
+    body: unexportedChanges() ? "Changes will be lost." : "This clears the current map.",
     ret,
     buttons: [
       { label: "Cancel", initial: true, cancel: true, run: () => closeConfirm() },

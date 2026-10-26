@@ -443,7 +443,9 @@ Status: decided 2026-10-21. Closes the red-team item "Start over discards all ed
 
 User: show a pop-up confirmation when someone clicks Start over. Built as an in-page dialog
 (not a browser `confirm()`): "Start over?" with Cancel (initial focus) and a destructive
-"Start over". When edits exist it states how many unexported changes will be lost.
+"Start over". When there are unexported changes it says "Changes will be lost.", as "Leave this
+map?" does, with no count (owner 2026-10-25: no count; it said "This discards N unexported
+changes." before).
 
 Other options considered: an undo toast after the reset; moving the button away from Export.
 
