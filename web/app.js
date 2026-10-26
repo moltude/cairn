@@ -34,13 +34,30 @@ const $ = s => document.querySelector(s);
    lines stay until something supersedes them. */
 let STATUS_LINGER_MS = 8000;
 let STATUS_TIMER = null;
+/* #status is the line on screen; it moves between the top bar and the rail
+   (showStage). Screen readers hear its words from #status-live, a region that
+   never moves (A11Y-24: a moved live region can stop being announced). */
 const setStatus = (t, cls = "") => {
-  const e = $("#status"); e.textContent = t; e.className = "status " + cls;
+  const e = $("#status"), live = $("#status-live");
+  e.textContent = t; e.className = "status " + cls; live.textContent = t;
   clearTimeout(STATUS_TIMER); STATUS_TIMER = null;
   if (t && cls === "ready") STATUS_TIMER = setTimeout(() => {
-    if (e.textContent === t) { e.textContent = ""; e.className = "status "; }
+    if (e.textContent === t) { e.textContent = ""; e.className = "status "; live.textContent = ""; }
   }, STATUS_LINGER_MS);
 };
+/* Counts a screen reader can't see change (A11Y-04): how many items a search or
+   filter leaves, and how many a select-all, range or header box selects. One
+   polite region, a beat after the last change (typing in the search waits for
+   the pause). Emptied at once, so the same words again are said again. */
+const ANNOUNCE_MS = 400;
+let ANNOUNCE_T = null;
+function announce(msg) {
+  const r = $("#count-live");
+  clearTimeout(ANNOUNCE_T);
+  r.textContent = "";
+  ANNOUNCE_T = setTimeout(() => { r.textContent = msg; }, ANNOUNCE_MS);
+}
+const announceSelection = () => announce(`${SEL.size} selected`);
 /** An error that a later success has made stale ("A folder needs a name."). */
 const clearError = () => { if ($("#status").classList.contains("err")) setStatus(""); };
 
@@ -387,6 +404,7 @@ async function handleFiles(files) {
     resetFolderState();
     $("#runbook").replaceChildren();
     SAVED = savedState();
+    FILTER_SIG = null;               // a new map's first render says nothing (A11Y-04)
     $("#map-title").textContent = mapTitle(DATA);
     $("#map-label").textContent = mapLabel(DATA);
     renderEdit();
@@ -699,7 +717,23 @@ function renderFolders() {
   renderChips();
   patch(patchFolders);
   updateSel();
+  announceFilterResult(shownUids.size);
   syncUnloadGuard();               // every edit, move and rename redraws the list
+}
+
+/* The search, type, folder and icon filters, as one string: a render whose
+   filters differ from the last one's says how many items it left (A11Y-04),
+   in the words on screen ("Showing N", "Nothing matches these filters.").
+   Edits, moves and sorts redraw the list too, but don't change this, so they
+   say nothing here (their receipt is the status line). null: a new map, whose
+   first render sets it silently. */
+let FILTER_SIG = null;
+const filterSig = () => JSON.stringify([FILTERS.q, FILTERS.kind, FILTERS.folder, [...FILTERS.icons].sort(), FILTERS.attention]);
+function announceFilterResult(n) {
+  const sig = filterSig();
+  if (FILTER_SIG !== null && sig !== FILTER_SIG)
+    announce($("#folders").querySelector(":scope > .note") ? "Nothing matches these filters." : `Showing ${n}`);
+  FILTER_SIG = sig;
 }
 
 function patchFolders() {
@@ -759,6 +793,7 @@ function folderSection(g, items) {
   fbox.onchange = e => {
     items.forEach(i => e.target.checked ? SEL.add(i.uid) : SEL.delete(i.uid));
     renderFolders();
+    announceSelection();
   };
   wireFolderTitle(el, g);
   el.querySelector(".sort-btn").onclick = () => toggleSort(g.key);
@@ -1100,6 +1135,7 @@ function row(it, old = null) {
         const on = !SEL.has(it.uid);
         for (let k = lo; k <= hi; k++) on ? SEL.add(order[k]) : SEL.delete(order[k]);
         renderFolders();
+        announceSelection();
         return;
       }
       e.preventDefault();          // the anchor isn't on screen: the click does nothing but move it
@@ -1294,6 +1330,7 @@ function setSelectAll(on) {
   shown.forEach(i => on ? SEL.add(i.uid) : SEL.delete(i.uid));
   if (!on) ANCHOR = null;
   renderFolders();
+  announceSelection();
 }
 
 /** Patch every selected item; returns how many took a patch. */
@@ -2742,6 +2779,7 @@ function resetAll({ history: stepBack = true } = {}) {
   DATA = null; EDITS = {}; SEL.clear(); ANCHOR = null; ZIP = null; MANIFEST = null; NOTE_EDIT = null;
   SORT.clear(); hideTip();
   resetFilters();
+  FILTER_SIG = null; clearTimeout(ANNOUNCE_T); $("#count-live").textContent = "";
   $("#file").value = "";
   showStage("drop");
   setStatus("");
@@ -2899,7 +2937,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("#type-filter [data-kind]").forEach(b => b.onclick = () => setKind(b.dataset.kind));
   document.querySelectorAll(".rail .facet[data-sec] .sec-h").forEach(h =>
     h.onclick = () => toggleRailSection(h.closest(".facet").dataset.sec));
-  $("#clear-sel").onclick = () => { SEL.clear(); ANCHOR = null; renderFolders(); };
+  $("#clear-sel").onclick = () => { SEL.clear(); ANCHOR = null; renderFolders(); announceSelection(); };
   $("#more-btn").onclick = e => {
     e.stopPropagation();
     closeMove(false); closePop();   // never a menu under the Move to… list
@@ -2997,7 +3035,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!$("#more-menu").classList.contains("hidden")) { closeMenu(); $("#more-btn").focus(); return; }
       if (typing) return;                       // wireTextField handles the revert
       if (NOTE_EDIT) { closeNote(null, false); return; }
-      if (SEL.size) { SEL.clear(); ANCHOR = null; renderFolders(); }
+      if (SEL.size) { SEL.clear(); ANCHOR = null; renderFolders(); announceSelection(); }
       return;
     }
     // Not behind anything in front: a dialog, Move to… or Help.

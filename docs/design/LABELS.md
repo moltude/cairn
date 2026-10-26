@@ -34,7 +34,9 @@ There is no footer nav (UI-38). Nav on every page: App · Help · FAQ · Walkthr
 | Skip to the content | skip link, shown only while focused; the page's first Tab stop, to `main#content` (A11Y-22) | faq.html, walkthrough.html | build_faq_page.py, wt | `.skip-link` |
 | `CalTopo to onX, with icons and colors that still mean something.` | meta description | head | idx:7 | — |
 | `Cairn FAQ`, `Cairn Walkthrough` | page titles | tabs | faq.html:10, wt:10 | — |
-| Status line (empty until a message) | status region | Top bar slot on drop/export; rail foot on edit | idx:26, idx:88 | `#status`, `#status-top`, `#status-rail` |
+| Status line (empty until a message) | the line on screen (no role); moves between the slots | Top bar slot on drop/export; rail foot on edit | idx:26, idx:88 | `#status`, `#status-top`, `#status-rail` |
+| (the status line's words) | the status region screen readers hear: a visually hidden `role=status` that never moves (A11Y-24) | end of body | idx, app `setStatus` | `#status-live` |
+| Showing N · Nothing matches these filters. · N selected | said politely (visually hidden `role=status`, 0.4 s after the last change) when a search or filter changes the list, and after select all (Ctrl / ⌘ + A), a shift range, a header checkbox, Clear and Esc; the words on screen, reused (A11Y-04) | end of body | app `announce` | `#count-live` |
 
 wt:19-23 repeats the nav with Help linking to `./#help`.
 

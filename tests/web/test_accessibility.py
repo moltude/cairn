@@ -760,3 +760,105 @@ def test_doc_pages_first_tab_stop_skips_to_the_content(page_on, path):
     assert main.evaluate("e => getComputedStyle(e).outlineStyle") == "none"
     page.keyboard.press("Tab")
     assert page.evaluate("document.querySelector('main').contains(document.activeElement)")
+
+
+# --- A11Y-04: result and selection counts, said politely ---------------------------------
+
+SAID = 2000      # the region speaks 0.4 s after the last change; this is the wait's ceiling
+
+
+def _said(page: Page):
+    return page.locator("#count-live")
+
+
+def _quiet_for(page: Page, ms: int = 700) -> None:
+    """Empty the count region, wait past its delay, and check nothing was said."""
+    page.wait_for_timeout(ms)
+    expect(_said(page)).to_have_text("")
+
+
+def test_search_and_filters_say_how_many_items_they_leave(loaded: Page):
+    """A11Y-04: typing in the search, picking a type and clearing say "Showing N", or
+    "Nothing matches these filters.", in a polite status region; loading a map and editing
+    under a filter say nothing there."""
+    page = loaded
+    said = _said(page)
+    assert said.get_attribute("role") == "status"
+    _quiet_for(page)                                  # a map load says nothing
+    page.locator("#filter").press_sequentially("water", delay=30)
+    n = page.evaluate("shownItems().length")
+    assert 0 < n < 177
+    expect(said).to_have_text(f"Showing {n}", timeout=SAID)
+    page.locator("#filter").fill("zzzz no such thing")
+    expect(said).to_have_text("Nothing matches these filters.", timeout=SAID)
+    page.locator("#filter").fill("")
+    expect(said).to_have_text("Showing 177", timeout=SAID)
+    page.click('#type-filter [data-kind="tracks"]')
+    lines = page.evaluate("allItems().filter(i => i.kind === 'tracks').length")
+    expect(said).to_have_text(f"Showing {lines}", timeout=SAID)
+    # An edit redraws the list but changes no filter: nothing more is said.
+    page.evaluate("document.querySelector('#count-live').textContent = ''")
+    _set(page, page.evaluate("shownItems()[0].uid"), name="Renamed under a filter")
+    _quiet_for(page)
+
+
+def test_select_all_ranges_header_boxes_clear_and_esc_say_the_selection_count(loaded: Page):
+    """A11Y-04: Ctrl / ⌘ + A, a shift range, a folder's header checkbox, Clear and Esc say
+    "N selected"; ticking one row's own box (which says its state itself) says nothing."""
+    page = loaded
+    said = _said(page)
+    _select_all(page)
+    expect(said).to_have_text("177 selected", timeout=SAID)
+    page.keyboard.press("ControlOrMeta+a")
+    expect(said).to_have_text("0 selected", timeout=SAID)
+    sec = page.locator("section.folder").first
+    k = sec.locator("tbody tr").count()
+    sec.locator(".folder-all").check()
+    expect(said).to_have_text(f"{k} selected", timeout=SAID)
+    page.evaluate("document.activeElement.blur()")
+    page.keyboard.press("Escape")
+    expect(said).to_have_text("0 selected", timeout=SAID)
+    boxes = page.locator(f"{ROW} .sel-box")
+    boxes.nth(0).click()
+    boxes.nth(4).click(modifiers=["Shift"])
+    expect(said).to_have_text("5 selected", timeout=SAID)
+    page.click("#clear-sel")
+    expect(said).to_have_text("0 selected", timeout=SAID)
+    page.evaluate("document.querySelector('#count-live').textContent = ''")
+    boxes.nth(2).check()
+    _quiet_for(page)
+
+
+# --- A11Y-24: the status line's words come from a region that never moves ----------------
+
+
+def test_status_words_are_said_from_a_region_that_never_moves(fresh_page: Page):
+    """A11Y-24: #status-live (role=status, visually hidden) is the same node, a child of
+    <body> and never under a hidden stage, on every screen; it says what the visible line
+    says and empties with it."""
+    page = fresh_page
+    live = page.locator("#status-live")
+    live.evaluate("e => { e.__same = true; }")
+    on_body = "e => e.__same === true && e.parentElement === document.body && !e.closest('.hidden, [hidden]')"
+    assert live.evaluate(on_body) and live.get_attribute("role") == "status"
+    assert page.locator("#status").get_attribute("role") is None
+    _map(page, [("w", "Camp", ""), ("w", "Lake", "")])
+    assert live.evaluate(on_body)
+    _tick(page, [_uid(page, "Camp")])
+    _menu_action(page, "#bulk-exclude")
+    expect(page.locator("#status")).to_have_text("Excluded 1 item.")
+    expect(live).to_have_text("Excluded 1 item.")
+    page.click("#export")
+    expect(page.locator("body")).to_have_attribute("data-stage", "done")
+    assert live.evaluate(on_body)
+    page.click("#back")
+    assert live.evaluate(on_body)
+    # A receipt that times out leaves both empty.
+    page.evaluate("STATUS_LINGER_MS = 300; setStatus('Moved 1 item to Trip.', 'ready')")
+    expect(live).to_have_text("Moved 1 item to Trip.")
+    expect(page.locator("#status")).to_have_text("", timeout=3000)
+    expect(live).to_have_text("")
+    # An error stays, in both.
+    page.evaluate("setStatus('A folder needs a name.', 'err')")
+    expect(live).to_have_text("A folder needs a name.")
+

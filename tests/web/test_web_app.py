@@ -4433,9 +4433,13 @@ def test_a_pointer_drag_move_stays_announced_in_the_status_line(loaded: Page):
     page = loaded
     _wide(page)
     st = page.locator("#status")
-    assert st.get_attribute("role") == "status"
+    # DEVIATION (A11Y-24, round 4): the live region is #status-live, which never moves;
+    # #status, the line on screen that moves between the top bar and the rail, mirrors it.
+    live = page.locator("#status-live")
+    assert live.get_attribute("role") == "status" and st.get_attribute("role") is None
     _drag(page, _first_row(page, "Lost Trail Pass").locator(".note-btn"), _rail(page, "North Roots"))
     expect(st).to_have_text("Moved 1 item to North Roots.")
+    expect(live).to_have_text("Moved 1 item to North Roots.")
     for ms in (300, 400, 1500):
         page.wait_for_timeout(ms)
         assert st.text_content() == "Moved 1 item to North Roots."

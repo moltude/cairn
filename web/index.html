@@ -23,7 +23,7 @@
      wordmark in its left rail instead. -->
 <header id="topbar" class="topbar">
   <div class="wordmark"><span class="cairn-mark" data-ui-icon="cairn"></span><span>Cairn</span></div>
-  <span id="status-top" class="status-slot"><span id="status" class="status" role="status"></span></span>
+  <span id="status-top" class="status-slot"><span id="status" class="status"></span></span>
   <nav class="site-nav" aria-label="Site">
     <a href="./" aria-current="page">App</a> &middot;
     <button type="button" class="linkbtn help-open">Help</button> &middot;
@@ -258,6 +258,13 @@
   </div>
 </div></div>
 
+
+<!-- Screen-reader announcements, never moved and never hidden by a stage
+     (A11Y-24): the status line's words (#status moves between the top bar and
+     the rail, so it is not the live region itself), and the result and
+     selection counts (A11Y-04). Filled by app.js. -->
+<div id="status-live" class="sr-only" role="status"></div>
+<div id="count-live" class="sr-only" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.29.5/full/pyodide.js"
         integrity="sha384-VR47TfKeAmT7vMej7bwOVg0tHTQLLGMSIpsXtFMCZG5OpKZSIXoSLtGY//qHcxc6"
