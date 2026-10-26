@@ -35,6 +35,7 @@ from cairn.io.onx_gpx import parse_onx_desc_kv, read_onx_gpx  # noqa: E402
 from tests.bulk_rename_vectors import (  # noqa: E402
     ROUND_TRIP_NAMES, ROUND_TRIP_NOTES, item_map, py_clean_note,
 )
+from tests.blank_names import blank_uids, name_blanks  # noqa: E402
 from tests.hardening_maps import _folder, _line, _poly, _pt  # noqa: E402
 from tests.naughty_strings import NAUGHTY  # noqa: E402
 
@@ -142,6 +143,10 @@ def test_round_trip_writer_reader_keeps_every_renamed_name(tmp_path):
     # Save stores the core's after verbatim.
     for u, (field, after) in plan.items():
         assert items[u][field] == after
+    # A blank after is stored, but the export needs a name (N1, 2026-10-25): named
+    # "Untitled" first, as the app does. DEVIATION: they were exported blank.
+    blanks = [u for u, (field, after) in plan.items() if field == "name" and bridge._blank_name(after)]
+    assert blanks and sorted(name_blanks(bridge)) == sorted(blanks)
     zf = export()
     got = gpx_items(zf)
     want = [("01_Naughty", i["kind"], i["name"], i["desc"]) for i in stored()]
@@ -156,18 +161,24 @@ def test_round_trip_writer_reader_keeps_every_renamed_name(tmp_path):
 
 
 def test_the_reader_side_differences_are_pinned(tmp_path):
-    """Where the onX reader does not hand back the core's after, by design of the
-    reader: a blank <name> reads as "" (recorded, plan 6.6: nothing assumed it would);
+    """Where the onX reader does not hand back the core's after: a blank after never
+    reaches the file (N1: named "Untitled" before export, so no <name> is blank);
     entity-looking text is decoded once more; a note that opens with "name=" is read
-    as onX's own desc block."""
+    as onX's own desc block.
+    DEVIATION (N1, 2026-10-25): a blank <name> was written and read back as ""."""
     names = {label: after for label, _b, _s, after in ROUND_TRIP_NAMES}
     notes = {label: after for label, _b, _s, after in ROUND_TRIP_NOTES}
     _apply_round_trip(ROUND_TRIP_NAMES, ROUND_TRIP_NOTES)
+    with pytest.raises(ValueError, match="An item needs a name"):
+        bridge.export_zip()
+    named = name_blanks(bridge)
     back = reader_items(export(), tmp_path)
     back_names = Counter(n for _d, _k, n, _s in back)
     back_notes = Counter(s for _d, _k, _n, s in back)
     blanks = [label for label, a in names.items() if a == ""]
-    assert len(blanks) == 3 and back_names[""] == len(blanks)
+    typed = sum(a == "Untitled" for a in names.values())
+    assert len(blanks) == 3 and len(named) == len(blanks)
+    assert back_names[""] == 0 and back_names["Untitled"] == len(blanks) + typed
     assert names["prefix_keeps_entity_text"] == "x&amp; &lt;b&gt;"
     assert back_names["x& <b>"] == 1 and back_names["x&amp; &lt;b&gt;"] == 0
     assert notes["note_prefix_onx_desc_block"] == "name=evil\nnotes=y\nx"
@@ -251,7 +262,9 @@ def _two_folder_map(n_per: int) -> str:
 def test_preview_equals_saved_equals_exported_for_names(tmp_path):
     """Two folders, every round-trip name vector's after stored on an item; then a second
     pass blanks every third item. Each time, per folder and kind: stored == after ==
-    <name> text; the reader gives its own cleaning of it, "" for a blank one."""
+    <name> text; the reader gives its own cleaning of it. A blank name stops the export
+    (N1) until it is named "Untitled", as the app does first.
+    DEVIATION (N1, 2026-10-25): blank names were exported as "" and read back as ""."""
     n = len(ROUND_TRIP_NAMES)
     items = load_files(_two_folder_map(n))
     afters = [a for _l, _b, _s, a in ROUND_TRIP_NAMES] * 2
@@ -259,6 +272,10 @@ def test_preview_equals_saved_equals_exported_for_names(tmp_path):
     for pass_ in ("renamed", "blanked"):
         if pass_ == "blanked":
             bridge.apply_edits(json.dumps({i["uid"]: {"name": ""} for i in items[::3]}))
+        with pytest.raises(ValueError, match="An item needs a name"):
+            bridge.export_zip()
+        name_blanks(bridge)
+        assert not blank_uids(bridge)
         want = Counter((g, i["kind"], i["name"]) for g, i in stored_by_folder())
         zf = export()
         dirs = {e["dir"]: e["folder"] for e in bridge._STATE["manifest"]}
@@ -266,7 +283,7 @@ def test_preview_equals_saved_equals_exported_for_names(tmp_path):
         assert got == want, pass_
         back = Counter((dirs[d], k, nm) for d, k, nm, _s in reader_items(zf, tmp_path))
         assert back == Counter((g, k, reader_name(nm)) for (g, k, nm), c in want.items() for _ in range(c))
-    assert sum(1 for _g, i in stored_by_folder() if i["name"] == "") >= len(items) // 3
+    assert sum(1 for _g, i in stored_by_folder() if i["name"] == "Untitled") >= len(items) // 3
 
 
 def test_preview_equals_saved_equals_exported_for_notes(tmp_path):

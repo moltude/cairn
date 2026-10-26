@@ -13,9 +13,11 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import re
 import sys
 import zipfile
 from pathlib import Path
+from xml.sax.saxutils import unescape as xml_unescape
 
 import pytest
 
@@ -26,6 +28,8 @@ from cairn.io.input_check import detect
 from cairn.io.onx_gpx import read_onx_gpx
 from cairn.io.onx_kml import read_onx_kml
 from cairn.model import MapDocument
+from cairn.utils.utils import natural_sort_key
+from tests.blank_names import name_blanks
 from tests.test_onx_round_trip_fidelity import (
     ALLOWED_LOSSES,
     FIDELITY_FIGURE,
@@ -161,7 +165,17 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
     for i in straight:
         i["why"] = i["why"].replace("don't take an icon", "don\u2019t take an icon")
     assert hashlib.sha256(json.dumps(loaded).encode()).hexdigest() == baseline["load_document_json"]
+    # A name is required to export since 2026-10-25 (N1): the 7 blank-named items
+    # (6 lines and an area, all in Unorganized) are named "Untitled" first, as the
+    # app's "Name them Untitled" does; the baseline was re-pinned for it (its notes).
+    named = set(name_blanks(bridge))
+    assert sorted(i["kind"] for i in _items(loaded) if i["name"] == "") == ["shapes"] + ["tracks"] * 6
+    assert len(named) == 7
     zf = _zip(bridge.export_zip())
+    for name, digest in baseline["before_names_required"].items():
+        # Only those 7 changed: put the blank names back and the writers' own name
+        # order (natural, stable) gives the bytes pinned before, exactly.
+        assert hashlib.sha256(_blank_names_back(zf.read(name))).hexdigest() == digest, name
     assert zf.namelist() == list(baseline["members"])
     assert not [n for n in zf.namelist() if n.endswith(".kml")]
     dash, solid = b"<onx:style>dash</onx:style>", b"<onx:style>solid</onx:style>"
@@ -173,6 +187,35 @@ def test_bitterroots_geojson_export_is_byte_identical_to_before_phase_2():
             assert data.count(b"<onx:icon>Trailhead</onx:icon>") == 1
             data = data.replace(b"<onx:icon>Trailhead</onx:icon>", b"<onx:icon>Water Source</onx:icon>")
         assert hashlib.sha256(data).hexdigest() == digest, name
+
+
+def _blank_names_back(data: bytes) -> bytes:
+    """A member as it was before names were required (2026-10-25): every
+    "Untitled" item made blank again, in the order the writers give blank names.
+    GPX: the <trk> / <rte> blocks re-sorted by natural_sort_key of their names
+    (the writers' stable sort; a blank name sorts first). instructions.txt: each
+    file's item lines re-sorted the same way ("Untitled" is how it prints a
+    blank name, so those lines don't change, only move)."""
+    if data.startswith(b"<?xml"):
+        blocks = re.findall(rb"  <(?:trk|rte)>\n.*?\n  </(?:trk|rte)>\n", data, flags=re.S)
+        start, end = data.index(blocks[0]), data.rindex(blocks[-1]) + len(blocks[-1])
+        assert data[start:end] == b"".join(blocks)
+        blocks = [b.replace(b"<name>Untitled</name>", b"<name></name>") for b in blocks]
+
+        def key(block):
+            name = re.search(rb"<name>(.*?)</name>", block, flags=re.S).group(1).decode()
+            return natural_sort_key(xml_unescape(name))
+        return data[:start] + b"".join(sorted(blocks, key=key)) + data[end:]
+    lines, out, run = data.decode("utf-8").split("\r\n"), [], []
+    for ln in lines + [""]:
+        if ln.startswith(" " * 12):
+            assert not ln.startswith(" " * 16)          # Bitterroots has no item marks
+            run.append(ln)
+            continue
+        out += sorted(run, key=lambda s: natural_sort_key("" if s.strip() == "Untitled" else s.strip()))
+        run = []
+        out.append(ln)
+    return "\r\n".join(out[:-1]).encode("utf-8")
 
 
 def test_single_file_load_document_is_load_files_with_one_file():
