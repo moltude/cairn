@@ -691,9 +691,9 @@ section 1 (worktree, own port, log in your worktree copy's subsection below, nev
 | # | question | answer | status |
 |---|---|---|---|
 | 1 | a sentence for removed characters? | **No: drop them silently, and the same rules apply to every text edit** | decided; T builds the single-edit side |
-| 2 | highlight: one span or each match? | show both in a rendered artifact | orchestrator: artifact |
+| 2 | highlight: one span or each match? | show both in a rendered artifact | **artifact published** (https://claude.ai/artifact/S7br3nfPgn7tNU6KnsdpSw, board 2): real renders, built vs each match. Finding: the built common-start/end diff marks *characters*, not the replacement ("Bear Creek Trail" → "Bear Creek Tr." marks only the "."; "Sawtooth" mid-word marks "railhead…"). Recommendation: each match in Find and replace. **Owner (later 2026-10-25): Find matches whole words only** ("TH" never inside "Sawtooth"; punctuation is not part of a word). Rules restated to the owner for confirmation; core change waits on that |
 | 3 | "Web Map" in internal text | **remove it everywhere** | S |
-| 4 | "Leave this map?" count; "Add a note" cell | unsure: show the behaviour under several conditions | orchestrator: artifact |
+| 4 | "Leave this map?" count; "Add a note" cell | unsure: show the behaviour under several conditions | **artifact published** (same link, boards 4a and 4b): 1 and 5 changes now vs "This discards N unexported changes." (Start over's sentence) beside Start over; the empty note cell in three variants (now / blank / blank until hover or focus) × hover and keyboard focus, over a note row, a nameless selected row and an excluded row. **4a decided (owner, later 2026-10-25): no count.** "Leave this map?" keeps "Changes will be lost."; Start over? drops its count to match (orchestrator, for consistency; alternative: keep Start over's count). Sent to T. **4b decided (owner): variant C**, blank until hover or keyboard focus; sent to T |
 
 **One rule set for every text edit** (answer 1). An *untouched* value is never cleaned (focus then blur
 with no typing is a no-op; a dirty loaded value stays as loaded until edited; the writer stays the net).
@@ -723,15 +723,202 @@ invisible `data-flags` value for tests). Plan section 3.1's "the single editor s
 
 | track | files | state |
 |---|---|---|
-| R research | `docs/research/ONX_PUBLIC_DOCS_2026-10-25.md` (new) | not started |
-| S "Web Map" sweep | docs, code comments, test comments and READMEs, TODO.md, LABELS.md section 16 (one internal phrase); **not** real export data under `tests/fixtures/` (`.gpx` / `.kml`), file names or URLs | not started |
-| T text rules and tests | `web/app.js`, `tests/web/test_text_rules.py` (new), `tests/web/test_bulk_text.py` / `tests/web/test_rename_core.py` (additions), `tests/web/test_web_app.py` (only where an assertion pinned the old untrimmed behaviour; DEVIATION line each), `docs/design/DECISIONS.md` (UI-39 / UI-16 text rules), `docs/design/LABELS.md` if a label changes | not started |
+| R research | `docs/research/ONX_PUBLIC_DOCS_2026-10-25.md` (new) | **done**, merged |
+| S "Web Map" sweep (**done**, merged except the skill file) | docs, code comments, test comments and READMEs, TODO.md, LABELS.md section 16 (one internal phrase); **not** real export data under `tests/fixtures/` (`.gpx` / `.kml`), file names or URLs | not started |
+| T text rules and tests (**done**, merged) | `web/app.js`, `tests/web/test_text_rules.py` (new), `tests/web/test_bulk_text.py` / `tests/web/test_rename_core.py` (additions), `tests/web/test_web_app.py` (only where an assertion pinned the old untrimmed behaviour; DEVIATION line each), `docs/design/DECISIONS.md` (UI-39 / UI-16 text rules), `docs/design/LABELS.md` if a label changes | not started |
 
 S and T both touch `DECISIONS.md` and `LABELS.md`: S edits only lines holding "Web Map", T only the text-rule
 lines; minimal hunks so the merge is clean.
 
+Captures behind the artifact: archive/bulk-rename/choices/ (local). Also found in the capture and sent to T:
+nameless rows' checkbox and note button are announced as "Select " / "Open note for " (should say Untitled).
+
+### 7.4 Owner decisions, round 3 (2026-10-25, evening)
+
+| # | decision | supersedes | status |
+|---|---|---|---|
+| W1 | **Find matches whole words only.** A match never starts or ends inside a word. Word characters: letters (with their accents) and digits; spaces and punctuation are boundaries, so "TH." matches "TH" and keeps its full stop. Each Chinese / Japanese / Korean character counts as its own word, so Find "山" still matches inside "日本語の山". A Find that starts or ends with punctuation or space only needs a boundary on its word-character edges ("(rainy)", " - "). Always on; no toggle. | plan 3.1 substring matching; C's tests that rely on matching inside words | to build (track U) |
+| W2 | **The preview highlights each replaced match** (not one span) in Find and replace; Add before / Add after mark the added text | 7.1 #2 one span | to build (U) |
+| L1 | **onX's limits, warned like notes:** item names over **255 characters** (onX's editor cap for waypoints, lines, tracks, areas; UTF-16 units, as onX counts) and folder names over **50 characters**: a caution mark, the dialog flag, the export screen's warning and an instructions.txt line, exactly as for notes over 512 bytes. Warn, never cut. Import behaviour is being verified live (L3). | decision 8 (no long-name flag) | to build (track V) |
+| N1 | **A name is required to export.** An included item with an empty name (after trimming) blocks Export, with a status message and a caution mark on each such row; editing may leave a name empty for a moment, and bulk Rename… flags a result that would be empty but still saves it. Excluded items don't block. | decision 17 in part (names stay optional while editing, not at export) | to build (V) |
+| E4b | the empty note cell: blank until hover or keyboard focus (variant C) | 7.1 #4b | T |
+| L3 | **Verify the limits with live imports** into onX (the owner's logged-in browser; authorised 2026-10-25). Test data and a test plan either way. Never delete onX data; every probe markup is named ZZTEST. | plan section 7 "owner-run only" | **done**: names 255 UTF-8 bytes on import (all three kinds), notes 512 bytes, folder rename 50 characters, empty name → "Imported waypoint markup <timestamp>". `docs/testing/ONX_LIMITS_2026-10-25.md` |
+
+**Strings for L1 / N1** (one set, used by U, V and the docs; parallel to the note sentence "onX imports only
+the first 512 bytes of a note. About N characters will be cut."):
+- name over **255 UTF-8 bytes** (L3 measured: onX's importer keeps the first 255 bytes of a name, on a character
+  boundary, the same rule as notes): "onX imports only the first 255 bytes of a name. About N characters will be cut."
+  (the note sentence's twin; measured with the same byte counter as notes, `CairnRename.noteBytes`)
+- folder name over **50 characters** (onX's rename dialog stops typing at 50, `maxlength`; measured):
+  "onX keeps only the first 50 characters of a folder name. About N characters will be cut."
+- empty name, row caution and dialog flag: "Needs a name to export." (L3: onX would name it "Imported waypoint
+  markup <timestamp>")
+- Export blocked, status: "1 item needs a name." / "N items need a name."
+The owner may reword.
+
 ### 7.R Track R log
+
+- 17:46 started on followup/r-research at f3c3882
+- 18:04 read all Backcountry (77), Hunt (118) and Fish (47) help articles via the Zendesk API, onX blog/product pages, and all 805 web-app chunks from backcountry.onxmaps.com. E1: typed name caps 255 (waypoint, line, track, area), 100 (route), 50 (folder); blank refused; import limit unknown (longest tested 66). E4: docs silent (and wrong: say notes aren't carried); code shows typed notes capped at 512 UTF-16 units (route notes uncapped), import cut server-side, not visible. The 3,303-char "line" fixture is an onX Route. Top diff: onX folder names cap at 50, Cairn allows 100. No URL blocked. Doc: docs/research/ONX_PUBLIC_DOCS_2026-10-25.md
+- 18:08 committed efcf59f on followup/r-research (the research doc only); done
+- (orchestrator) Cherry-picked onto `feat/bulk-rename`.
 
 ### 7.S Track S log
 
+- 17:46 started on followup/s-webmap at f3c3882
+- 17:54 sweep done in 5 commits (82 lines; the grep found 105 hit lines, not ~60):
+  `073d265` code and test comments (cairn/ 6 lines in color_mapper, writers, input_check; tests 7
+  lines in 5 files) · `2342850` fixture READMEs (25 lines in 15 READMEs) and one entry of
+  `export_zip_sha256_e927aa9.json`'s `notes` list (no test reads `notes`; edited in place, not
+  re-dumped) · `bb9d156` ONX_ROUND_TRIP.md (13) and the two 2026-10-22 research notes (19) ·
+  `f198d25` DECISIONS.md (4 lines, only ENG-05 and UI-31 lines holding the name; the UI-31 quotes now
+  carry the shipped "onX on a computer" wording), FOLDERS_RELEASE.md (3), TODO.md (1),
+  ROADMAP_AVALANCHE_BRIDGE.md (1, tracked), LABELS.md section 16 +1 row ("onX's web app" for the
+  thing, "onX on a computer" for where a person acts; its Don't-use cell points at the row above so
+  it adds no new hit) · `d0e719e` `.claude/skills/cairn-tests/SKILL.md` line 58 (the Edit was
+  accepted from the worktree; not refused).
+- DECISION: "onX's web app" for the thing; "onX on a computer" where a person does something
+  (DECISIONS UI-31 intro and instructions.txt steps, FOLDERS_RELEASE owner check, TODO phone-vs-
+  computer line, research P1 probe step and prerequisites). Stacked possessives avoided ("the colour
+  table in onX's web app", "onX's own page-load"). Alternative rejected: one blind substitution.
+- Anchors: "## What onX's web app offers" keeps its explicit `<a id="import-paths">`; its 4 link
+  texts renamed with it. No doc links to a heading slug holding the old name (checked
+  `git grep "web-map"`: none; all cross-doc `.md#` anchors still resolve).
+- Wheel: the cairn/ edits are comments only; `web/dist/` wheel NOT rebuilt (behaviour identical).
+- Remaining `git grep -n -i -E "web ?map"` set (22 lines outside this tracker), each kept on purpose:
+  URLs: `webmap.onxmaps.com` in web/bridge.py:1251, tests/test_export_instructions.py:28 (both are
+  instructions.txt bytes behind the sha256 pin), LABELS.md:318, the 6 committed
+  `cairn_output/*/instructions.txt`, KML_GPX_INPUT research :469, ONX_REIMPORT research :14; the
+  `link=webmap` API parameter in ONX_ROUND_TRIP.md:228 and ONX_REIMPORT research :282.
+  Real export data: `onx_real/onx_web_line_long_note.{gpx,kml}` (2 lines each, the owner's pasted note).
+  Rule lines that name the retired term in order to ban it: LABELS.md:351 and :382, BULK_RENAME.md
+  :144 / :440 / :895 (decision 21 itself), and every BULK_RENAME_PROGRESS.md hit (never committed).
+- Tests: non-web suite 1356 passed; test_labels_inventory 2 passed; build_faq_page --check exit 0.
+- 17:58 `e342c3f`: ENG-05's old KML warning paraphrase "(computer only)" became "(no phone import)",
+  clearer; same line. Branch head e342c3f, 6 commits, 33 files, +82 / -81. Done.
+- (orchestrator) Cherry-picked onto `feat/bulk-rename` as bedd5e7, 9fbe720, effd2da, bd59427, 03eaeff. **Not**
+  `d0e719e` (`.claude/skills/cairn-tests/SKILL.md`): agent configuration, protected in the main checkout; left for
+  the owner (one line: "real onX Web Map exports" → "real onX web app exports"). Kept on purpose: URLs
+  (`webmap.onxmaps.com`, `link=webmap`), real export data, and the lines that state the ban (LABELS 16, the plan's
+  decision 21): a rule has to name the word it retires.
+
 ### 7.T Track T log
+- 17:46 started on followup/t-text-rules at f3c3882
+- 18:20 Part 1 committed `5172831` (web/app.js, DECISIONS UI-39 + ENG-09, LABELS 3.4 + 4). Single name
+  field: an edited value goes through `CairnRename.cleanName`, the field is set to the cleaned value, and a
+  value that cleans back to the stored name is no edit; untouched (value === value at focus) returns first,
+  so focus/blur or Enter on a dirty loaded name does nothing. Note editor: new `noteToSave(it, draft)` (the
+  cleaned note, or null when the draft is the note as it was or cleans back to its written form), used by
+  `closeNote`, `keepNoteDraft` and `noteIsChanged` (so "Save your note?", Start over's count and the leave
+  prompt don't count a draft that only adds outer whitespace). Use note as name: `cleanName` instead of
+  `oneLine`; a note cleaning to "" still leaves its row alone, and so does one equal to the name already.
+  `oneLine` had no other caller (its definition, the `firstLine` comment, the one use): removed.
+- CRLF: loaded notes can't hold `\r`. Checked with a probe (not committed) that injected CRLF / lone CR /
+  trailing CR (raw in JSON, `&#13;&#10;` / `&#13;` char refs in XML, which survive the XML parser) into
+  CalTopo GeoJSON, CalTopo GPX, CalTopo KML, onX GPX (two fixtures), onX KML (two), generic GPX, Cairn GPX
+  and generic KML, then `bridge.load_document`: CR in a note = 0 on every path. Why: every reader builds a
+  `ParsedFeature`, whose `clean_notes` makes CRLF/CR "\n" on both branches (`strip_html` and plain). So a
+  Find typed in a textarea (only "\n") matches loaded notes across lines; no decision needed. Pinned anyway
+  by an e2e (CRLF note in the file, Find typed across the line break).
+- Side finding (no action): loaded **names** can hold a CR (CalTopo GeoJSON and GPX, onX GPX and KML;
+  `ParsedFeature` only strips the title's ends). The untouched rule leaves such a name as loaded. Note that
+  an `<input>`'s value sanitization drops CR/LF before the app sees it, so once the user edits such a name
+  the stored value has the CR removed (by the browser), not turned into a space (cleanName's rule).
+- DECISION: `bulk()` now skips an empty patch. Before, Use note as name on a row it leaves alone wrote
+  `EDITS[uid] = {}`, which `unexportedChanges` counted (Start over said "1 unexported change" for nothing).
+  Alternative: leave `bulk()` and accept an empty EDITS entry for a no-op row.
+- DECISION: Use note as name skips a row whose name already equals the cleaned note ("an edit that cleans
+  back to the stored value is not an edit"). Alternative: edit it anyway (an EDITS entry with the same name).
+- DECISION: the note editor's no-edit test also gates `noteIsChanged()` (Export's "Save your note?", Start
+  over's count, the leave prompt), not only Save. Alternative: keep the raw `draft !== desc` there, which
+  asks "Save your note?" for a draft whose Save would save nothing.
+- FOR orchestrator (coordinator item, done in `5172831`): a nameless row's checkbox, note button and
+  Include chip now say "Select Untitled", "Open note for Untitled", "Include Untitled"; the popover's
+  aria-label "Change icon and color / line / area for Untitled". No other aria-label or title in app.js
+  interpolates an item name (the icon / line buttons and caution marks don't); `.na-src .na-name` and the
+  popover title already showed "Untitled". LABELS 3.4 and 4 say "(Untitled when it has none)".
+- 18:45 tests committed `3bd7a7e`: tests/web/test_text_rules.py (29) and tests/web/test_rename_core.py (+9).
+- 18:55 DECISION (owner, 2026-10-25, via the coordinator): no change count in the discard confirms.
+  "Start over?" with unexported changes says "Changes will be lost." (as "Leave this map?"), with nothing
+  to lose still "This clears the current map."; buttons unchanged. commit `f491011`; DECISIONS
+  UI-21, LABELS section 9 row and section 15's open row marked decided. Alternative it replaces: the
+  counted sentence "This discards N unexported change(s)."
+- DEVIATION: tests/web/test_web_app.py `test_start_over_counts_unexported_changes_and_escape_cancels`:
+  body "This discards 1 unexported change." -> "Changes will be lost."; the count kept as
+  `unexportedChanges() == 1`.
+- DEVIATION: tests/web/test_web_app.py `test_start_over_counts_moves_and_renames`: body "This discards 3
+  unexported changes." -> "Changes will be lost."; count kept as `unexportedChanges() == 3`.
+- DEVIATION: tests/web/test_web_app.py `test_start_over_counts_only_changes_since_the_last_export`: final
+  body "This discards 3 unexported changes." -> "Changes will be lost." (it already asserts
+  `unexportedChanges() == 3` just before).
+- DEVIATION: tests/web/test_bulk_text.py `test_start_over_names_the_bulk_changes_count` renamed
+  `test_start_over_after_a_bulk_rename_warns_and_counts_seven_changes`; body "This discards 7 unexported
+  changes." -> "Changes will be lost."; count kept as `unexportedChanges() == 7`.
+- Tests per check (new ones in tests/web/test_text_rules.py unless named):
+  - E1: `test_a_1000_and_a_3000_character_name_are_stored_and_exported_whole[name-field|bulk-rename]` (no
+    `maxlength` on `.name-in`, `#bulk-find`, `#bulk-repl`; stored, in EDITS and in the GPX whole). Already
+    there: core and writer 3,000-character tests (test_rename_core / test_bulk_prereqs
+    `test_a_3000_character_name_is_stored_whole_and_exported_whole`).
+  - E2: core `test_find_and_replace_changes_every_occurrence_in_a_field[6 ids]` and
+    `test_find_aa_replaces_adjacent_and_overlapping_text_left_to_right[3 ids]` (test_rename_core.py); e2e
+    `test_find_and_replace_changes_every_match_in_a_name_and_the_export_carries_them[match-case-off-changes-every-case|match-case-on-changes-only-the-exact-one]`,
+    `test_find_aa_changes_adjacent_and_overlapping_text_left_to_right_and_exports_it`,
+    `test_find_and_replace_changes_every_match_on_every_line_of_a_note_and_exports_it`,
+    `test_a_note_loaded_with_crlf_line_ends_matches_a_find_typed_across_lines`.
+  - E3: `test_the_name_field_trims_what_it_saves_and_shows_what_it_stored[4 ids]`,
+    `test_a_line_break_pasted_into_the_name_field_becomes_a_space_and_the_ends_are_trimmed` (a real
+    clipboard paste; Chromium makes the line breaks spaces), `test_the_note_editor_trims_outer_blank_lines_and_spaces_and_keeps_inner_ones`,
+    `test_use_note_as_name_cleans_the_note_like_a_name`, `test_bulk_rename_trims_what_it_saves`,
+    `test_change_note_trims_outer_whitespace_and_keeps_inner_line_breaks`; no-op:
+    `test_focus_enter_and_blur_on_an_untouched_dirty_name_is_no_edit[2]`,
+    `test_a_name_edit_that_cleans_back_to_the_stored_name_is_no_edit`,
+    `test_saving_an_untouched_dirty_note_is_no_edit[4]`,
+    `test_a_note_draft_that_only_adds_outer_whitespace_is_no_edit_and_export_does_not_ask`; forbidden
+    characters: `test_a_forbidden_character_typed_in_the_name_field_is_dropped_silently`,
+    `test_a_forbidden_character_typed_in_the_note_editor_is_dropped_silently` (status stays empty). A padded
+    value can't be loaded (the readers trim), so the padded no-op cases put it in the model without an edit.
+  - E4: `test_notes_over_512_bytes_export_whole_and_every_place_marks_the_same_ones[note-editor|change-note]`:
+    512 / 513 / 600 bytes and 512 / 513 ending in a 4-byte emoji, every note whole in the GPX; caution
+    marks, the dialog flag (Change note… route), the export screen warning and instructions.txt read from the
+    browser's zip all mark the same three. Already covered before: caution = dialog flag = export warning
+    (test_bulk_text `test_the_caution_marks_match_the_dialogs_note_flags`); caution = MANIFEST long_notes =
+    export warning (test_web_app `test_the_caution_marks_the_same_notes_the_export_lists`); caution at
+    600 / 512 / 513 bytes and in bytes, from the note editor (test_web_app
+    `test_a_note_over_onxs_limit_gets_a_caution_that_goes_when_it_is_shortened`); the core's byte measure =
+    instructions.txt's (test_rename_core and test_bulk_prereqs `test_note_bytes_in_the_dialog_match_instructions_txt`,
+    `test_property_note_bytes_is_the_utf8_length_instructions_txt_counts`); emoji straddling 512 reported, not
+    split (test_rename_core / test_bulk_prereqs `test_a_four_byte_emoji_straddling_512_is_reported_not_split`);
+    exactly 512 not flagged (test_rename_core `test_note_exactly_512_bytes_is_not_flagged`); instructions.txt
+    marks the very item (test_bulk_prereqs `test_instructions_txt_lists_the_new_names_and_flags_the_right_long_note`,
+    test_gpx_areas `test_twin_names_only_the_item_with_the_long_note_is_marked`). Missing before, added: all four
+    on one map from the real browser export, and "exported whole" for the editor and Change note… routes.
+  - Coordinator item: `test_a_nameless_items_row_controls_and_popover_are_announced_as_untitled`.
+- FOR orchestrator: scripts/qa/fuzz_ui.py types "  pad  " as a single name; it never compares a stored
+  name with what it typed, so the trim doesn't trip it (read, not run).
+- 19:20 whole web suite on `f491011`: **498 passed** (9 min 39 s, port 8785).
+- 19:25 DECISION (owner, 2026-10-25, via the coordinator; variant C), commit `60ab28d`: an item with no
+  note shows only the pencil in its note cell; "Add a note" appears while the row is hovered (`tr:hover`)
+  or the note button has keyboard focus (`.note-btn:focus-visible`). CSS only (web/styles.css,
+  `visibility`, so the row height and hit area stay); the button's accessible name stays its aria-label.
+  Excluded and ticked rows behave the same (tested). Rejected: "Add a note" always (before), and always
+  blank. DECISIONS UI-33 (one bullet), LABELS 3.4 "Add a note" row. Test
+  `test_an_empty_note_cell_shows_add_a_note_only_on_hover_or_keyboard_focus`.
+- FOR orchestrator: the empty note cells look different now; the walkthrough screenshots
+  (scripts/make_walkthrough_shots.py) may want regenerating. Not done here.
+- 19:50 final runs on `60ab28d`: web suite (tests/web, BASE_URL port 8785) **499 passed** (9 min 42 s);
+  non-web (`--ignore=tests/web`) **1356 passed**. Total 1855 = 1816 + 39 (test_text_rules 30, core 9). A
+  1440x900 screenshot of rows with and without notes, at rest and hovered, checked by eye (archive-free:
+  scratch only). Dev server stopped.
+- Unfinished: nothing in T's brief. Not done (not asked): walkthrough screenshots, the Chrome click-through.
+- (orchestrator) Merged into `feat/bulk-rename` (no conflicts with S's and R's commits).
+
+### 7.5 Round-3 tracks
+
+| track | owns | state |
+|---|---|---|
+| U whole-word Find, per-match highlight, core flags | `web/rename.js` (whole-word matching; per-row match marks for the highlight; flags `name-over-limit` (UTF-8 bytes > `ctx.nameLimit`, default 255) and `name-empty` (a name result that is ""), both on changed rows only, warn-only); in `web/app.js` only the dialog: `openTextBulk` (ctx gets `nameLimit: NAME_LIMIT`), `drawTextBulk`, `afterCell` / `markChange`, `textFlag` (sentences from 7.4); tests in `tests/web/test_rename_core.py`, `tests/web/test_bulk_text.py`, `tests/web/test_text_rules.py`, `tests/bulk_rename_vectors.py`; DECISIONS UI-39 matching and highlight lines | running |
+| V limits and name-required outside the dialog | `web/bridge.py` (`ONX_IMPORT_NAME_LIMIT = 255` bytes, `ONX_FOLDER_NAME_LIMIT = 50` characters, instructions.txt lines, an export guard), `web/app.js` everything outside the dialog (`NAME_LIMIT` / `FOLDER_NAME_LIMIT` read at boot like `NOTE_LIMIT`; row and folder caution marks; Export blocked with the 7.4 status; the export screen warning), `scripts/qa/fuzz_ui.py`, every test that exports a blank name or expects a long name unflagged outside the core, `docs/design/{DECISIONS,LABELS}.md`, `docs/FAQ.md` + `web/faq.html` | waits on the owner's answer about blank-named items in real maps (Bitterroots has 7) |
+
+### 7.U Track U log
+
+### 7.V Track V log
