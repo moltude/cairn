@@ -916,9 +916,255 @@ The owner may reword.
 
 | track | owns | state |
 |---|---|---|
-| U whole-word Find, per-match highlight, core flags | `web/rename.js` (whole-word matching; per-row match marks for the highlight; flags `name-over-limit` (UTF-8 bytes > `ctx.nameLimit`, default 255) and `name-empty` (a name result that is ""), both on changed rows only, warn-only); in `web/app.js` only the dialog: `openTextBulk` (ctx gets `nameLimit: NAME_LIMIT`), `drawTextBulk`, `afterCell` / `markChange`, `textFlag` (sentences from 7.4); tests in `tests/web/test_rename_core.py`, `tests/web/test_bulk_text.py`, `tests/web/test_text_rules.py`, `tests/bulk_rename_vectors.py`; DECISIONS UI-39 matching and highlight lines | running |
-| V limits and name-required outside the dialog | `web/bridge.py` (`ONX_IMPORT_NAME_LIMIT = 255` bytes, `ONX_FOLDER_NAME_LIMIT = 50` characters, instructions.txt lines, an export guard), `web/app.js` everything outside the dialog (`NAME_LIMIT` / `FOLDER_NAME_LIMIT` read at boot like `NOTE_LIMIT`; row and folder caution marks; Export blocked with the 7.4 status; the export screen warning), `scripts/qa/fuzz_ui.py`, every test that exports a blank name or expects a long name unflagged outside the core, `docs/design/{DECISIONS,LABELS}.md`, `docs/FAQ.md` + `web/faq.html` | waits on the owner's answer about blank-named items in real maps (Bitterroots has 7) |
+| U whole-word Find, per-match highlight, core flags (**done**, merged) | `web/rename.js` (whole-word matching; per-row match marks for the highlight; flags `name-over-limit` (UTF-8 bytes > `ctx.nameLimit`, default 255) and `name-empty` (a name result that is ""), both on changed rows only, warn-only); in `web/app.js` only the dialog: `openTextBulk` (ctx gets `nameLimit: NAME_LIMIT`), `drawTextBulk`, `afterCell` / `markChange`, `textFlag` (sentences from 7.4); tests in `tests/web/test_rename_core.py`, `tests/web/test_bulk_text.py`, `tests/web/test_text_rules.py`, `tests/bulk_rename_vectors.py`; DECISIONS UI-39 matching and highlight lines | running |
+| V limits and name-required outside the dialog (**stopped, unmerged**) | `web/bridge.py` (`ONX_IMPORT_NAME_LIMIT = 255` bytes, `ONX_FOLDER_NAME_LIMIT = 50` characters, instructions.txt lines, an export guard), `web/app.js` everything outside the dialog (`NAME_LIMIT` / `FOLDER_NAME_LIMIT` read at boot like `NOTE_LIMIT`; row and folder caution marks; Export blocked with the 7.4 status; the export screen warning), `scripts/qa/fuzz_ui.py`, every test that exports a blank name or expects a long name unflagged outside the core, `docs/design/{DECISIONS,LABELS}.md`, `docs/FAQ.md` + `web/faq.html` | running |
+
+**N1 refined (owner, 2026-10-25, after hearing Bitterroots has 7 blank-named items): block, plus a one-click fix.**
+Export with blank-named included items opens a confirm: title "N items need a name" (no period; "1 item needs a
+name" for one), buttons **Cancel** · **Name them Untitled** (safe first, action last). The action names every
+blank-named included item "Untitled" (ordinary edits, counted as unexported changes) and then continues the
+export. Cancel leaves the rows marked "Needs a name to export.", shows the status "N items need a name." and
+focuses the first such name field. DECISION (orchestrator): the fix writes "Untitled", the placeholder used
+everywhere. Alternative: the kind ("Untitled line", "Untitled area", "Untitled waypoint").
 
 ### 7.U Track U log
 
+- 18:38 started on round3/u-find at ab8199f
+- 19:00 `7374b0b` core (web/rename.js): whole-word Find (W1), per-row `marks` (W2), flags `name-over-limit`
+  (UTF-8 bytes of a changed name > `ctx.nameLimit`, default 255, same counter as notes) and `name-empty`
+  (a changed name that is now ""), both warn only, changed rows only. Pattern built once per call:
+  `(?:(?<![\p{L}\p{M}\p{N}])|(?<=[HanKana]))` + escaped Find + `(?:(?![\p{L}\p{M}\p{N}])|(?=[HanKana]))`,
+  each guard only when that edge of the Find is a word character other than Han / kana; u flag, no v flag.
+  Checked in node 23 (owner's examples, punctuation edges, digits, Han / kana, Hangul, Thai, sigma); the
+  core tests below run the same file in Chromium and pass, and a mutant without the end guard is caught.
+- DECISION: Han / kana = `\p{Script_Extensions=Han|Hiragana|Katakana}`, not `\p{Script=…}`: with Script the
+  prolonged sound mark ー (U+30FC) and the halfwidth voicing marks are Common, so "Aー" would join and "ー"
+  would behave unlike the kana around it. With Script_Extensions they count as kana. Rejected: Script (the
+  literal reading of "Han, Hiragana and Katakana").
+- DECISION: a Han / kana edge needs no check at all, even when a combining mark follows (NFD kana voicing,
+  ideographic variation selectors): "山" matches "山" + a variation selector. Rejected: a "no mark after"
+  guard on CJK edges (it would make "葛" miss "葛" + IVS, the same character in another glyph).
+- DECISION: an empty Find and Replace the note mark the whole new value (the whole value is what was
+  replaced). Rejected: the old common-start / common-end diff for those two (a second implementation in the
+  dialog, which W2 rules out) and no mark (the Campsite normalisation would show nothing new).
+- DECISION: marks follow cleaning that only takes characters off raw's ends (a padded stored name trimmed, a
+  forbidden character dropped at the very start, a note's "\n" joiner trimmed on a blank note): `after` is
+  then a slice of `raw`, found with `indexOf`, and both cut-off ends clean to "". A range cut by that trim,
+  and any other change (a tab or line break collapsed inside a name, a forbidden character dropped inside)
+  gives `marks: []` for the row. Rejected: clipping a range at the trim (the brief says fall back).
+- DECISION: marks are `[start, end]` pairs of UTF-16 offsets into `after`, end excluded, sorted, never empty
+  (a pure deletion inserts nothing, so it has none); every row has `marks` (`[]` when unchanged). The
+  dialog widens each to whole code points and grapheme pieces (accent, ZWJ sequence, flag, skin tone,
+  variation selector) and joins marks that then touch.
+- Note: `name-over-limit` and `name-empty` can't both apply; in the array a name flag comes before
+  `chars-removed`, as `note-over-limit` does. The sentence order in `textFlag` is: No change, the note
+  sentence, the name-cut sentence, "Needs a name to export.".
+- 19:20 `3ec505e` core tests; `6017569` dialog (web/app.js) + dialog tests; `c26d0b8` DECISIONS UI-39 (the
+  matching and highlight bullets only).
+- app.js: `openTextBulk` ctx gets `nameLimit: typeof NAME_LIMIT === "number" ? NAME_LIMIT : 255`; `markChange`
+  (the before/after diff) removed, `markRanges(after, marks)` draws the core's marks keeping its grapheme
+  care (JOINS, regional-indicator pairs) plus surrogate snapping; `afterCell(r, names)` lost `endFirst`;
+  `textFlag` adds the two 7.4 sentences via `bulkNameSentence(name, limit)` (N counted as `noteOverflow`
+  does). JOINS's raw ZWJ / variation-selector characters are now `\u` escapes.
+- FOR V: `scripts/qa/fuzz_ui.py` line 190 `BULK_FLAGS = {"unchanged", "note-over-limit", "chars-removed"}`
+  raises `bulk_flag_unknown` on the two new flags: add `"name-over-limit"`, `"name-empty"`. Its `bulk_spec`
+  draws Find as a slice of a value (`v[a:a + rng.randint(1, 5)]`), which a whole-word Find rarely matches
+  now: drawing a whole word some of the time would keep the fuzz's replace coverage.
+- FOR V: the dialog's name sentence is `bulkNameSentence` (dialog section of app.js); if you add a shared
+  name-overflow helper for the row marks, the two can merge. LABELS.md (yours) should list "Needs a name to
+  export." and the name-cut sentence as Rename… dialog row flags too; DECISIONS UI-39's "Warn, don't block"
+  bullet (yours) still says long names get no line.
+- Plan section 3.1 (`docs/plans/BULK_RENAME.md`) still describes substring Find, the three-flag enum and
+  `ctx` with `noteLimit` only; not a U file, left for the orchestrator.
+- FAQ: the approved answer ("**Find and replace** changes part of each name") is still true (a whole word
+  is a part). Not edited.
+- Note (silent failure mode): the pattern uses lookbehind (Chromium 62, Firefox 78, Safari 16.4). In a
+  browser without it `new RegExp` throws inside `editFor`, `transform`'s catch returns every row unchanged,
+  and Find silently matches nothing. Acceptable for desktop browsers of today; no fallback built.
+- Checks: node 23.5 and Chromium 156 give the same FNV-1a hash (`e7eec627`) of the full output over 4,000
+  seeded vectors (14,082 rows, 8,272 changed, 4,393 marks; alphabet with TH / Trail, punctuation, digits,
+  accents NFC and NFD, Han, kana, ー, Hangul, Thai, σ ς Σ İ ı K ſ ß, emoji, ZWJ, flags, tab / line breaks,
+  NBSP, U+3000, C0, U+FFFE, lone surrogates, `$` patterns). Perf, node, 20,000 rows: whole-word Find 10-11 ms,
+  Add before 6 ms, a 10,000-character Find 4 ms (1,500 rows well under 1 ms). Screenshots at 1440x900
+  (scratch, gitignored): `archive/u/shots/` in this worktree (u01 each match, u02 TH, u03 whole value, u04
+  deletion, u05 name over 255 bytes, u06 Add before, u07 note matches, u08 note Add after, u09 blank name),
+  no console errors.
+- DEVIATIONs (each also on its test):
+  - tests/web/test_rename_core.py: `FLAGS` (five flags); `test_a_3000_character_name_is_stored_whole_and_exported_whole`
+    (now `{"name-over-limit"}`); `test_turkish_dotted_i_does_not_cross_match_case_insensitively` (find "İSTANBUL",
+    was "İ"); `test_final_sigma_matches_sigma_without_match_case_and_only_itself_with_it` ("σ σ ς", was
+    "Οδυσσεύς", which is now pinned unchanged); `test_a_name_of_only_combining_marks_is_kept_not_shown_as_untitled`
+    ("x ́"); `test_dollar_patterns_in_the_replacement_are_literal` ("b a b"); `test_find_and_replace_changes_every_occurrence_in_a_field[matches-far-apart]`
+    (700 bytes: `name-over-limit`); `test_empty_find_with_a_whitespace_only_replacement_saves_blank_names`,
+    `test_replace_with_empty_can_empty_a_name_and_saves_it_blank`,
+    `test_whitespace_only_results_are_trimmed_to_blank_and_shown_untitled` (`name-empty`);
+    `test_overlapping_matches_replace_left_to_right` ("aa aa aa"); `test_match_case_on_can_change_a_row_that_match_case_off_leaves_alone`
+    and `PINNED["match_case_overlap_*"]` ("Aa aa aa" find "aa aa", was "Aaa" find "aa"); property 6 (counts
+    whole-word matches with the oracle, was `str.count`); property 9 (the planted variant is a word of its
+    own); `gen_vector` (Find is a whole word of a row 60 % of the time; `ctx` carries a random `nameLimit`).
+  - RENAMED: `test_find_aa_replaces_adjacent_and_overlapping_text_left_to_right[3 ids]` →
+    `test_find_replaces_adjacent_and_overlapping_text_left_to_right[5 ids]` (whole words and punctuation) plus
+    `test_find_aa_matches_nothing_inside_a_longer_word[3]`; `test_property_12_flags_are_only_the_three_known_ones` →
+    `test_property_12_flags_are_only_the_known_ones`.
+  - tests/bulk_rename_vectors.py: ROUND_TRIP_NAMES `dollar_patterns_literal` ("b a b"), `overlapping_left_to_right`
+    ("aa aa aa"), `final_sigma_case_off` ("σ σ ς"), `turkish_dotted_i` (find "İSTANBUL"),
+    `combining_mark_left_alone` ("x ́"); afters still hand-derived and checked against the core; the
+    bridge round-trip tests store only the afters (1356 non-web pass).
+  - tests/web/test_bulk_text.py: `test_a_name_of_only_combining_marks_is_kept_not_shown_as_untitled` ("x ́");
+    `test_empty_find_with_a_whitespace_only_replacement_saves_blank_names`, `test_replace_with_empty_can_empty_a_name_and_saves_it_blank`,
+    `test_whitespace_only_results_are_trimmed_to_blank_and_shown_untitled`,
+    `test_a_rename_producing_a_blank_name_for_one_row_does_not_block_save` (`name-empty`, "Needs a name to
+    export."); `test_find_in_turkish_locale_matches_the_same_rows` (find "kit" on Kit / KIT / kit / kıt / KİT,
+    was "i" inside words); `test_preview_equals_saved_equals_exported_for_names` (find " " → "_", was "a" → "4");
+    `test_changed_count_in_status_equals_rows_that_differ` (find "Lake", was "L"); `test_every_control_has_a_visible_focus_ring`
+    (find "Camp", so Save stays on).
+  - RENAMED in tests/web/test_text_rules.py: `test_find_aa_changes_adjacent_and_overlapping_text_left_to_right_and_exports_it`
+    → `test_find_changes_adjacent_and_overlapping_words_left_to_right_and_exports_it` (7.T's log cites the old
+    name for E2).
+- New tests: core +83 (whole words 19, punctuation edges 8, Han / kana 10, Hangul 3, Thai 2, Match case 1,
+  marks 19 + unchanged 1, name flags 12, properties 3, the aa / replaced-overlap set +5); dialog +9
+  (`test_find_changes_whole_words_only_and_highlights_each_match`, `test_add_before_add_after_and_a_whole_value_highlight_the_inserted_text`,
+  `test_a_row_whose_cleaning_moves_text_shows_no_highlight`, `test_the_highlight_never_splits_a_letter_from_its_accent_or_an_emoji[3]`,
+  `test_a_name_over_255_bytes_shows_the_cut_sentence_and_saves_whole[3]`).
+- 19:45 runs: tests/web/test_rename_core.py 227 passed; test_bulk_text.py + test_text_rules.py 122 passed;
+  non-web (`--ignore=tests/web`) 1356 passed.
+- 20:05 `6b0848c` (vectors: DEVIATION comments only). Whole web suite at `6b0848c` (BASE_URL port 8788):
+  **591 passed** (10 min 15 s) = T's 499 + 83 core + 9 dialog; test_bulk_perf.py among them. Non-web 1356.
+  Total 1947. Dev server 8788 stopped. Branch head `6b0848c`, 5 commits on ab8199f.
+- Unfinished: nothing in U's brief. Left to others: the FOR V items above (fuzz `BULK_FLAGS` and its Find
+  generator, LABELS rows, UI-39's "Warn, don't block" bullet) and plan 3.1 for the orchestrator.
+- (orchestrator) Merged into `feat/bulk-rename`.
+
 ### 7.V Track V log
+
+- 18:41 started on round3/v-limits at ab8199f
+- 19:40 `c3b5bb1` bridge stage: `ONX_IMPORT_NAME_LIMIT = 255` (bytes), `ONX_FOLDER_NAME_LIMIT = 50`
+  (characters), both citing docs/testing/ONX_LIMITS_2026-10-25.md; `export_zip` guard
+  `ValueError("An item needs a name.")`; manifest `long_names` / `long_folder`; `runbook_summary`
+  `long_names`, `name_limit`, `long_folders`, `folder_name_limit`; instructions.txt lines. New
+  tests/test_onx_limits.py (47), tests/blank_names.py (the "Name them Untitled" of bridge tests).
+  Non-web 1403 passed (1356 + 47).
+- DECISION: "blank" = blank **as written**: Python `not xml_safe(name).strip()`, JS
+  `CairnRename.cleanNote(name) === ""` (xmlSafe, then trim plus NEL, as writtenNote does). The JS set is a
+  superset of Python's (it also trims U+FEFF), so the UI always fixes what the guard would refuse.
+  Alternative: `name === ""` only, which lets "  " or "\x01" write an empty `<name>`.
+- DECISION: items the writers won't write don't need a name: excluded ones and ones with no
+  coordinates (`no_coords`), in the guard and in the UI alike. Alternative: count no-coords items too,
+  which would ask to name an item that is never exported (its row already says "Won't export").
+- DECISION: folder names are measured in UTF-16 units (`String.length`, `maxlength`'s count, and
+  `len(name.encode("utf-16-le")) // 2` in Python): what stops typing in onX's rename dialog. An emoji
+  counts two. Alternative: code points. `FOLDER_NAME_MAX = 100` (Cairn's own cap) is untouched.
+- DECISION: instructions.txt's folder mark is its own line under "rename to:", indented 4, so the
+  rename line stays the name alone (the fuzzer and tests match it exactly):
+  `    (over the length limit; onX will cut this folder name)`. Item mark, under the item, before a
+  note mark when both: `                (over the length limit; onX will cut this name)`. Alternative:
+  the folder mark appended to the rename line.
+- Re-pin evidence (pin file note dated 2026-10-25): exactly 3 members changed,
+  `10_Unorganized/Unorganized_Tracks.gpx` (6 names), `10_Unorganized/Unorganized_Areas.gpx` (1) and
+  `instructions.txt`. The writers sort by name, so the 7 blocks and their instructions.txt lines MOVED to
+  where "Untitled" sorts (instructions.txt already printed "Untitled" for a blank, so no line changed
+  text). Proof kept in the test (`_blank_names_back`, `before_names_required`): blank names put back and
+  re-sorted by the writers' own key give the old pinned sha256 for all 3; also checked byte for byte
+  against a fresh export of the ab8199f tree. Every other member and load_document_json unchanged.
+- DEVIATION (tests outside my list, minimal hunks: `bridge.export_zip()` -> `export_named(bridge)`, which
+  names blanks "Untitled" first; behaviour otherwise unchanged): tests/test_export_instructions.py (4
+  sites), tests/test_caltopo_to_onx_bitterroots_complete.py (1), tests/test_export_folder_zip.py (4),
+  tests/test_web_bridge_folders.py (its `_export`). All export Bitterroots.
+- DEVIATION: tests/test_bulk_prereqs.py `test_an_empty_name_exports_an_empty_name_element_and_instructions_say_untitled`
+  renamed `test_an_empty_name_blocks_the_export_until_it_is_named_untitled`: refused, nothing written, then
+  "Untitled" in every kind.
+- DEVIATION: tests/test_bulk_prereqs.py `test_a_name_typed_as_untitled_or_no_name_is_an_ordinary_name`: the
+  blank one now blocks until named; the file holds Untitled, (no name), Untitled.
+- DEVIATION: tests/test_bulk_prereqs.py `test_every_naughty_string_exports_and_reparses`: a blank-as-written
+  string (7 of the ids) asserts the refusal, then names the 3 items Untitled and goes on.
+- DEVIATION: tests/test_bulk_prereqs.py `test_a_bulk_note_with_html_looking_text_on_a_caltopo_map_exports_verbatim`
+  and `test_rename_then_rename_back_still_counts_as_edits_and_exports_identically`: Bitterroots' blanks named
+  first (the second starts its edit rounds from the named items).
+- DEVIATION: tests/test_bulk_prereqs.py `test_replace_with_empty_can_empty_a_name_and_saves_it_blank`: stored
+  blank (unchanged), export refused, then "Untitled".
+- DEVIATION: tests/test_bulk_round_trip.py `test_round_trip_writer_reader_keeps_every_renamed_name`,
+  `test_the_reader_side_differences_are_pinned` (a blank never reaches the file: `back_names[""] == 0`,
+  "Untitled" = the 3 blanks + typed ones) and `test_preview_equals_saved_equals_exported_for_names` (each
+  pass asserts the refusal, then names; the last line counts "Untitled", not "").
+- 20:10 `424850b` app.js / styles.css: `NAME_LIMIT` / `FOLDER_NAME_LIMIT` read at boot; `overflow(text, limit,
+  size)` shared by notes (unchanged result), names (`longNameSentence`, bytes of `writtenName` = xmlSafe +
+  CRLF→LF) and folders (`longFolderSentence`, `String.length`); `nameIsBlank`, `needsName`, `NEEDS_NAME`,
+  `nameCaution(it)`, `folderCaution(g)`; the row's name field is wrapped in `.name-cell` (flex) with the
+  mark after it (`caution name-caution`, data-fk `<uid>|namecaution`); the folder header's mark after its
+  `<h2>` (`caution folder-caution`, data-fk `fcaution|<key>`); `tipText` checks `.caution` before looking for
+  a row (a header mark has none); `exportOrAskForNames(ret)` and `showBlankNames(blank)`; export warnings
+  `longNameWarning` / `longFolderWarning` with a shared `nameList`.
+- FOR U: `NAME_LIMIT`, `longNameSentence(name)` (the 7.4 sentence, measured on the name as written),
+  `nameIsBlank(name)` and `NEEDS_NAME` ("Needs a name to export.") are top-level in app.js for `textFlag`.
+  The fuzzer's `BULK_FLAGS` already knows `name-over-limit` and `name-empty`.
+- Exact strings (all in LABELS): row marks "onX imports only the first 255 bytes of a name. About N
+  characters will be cut." and "Needs a name to export."; header mark "onX keeps only the first 50 characters
+  of a folder name. About N characters will be cut." ("character" when 1; N counts code points past the
+  limit, as the note sentence does); confirm title "N items need a name" / "1 item needs a name", body
+  empty, buttons Cancel · Name them Untitled; status "N items need a name." / "1 item needs a name." (err);
+  export warnings "Name “A” is over the length limit and will be truncated by onX." / "Names “A”, “B” and N
+  more are over the length limit and will be truncated by onX." / "Folder name “A” is over …" / "Folder
+  names “A”, “B” are over …".
+- DECISION: sequencing in `requestExport`: a folder rename left by the Export click is finished and its
+  merge offer, if any, stops the export (as before; Export again after it); then "Save your note?" (its Save
+  and Discard continue into the names step, Keep editing stops); then "N items need a name"; then
+  `doExport`. Alternative: the names first, which would ask about names while a note draft is unsaved.
+- DECISION: Cancel is the confirm's default (Enter / Esc), "Name them Untitled" is a plain button, as the
+  merge offer ("Cancel", "Move them"). Alternative: Name them Untitled as the default primary (as Save in
+  "Save your note?"). Owner may prefer that, since Export is what the user asked for.
+- DECISION: "Name them Untitled" for 1 item too (the brief's label); alternative "Name it Untitled" (the
+  fill confirm has singular variants). Owner question.
+- DECISION: Cancel focuses the first blank name **on screen** (DOM order: what is shown and sorted, not the
+  map's order). Only when a filter or a collapsed folder hides every one does it clear the filters (when the
+  first one is filtered out) and open the first one's folder. Alternative: always the map's first blank,
+  always revealed (changes the view even when one is visible).
+- DECISION: the name mark sits **after** the name field (the field shrinks only on a marked row), not
+  before it with a slot in every row (that would move every name and the Name header 28px). Seen in a
+  1440x900 screenshot: on a row with a long name and a long note the two marks sit close together, each
+  with its own tip. Worth an owner look (no mockup was made: a small addition inside UI-34's pattern).
+- DECISION: the folder mark is in the folder header only; the rail's entries are buttons (a focusable mark
+  can't sit inside one) and nothing else shows folder cautions. Only on a folder the export writes (one
+  included item or more). An empty or all-excluded folder has none.
+- DECISION: the export warnings are one `.note.warn` per kind, after the long-note one and before the
+  account-limit one, so a map without long names shows exactly what it did. The long-note list now also
+  shortens a name past 48 characters (`shortName`), as the two new lists do; short names are unchanged.
+- DEVIATION (test infrastructure): tests/web/helpers.py `export_zip_bytes(page, confirm=None, names=NAME_THEM)`
+  and `_export_zip(page, names=NAME_THEM)` press "Name them Untitled" when the names confirm is up
+  (`names=None` leaves it); new `_click_export`, `_answer_names`, `_names_confirm_open`, `NAME_THEM`,
+  `NEEDS_NAME_TITLE`. tests/web/test_web_app.py: `_done` and 5 plain `click("#export")` sites (lines 1087,
+  1157, 2050, 2239, 3104) go through `_click_export` (one-line hunks).
+- DEVIATION: tests/web/test_web_app.py `test_no_caution_on_a_plain_caltopo_map`: counted every `.caution`;
+  now the note cells' marks = long notes, the name cells' = Bitterroots' 7 "Needs a name to export.", total
+  the sum.
+- DEVIATION: tests/web/test_bulk_text.py `test_replace_with_empty_can_empty_a_name_and_saves_it_blank`: the
+  export holds "Untitled", not "", and the row is marked first.
+- DEVIATION: tests/web/test_bulk_text.py `test_rename_then_rename_back_still_counts_as_edits_and_exports_identically`:
+  `unexportedChanges() == n - 7` (was n): the baseline export named Bitterroots' 7 blanks, so for them the
+  round trip ends on the edit already exported.
+- DEVIATION: tests/web/test_bulk_text.py `test_preview_equals_saved_equals_exported_for_names`: the 3 blanked
+  rows export as "Untitled" (was `count("") == blanks`).
+- DEVIATION: tests/web/test_text_rules.py `test_an_empty_note_cell_shows_add_a_note_only_on_hover_or_keyboard_focus`:
+  Tab from the nameless row's name stops on its "Needs a name to export." mark before the note button.
+- 20:25 `0979ecf` tests/web/test_onx_limits_ui.py (22): boundaries of both marks (bytes; accents, CJK, an
+  emoji straddling 255; folders by UTF-16 units), marks follow edits / exclusion / rename, tips on hover and
+  focus, the export screen's sentences (one, several, "and 2 more"), screen = MANIFEST = instructions.txt,
+  the confirm (Bitterroots' 7, singular, order and default, Name them Untitled = edits written by the export,
+  Cancel and Esc: status and focus, a filter or collapsed folder hiding them, a filter leaving one), no-coords
+  blank not asked, "Save your note?" first, the merge offer first, no blank `<name>` from the browser, and the
+  confirm under the enforced CSP.
+- 20:35 `b60663b` fuzzer: `answer_names` (title and buttons checked; Cancel / Esc / Enter / Name them Untitled
+  picked at random and recorded as `names:<pick>`; Cancel must leave the status and focus on a blank name and
+  change no name; the action must store "Untitled"); `export_and_verify` answers up to three confirms in
+  turn; invariant 11 (rendered rows marked "Needs a name to export." = the ones Export would ask about);
+  `export_empty_name` in `verify_export`. scripts/qa/README.md paragraph. A 60-action Bitterroots run recorded
+  `names:Cancel` twice and `names:Name them Untitled` once, all checks green.
+- 20:45 `86e4745` docs: DECISIONS UI-40 (new) plus a bullet in UI-34 and one line under UI-39's status
+  (outside its matching / highlight text); LABELS 3.3, 3.4, 9, 10, 12.1, 12.3, 13, 15, 16; FAQ three bullets
+  in "What do the marks in the list mean?" next to the 512-byte caution line ("A long name", "A long folder
+  name", "No name"); web/faq.html rebuilt, `--check` exit 0.
+- DEVIATION (outside my list, needed to keep it working): scripts/make_walkthrough_shots.py presses Name them
+  Untitled when Bitterroots' export asks. Not regenerated (no screenshots run).
+- Not changed: scripts/dark_divide_parity.py and scripts/onx_roundtrip.py call `bridge.export_zip()` directly;
+  Dark Divide has no blank names (its tests pass); onX exports never carry one. scripts/qa/probes/probe4.py
+  clicks Export on a map it builds (a one-off repro, left as is).
+- (orchestrator) Stopped mid-work when the usage limit was reached; its commits stay on `round3/v-limits`, not merged.
