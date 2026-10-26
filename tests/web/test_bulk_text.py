@@ -168,14 +168,16 @@ def test_cjk_names_survive_prefix_and_find_replace(fresh_page: Page):
 
 
 def test_a_name_of_only_combining_marks_is_kept_not_shown_as_untitled(fresh_page: Page):
+    """DEVIATION (tracker 7.4 W1): the name was "x\\u0301", whose "x" a whole-word Find no
+    longer reaches (a letter and its mark are one word); "x \\u0301" keeps the case."""
     page = fresh_page
-    _map(page, [("w", "x\u0301", "")])
-    (u,) = _uids(page, "x\u0301")
+    _map(page, [("w", "x \u0301", "")])
+    (u,) = _uids(page, "x \u0301")
     _tick(page, [u])
     _open_bulk(page, "rename")
     _set_mode(page, "replace")
     _type_spec(page, find="x", repl="")
-    assert _preview_rows(page) == [(u, "x\u0301", "\u0301", frozenset())]
+    assert _preview_rows(page) == [(u, "x \u0301", "\u0301", frozenset())]
     assert _placeholders(page, ".na-after") == 0
     _save_bulk(page)
     assert _names(page, [u]) == ["\u0301"]
@@ -296,6 +298,8 @@ def test_empty_find_replaces_the_whole_name(fresh_page: Page, match_case):
 
 
 def test_empty_find_with_a_whitespace_only_replacement_saves_blank_names(fresh_page: Page):
+    """DEVIATION (tracker 7.4 N1): each blank row is flagged name-empty and says "Needs a
+    name to export."; Save stays on and the names are still saved blank."""
     page = fresh_page
     names = ["Camp A", "Camp B", "Lake", "Trail 1", "Peak"]
     _map(page, [("w", n, "") for n in names])
@@ -305,7 +309,8 @@ def test_empty_find_with_a_whitespace_only_replacement_saves_blank_names(fresh_p
     _set_mode(page, "replace")
     _type_spec(page, repl="  ")
     rows = _preview_rows(page)
-    assert [(a, f) for _u, _b, a, f in rows] == [("", frozenset())] * 5
+    assert [(a, f) for _u, _b, a, f in rows] == [("", frozenset({"name-empty"}))] * 5
+    expect(page.locator("#mark-dialog .na-row .na-flag")).to_have_text(["Needs a name to export."] * 5)
     assert _placeholders(page, ".na-after") == 5
     assert page.locator("#mark-dialog .na-row .is-placeholder .hit, "
                         "#mark-dialog .na-row .hit .is-placeholder").count() == 0
@@ -387,6 +392,7 @@ def test_set_mode_with_a_blank_note_on_a_row_with_no_note_is_unchanged(fresh_pag
 
 
 def test_replace_with_empty_can_empty_a_name_and_saves_it_blank(fresh_page: Page):
+    """DEVIATION (tracker 7.4 N1): the blank row is flagged name-empty (warn only)."""
     page = fresh_page
     _map(page, [("w", "Camp", ""), ("w", "Lake", "")])
     (u,) = _uids(page, "Camp")
@@ -394,7 +400,7 @@ def test_replace_with_empty_can_empty_a_name_and_saves_it_blank(fresh_page: Page
     _open_bulk(page, "rename")
     _set_mode(page, "replace")
     _type_spec(page, find="Camp", repl="")
-    assert _preview_rows(page) == [(u, "Camp", "", frozenset())]
+    assert _preview_rows(page) == [(u, "Camp", "", frozenset({"name-empty"}))]
     expect(page.locator(f'#mark-dialog .na-row[data-uid="{u}"] .na-after')).to_have_text("Untitled")
     assert _placeholders(page, ".na-after") == 1
     expect(page.locator("#bulk-apply")).to_be_enabled()
@@ -435,7 +441,8 @@ def test_whitespace_only_results_are_trimmed_to_blank_and_shown_untitled(fresh_p
     _set_mode(page, "replace")
     _type_spec(page, find="Camp", repl=" \t\n ")
     rows = {u: (b, a, f) for u, b, a, f in _preview_rows(page)}
-    assert rows[camp] == ("Camp", "", frozenset())
+    # DEVIATION (tracker 7.4 N1): flagged name-empty, warn only.
+    assert rows[camp] == ("Camp", "", frozenset({"name-empty"}))
     expect(page.locator(f'#mark-dialog .na-row[data-uid="{camp}"] .na-after')).to_have_text("Untitled")
     expect(page.locator("#bulk-apply")).to_be_enabled()
     _save_bulk(page)
@@ -509,15 +516,17 @@ def test_renaming_existing_twins_together_keeps_them_twins(fresh_page: Page):
 
 def test_find_in_turkish_locale_matches_the_same_rows(browser, fresh_page: Page):
     """Case folding is the RegExp's, not the locale's: the same rows change under
-    tr-TR as under the default locale."""
-    names = ["Istanbul", "istanbul", "İstanbul", "ıstanbul", "Kit", "KIT"]
+    tr-TR as under the default locale. DEVIATION (tracker 7.4 W1): the Find was "i",
+    which a whole-word Find no longer finds inside these names; it is now the word
+    "kit", so its "i" still meets I, i, İ and ı, one per name."""
+    names = ["Kit", "KIT", "kit", "kıt", "KİT", "Lake"]
 
     def changed_names(page: Page) -> list:
         _map(page, [("w", n, "") for n in names])
         _select_all_shown(page)
         _open_bulk(page, "rename")
         _set_mode(page, "replace")
-        _type_spec(page, find="i", repl="_")
+        _type_spec(page, find="kit", repl="_")
         return sorted(b for _u, b, _a, f in _preview_rows(page) if "unchanged" not in f)
 
     default = changed_names(fresh_page)
@@ -529,10 +538,12 @@ def test_find_in_turkish_locale_matches_the_same_rows(browser, fresh_page: Page)
     turkish = changed_names(page)
     ctx.close()
     assert turkish == default
-    assert default == sorted(["Istanbul", "istanbul", "Kit", "KIT"])
+    assert default == sorted(["Kit", "KIT", "kit"])
 
 
 def test_a_rename_producing_a_blank_name_for_one_row_does_not_block_save(fresh_page: Page):
+    """DEVIATION (tracker 7.4 N1): the blank row is flagged name-empty and says "Needs a
+    name to export."; Save is still on, and it still saves the blank name."""
     page = fresh_page
     _map(page, [("w", n, "") for n in ["Camp", "Camp B", "Camp C"]])
     uids = _uids(page, "Camp", "Camp B", "Camp C")
@@ -541,8 +552,10 @@ def test_a_rename_producing_a_blank_name_for_one_row_does_not_block_save(fresh_p
     _set_mode(page, "replace")
     _type_spec(page, find="Camp", repl="")
     rows = {u: (a, f) for u, _b, a, f in _preview_rows(page)}
-    assert [rows[u] for u in uids] == [("", frozenset()), ("B", frozenset()), ("C", frozenset())]
+    assert [rows[u] for u in uids] == [("", frozenset({"name-empty"})), ("B", frozenset()), ("C", frozenset())]
     expect(page.locator(f'#mark-dialog .na-row[data-uid="{uids[0]}"] .na-after')).to_have_text("Untitled")
+    expect(page.locator(f'#mark-dialog .na-row[data-uid="{uids[0]}"] .na-flag')).to_have_text(
+        "Needs a name to export.")
     assert _placeholders(page, ".na-after") == 1
     assert _summary(page) == "3 will change · 0 unchanged"
     expect(page.locator("#bulk-apply")).to_be_enabled()
@@ -1230,11 +1243,15 @@ def _gpx_by_tag(zf, uids) -> dict:
 
 
 def test_preview_equals_saved_equals_exported_for_names(loaded: Page):
+    """DEVIATION (tracker 7.4 W1): the Find was "a" -> "4", which a whole-word Find no
+    longer finds inside the names; every space -> "_" changes all 12 rows (the tag at the
+    start stays)."""
     page = loaded
     uids = _uid_tagged(page, 12)
     _open_bulk(page, "rename")
     _set_mode(page, "replace")
-    _type_spec(page, find="a", repl="4")
+    _type_spec(page, find=" ", repl="_")
+    assert _summary(page) == "12 will change · 0 unchanged"
     preview = {u: a for u, _b, a, _f in _preview_rows(page)}
     _save_bulk(page)
     assert dict(zip(uids, _names(page, uids))) == preview
@@ -1282,7 +1299,8 @@ def test_changed_count_in_status_equals_rows_that_differ(fresh_page: Page):
     _tick(page, _uids(page, "Lake"))
     _open_bulk(page, "rename")
     _set_mode(page, "replace")
-    _type_spec(page, find="L", repl="l")
+    # DEVIATION (tracker 7.4 W1): was find "L" -> "l", inside the word; now the word.
+    _type_spec(page, find="Lake", repl="lake", match_case=True)
     assert _save_bulk(page) == "Changed 1 item."
 
 
@@ -1532,7 +1550,10 @@ def test_every_control_has_a_visible_focus_ring(fresh_page: Page):
     _two_rows(page)
     _open_bulk(page, "rename")
     _set_mode(page, "replace")
-    _type_spec(page, find="a", repl="b")
+    # DEVIATION (tracker 7.4 W1): was find "a", which no longer matches inside "Camp" and
+    # "Lake"; a whole word keeps Save on, so Save's focus ring is checked as before.
+    _type_spec(page, find="Camp", repl="b")
+    expect(page.locator("#bulk-apply")).to_be_enabled()
     seen = {}
     for _ in range(14):
         page.keyboard.press("Tab")
@@ -1542,3 +1563,125 @@ def test_every_control_has_a_visible_focus_ring(fresh_page: Page):
         ring = (style != "none" and width != "0px" and not color.endswith(", 0)")) or shadow != "none"
         seen[key] = ring
     assert len(seen) >= 6 and all(seen.values()), seen
+
+
+# =====================================================================================
+# Round 3 (tracker 7.4): whole-word Find, a highlight per match, the name flags
+# =====================================================================================
+
+
+def _hits(page: Page, uid: str) -> list:
+    """The highlighted pieces of a row's After cell, in order."""
+    return page.locator(f'#mark-dialog .na-row[data-uid="{uid}"] .na-after .hit').all_text_contents()
+
+
+def _after_text(page: Page, uid: str) -> str:
+    return page.locator(f'#mark-dialog .na-row[data-uid="{uid}"] .na-after').text_content()
+
+
+def test_find_changes_whole_words_only_and_highlights_each_match(fresh_page: Page):
+    """The owner's examples (W1, W2): "Trail" is not found in "Trailhead", "TH" not in
+    "Sawtooth"; each replaced match is highlighted on its own, and the cell's text is
+    the value exactly."""
+    page = fresh_page
+    _map(page, [("w", "Ridge Trail Trail", ""), ("w", "Trailhead", ""), ("w", "Sawtooth TH", ""),
+                ("w", "TH.", "")])
+    ridge, head, saw, dot = _uids(page, "Ridge Trail Trail", "Trailhead", "Sawtooth TH", "TH.")
+    _tick(page, [ridge, head, saw, dot])
+    _open_bulk(page, "rename")
+    _set_mode(page, "replace")
+    _type_spec(page, find="Trail", repl="Path")
+    rows = {u: (a, f) for u, _b, a, f in _preview_rows(page)}
+    assert rows[ridge] == ("Ridge Path Path", frozenset()) and rows[head] == ("Trailhead", frozenset({"unchanged"}))
+    assert _hits(page, ridge) == ["Path", "Path"] and _after_text(page, ridge) == "Ridge Path Path"
+    assert page.locator(f'#mark-dialog .na-row[data-uid="{head}"] .hit').count() == 0
+    _type_spec(page, find="TH", repl="Trailhead")
+    rows = {u: (a, f) for u, _b, a, f in _preview_rows(page)}
+    assert rows[saw][0] == "Sawtooth Trailhead" and rows[dot][0] == "Trailhead."
+    assert _hits(page, saw) == ["Trailhead"] and _hits(page, dot) == ["Trailhead"]
+    assert _after_text(page, dot) == "Trailhead."
+    assert _summary(page) == "2 will change · 2 unchanged"
+    assert _save_bulk(page) == "Changed 2 items."
+    assert _names(page, [ridge, head, saw, dot]) == ["Ridge Trail Trail", "Trailhead", "Sawtooth Trailhead", "Trailhead."]
+
+
+def test_add_before_add_after_and_a_whole_value_highlight_the_inserted_text(fresh_page: Page):
+    page = fresh_page
+    _map(page, [("w", "Bass", "line one")])
+    (u,) = _uids(page, "Bass")
+    _tick(page, [u])
+    _open_bulk(page, "rename")
+    _type_spec(page, text="BR · ")
+    assert _hits(page, u) == ["BR · "] and _after_text(page, u) == "BR · Bass"
+    _set_mode(page, "suffix")
+    _type_spec(page, text=" 2")
+    assert _hits(page, u) == [" 2"] and _after_text(page, u) == "Bass 2"
+    _set_mode(page, "replace")
+    _type_spec(page, repl="Campsite")
+    assert _hits(page, u) == ["Campsite"]
+    page.keyboard.press("Escape")
+    _open_bulk(page, "note")
+    _type_spec(page, text="Top")
+    assert _hits(page, u) == ["Top"] and _after_text(page, u) == "Top\nline one"
+
+
+def test_a_row_whose_cleaning_moves_text_shows_no_highlight(fresh_page: Page):
+    """A tab inside a stored name collapses to a space on save, so the replacement's
+    place can't be followed: that row shows no highlight rather than a wrong one."""
+    page = fresh_page
+    _map(page, [("w", "Bear Trail", ""), ("w", "Camp", "")])
+    bear, camp = _uids(page, "Bear Trail", "Camp")
+    page.evaluate("u => { allItems().find(i => i.uid === u).name = 'Camp\\tTrail'; renderFolders(); }", camp)
+    _tick(page, [bear, camp])
+    _open_bulk(page, "rename")
+    _set_mode(page, "replace")
+    _type_spec(page, find="Trail", repl="Path")
+    rows = {u: a for u, _b, a, _f in _preview_rows(page)}
+    assert rows == {bear: "Bear Path", camp: "Camp Path"}
+    assert _hits(page, bear) == ["Path"] and _hits(page, camp) == []
+
+
+@pytest.mark.parametrize("name,mode,text,after,hit", [
+    pytest.param("Cafe", "suffix", "\u0301", "Cafe\u0301", "e\u0301", id="an-accent-added-after-takes-its-letter"),
+    pytest.param("\U0001F469 Camp", "prefix", "\U0001F468\u200D", "\U0001F468\u200D\U0001F469 Camp",
+                 "\U0001F468\u200D\U0001F469", id="a-zwj-sequence-stays-whole"),
+    pytest.param("\U0001F1F8 Camp", "prefix", "\U0001F1FA", "\U0001F1FA\U0001F1F8 Camp",
+                 "\U0001F1FA\U0001F1F8", id="a-flag-stays-whole"),
+])
+def test_the_highlight_never_splits_a_letter_from_its_accent_or_an_emoji(fresh_page: Page, name, mode, text,
+                                                                         after, hit):
+    page = fresh_page
+    _map(page, [("w", name, "")])
+    (u,) = _uids(page, name)
+    _tick(page, [u])
+    _open_bulk(page, "rename")
+    _set_mode(page, mode)
+    _type_spec(page, text=text)
+    assert _after_text(page, u) == after
+    assert _hits(page, u) == [hit]
+
+
+@pytest.mark.parametrize("name,sentence", [
+    pytest.param("a" * 255, "", id="255-bytes-no-flag"),
+    pytest.param("a" * 256, "onX imports only the first 255 bytes of a name. About 1 character will be cut.",
+                 id="256-bytes-one-character"),
+    pytest.param("日" * 90, "onX imports only the first 255 bytes of a name. About 5 characters will be cut.",
+                 id="270-bytes-of-han-five-characters"),
+])
+def test_a_name_over_255_bytes_shows_the_cut_sentence_and_saves_whole(fresh_page: Page, name, sentence):
+    """Tracker 7.4 L1: warn like a long note, never cut, never block Save."""
+    page = fresh_page
+    _map(page, [("w", "Camp", "")])
+    (u,) = _uids(page, "Camp")
+    _tick(page, [u])
+    _open_bulk(page, "rename")
+    _set_mode(page, "replace")
+    _type_spec(page, repl=name)
+    ((_u, _b, after, flags),) = _preview_rows(page)
+    assert after == name and flags == (frozenset({"name-over-limit"}) if sentence else frozenset())
+    flag = page.locator(f'#mark-dialog .na-row[data-uid="{u}"] .na-flag')
+    expect(flag).to_have_text(sentence)
+    assert flag.locator("svg").count() == (1 if sentence else 0)
+    expect(page.locator("#bulk-apply")).to_be_enabled()
+    assert _save_bulk(page) == "Changed 1 item."
+    assert _names(page, [u]) == [name]
