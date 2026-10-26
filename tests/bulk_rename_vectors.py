@@ -24,7 +24,13 @@ from tests.hardening_maps import _folder, _line, _poly, _pt
 # The core's cleaning rules in Python (web/rename.js: xmlSafe, writtenNote, cleanName,
 # cleanNote). tests/web/test_rename_core.py checks them against the JS on 300 random
 # strings; the bridge tests use them to say what the core stores for a given input.
-XML_INVALID_RE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff\ud800-\udfff]")
+# The characters XML 1.0 forbids, listed outright as cairn/core/writers.py lists them
+# (a translate table, not a regex range: CodeQL py/overly-large-range).
+XML_INVALID = dict.fromkeys(
+    [c for c in range(0x20) if c not in (0x09, 0x0A, 0x0D)]   # C0 controls but tab, LF, CR
+    + [0xFFFE, 0xFFFF]
+    + list(range(0xD800, 0xE000))                             # surrogates: only lone ones occur in a str
+)
 # What JS String.prototype.trim removes: WhiteSpace and LineTerminator. It includes
 # U+FEFF and NBSP and excludes U+0085, unlike Python's str.strip(). Names use it;
 # writtenNote strips what Python's str.strip() strips, so a note is stored as the
@@ -34,7 +40,7 @@ JS_TRIM = ("\t\n\x0b\x0c\r \u00a0\u1680" + "".join(map(chr, range(0x2000, 0x200b
 
 
 def py_xml_safe(s):
-    return XML_INVALID_RE.sub("", s)
+    return s.translate(XML_INVALID)
 
 
 def py_written_note(s):

@@ -32,7 +32,7 @@ import pytest
 
 from tests.bulk_rename_vectors import (
     CAMPSITES, PINNED, ROUND_TRIP_NAMES, ROUND_TRIP_NOTES, TWINS, spec,
-    JS_TRIM as _JS_TRIM, XML_INVALID_RE as _XML_INVALID_RE,
+    JS_TRIM as _JS_TRIM,
     py_clean_name, py_clean_note, py_written_note, py_xml_safe,
 )
 from tests.naughty_strings import NAUGHTY, NAUGHTY_TEXTS
@@ -999,7 +999,7 @@ def test_property_1_changed_values_hold_no_xml_forbidden_character(core):
     for v, res in zip(vs, _results(core, vs)):
         for r in res["rows"]:
             if "unchanged" not in r["flags"]:
-                assert not _XML_INVALID_RE.search(r["after"]), (v, r)
+                assert py_xml_safe(r["after"]) == r["after"], (v, r)
 
 
 def test_property_2_a_changed_name_has_no_line_break_or_tab_and_no_outer_whitespace(core):
@@ -1243,7 +1243,7 @@ def test_property_chars_removed_iff_the_raw_value_held_a_forbidden_character(cor
             if "unchanged" in r["flags"]:
                 assert "chars-removed" not in r["flags"]
             else:
-                dirty = bool(_XML_INVALID_RE.search(_combine(raw)))
+                dirty = py_xml_safe(_combine(raw)) != _combine(raw)
                 assert ("chars-removed" in r["flags"]) == dirty, (v, r)
 
 
